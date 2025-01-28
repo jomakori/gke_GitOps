@@ -1,0 +1,8 @@
+devtron:
+  installer:
+    arch: multi-arch
+    modules:
+      - cicd
+  monitoring:
+    grafana:
+      enabled: false

@@ -8,6 +8,10 @@ clusterName: ""
 clusterEndpoint: ""
 
 # Service Values - passed in via DevOps repo (Terraform)
+## Devtron
+devtron:
+  enable: true
+
 ## External Secrets Operator
 externalSecrets:
   enable: true

@@ -3,5 +3,4 @@ external-secrets:
   installCRDs: true
   replicaCount: 2
   serviceAccount:
-    create: false
-    name:
+    create: true
