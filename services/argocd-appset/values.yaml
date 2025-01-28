@@ -1,0 +1,29 @@
+# Global Values - passed in via DevOps repo (Terraform)
+repoUrl: ""
+path: ""
+targetRevision: ""
+region: ""
+account: ""
+clusterName: ""
+clusterEndpoint: ""
+
+# Service Values - passed in via DevOps repo (Terraform)
+## External Secrets Operator
+externalSecrets:
+  enable: true
+  serviceAccountName:
+
+## kubecost Values
+kubecost:
+  enable: true
+
+## Kube Prometheus Stack
+kubePrometheusStack:
+  enable: true
+
+## Redis Operator Values
+redisOperator:
+  enable: true
+  environment:
+    - production
+    - staging

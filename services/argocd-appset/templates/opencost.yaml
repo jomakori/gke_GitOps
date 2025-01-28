@@ -1,0 +1,37 @@
+{{- if and (.Values.opencost) (.Values.opencost.enable) -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: opencost
+  namespace: {{ .Values.argoNamespace | default "argocd" }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.argoProject | default "default" }}
+  revisionHistoryLimit: 3
+  source:
+    repoURL: "{{ .Values.repoUrl }}"
+    path: services/helm/opencost
+    targetRevision: "{{ .Values.targetRevision }}"
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+      - name: clusterName
+        value: "{{ .Values.opencost.opencost.exporter.defaultClusterId }}"
+  destination:
+    server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
+    namespace: opencost
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+    retry:
+      limit: 1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+{{- end -}}
