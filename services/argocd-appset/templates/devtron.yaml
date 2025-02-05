@@ -18,7 +18,7 @@ spec:
         - values.yaml
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
-    namespace: devtron
+    namespace: devtroncd    # Note: requirement of this deployment
   syncPolicy:
     automated:
       prune: true
