@@ -2,6 +2,9 @@ devtron-operator:
   installer:
     modules:
       - cicd
+  kubewatch:
+    configs:
+      ACD_NAMESPACE: "devtron" # Default namespace for Devtron
   monitoring:
     grafana:
       enabled: false
