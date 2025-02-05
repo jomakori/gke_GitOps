@@ -16,9 +16,6 @@ spec:
     helm:
       valueFiles:
         - values.yaml
-      parameters:
-      - name: clusterName
-        value: "{{ .Values.devtron.devtron.exporter.defaultClusterId }}"
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: devtron
