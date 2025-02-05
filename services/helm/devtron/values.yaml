@@ -1,4 +1,4 @@
-devtron:
+devtron-operator:
   installer:
     arch: multi-arch
     modules:

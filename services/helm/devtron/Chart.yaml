@@ -7,6 +7,6 @@ version: 0.22.80
 appVersion: "1.2.0"
 
 dependencies:
-  - name: devtron
+  - name: devtron-operator
     version: 0.22.80
     repository: https://helm.devtron.ai
