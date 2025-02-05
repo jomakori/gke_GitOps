@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Purpose: Used for linting + testing helm charts locally
 
 # Usage:
@@ -5,8 +7,6 @@
 ## Note: Helm Charts are hosted in:
 ## - apps/helm/<app-name>
 ## - services/helm/<service-name>
-
-#!/bin/bash
 
 # Declarations
 GREEN='\033[0;32m'

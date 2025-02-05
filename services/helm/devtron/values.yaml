@@ -1,6 +1,5 @@
 devtron-operator:
   installer:
-    arch: multi-arch
     modules:
       - cicd
   monitoring:
