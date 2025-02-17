@@ -5,3 +5,5 @@ devtron-operator:
   monitoring:
     grafana:
       enabled: false
+  secrets:
+    POSTGRESQL_PASSWORD: change-me
