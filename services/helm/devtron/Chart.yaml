@@ -3,10 +3,10 @@ name: devtron-operator
 description: A Helm chart for the Devtron kubernetes manager
 type: application
 
-version: 0.22.80
+version: 0.22.82
 appVersion: "1.2.0"
 
 dependencies:
   - name: devtron-operator
-    version: 0.22.81
+    version: 0.22.82
     repository: https://helm.devtron.ai
