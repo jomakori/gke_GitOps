@@ -1,7 +1,0 @@
-devtron-operator:
-  installer:
-    modules:
-      - cicd
-  monitoring:
-    grafana:
-      enabled: false

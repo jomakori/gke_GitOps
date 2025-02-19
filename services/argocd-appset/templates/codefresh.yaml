@@ -1,8 +1,8 @@
-{{- if and (.Values.devtron) (.Values.devtron.enable) -}}
+{{- if and (.Values.codefresh) (.Values.codefresh.enable) -}}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: devtron
+  name: codefresh
   namespace: {{ .Values.argoNamespace | default "argocd" }}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -11,14 +11,14 @@ spec:
   revisionHistoryLimit: 3
   source:
     repoURL: "{{ .Values.repoUrl }}"
-    path: services/helm/devtron
+    path: services/helm/codefresh
     targetRevision: "{{ .Values.targetRevision }}"
     helm:
       valueFiles:
         - values.yaml
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
-    namespace: devtroncd    # Note: requirement of this deployment
+    namespace: codefresh
   syncPolicy:
     automated:
       prune: true

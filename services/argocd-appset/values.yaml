@@ -8,8 +8,8 @@ clusterName: ""
 clusterEndpoint: ""
 
 # Service Values - passed in via DevOps repo (Terraform)
-## Devtron
-devtron:
+## codefresh
+codefresh:
   enable: true
 
 ## External Secrets Operator

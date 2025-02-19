@@ -1,0 +1,12 @@
+codefresh:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Global Attributes                                                         │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  cfapi:
+    hpa:
+      enabled: true
+      minReplicas: 1
+    # Determines if automatic build deletion is enabled.
+    TTL_RETENTION_POLICY_IS_ENABLED: true
+    # The number of days for which to retain builds, and can be between 30 (minimum) and 365 (maximum). Builds older than the defined retention period are deleted.
+    TTL_RETENTION_POLICY_IN_DAYS: 180
