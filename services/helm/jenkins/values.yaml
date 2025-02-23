@@ -16,12 +16,3 @@ jenkins:
     # monitoring attributes
     prometheus:
       enabled: true
-
-  # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Storage Attributes                                                        │
-  # └─────────────────────────────────────────────────────────────────────────────┘
-  persistence:
-    enabled: true
-    storageClass: "standard-rwo"
-    accessMode: "ReadWriteOnce"
-    size: "10Gi"
