@@ -1,0 +1,27 @@
+jenkins:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Global Attributes                                                         │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  controller:
+    # Login attributes
+    admin:
+      user: admin
+      password: admin123
+      jenkinsAdminEmail: joe3rdwash@gmail.com
+    # Resource attributes
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    # monitoring attributes
+    prometheus:
+      enabled: true
+
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Storage Attributes                                                        │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  persistence:
+    enabled: true
+    storageClass: "standard"
+    accessMode: "ReadWriteOnce"
+    size: "10Gi"

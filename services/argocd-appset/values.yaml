@@ -10,12 +10,16 @@ clusterEndpoint: ""
 # Service Values - passed in via DevOps repo (Terraform)
 ## codefresh
 codefresh:
-  enable: true
+  enable: false
 
 ## External Secrets Operator
 externalSecrets:
   enable: true
   serviceAccountName:
+
+## jenkins Values
+jenkins:
+  enable: true
 
 ## kubecost Values
 kubecost:
@@ -27,7 +31,7 @@ kubePrometheusStack:
 
 ## Redis Operator Values
 redisOperator:
-  enable: true
+  enable: false
   environment:
     - production
     - staging

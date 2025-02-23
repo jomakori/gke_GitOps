@@ -1,0 +1,12 @@
+apiVersion: v2
+name: jenkins
+description: A Helm chart for the jenkins cicd - managed by Bitnami
+type: application
+
+version: 5.8.16
+appVersion: "2.492.1"
+
+dependencies:
+  - name: jenkins
+    version: 5.8.16
+    repository: https://charts.bitnami.com/bitnami
