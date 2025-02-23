@@ -9,4 +9,4 @@ appVersion: "2.492.1"
 dependencies:
   - name: jenkins
     version: 5.8.16
-    repository: https://charts.bitnami.com/bitnami
+    repository: https://charts.jenkins.io/
