@@ -22,6 +22,5 @@ jenkins:
   # └─────────────────────────────────────────────────────────────────────────────┘
   persistence:
     enabled: true
-    storageClass: "standard"
     accessMode: "ReadWriteOnce"
     size: "10Gi"
