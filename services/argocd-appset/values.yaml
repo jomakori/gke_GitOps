@@ -19,7 +19,7 @@ externalSecrets:
 
 ## jenkins Values
 jenkins:
-  enable: false
+  enable: true
 
 ## kubecost Values
 kubecost:
