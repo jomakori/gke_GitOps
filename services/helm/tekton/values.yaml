@@ -1,6 +1,3 @@
 tekton-pipeline:
-  controller:
-    deployment:
-      image:
-        repository: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller"
-        tag:
+  image:
+    tag:
