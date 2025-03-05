@@ -1,8 +1,8 @@
-{{- if and (.Values.codefresh) (.Values.codefresh.enable) -}}
+{{- if and (.Values.tekton) (.Values.tekton.enable) -}}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: codefresh
+  name: tekton
   namespace: {{ .Values.argoNamespace | default "argocd" }}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,15 +10,12 @@ spec:
   project: {{ .Values.argoProject | default "default" }}
   revisionHistoryLimit: 3
   source:
-    repoURL: "{{ .Values.repoUrl }}"
-    path: services/helm/codefresh
-    targetRevision: "{{ .Values.targetRevision }}"
-    helm:
-      valueFiles:
-        - values.yaml
+    repoURL: "https://storage.googleapis.com/tekton-releases/pipeline/previous"
+    path: ""
+    targetRevision: "v{{ .Values.tekton.version }}/release.yaml"
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
-    namespace: codefresh
+    namespace: tekton
   syncPolicy:
     automated:
       prune: true

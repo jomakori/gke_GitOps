@@ -8,10 +8,6 @@ clusterName: ""
 clusterEndpoint: ""
 
 # Service Values - passed in via DevOps repo (Terraform)
-## codefresh
-codefresh:
-  enable: false
-
 ## External Secrets Operator
 externalSecrets:
   enable: true
@@ -35,3 +31,9 @@ redisOperator:
   environment:
     - production
     - staging
+
+## tekton
+### Note: manual kubernetes deployment, helm chart not available
+tekton:
+  enable: false
+  version: "0.68.0" # tekton version
