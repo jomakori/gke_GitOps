@@ -1,9 +1,9 @@
-{{- if and (.Values.tekton) (.Values.tekton.enable) -}}
+{{- if and (.Values.argo-workflows) (.Values.argo-workflows.enable) -}}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tekton
+  name: argo-workflows
   namespace: {{ $.Values.argoNamespace | default "argocd" }}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -12,17 +12,14 @@ spec:
   revisionHistoryLimit: 3
   source:
     repoURL: "{{ $.Values.repoUrl }}"
-    path: services/helm/tekton
+    path: services/helm/argo-workflows
     targetRevision: "{{ $.Values.targetRevision }}"
     helm:
       valueFiles:
         - values.yaml
-      # parameters:
-      #   - name: tekton-pipeline.image.tag
-      #     value: "v{{ $.Values.tekton.version }}"
   destination:
     server: {{ $.Values.destinationServer | default "https://kubernetes.default.svc" }}
-    namespace: tekton
+    namespace: argo-workflows
   syncPolicy:
     automated:
       prune: true
