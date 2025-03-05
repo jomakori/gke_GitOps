@@ -1,4 +1,6 @@
 argo-workflows:
+  authMode:
+    - server
   autoscaling:
     enabled: true
     minReplicas: 1
