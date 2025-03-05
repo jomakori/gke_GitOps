@@ -1,4 +1,4 @@
-tekton:
+tekton-pipeline:
   controller:
     deployment:
       image:

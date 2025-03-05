@@ -7,6 +7,6 @@ version: 1.0.2
 appVersion: "v0.68.0"
 
 dependencies:
-  - name: tekton
+  - name: tekton-pipeline
     version: 1.0.2
-    repository: https://charts.tekton.io/
+    repository: https://cdfoundation.github.io/tekton-helm-chart/
