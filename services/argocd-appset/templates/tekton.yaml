@@ -10,9 +10,9 @@ spec:
   project: {{ .Values.argoProject | default "default" }}
   revisionHistoryLimit: 3
   source:
-    repoURL: "https://storage.googleapis.com/tekton-releases/pipeline/previous/v{{ $.Values.tekton.version }}/release.yaml"
+    repoURL: "https://storage.googleapis.com"
     targetRevision: HEAD
-    path: .
+    path: "tekton-releases/pipeline/previous/v{{ $.Values.tekton.version }}/release.yaml"
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: tekton
