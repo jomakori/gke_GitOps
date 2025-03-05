@@ -11,8 +11,8 @@ spec:
   revisionHistoryLimit: 3
   source:
     repoURL: "https://storage.googleapis.com/tekton-releases/pipeline/previous"
-    path: ""
-    targetRevision: "v{{ .Values.tekton.version }}/release.yaml"
+    path: v{{ $.Values.tekton.version }}/release.yaml
+    targetRevision: "v{{ $.Values.tekton.version }}
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: tekton
