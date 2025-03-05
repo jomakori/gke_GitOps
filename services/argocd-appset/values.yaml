@@ -1,4 +1,6 @@
-# Global Values - passed in via DevOps repo (Terraform)
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ Global Values - passed in via DevOps repo (Terraform)                    │
+# └──────────────────────────────────────────────────────────────────────────┘
 repoUrl: ""
 path: ""
 targetRevision: ""
@@ -7,33 +9,28 @@ account: ""
 clusterName: ""
 clusterEndpoint: ""
 
-# Service Values - passed in via DevOps repo (Terraform)
-## External Secrets Operator
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ Service Values - passed in via DevOps repo (Terraform)                   │
+# └──────────────────────────────────────────────────────────────────────────┘
+
+argoWorkflows:
+  enable: true
+
 externalSecrets:
   enable: true
   serviceAccountName:
 
-## jenkins Values
 jenkins:
   enable: true
 
-## kubecost Values
 kubecost:
   enable: true
 
-## Kube Prometheus Stack
 kubePrometheusStack:
   enable: true
 
-## Redis Operator Values
 redisOperator:
   enable: false
   environment:
     - production
     - staging
-
-## tekton
-### Note: manual kubernetes deployment, helm chart not available
-tekton:
-  enable: true
-  version: "0.68.0" # tekton version (outdated chart)
