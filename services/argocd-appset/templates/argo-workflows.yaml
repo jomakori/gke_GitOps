@@ -1,4 +1,4 @@
-{{- if and (.Values.argo-workflows) (.Values.argo-workflows.enable) -}}
+{{- if and (.Values.argoWorkflows) (.Values.argoWorkflows.enable) -}}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
