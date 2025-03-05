@@ -1,20 +1,27 @@
 {{- if and (.Values.tekton) (.Values.tekton.enable) -}}
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: tekton
-  namespace: {{ .Values.argoNamespace | default "argocd" }}
+  namespace: {{ $.Values.argoNamespace | default "argocd" }}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: {{ .Values.argoProject | default "default" }}
+  project: {{ $.Values.argoProject | default "default" }}
   revisionHistoryLimit: 3
   source:
-    repoURL: "https://storage.googleapis.com"
-    targetRevision: HEAD
-    path: "tekton-releases/pipeline/previous/v{{ $.Values.tekton.version }}/release.yaml"
+    repoURL: "{{ $.Values.repoUrl }}"
+    path: services/helm/tekton
+    targetRevision: "{{ $.Values.targetRevision }}"
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: tekton.controller.deployment.image.tag
+          value: "v{{ $.Values.tekton.version }}"
   destination:
-    server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
+    server: {{ $.Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: tekton
   syncPolicy:
     automated:
@@ -22,6 +29,7 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - Replace=true
+      - ServerSideApply=true
     retry:
       limit: 1
       backoff:
