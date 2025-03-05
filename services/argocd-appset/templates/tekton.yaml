@@ -18,7 +18,7 @@ spec:
       valueFiles:
         - values.yaml
       parameters:
-        - name: tekton.controller.deployment.image.tag
+        - name: tekton-pipeline.controller.deployment.image.tag
           value: "v{{ $.Values.tekton.version }}"
   destination:
     server: {{ $.Values.destinationServer | default "https://kubernetes.default.svc" }}
