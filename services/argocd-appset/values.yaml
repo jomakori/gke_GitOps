@@ -12,10 +12,6 @@ clusterEndpoint: ""
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Service Values - passed in via DevOps repo (Terraform)                   │
 # └──────────────────────────────────────────────────────────────────────────┘
-
-argoWorkflows:
-  enable: true
-
 externalSecrets:
   enable: true
   serviceAccountName:
