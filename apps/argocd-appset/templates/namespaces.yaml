@@ -1,5 +1,5 @@
-# Create envs/namespaces for A
-{{- range $env := .Values.demoapp1.environment }}
+# Create envs/namespaces for notes-app
+{{- range $env := .Values.notesApp.environment }}
 ---
 apiVersion: v1
 kind: Namespace
@@ -8,10 +8,10 @@ metadata:
 {{- end }}
 
 # Create namespaces for demoapp2
-{{- range $env := .Values.demoapp2.environment }}
----
-apiVersion: v1
-kind: Namespace
-metadata:
-    name: {{ $env.namespace }}
-{{- end }}
+# {{- range $env := .Values.demoapp2.environment }}
+# ---
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#     name: {{ $env.namespace }}
+# {{- end }}

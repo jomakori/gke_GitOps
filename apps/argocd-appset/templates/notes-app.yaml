@@ -1,8 +1,8 @@
-{{- if and (.Values.notesAppBackend) (.Values.notesAppBackend.enabled) -}}
+{{- if and (.Values.notesApp) (.Values.notesApp.enabled) -}}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: notes_app-backend
+  name: notes-app
   namespace: argocd
   finalizers:
   - resources-finalizer.argocd.argoproj.io
@@ -29,7 +29,7 @@ spec:
         - /metadata/argocd.argoproj.io/sync-wave
   source:
     repoURL: {{ .Values.repoUrl }}
-    path: apps/helm/notes_app-backend
+    path: apps/helm/notes-app
     targetRevision: {{ .Values.targetRevision }}
     helm:
       valueFiles:
@@ -37,14 +37,14 @@ spec:
       parameters:
         # Defines staging values
         - name: environments[0].name
-          value: "{{ .Values.notesAppBackend.environment.staging.namespace }}"
+          value: "{{ .Values.notesApp.environment.staging.namespace }}"
         - name: environments[0].dopplerToken
-          value: "{{ .Values.notesAppBackend.environment.staging.dopplerToken }}"
+          value: "{{ .Values.notesApp.environment.staging.dopplerToken }}"
         # Defines production values
         - name: environments[1].name
-          value: "{{ .Values.notesAppBackend.environment.production.namespace }}"
+          value: "{{ .Values.notesApp.environment.production.namespace }}"
         - name: environments[1].dopplerToken
-          value: "{{ .Values.notesAppBackend.environment.production.dopplerToken }}"
+          value: "{{ .Values.notesApp.environment.production.dopplerToken }}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
