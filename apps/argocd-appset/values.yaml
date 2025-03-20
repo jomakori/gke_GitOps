@@ -4,21 +4,25 @@ path: ""
 targetRevision: ""
 
 # Enable/Disable Apps + their environments
-demoapp1:
+notesApp:
   enabled: true
   environment:
     staging:
-      namespace: demoapp1-staging
+      namespace: staging-notes_app
       # access to Doppler secrets - passed via Terraform (DevOps repo)
       dopplerToken: ""
     production:
-      namespace: demoapp1-prod
+      namespace: prod-notes_app
       # access to Doppler secrets - passed via Terraform (DevOps repo)
       dopplerToken: ""
-demoapp2:
-  enabled: true
+DemoApp:
+  enabled: false
   environment:
+    staging:
+      namespace: staging-
+      # access to Doppler secrets - passed via Terraform (DevOps repo)
+      dopplerToken: ""
     production:
-      namespace: demoapp2
+      namespace: prod-
       # access to Doppler secrets - passed via Terraform (DevOps repo)
       dopplerToken: ""

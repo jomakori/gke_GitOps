@@ -1,0 +1,7 @@
+apiVersion: v2
+name: notes-app
+description: A Helm chart for notes-app
+version: 0.1.0
+appVersion: "1.0"
+maintainers:
+  - name: mak-team

@@ -34,7 +34,7 @@ spec:
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
-  name: demoapp1-vars
+  name: {{ $env.name }}-vars
   namespace: {{ $env.name }}
   annotations:
       argocd.argoproj.io/sync-wave: "-1" {{/* Prioritize - Set up secrets before app deployment */}}

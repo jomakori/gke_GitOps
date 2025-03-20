@@ -4,7 +4,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: demoapp1-api-{{ $env.rollout }}-ingress
+  name: {{ $env.name }}-api-ingress
   namespace: {{ $env.name }}
   annotations:
     {{- /* Ingress Core Settings */}}
@@ -17,7 +17,7 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
   labels:
-    app: demoapp1-api
+    app: {{ $env.name }}-api
     env: {{ $env.name }}
 spec:
   rules:
@@ -28,14 +28,14 @@ spec:
           pathType: Prefix
           backend:
             service:
-              name: demoapp1-api-{{ $env.rollout }}
+              name: {{ $env.name }}-api
               port:
                 number: 80
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: demoapp1-flower-{{ $env.rollout }}-ingress
+  name: {{ $env.name }}-ui-ingress
   annotations:
     {{- /* Ingress Core Settings */}}
     kubernetes.io/ingress.class: alb
@@ -50,18 +50,18 @@ metadata:
     alb.ingress.kubernetes.io/success-codes: 200,401
   namespace: {{ $env.name }}
   labels:
-    app: demoapp1-flower
+    app: {{ $env.name }}-ui
     env: {{ $env.name }}
 spec:
   rules:
-    - host: {{ $env.flowerHost }}
+    - host: {{ $env.uiHost }}
       http:
         paths:
         - path: /
           pathType: Prefix
           backend:
             service:
-              name: demoapp1-flower-{{ $env.rollout }}
+              name: {{ $env.name }}-ui
               port:
                 number: 80
 {{- end }}

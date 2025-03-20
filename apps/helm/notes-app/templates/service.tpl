@@ -4,49 +4,49 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: demoapp1-api-{{ $env.rollout }}
+  name: {{ $env.name }}-api
   namespace: {{ $env.name }}
   annotations:
   labels:
-    app: demoapp1-api
+    app: {{ $env.name }}-api
     env: {{ $env.name }}
 spec:
   selector:
-    app: demoapp1-api
+    app: {{ $env.name }}-api
     env: {{ $env.name }}
   ports:
   - name: http
     protocol: TCP
     port: 80
-    targetPort: {{ $env.demoapp1Api.port }}
+    targetPort: {{ $env.backend.port }}
   - name: https
     protocol: TCP
     port: 443
-    targetPort: {{ $env.demoapp1Api.port }}
+    targetPort: {{ $env.backend.port }}
   type: NodePort
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: demoapp1-flower-{{ $env.rollout }}
+  name: {{ $env.name }}-ui
   namespace: {{ $env.name }}
   annotations:
   labels:
-    app: demoapp1-flower
+    app: {{ $env.name }}-ui
     env: {{ $env.name }}
 spec:
-  externalTrafficPolicy: Local
+  externalTrafficPolicy: Local # TODO: Confirm if this is needed
   selector:
-    app: demoapp1-flower
+    app: {{ $env.name }}-ui
     env: {{ $env.name }}
   ports:
   - name: http
     protocol: TCP
     port: 80
-    targetPort: {{ $env.demoapp1Flower.port }}
+    targetPort: {{ $env.frontend.port }}
   - name: https
     protocol: TCP
     port: 443
-    targetPort: {{ $env.demoapp1Flower.port }}
+    targetPort: {{ $env.frontend.port }}
   type: NodePort
 {{- end }}
