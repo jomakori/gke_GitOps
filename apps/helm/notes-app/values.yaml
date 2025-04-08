@@ -22,15 +22,15 @@ apps: &app_values
 environments:
   # staging name is passed from argocd-appset
   - name: ""
-    apiHost: "staging.api.demo.net"
-    uiHost: "staging.notes.demo.net"
+    apiHost: "staging.api.notes.net"
+    uiHost: "staging.notes.net"
     dopplerToken: ""
     tag: ""
     <<: *app_values
   # prod name is passed from argocd-appset
   - name: ""
-    apiHost: "api.demo.net"
-    uiHost: "notes.demo.net"
+    apiHost: "api.notes.net"
+    uiHost: "notes.net"
     dopplerToken: ""
     tag: ""
     <<: *app_values
