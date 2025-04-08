@@ -1,0 +1,36 @@
+##########################
+# CONTROL APP COMPONENTS #
+##########################
+apps: &app_values
+  backend:
+    port:
+    replicas: 1
+    resourceRequests:
+      cpu: 100m
+      memory: 256Mi
+    image:
+  frontend:
+    port:
+    replicas: 1
+    resourceRequests:
+      cpu: 100m
+      memory: 256Mi
+    image:
+############################
+# CONTROL APP ENVIRONMENTS #
+############################
+environments:
+  # staging name is passed from argocd-appset
+  - name: ""
+    apiHost: "staging.api.notes.net"
+    uiHost: "staging.notes.net"
+    dopplerToken: ""
+    tag: ""
+    <<: *app_values
+  # prod name is passed from argocd-appset
+  - name: ""
+    apiHost: "api.notes.net"
+    uiHost: "notes.net"
+    dopplerToken: ""
+    tag: ""
+    <<: *app_values
