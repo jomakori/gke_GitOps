@@ -11,7 +11,7 @@
         "git config --global user.name \"$GH_USER\"",
         "echo 'Updating image tag on GitOps repo...'",
         "cd apps/helm/notes-app",
-        "yq -i '.environments[0].image.tag = env(CONTAINER_TAG) | (. * {\"tag\": \"\"} | select(tag == \"!!merge\"))' values.yaml",
+        "yq -y -i '.environments[0].image.tag = env(CONTAINER_TAG) | (. * {\"tag\": \"\"} | select(tag == \"!!merge\"))' values.yaml",
         "if [[ -z $(git status -s) ]]; then echo \"The container tags have already been updated to: $CONTAINER_TAG. Deployment skipped...\" && exit 0; fi",
         "echo 'Committing changes...'",
         "git add .",
