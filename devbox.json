@@ -9,7 +9,7 @@
         "git config --global user.email \"$GH_USER_EMAIL\"",
         "git config --global user.name \"$GH_USER\"",
         "cd apps/helm/notes-app",
-        "yq -i -y \".environments[env(ENV_NUM)].image.tag = \\\"$CONTAINER_TAG\\\"\" values.yaml",
+        "yq -i -y \".environments[$ENV_NUM].image.tag = \\\"$CONTAINER_TAG\\\"\" values.yaml",
         "if [[ -z $(git status -s) ]]; then echo \"The container tags have already been updated to: $CONTAINER_TAG. Deployment skipped...\" && exit 0; fi",
         "git add .",
         "git commit -m \"$GIT_MESSAGE\"",
