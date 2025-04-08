@@ -6,11 +6,14 @@
   "shell": {
     "scripts": {
       "deploy": [
+        "echo 'Auhorizing git...'",
         "git config --global user.email \"$GH_USER_EMAIL\"",
         "git config --global user.name \"$GH_USER\"",
+        "echo 'Updating image tag on GitOps repo...'",
         "cd apps/helm/notes-app",
-        "yq -i -y \".environments[$ENV_NUM].image.tag = \\\"$CONTAINER_TAG\\\"\" values.yaml",
+        "yq -i e '.environments[0].image.tag = env(CONTAINER_TAG)| (... | select(tag == \"!!merge\")) tag = \"\"' values.yaml",
         "if [[ -z $(git status -s) ]]; then echo \"The container tags have already been updated to: $CONTAINER_TAG. Deployment skipped...\" && exit 0; fi",
+        "echo 'Committing changes...'",
         "git add .",
         "git commit -m \"$GIT_MESSAGE\"",
         "git push"
