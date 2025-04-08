@@ -10,10 +10,10 @@
         "git config --global user.name \"$GH_USER\"",
         "echo 'Verify env variables'",
         "cd apps/helm/notes-app",
-        "yq -i e '.environments[${ENV_NUM}].image.tag = env(CONTAINER_TAG)| (... | select(tag == \"!!merge\")) tag = \"\"' values.yaml",
-        "if [[ -z $(git status -s) ]]; then echo \"The container tags have already been updated to: $IMAGE_TAG. Deployment skipped...\" && exit 0; fi",
+        "yq -i \".environments[env(ENV_NUM)].image.tag = \\\"$CONTAINER_TAG\\\"\" values.yaml",
+        "if [[ -z $(git status -s) ]]; then echo \"The container tags have already been updated to: $CONTAINER_TAG. Deployment skipped...\" && exit 0; fi",
         "git add .",
-        "git commit -m ${GIT_MESSAGE}",
+        "git commit -m \"$GIT_MESSAGE\"",
         "git push"
       ]
     }
