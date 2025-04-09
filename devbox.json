@@ -1,6 +1,6 @@
 {
   "packages": [
-    "yq-go@latest",
+    "yq@latest",
     "git@latest"
   ],
   "shell": {
@@ -12,7 +12,7 @@
         "git config --global user.email \"$GH_USER_EMAIL\"",
         "git config --global user.name \"$GH_USER\"",
         "echo 'Updating image tag on GitOps repo...'",
-        "yq -i e '.environments[env(ENV_NUM)].tag = env(CONTAINER_TAG) | (... | select(tag == \"!!merge\")) tag = \"\"' apps/helm/notes-app/values.yaml",
+        "yq -i e '.environments[env(ENV_NUM)].tag = env(CONTAINER_TAG)| (... | select(tag == "!!merge")) tag = ""' apps/helm/notes-app/values.yaml",
         "if [[ -z $(git status -s) ]]; then echo \"The container tags have already been updated to: $CONTAINER_TAG. Deployment skipped...\" && exit 0; fi",
         "echo 'Committing changes...'",
         "git add .",
