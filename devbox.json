@@ -1,23 +1,22 @@
 {
   "packages": [
-    "yq@latest",
+    "yq-go@latest",
     "git@latest"
   ],
   "shell": {
     "scripts": {
       "deploy": [
-        "echo 'Verifying env variables...'",
         "for var in GH_USER_EMAIL GH_USER ENV_NUM CONTAINER_TAG GIT_MESSAGE; do eval \"value=\\$$var\"; [ -z \"$value\" ] && { echo \"Error: $var is not set.\"; exit 1; }; done",
-        "echo 'Authorizing git...'",
+        "echo '✅ Env vars confirmed'",
+        "yq -i e '.environments[env(ENV_NUM)].tag = env(CONTAINER_TAG) | (... | select(tag == \"!!merge\")) tag = \"\"' apps/helm/notes-app/values.yaml",
+        "if [[ -z $(git status -s) ]]; then echo \"The container tags have already been updated to: $CONTAINER_TAG. Deployment skipped...\" && exit 0; fi",
+        "echo '✅ Image tag updated'",
         "git config --global user.email \"$GH_USER_EMAIL\"",
         "git config --global user.name \"$GH_USER\"",
-        "echo 'Updating image tag on GitOps repo...'",
-        "yq -i e '.environments[env(ENV_NUM)].tag = env(CONTAINER_TAG)| (... | select(tag == "!!merge")) tag = ""' apps/helm/notes-app/values.yaml",
-        "if [[ -z $(git status -s) ]]; then echo \"The container tags have already been updated to: $CONTAINER_TAG. Deployment skipped...\" && exit 0; fi",
-        "echo 'Committing changes...'",
         "git add .",
         "git commit -m \"$GIT_MESSAGE\"",
-        "git push"
+        "git push",
+        "echo '✅ Changes deployed'"
       ]
     }
   }
