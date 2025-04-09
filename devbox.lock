@@ -76,67 +76,51 @@
     "github:NixOS/nixpkgs/nixpkgs-unstable": {
       "resolved": "github:NixOS/nixpkgs/250b695f41e0e2f5afbf15c6b12480de1fe0001b?lastModified=1743814133&narHash=sha256-drDyYyUmjeYGiHmwB9eOPTQRjmrq3Yz26knwmMPLZFk%3D"
     },
-    "yq@latest": {
+    "yq-go@latest": {
       "last_modified": "2025-03-11T17:52:14Z",
-      "resolved": "github:NixOS/nixpkgs/0d534853a55b5d02a4ababa1d71921ce8f0aee4c#yq",
+      "resolved": "github:NixOS/nixpkgs/0d534853a55b5d02a4ababa1d71921ce8f0aee4c#yq-go",
       "source": "devbox-search",
-      "version": "3.4.3",
+      "version": "4.45.1",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/yfwl54hyx0vn8ji8f85bar6l0xbswv9l-python3.12-yq-3.4.3",
+              "path": "/nix/store/m92kn50px5czhrjmcd9vq674bpkg3ykj-yq-go-4.45.1",
               "default": true
-            },
-            {
-              "name": "dist",
-              "path": "/nix/store/mg4xan5s15ljn9dfh0f8xjxbm8vr5kyn-python3.12-yq-3.4.3-dist"
             }
           ],
-          "store_path": "/nix/store/yfwl54hyx0vn8ji8f85bar6l0xbswv9l-python3.12-yq-3.4.3"
+          "store_path": "/nix/store/m92kn50px5czhrjmcd9vq674bpkg3ykj-yq-go-4.45.1"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/89rw2cs1jv0rnksxr0inir7g8cw9dzj4-python3.12-yq-3.4.3",
+              "path": "/nix/store/j3n9gm4f277ys5annkc9r8ds2mn1760d-yq-go-4.45.1",
               "default": true
-            },
-            {
-              "name": "dist",
-              "path": "/nix/store/ry1g9n09yh9n46lmkx2qdcdnjig5003z-python3.12-yq-3.4.3-dist"
             }
           ],
-          "store_path": "/nix/store/89rw2cs1jv0rnksxr0inir7g8cw9dzj4-python3.12-yq-3.4.3"
+          "store_path": "/nix/store/j3n9gm4f277ys5annkc9r8ds2mn1760d-yq-go-4.45.1"
         },
         "x86_64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/n5i3glkvpca6p11bgdimis6q9pgy0dl6-python3.12-yq-3.4.3",
+              "path": "/nix/store/naa1j0ps9v9d51xf63j3r1y4rmslzyzx-yq-go-4.45.1",
               "default": true
-            },
-            {
-              "name": "dist",
-              "path": "/nix/store/d41bjbl6iz44acb6xp1r73giyp1g8n07-python3.12-yq-3.4.3-dist"
             }
           ],
-          "store_path": "/nix/store/n5i3glkvpca6p11bgdimis6q9pgy0dl6-python3.12-yq-3.4.3"
+          "store_path": "/nix/store/naa1j0ps9v9d51xf63j3r1y4rmslzyzx-yq-go-4.45.1"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/qd133g0kq5qfgr9xlbvxpnij418mj38k-python3.12-yq-3.4.3",
+              "path": "/nix/store/r8lab8vdy98adpil6xvz716168dqx7kn-yq-go-4.45.1",
               "default": true
-            },
-            {
-              "name": "dist",
-              "path": "/nix/store/4ji4dvlj13iscg1widaqy159l3n1bcqp-python3.12-yq-3.4.3-dist"
             }
           ],
-          "store_path": "/nix/store/qd133g0kq5qfgr9xlbvxpnij418mj38k-python3.12-yq-3.4.3"
+          "store_path": "/nix/store/r8lab8vdy98adpil6xvz716168dqx7kn-yq-go-4.45.1"
         }
       }
     }
