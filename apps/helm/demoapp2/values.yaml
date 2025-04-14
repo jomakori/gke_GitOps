@@ -2,7 +2,7 @@
 # CONTROL APP COMPONENTS #
 ##########################
 apps: &app_values
-  demoapp2:
+  demoapp:
     port: 3000
     replicas: 2
     resourceRequests:
@@ -18,6 +18,6 @@ environments:
     rollout: active
     dopplerToken: ""
     image:
-      repository: 123456.dkr.ecr.us-east-2.amazonaws.com/demoapp2
+      repository: 123456.dkr.ecr.us-east-2.amazonaws.com/demoapp
       tag: "latest"
     <<: *app_values

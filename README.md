@@ -110,7 +110,7 @@ The `apps` subfolder houses the helm charts for our apps, including its `staging
  ┃ ┣ 📜Chart.yaml
  ┃ ┗ 📜values.yaml
  ┗ 📂helm
- ┃ ┣ 📂demoapp2
+ ┃ ┣ 📂demoapp
  ┃ ┃ ┣ 📂templates
  ┃ ┃ ┃ ┣ 📜deployment.tpl
  ┃ ┃ ┃ ┣ 📜doppler_secrets.tpl

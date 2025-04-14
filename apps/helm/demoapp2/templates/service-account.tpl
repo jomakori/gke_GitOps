@@ -8,7 +8,7 @@ metadata:
   name: {{ $env.name }}-sa
   namespace: {{ $env.name }}
   labels:
-    app: demoapp2
+    app: demoapp
     env: {{ $env.rollout }}
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::123456:role/ecr-readonly-access-allrepos
@@ -21,7 +21,7 @@ metadata:
   name: {{ $env.name }}-registry
   namespace: {{ $env.name }}
   labels:
-    app: demoapp2
+    app: demoapp
     env: {{ $env.rollout }}
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::123456:role/ecr-readonly-access-allrepos

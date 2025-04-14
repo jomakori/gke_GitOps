@@ -19,7 +19,7 @@ metadata:
     {{- /* Health checks remediation */}}
     alb.ingress.kubernetes.io/success-codes: 200,202
   labels:
-    app: demoapp2
+    app: demoapp
     env: {{ $env.rollout }}
 spec:
   rules:
@@ -30,7 +30,7 @@ spec:
           pathType: Prefix
           backend:
             service:
-              name: demoapp2-{{ $env.rollout }}
+              name: demoapp-{{ $env.rollout }}
               port:
                 number: 80
 {{- end }}
