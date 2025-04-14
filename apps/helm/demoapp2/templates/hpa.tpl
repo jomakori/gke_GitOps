@@ -10,7 +10,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: demoapp2-{{ $env.rollout }}
+    name: demoapp-{{ $env.rollout }}
   minReplicas: 1
   maxReplicas: 10
   metrics:

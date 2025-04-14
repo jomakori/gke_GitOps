@@ -22,7 +22,7 @@ The `argocd-appset` directory contains the ArgoCD application manifest needed fo
 📦argocd-appset
  ┣ 📂templates
  ┃ ┣ 📜demoapp1.yaml
- ┃ ┣ 📜demoapp2.yaml
+ ┃ ┣ 📜demoapp.yaml
  ┃ ┗ 📜namespaces.yaml
  ┣ 📜Chart.yaml
  ┗ 📜values.yaml
@@ -44,7 +44,7 @@ The `helm` directory contains the actual helm template for each of our apps and 
  ┃ ┃ ┗ 📜service.tpl
  ┃ ┣ 📜Chart.yaml
  ┃ ┗ 📜values.yaml
- ┗ 📂demoapp2
+ ┗ 📂demoapp
  ┃ ┣ 📂templates
  ┃ ┃ ┣ 📜deployment.tpl
  ┃ ┃ ┣ 📜doppler_secrets.tpl

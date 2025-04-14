@@ -1,4 +1,4 @@
-{{- if and (.Values.notesAppFrontend) (.Values.notesAppFrontend.enabled) -}}
+{{- if and (.Values.demoApp) (.Values.demoApp.enabled) -}}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -37,14 +37,14 @@ spec:
       parameters:
         # Defines staging values
         - name: environments[0].name
-          value: "{{ .Values.notesAppFrontend.environment.staging.namespace }}"
+          value: "{{ .Values.demoApp.environment.staging.namespace }}"
         - name: environments[0].dopplerToken
-          value: "{{ .Values.notesAppFrontend.environment.staging.dopplerToken }}"
+          value: "{{ .Values.demoApp.environment.staging.dopplerToken }}"
         # Defines production values
         - name: environments[1].name
-          value: "{{ .Values.notesAppFrontend.environment.production.namespace }}"
+          value: "{{ .Values.demoApp.environment.production.namespace }}"
         - name: environments[1].dopplerToken
-          value: "{{ .Values.notesAppFrontend.environment.production.dopplerToken }}"
+          value: "{{ .Values.demoApp.environment.production.dopplerToken }}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

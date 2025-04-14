@@ -4,22 +4,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demoapp2-{{ $env.rollout }}
+  name: demoapp-{{ $env.rollout }}
   namespace: {{ $env.name }}
   labels:
-    app: demoapp2
+    app: demoapp
     env: {{ $env.rollout }}
 spec:
-  replicas: {{ $env.demoapp2.replicas }}
+  replicas: {{ $env.demoapp.replicas }}
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app: demoapp2
+      app: demoapp
       env: {{ $env.rollout }}
   template:
     metadata:
       labels:
-        app: demoapp2
+        app: demoapp
 
         env: {{ $env.rollout }}
     spec:
@@ -29,18 +29,18 @@ spec:
       imagePullSecrets:
         - name: {{ $env.name }}-registry
       containers:
-        - name: demoapp2
+        - name: demoapp
           image: {{ $env.image.repository }}:{{ $env.image.tag }}
           ports:
-          - containerPort: {{ $env.demoapp2.port }}
+          - containerPort: {{ $env.demoapp.port }}
           command:
             - /bin/sh
             - -c
             - /server
           resources:
             requests:
-              memory: {{ $env.demoapp2.resourceRequests.memory }}
-              cpu: {{ $env.demoapp2.resourceRequests.cpu }}
+              memory: {{ $env.demoapp.resourceRequests.memory }}
+              cpu: {{ $env.demoapp.resourceRequests.cpu }}
           envFrom:
           - secretRef:
               name: {{ $env.name }}-vars
