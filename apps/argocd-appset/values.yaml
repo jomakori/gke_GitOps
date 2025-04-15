@@ -15,14 +15,3 @@ notesApp:
       namespace: prod-notes_app
       # access to Doppler secrets - passed via Terraform (DevOps repo)
       dopplerToken: ""
-demoApp:
-  enabled: false
-  environment:
-    staging:
-      namespace: staging-demoapp
-      # access to Doppler secrets - passed via Terraform (DevOps repo)
-      dopplerToken: ""
-    production:
-      namespace: prod-demoapp
-      # access to Doppler secrets - passed via Terraform (DevOps repo)
-      dopplerToken: ""
