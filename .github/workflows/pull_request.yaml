@@ -39,12 +39,12 @@ jobs:
         uses: tj-actions/changed-files@main
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@main
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ env.GOOGLE__CI_CREDENTIALS }}
 
       - name: Authenticate GKE credentials
-        uses: google-github-actions/get-gke-credentials@main
+        uses: google-github-actions/get-gke-credentials@v2
         with:
           cluster_name: ${{ env.GKE_CLUSTER_NAME }}
           location: ${{ env.GKE_LOCATION }}
