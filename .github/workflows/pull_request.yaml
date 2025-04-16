@@ -41,14 +41,14 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@main
         with:
-          credentials_json: ${{ secrets.GOOGLE__CI_CREDENTIALS }}
+          credentials_json: ${{ env.GOOGLE__CI_CREDENTIALS }}
 
       - name: Authenticate GKE credentials
         uses: google-github-actions/get-gke-credentials@main
         with:
-          cluster_name: ${{ secrets.GKE_CLUSTER_NAME }}
-          location: ${{ secrets.GKE_LOCATION }}
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          cluster_name: ${{ env.GKE_CLUSTER_NAME }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: CT - Helm Chart Lint & Test
         env:
