@@ -14,9 +14,9 @@ RESET="\033[0m"
 
 # Determine helm directories from changed files
 for file in "${files_array[@]}"; do
-  if [[ "$file" == *"/templates/"* || "$file" == *"/helm/"* ]]; then
+  if [[ "$file" == *"/argocd-appset/"* || "$file" == *"/helm/"* ]]; then
     ## Grab helm path from file path
-    helm_dir=$(dirname "$file" | sed 's|\(/templates\|/helm\).*||')
+    helm_dir=$(dirname "$file" | sed 's|\(/argocd-appset\|/helm\).*||')
     ## Add to the helm_dirs array if not already present
     if [[ ! " ${helm_dirs[@]} " =~ " ${helm_dir} " ]]; then
       helm_dirs+=("$helm_dir")
@@ -41,6 +41,7 @@ for dir in "${helm_dirs[@]}"; do
   ## Fail-catch
   if [ $? -ne 0 ]; then
     echo -e "${RED}::ERROR:: ct command failed on: ${RESET} $dir"
+    exit 1
   fi
 done
 
