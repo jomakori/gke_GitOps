@@ -41,7 +41,7 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ env.GOOGLE__CI_CREDENTIALS }}
+          credentials_json: ${{ env.GOOGLE_CI_CREDENTIALS }}
 
       - name: Authenticate GKE credentials
         uses: google-github-actions/get-gke-credentials@v2
