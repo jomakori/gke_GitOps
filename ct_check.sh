@@ -1,54 +1,34 @@
-# Purpose: Used for linting + testing helm charts in CI
-## Note: You can test charts locally, using the script inside: .useful-scripts/ct_check.sh
-
 #!/bin/bash
 
-# Declarations
-GREEN='\033[0;32m'
-NC='\033[0m' # No Color
+# Purpose: Used for linting + testing helm charts in CI
+# Note: You can test charts locally, using the script inside: .useful-scripts/ct_check.sh
 
-# Declarations
-changed_files=$1
-declare -A checked_dirs
-helm_charts_checked=0
-cluster_context=$(kubectl config current-context 2>/dev/null)
+# Get the list of changed files from the environment variable
+changed_files="$1"
 
-# Confirm connection to cluster
-if [ -z "$cluster_context" ]; then
-    echo "::error::ERROR: The EKS cluster credentials aren't set"
-    exit 1
-else
-    printf "${GREEN}Testing out changes on: $cluster_context${NC}\n"
-fi
+# Convert the string of changed files into an array
+IFS=' ' read -r -a files_array <<< "$changed_files"
 
-# Processing
-for file in $changed_files; do
-    # Get the directory of the file
-    dir=$(dirname $file)
+# Initialize an array to hold Helm directories
+helm_dirs=()
 
-    # Check if the directory is a helm directory and it has not been checked yet
-    if [[ $dir =~ .*/helm/.* ]] && [[ -z ${checked_dirs[$dir]} ]]; then
-        # Run the ct lint-and-install command on the directory
-        printf "${GREEN}CT: Lint & Test Helm Chart: ${dir} ${NC}\n"
-        echo "Updating Helm repo in cluster..." && helm dependency update
-        ct lint-and-install --charts $dir --validate-maintainers=false
-
-        # Error-catch
-        exit_status=$?
-        if [ $exit_status -ne 0 ]; then
-            echo "::error::ERROR: ct lint/test failed on: $dir" # error message -> job summary
-            exit 1
-        fi
-
-        # Mark the directory as checked
-        checked_dirs[$dir]=1
-
-        # Increment the count of helm charts checked
-        ((helm_charts_checked++))
+# Iterate over each file to find Helm directories
+for file in "${files_array[@]}"; do
+  # Check if the file is within a Helm directory containing 'templates'
+  if [[ "$file" == *"/templates/"* ]]; then
+    # Extract the directory path up to the Helm chart level
+    helm_dir=$(dirname "$file" | sed 's|/templates.*||')
+    # Add to the helm_dirs array if not already present
+    if [[ ! " ${helm_dirs[@]} " =~ " ${helm_dir} " ]]; then
+      helm_dirs+=("$helm_dir")
     fi
+  fi
 done
 
-# If no helm charts were checked in
-if [ $helm_charts_checked -eq 0 ]; then
-    echo "::notice::No Helm changes detected." # notice message -> job summary
-fi
+# Run ct lint-and-test on each Helm directory
+for dir in "${helm_dirs[@]}"; do
+  echo "Running ct lint-and-test on $dir"
+  ct lint-and-test --charts "$dir"
+done
+
+echo "✅ Lint and Tested ${#helm_dirs[@]} changed Helm charts."
