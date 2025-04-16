@@ -11,5 +11,6 @@
       "matchPaths": ["services/helm/**/Chart.yaml", "services/helm/**/values.yaml"],
       "enabled": true
     }
-  ]
+  ],
+  "schedule": ["every two weeks on sunday"]
 }
