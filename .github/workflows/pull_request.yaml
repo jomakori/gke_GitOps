@@ -54,13 +54,17 @@ jobs:
         env:
           changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
-          # Get the current kubeconfig
-          cluster_context=$(kubectl config current-context 2>/dev/null)
-
-          # Run chart-testing - so long as the kubeconfig is set
-          if [ -z "$cluster_context" ]; then
-              echo "::error::ERROR: Issue setting the kubeconfig for the cluster"
+          # Confirm k8s setup and connection
+          cluster_config=$(kubectl config current-context 2>&1)
+          cluster_connection=$(kubectl cluster-info 2>&1)
+      
+          # Test Helm charts - if no errors
+          if [ -z "$cluster_config" ]; then
+              echo "::error::$cluster_config"
+              exit 1
+          elif [-z "$cluster_connection" ]; then
+              echo "::error::$cluster_connection"
               exit 1
           else
-            echo "Testing out changes on: $cluster_context" && ./ct_check.sh "$changed_files"
+              echo "Testing out changes on: $cluster_config" && ./ct_check.sh "$changed_files"
           fi
