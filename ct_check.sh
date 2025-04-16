@@ -7,39 +7,41 @@
 changed_files="$1"
 IFS=' ' read -r -a files_array <<< "$changed_files"
 helm_dirs=()
-
-# List changed files
-echo "Changed files: $changed_files"
-echo "Changed files array: ${files_array[@]}"
+GREEN="\033[32m"
+BLUE="\033[34m"
+RED="\033[31m"
+RESET="\033[0m"
 
 # Determine helm directories from changed files
 for file in "${files_array[@]}"; do
-  # Check if the file is within a Helm directory containing 'templates'
-  if [[ "$file" == *"/templates/"* ]]; then
-    # Extract the directory path up to the Helm chart level
-    helm_dir=$(dirname "$file" | sed 's|/templates.*||')
-    # Add to the helm_dirs array if not already present
+  if [[ "$file" == *"/templates/"* || "$file" == *"/helm/"* ]]; then
+    ## Extract the directory path up to the level above 'templates' or 'helm'
+    helm_dir=$(dirname "$file" | sed 's|\(/templates\|/helm\).*||')
+    ## Add to the helm_dirs array if not already present
     if [[ ! " ${helm_dirs[@]} " =~ " ${helm_dir} " ]]; then
       helm_dirs+=("$helm_dir")
     fi
   fi
 done
 
-# Run ct lint-and-install on each Helm directory
+# Run chart testing on each Helm directory
+echo "::notice::Running chart testing on: ${helm_dirs[@]}"
+
 for dir in "${helm_dirs[@]}"; do
   ## Test apps/services
   if [[ "$dir" == *"helm"* ]]; then
-    echo "Running ct lint-and-install on $dir"
+    printf "${GREEN}Running ct lint-and-install on: ${RESET}" "$dir"
     ct lint-and-install --charts "$dir" --validate-maintainers=false
+  
   ## Lint argocd templates
   else
-    echo "Running ct lint on $dir"
+    printf "${BLUE}Running ct lint on: ${RESET}" "$dir"
     ct lint --charts "$dir" --validate-maintainers=false
   fi
 
-  ## fail-catch
+  ## Fail-catch
   if [ $? -ne 0 ]; then
-    echo "ERROR: ct command failed on: $dir"
+    printf "${RED}ERROR: ct command failed on: ${RESET}" "$dir"
     exit 1
   fi
 done
