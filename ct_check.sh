@@ -25,10 +25,23 @@ for file in "${files_array[@]}"; do
   fi
 done
 
-# Run ct lint-and-test on each Helm directory
+# Run ct lint-and-install on each Helm directory
 for dir in "${helm_dirs[@]}"; do
-  echo "Running ct lint-and-test on $dir"
-  ct lint-and-test --charts "$dir"
+  # Test apps/services
+  if [[ "$dir" == *"helm"* ]]; then
+    echo "Running ct lint-and-install on $dir"
+    ct lint-and-install --charts "$dir" --validate-maintainers=false
+  # Lint argocd templates
+  else
+    echo "Running ct lint on $dir"
+    ct lint --charts "$dir" --validate-maintainers=false
+  fi
+
+  # fail-catch
+  if [ $? -ne 0 ]; then
+    echo "ERROR: ct command failed on: $dir"
+    exit 1
+  fi
 done
 
 echo "✅ Lint and Tested ${#helm_dirs[@]} changed Helm charts."
