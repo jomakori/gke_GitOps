@@ -3,16 +3,16 @@
 # Purpose: Used for linting + testing helm charts in CI
 # Note: You can test charts locally, using the script inside: .useful-scripts/ct_check.sh
 
-# Get the list of changed files from the environment variable
+# Declarations
 changed_files="$1"
-
-# Convert the string of changed files into an array
 IFS=' ' read -r -a files_array <<< "$changed_files"
-
-# Initialize an array to hold Helm directories
 helm_dirs=()
 
-# Iterate over each file to find Helm directories
+# List changed files
+echo "Changed files: $changed_files"
+echo "Changed files array: ${files_array[@]}"
+
+# Determine helm directories from changed files
 for file in "${files_array[@]}"; do
   # Check if the file is within a Helm directory containing 'templates'
   if [[ "$file" == *"/templates/"* ]]; then
