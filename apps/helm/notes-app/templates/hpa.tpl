@@ -54,4 +54,3 @@ spec:
         type: Utilization
         averageUtilization: 75
 {{- end }}
-{{- end }}
