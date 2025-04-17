@@ -8,10 +8,10 @@ notesApp:
   enabled: true
   environment:
     staging:
-      namespace: staging-notes_app
+      namespace: staging-notes-app
       # access to Doppler secrets - passed via Terraform (DevOps repo)
       dopplerToken: ""
     production:
-      namespace: prod-notes_app
+      namespace: prod-notes-app
       # access to Doppler secrets - passed via Terraform (DevOps repo)
       dopplerToken: ""

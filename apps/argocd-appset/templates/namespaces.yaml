@@ -6,12 +6,3 @@ kind: Namespace
 metadata:
     name: {{ $env.namespace }}
 {{- end }}
-
-# Create namespaces for demoapp
-# {{- range $env := .Values.demoapp.environment }}
-# ---
-# apiVersion: v1
-# kind: Namespace
-# metadata:
-#     name: {{ $env.namespace }}
-# {{- end }}

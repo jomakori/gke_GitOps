@@ -1,28 +1,30 @@
 name: Lint and Test Charts
+
 on:
-  workflow_dispatch:  # manual run fallback
+  workflow_dispatch:  # manual run option
   pull_request:
     types:
       - opened
       - reopened
       - synchronize
+
 jobs:
   lint-test:
-    runs-on: ubuntu-latest-large
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@main
+        uses: actions/checkout@v3
 
       - name: Setup Python
-        uses: actions/setup-python@main
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           check-latest: true
 
       - name: Setup Chart-Testing
-        uses: helm/chart-testing-action@main
+        uses: helm/chart-testing-action@v2
 
-      - name: Setup Doppler cli
+      - name: Setup Doppler CLI
         uses: dopplerhq/cli-action@master
 
       - name: Fetch Doppler Secrets
@@ -36,28 +38,33 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@main
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@main
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.DEFAULT_AWS_REGION }}
+          credentials_json: ${{ env.GOOGLE_CI_CREDENTIALS }}
 
-      - name: Configure EKS credentials
-        run: |
-          aws eks update-kubeconfig --name ${{ env.TF_VAR_CLUSTER_NAME }} --region ${{ env.DEFAULT_AWS_REGION }}
+      - name: Authenticate GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER_NAME }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: CT - Helm Chart Lint & Test
         env:
           changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
-          # Get the current context
-          cluster_context=$(kubectl config current-context 2>/dev/null)
-
-          # Check if the context is empty
-          if [ -z "$cluster_context" ]; then
-              echo "::error::ERROR: Issue setting the kubeconfig for the cluster"
+          # Confirm k8s setup and connection
+          cluster_config=$(kubectl config current-context 2>&1)
+          cluster_connection=$(kubectl cluster-info 2>&1)
+      
+          # Test Helm charts - if no errors
+          if [ -z "$cluster_config" ]; then
+              echo "::error::$cluster_config"
+              exit 1
+          elif [-z "$cluster_connection" ]; then
+              echo "::error::$cluster_connection"
               exit 1
           else
-            echo "Testing out changes on: $cluster_context" && ./ct_check.sh "$changed_files"
+              echo "Testing out changes on: $cluster_config" && ./ct_check.sh "$changed_files"
           fi
