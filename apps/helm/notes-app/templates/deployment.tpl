@@ -29,18 +29,6 @@ spec:
       serviceAccountName: {{ $env.name }}-sa
       imagePullSecrets:
         - name: {{ $env.name }}-registry
-      ## Note: could use for confirming dep connections
-      # initContainers:
-      #   - name: py-migrate
-      #     image: {{ $env.image.repository }}:{{ $env.tag }}
-      #     imagePullPolicy: Always
-      #     command:
-      #       - python
-      #       - manage.py
-      #       - migrate
-      #     envFrom:
-      #       - secretRef:
-      #           name: {{ $env.name }}-vars
       containers:
         - name: {{ $env.name }}-api
           ports:
@@ -105,5 +93,4 @@ spec:
           envFrom:
           - secretRef:
               name: {{ $env.name }}-vars
-{{- end }}
 {{- end }}
