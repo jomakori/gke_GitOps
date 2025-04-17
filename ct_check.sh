@@ -9,7 +9,6 @@ IFS=' ' read -r -a files_array <<< "$changed_files"
 helm_dirs=()
 GREEN="\033[32m"
 BLUE="\033[34m"
-RED="\033[31m"
 RESET="\033[0m"
 
 # Determine helm directories from changed files
@@ -40,7 +39,7 @@ for dir in "${helm_dirs[@]}"; do
 
   ## Fail-catch
   if [ $? -ne 0 ]; then
-    echo -e "${RED}::ERROR:: ct command failed on: ${RESET} $dir"
+    echo "::ERROR - $dir::Chart test failed."
     exit 1
   fi
 done
