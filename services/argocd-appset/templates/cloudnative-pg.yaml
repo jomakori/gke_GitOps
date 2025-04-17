@@ -13,6 +13,10 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   project: {{ $root.Values.argoProject | default "default" }}
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      name: cnpg-validating-webhook-configuration
   revisionHistoryLimit: 3
   source:
     repoURL: "{{ $root.Values.repoUrl }}"
