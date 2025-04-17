@@ -8,14 +8,14 @@ apps: &app_values
     resourceRequests:
       cpu: 100m
       memory: 256Mi
-    image:
+    image: ghcr.io/jomakori/note-app-backend
   frontend:
     port: 8181
     replicas: 1
     resourceRequests:
       cpu: 100m
       memory: 256Mi
-    image:
+    image: ghcr.io/jomakori/note-app-frontend
 ############################
 # CONTROL APP ENVIRONMENTS #
 ############################
