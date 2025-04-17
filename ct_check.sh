@@ -16,7 +16,7 @@ RESET="\033[0m"
 for file in "${files_array[@]}"; do
   if [[ "$file" == *"/argocd-appset/"* || "$file" == *"/helm/"* ]]; then
     ## Grab helm path from file path
-    helm_dir=$(dirname "$file" | sed 's|\(/argocd-appset\|/helm\).*||')
+    helm_dir=$(dirname "$file" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
     ## Add to the helm_dirs array if not already present
     if [[ ! " ${helm_dirs[@]} " =~ " ${helm_dir} " ]]; then
       helm_dirs+=("$helm_dir")
