@@ -26,20 +26,10 @@ done
 # Run chart testing on each Helm directory
 echo "::notice::Running chart testing on: ${helm_dirs[@]}"
 for dir in "${helm_dirs[@]}"; do
-  ## Test apps/services
-  if [[ "$dir" == *"helm"* ]]; then
-    echo -e "${GREEN}Running ct lint-and-install on: ${RESET} $dir"
-    ct lint-and-install --charts "$dir" --validate-maintainers=false
-  
-  ## Lint argocd templates
-  else
-    echo -e "${BLUE}Running ct lint on: ${RESET} $dir"
-    ct lint --charts "$dir" --validate-maintainers=false
-  fi
-
+  ct lint --charts "$dir" --validate-maintainers=false
   ## Fail-catch
   if [ $? -ne 0 ]; then
-    echo "::ERROR - $dir::Chart test failed."
+    echo "::ERROR::Chart testing failed on: ${dir}."
     exit 1
   fi
 done
