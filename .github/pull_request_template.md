@@ -4,11 +4,11 @@
 
 <!-- Explain why this change is necessary and what problem it solves -->
 
-* ### 
+* ###
 
 ### Relevant Jira Issues:
 
-* ### 
+* ###
 
 ## 🔍 Types of Changes
 

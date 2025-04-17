@@ -13,7 +13,7 @@ version: 1.39.0
 appVersion: 1.110.0
 
 maintainers:
-  - name: commerce-team
+  - name: local
 
 dependencies:
   - name: opencost

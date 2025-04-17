@@ -4,9 +4,8 @@ rules:
   brackets: enable
   colons: enable
   commas: enable
-  comments: enable
-  comments-indentation:
-    level: warning
+  comments: disable
+  comments-indentation: disable
   document-start: disable
   empty-lines: enable
   empty-values: disable

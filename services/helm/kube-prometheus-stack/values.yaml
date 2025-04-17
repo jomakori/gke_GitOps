@@ -78,7 +78,6 @@ kube-prometheus-stack:
       enabled: false
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │   Grafana Configuration                                                     │
-# │   Disable Grafana                                                           │
 # └─────────────────────────────────────────────────────────────────────────────┘
   grafana:
-    enabled: false
+    enabled: true

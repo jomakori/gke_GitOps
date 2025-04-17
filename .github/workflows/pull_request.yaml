@@ -57,7 +57,7 @@ jobs:
           # Confirm k8s setup and connection
           cluster_config=$(kubectl config current-context 2>&1)
           cluster_connection=$(kubectl cluster-info 2>&1)
-      
+
           # Test Helm charts - if no errors
           if [ -z "$cluster_config" ]; then
               echo "::error::$cluster_config"

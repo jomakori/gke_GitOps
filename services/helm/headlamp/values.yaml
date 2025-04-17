@@ -1,26 +1,25 @@
-jenkins:
+headlamp:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Global Attributes                                                         │
+  # │   General Configuration                                                     │
   # └─────────────────────────────────────────────────────────────────────────────┘
-  controller:
-    # Login attributes
-    admin:
-      user: admin
-      jenkinsAdminEmail: joe3rdwash@gmail.com
-    # Resource attributes
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-    # monitoring attributes
-    prometheus:
-      enabled: true
-
+  config:
+    pluginsDir: /build/plugins
   # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Storage Attributes                                                        │
+  # │   Headlamp Plugins Configuration                                            │
   # └─────────────────────────────────────────────────────────────────────────────┘
-  persistence:
-    enabled: true
-    storageClass: "standard-rwo"
-    accessMode: "ReadWriteOnce"
-    size: "10Gi"
+  initContainers:
+    - command:
+        - /bin/sh
+        - -c
+        - mkdir -p /build/plugins && cp -r /plugins/* /build/plugins/
+      image: quay.io/kubescape/headlamp-plugin:latest
+      name: kubescape-plugin
+      volumeMounts:
+        - mountPath: /build/plugins
+          name: headlamp-plugins
+  volumeMounts:
+    - name: headlamp-plugins
+      mountPath: /build/plugins
+  volumes:
+    - name: headlamp-plugins
+      emptyDir: {}
