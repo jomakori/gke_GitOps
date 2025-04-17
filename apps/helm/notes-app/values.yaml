@@ -13,7 +13,7 @@ apps: &app_values
     port: 8181
     replicas: 1
     resourceRequests:
-      cpu: 100m
+      cpu: 512m
       memory: 256Mi
     image: ghcr.io/jomakori/note-app-frontend
 ############################
