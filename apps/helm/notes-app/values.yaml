@@ -3,14 +3,14 @@
 ##########################
 apps: &app_values
   backend:
-    port:
+    port: 8080
     replicas: 1
     resourceRequests:
       cpu: 100m
       memory: 256Mi
     image:
   frontend:
-    port:
+    port: 8181
     replicas: 1
     resourceRequests:
       cpu: 100m
