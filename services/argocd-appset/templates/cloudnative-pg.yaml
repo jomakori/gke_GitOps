@@ -5,7 +5,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cloudnative-pg-{{ $namespace }}
+  name: cloudnative-db-operator
   namespace: {{ $root.Values.argoNamespace | default "argocd" }}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
