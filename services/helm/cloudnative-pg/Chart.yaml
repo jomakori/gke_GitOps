@@ -1,0 +1,12 @@
+apiVersion: v2
+name: cloudnative-pg
+description: A Helm chart for the cloudnative-pg - a PostgreSQL operator
+type: application
+
+version: 0.1.7
+appVersion: "1.25.1"
+
+dependencies:
+  - name: cloudnative-pg
+    version: 0.1.7
+    repository: https://charts.bitnami.com/bitnami
