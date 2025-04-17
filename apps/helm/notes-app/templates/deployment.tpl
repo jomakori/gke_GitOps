@@ -24,8 +24,6 @@ spec:
         app: {{ $env.name }}-api
         env: {{ $env.name }}
     spec:
-      nodeSelector:
-        intent: apps
       serviceAccountName: {{ $env.name }}-sa
       imagePullSecrets:
         - name: {{ $env.name }}-registry
@@ -70,8 +68,6 @@ spec:
         app: {{ $env.name }}-ui
         env: {{ $env.name }}
     spec:
-      nodeSelector:
-        intent: apps
       serviceAccountName: {{ $env.name }}-sa
       imagePullSecrets:
         - name: {{ $env.name }}-registry
