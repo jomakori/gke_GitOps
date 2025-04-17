@@ -6,3 +6,4 @@
 test-gpu.yaml
 **charts/
 **Chart.lock
+.devbox/

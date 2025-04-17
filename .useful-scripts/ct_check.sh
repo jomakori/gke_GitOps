@@ -31,18 +31,11 @@ trap 'rm -rf $dir/charts; rm -f $dir/Chart.lock' EXIT ERR INT
 if [ -z "$cluster_context" ]; then
     echo "ERROR: The EKS cluster credentials aren't set"
     exit 1
+else
+    printf "${GREEN}Testing out changes on: $cluster_context${NC}\n"
 fi
-
-printf "${GREEN}Testing out changes on: $cluster_context${NC}\n"
 
 # Processing
-if [[ $dir =~ .*/helm/.* ]]; then
-    printf "${GREEN}CT: Lint & Test Helm Chart: ${dir} ${NC}\n"
-    echo "Updating Helm repo in cluster..." && helm dependency update $dir
-    ct lint-and-install --charts $dir --validate-maintainers=false
-
-    if [ $? -ne 0 ]; then
-        echo "ERROR: ct lint/test failed on: $dir"
-        exit 1
-    fi
-fi
+printf "${GREEN}CT: Lint & Test Helm Chart: ${dir} ${NC}\n"
+echo "Updating Helm repo in cluster..." && helm dependency update $dir
+ct lint --charts $dir --validate-maintainers=false
