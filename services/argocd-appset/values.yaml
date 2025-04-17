@@ -16,6 +16,9 @@ externalSecrets:
   enable: true
   serviceAccountName:
 
+headlamp:
+  enable: true
+
 jenkins:
   enable: true
 

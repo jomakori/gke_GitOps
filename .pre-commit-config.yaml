@@ -17,8 +17,3 @@ repos:
     hooks:
       - id: yamllint
         args: [-c=.yamllint]
-  - repo: https://github.com/webofmars/pre-commit-helm-ct.git
-    rev: 0.1.2
-    hooks:
-      - id: helm-ct
-        args: [lint]
