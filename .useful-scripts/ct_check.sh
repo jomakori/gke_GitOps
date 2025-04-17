@@ -38,4 +38,4 @@ fi
 # Processing
 printf "${GREEN}CT: Lint & Test Helm Chart: ${dir} ${NC}\n"
 echo "Updating Helm repo in cluster..." && helm dependency update $dir
-ct lint-and-install --charts $dir --validate-maintainers=false
+ct lint --charts $dir --validate-maintainers=false

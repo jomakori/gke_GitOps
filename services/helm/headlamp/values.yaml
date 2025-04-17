@@ -4,6 +4,13 @@ headlamp:
   # └─────────────────────────────────────────────────────────────────────────────┘
   config:
     pluginsDir: /build/plugins
+  serviceAccount:
+    create: true
+    name: headlamp-admin-sa
+  clusterRoleBinding:
+    create: true
+    name: cluster-admin
+
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Headlamp Plugins Configuration                                            │
   # └─────────────────────────────────────────────────────────────────────────────┘

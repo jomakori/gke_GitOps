@@ -12,6 +12,9 @@ clusterEndpoint: ""
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Service Values - passed in via DevOps repo (Terraform)                   │
 # └──────────────────────────────────────────────────────────────────────────┘
+cloudnativePG:
+  enable: true
+
 externalSecrets:
   enable: true
   serviceAccountName:
