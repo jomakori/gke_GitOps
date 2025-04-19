@@ -10,11 +10,14 @@ headlamp:
   clusterRoleBinding:
     create: true
     name: headlamp-admin-binding
-    apiGroup: rbac.authorization.k8s.io
+    subjects:
+      - kind: ServiceAccount
+        name: headlamp-admin-sa
+        namespace: kube-system
     roleRef:
-      apiGroup: rbac.authorization.k8s.io
       kind: ClusterRole
       name: cluster-admin
+      apiGroup: rbac.authorization.k8s.io
 
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Headlamp Plugins Configuration                                            │
