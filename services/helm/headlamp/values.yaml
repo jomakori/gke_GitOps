@@ -13,7 +13,7 @@ headlamp:
     subjects:
       - kind: ServiceAccount
         name: headlamp-admin-sa
-        namespace: kube-system
+        namespace: headlamp
     roleRef:
       kind: ClusterRole
       name: cluster-admin
