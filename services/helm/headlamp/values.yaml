@@ -4,20 +4,13 @@ headlamp:
   # └─────────────────────────────────────────────────────────────────────────────┘
   config:
     pluginsDir: /build/plugins
-  serviceAccount:
-    create: true
-    name: headlamp-admin-sa
   clusterRoleBinding:
     create: true
     name: headlamp-admin-binding
     subjects:
       - kind: ServiceAccount
-        name: headlamp-admin-sa
+        name: cluster-admin
         namespace: headlamp
-    roleRef:
-      kind: ClusterRole
-      name: cluster-admin
-      apiGroup: rbac.authorization.k8s.io
 
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Headlamp Plugins Configuration                                            │
