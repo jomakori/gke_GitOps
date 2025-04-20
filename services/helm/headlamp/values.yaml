@@ -10,7 +10,6 @@ headlamp:
     subjects:
       - kind: ServiceAccount
         name: cluster-admin
-        namespace: headlamp
 
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Headlamp Plugins Configuration                                            │
