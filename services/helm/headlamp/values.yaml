@@ -9,7 +9,7 @@ headlamp:
     name: headlamp-admin-binding
     subjects:
       - kind: ServiceAccount
-        name: cluster-admin
+        name: system:cluster-admin
 
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Headlamp Plugins Configuration                                            │
