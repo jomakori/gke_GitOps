@@ -14,7 +14,7 @@ spec:
             namespace: prod-db
   template:
     metadata:
-      name: cloudnative-db-operator-{{env}}
+      name: cloudnative-db-operator-{{ .env }}
     spec:
       project: default
       source:
@@ -26,7 +26,7 @@ spec:
             - values.yaml
       destination:
         server: 'https://kubernetes.default.svc'
-        namespace: '{{namespace}}'
+        namespace: '{{ .namespace }}'
       syncPolicy:
         automated:
           prune: true
