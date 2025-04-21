@@ -1,45 +1,35 @@
 {{- if and (.Values.cloudnativePG) (.Values.cloudnativePG.enable) -}}
-{{- $root := . -}}
-{{- $namespaces := $root.Values.targetNamespaces | default (list "prod-db" "staging-db") -}}
-{{- range $namespace := $namespaces }}
 apiVersion: argoproj.io/v1alpha1
-kind: Application
+kind: ApplicationSet
 metadata:
   name: cloudnative-db-operator
-  namespace: {{ $root.Values.argoNamespace | default "argocd" }}
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
+  namespace: argocd
 spec:
-  project: {{ $root.Values.argoProject | default "default" }}
-  ignoreDifferences:
-    - group: admissionregistration.k8s.io
-      kind: ValidatingWebhookConfiguration
-      name: cnpg-validating-webhook-configuration
-  revisionHistoryLimit: 3
-  source:
-    repoURL: "{{ $root.Values.repoUrl }}"
-    path: services/helm/cloudnative-pg
-    targetRevision: "{{ $root.Values.targetRevision }}"
-    helm:
-      valueFiles:
-        - values.yaml
-  destination:
-    server: {{ $root.Values.destinationServer | default "https://kubernetes.default.svc" }}
-    namespace: {{ $namespace }}
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-    retry:
-      limit: 1
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 1m
----
-{{- end }}
-{{- end -}}
+  generators:
+    - list:
+        elements:
+          - env: staging
+            namespace: staging-db
+          - env: prod
+            namespace: prod-db
+  template:
+    metadata:
+      name: cloudnative-db-operator-{{env}}
+    spec:
+      project: default
+      source:
+        repoURL: "{{ .Values.repoUrl }}"
+        path: services/helm/cloudnative-pg
+        targetRevision: "{{ .Values.targetRevision }}"
+        helm:
+          valueFiles:
+            - values.yaml
+      destination:
+        server: 'https://kubernetes.default.svc'
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+        syncOptions:
+          - CreateNamespace=true
+          - Replace=true
