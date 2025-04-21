@@ -8,10 +8,10 @@ spec:
   generators:
     - list:
         elements:
-          - env: staging
-            namespace: staging-db
-          - env: prod
-            namespace: prod-db
+{{- range .Values.cloudnativePG.env }}
+          - env: {{ . }}
+            namespace: db-{{ . }}
+{{- end }}
   template:
     metadata:
       name: cloudnative-db-operator-{{ .env }}
