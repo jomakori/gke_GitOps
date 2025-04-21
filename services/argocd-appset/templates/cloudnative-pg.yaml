@@ -9,12 +9,10 @@ spec:
     - list:
         elements:
           - env: staging
-            namespace: staging-db
           - env: prod
-            namespace: prod-db
   template:
     metadata:
-      name: cloudnative-db-operator-{{ .Values.env }}
+      name: "cloudnative-db-operator-{{.env}}"
     spec:
       project: default
       source:
@@ -26,11 +24,11 @@ spec:
             - values.yaml
       destination:
         server: 'https://kubernetes.default.svc'
-        namespace: 'db-{{ .Values.env }}'
+        namespace: "db-{{.env}}"
       syncPolicy:
         automated:
           prune: true
         syncOptions:
           - CreateNamespace=true
           - Replace=true
-{{- end }}
+{{- end -}}
