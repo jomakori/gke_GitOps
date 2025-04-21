@@ -35,7 +35,22 @@ else
     printf "${GREEN}Testing out changes on: $cluster_context${NC}\n"
 fi
 
-# Processing
-printf "${GREEN}CT: Lint & Test Helm Chart: ${dir} ${NC}\n"
+# update the helm deps
 echo "Updating Helm repo in cluster..." && helm dependency update $dir
-ct lint --charts $dir --validate-maintainers=false
+
+# Prompt user for action
+echo "Choose an option:"
+echo "  1) Lint"
+echo "  2) Lint & Test"
+read -p "Enter choice [1/2]: " user_choice
+
+if [ "$user_choice" = "1" ]; then
+    printf "${GREEN}CT: Linting Helm Chart: ${dir} ${NC}\n"
+    ct lint --charts $dir --validate-maintainers=false
+elif [ "$user_choice" = "2" ]; then
+    printf "${GREEN}CT: Lint & Test Helm Chart: ${dir} ${NC}\n"
+    ct lint-and-install --charts $dir --validate-maintainers=false
+else
+    echo "Invalid choice. Exiting."
+    exit 1
+fi
