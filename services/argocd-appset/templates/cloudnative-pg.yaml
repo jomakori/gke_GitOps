@@ -5,6 +5,8 @@ metadata:
   name: cloudnative-db-operator
   namespace: argocd
 spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
   generators:
     - list:
         elements:
