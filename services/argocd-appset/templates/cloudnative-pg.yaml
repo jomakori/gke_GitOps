@@ -1,36 +1,29 @@
 {{- if and (.Values.cloudnativePG) (.Values.cloudnativePG.enable) -}}
+{{- range .Values.cloudnativePG.env }}
+---
 apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
+kind: Application
 metadata:
-  name: cloudnative-db-operator
+  name: cloudnative-db-operator-{{ . }}
   namespace: argocd
 spec:
-  goTemplate: true
-  goTemplateOptions: ["missingkey=error"]
-  generators:
-    - list:
-        elements:
-          - env: staging
-          - env: prod
-  template:
-    metadata:
-      name: "cloudnative-db-operator-{{.env}}"
-    spec:
-      project: default
-      source:
-        repoURL: "{{ .Values.repoUrl }}"
-        path: services/helm/cloudnative-pg
-        targetRevision: "{{ .Values.targetRevision }}"
-        helm:
-          valueFiles:
-            - values.yaml
-      destination:
-        server: 'https://kubernetes.default.svc'
-        namespace: "db-{{.env}}"
-      syncPolicy:
-        automated:
-          prune: true
-        syncOptions:
-          - CreateNamespace=true
-          - Replace=true
+  project: default
+  source:
+    repoURL: "{{ $.Values.repoUrl }}"
+    path: services/helm/cloudnative-pg
+    targetRevision: "{{ $.Values.targetRevision }}"
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: cloudnative-db-{{ . }}
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+---
+{{- end }}
 {{- end -}}
