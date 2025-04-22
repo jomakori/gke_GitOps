@@ -1,0 +1,5 @@
+ollama:
+  ollama:
+    models:
+      pull:
+        - gemma3:1b

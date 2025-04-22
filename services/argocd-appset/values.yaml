@@ -34,6 +34,9 @@ kubecost:
 kubePrometheusStack:
   enable: true
 
+ollama:
+  enable: true
+
 redisOperator:
   enable: false
   environment:

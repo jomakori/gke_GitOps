@@ -36,7 +36,7 @@ else
 fi
 
 # update the helm deps
-echo "Updating Helm repo in cluster..." && helm dependency update $dir
+echo "Updating Helm repo in cluster..."
 
 # Prompt user for action
 echo "Choose an option:"
