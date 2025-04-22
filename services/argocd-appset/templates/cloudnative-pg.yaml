@@ -10,9 +10,8 @@ spec:
   generators:
     - list:
         elements:
-          env:
-            - staging
-            - prod
+          - env: staging
+          - env: prod
   template:
     metadata:
       name: "cloudnative-db-operator-{{.env}}"

@@ -14,9 +14,6 @@ clusterEndpoint: ""
 # └──────────────────────────────────────────────────────────────────────────┘
 cloudnativePG:
   enable: true
-  env:
-    - staging
-    - production
 
 externalSecrets:
   enable: true
