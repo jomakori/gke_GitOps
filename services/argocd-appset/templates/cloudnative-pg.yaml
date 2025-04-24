@@ -15,6 +15,11 @@ spec:
     helm:
       valueFiles:
         - values.yaml
+      parameters:
+        - name: cloudnative-pg.extraDeploy[0].stringData.username
+          value: "{{ $.Values.cloudnativePG.creds.user }}"
+        - name: cloudnative-pg.extraDeploy[0].stringData.password
+          value: "{{ $.Values.cloudnativePG.creds.pw }}"
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: cnpg-db-{{ . }}

@@ -1,6 +1,6 @@
 cloudnative-pg:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   General Configuration                                                     │
+  # │   HPA Configuration                                                         │
   # └─────────────────────────────────────────────────────────────────────────────┘
   hpa:
     enabled: true
@@ -8,7 +8,24 @@ cloudnative-pg:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 70
-  monitoring:
-    grafanaDashboard:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Monitoring Configuration                                                  │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  metrics:
+    enabled: true
+    serviceMonitor:
       enabled: true
-      configMapName: "cnpg-grafana-dashboard"
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Monitoring Configuration                                                  │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  extraDeploy:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: notes-app-role
+      labels:
+        cnpg.io/reload: "true"
+    type: kubernetes.io/basic-auth
+    stringData:
+      username:
+      password:
