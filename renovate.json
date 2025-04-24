@@ -8,9 +8,12 @@
   "packageRules": [
     {
       "managers": ["helm"],
-      "matchPaths": ["services/helm/**/Chart.yaml", "services/helm/**/values.yaml"],
+      "matchPaths": [
+        "services/helm/**/Chart.yaml",
+        "services/helm/**/values.yaml"
+      ],
       "enabled": true
     }
   ],
-  "schedule": ["every two weeks on sunday"]
+  "schedule": ["every friday morning"]
 }

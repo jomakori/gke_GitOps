@@ -8,3 +8,6 @@ cloudnative-pg:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 70
+  monitoring:
+    grafanaDashboard:
+      enabled: true
