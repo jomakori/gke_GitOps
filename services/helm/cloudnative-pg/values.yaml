@@ -11,3 +11,4 @@ cloudnative-pg:
   monitoring:
     grafanaDashboard:
       enabled: true
+      configMapName: "cnpg-grafana-dashboard"
