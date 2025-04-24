@@ -14,7 +14,7 @@ apps: &app_values
     replicas: 1
     resourceRequests:
       cpu: 150m
-      memory: 256Mi
+      memory: 750Mi
     image: ghcr.io/jomakori/note-app-frontend
 ############################
 # CONTROL APP ENVIRONMENTS #
