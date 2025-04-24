@@ -5,7 +5,7 @@ targetRevision: ""
 
 # Enable/Disable Apps + their environments
 notesApp:
-  enabled: false
+  enabled: true
   environment:
     staging:
       namespace: staging-notes-app
