@@ -23,7 +23,7 @@ spec:
     protocol: TCP
     port: 443
     targetPort: {{ $env.backend.port }}
-  type: NodePort
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
@@ -48,5 +48,5 @@ spec:
     protocol: TCP
     port: 443
     targetPort: {{ $env.frontend.port }}
-  type: NodePort
+  type: ClusterIP
 {{- end }}
