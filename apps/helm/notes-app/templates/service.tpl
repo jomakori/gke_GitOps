@@ -35,7 +35,7 @@ metadata:
     app: {{ $env.name }}-ui
     env: {{ $env.name }}
 spec:
-  externalTrafficPolicy: Local # TODO: Confirm if this is needed
+  # externalTrafficPolicy: Local # TODO: Confirm if this is needed
   selector:
     app: {{ $env.name }}-ui
     env: {{ $env.name }}
