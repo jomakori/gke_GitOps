@@ -1,8 +1,10 @@
 # Create envs/namespaces for notes-app
-{{- range $env := .Values.notesApp.environment }}
+{{- if .Values.notesApp.enabled }}
+  {{- range $env := .Values.notesApp.environment }}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
     name: {{ $env.namespace }}
+  {{- end }}
 {{- end }}
