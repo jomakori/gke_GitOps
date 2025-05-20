@@ -1,19 +1,21 @@
 {
   "extends": [
-    "config:base"
+    "config:recommended"
   ],
-  "helm": {
-    "enabled": true
-  },
   "packageRules": [
     {
-      "managers": ["helm"],
-      "matchPaths": [
+      "matchManagers": [
+        "helm-requirements",
+        "helm-values"
+      ],
+      "matchFileNames": [
         "services/helm/**/Chart.yaml",
         "services/helm/**/values.yaml"
       ],
       "enabled": true
     }
   ],
-  "schedule": ["every friday morning"]
+  "schedule": [
+    "every tuesday"
+  ]
 }
