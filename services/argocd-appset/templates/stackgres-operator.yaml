@@ -1,0 +1,38 @@
+{{- if and (.Values.dbOperator) (.Values.dbOperator.enable) -}}
+{{- range .Values.dbOperator.env }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: { . }}-db-operator
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: "{{ $.Values.repoUrl }}"
+    path: services/helm/db-operator
+    targetRevision: "{{ $.Values.targetRevision }}"
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: stackgres-operator.authentication.user
+          value: "{{ $.Values.dbOperator.grafanaCreds.user }}"
+        - name: stackgres-operator.authentication.password
+          value: "{{ $.Values.dbOperator.grafanaCreds.pw }}"
+        - name: stackgres-operator.grafana.user
+          value: "{{ $.Values.kubePrometheusStack.creds.user }}"
+        - name: stackgres-operator.grafana.password
+          value: "{{ $.Values.kubePrometheusStack.creds.pw }}"
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: {{ . }}-db-operator
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+---
+{{- end }}
+{{- end -}}

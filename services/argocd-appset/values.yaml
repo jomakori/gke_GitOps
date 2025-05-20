@@ -12,7 +12,7 @@ clusterEndpoint: ""
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Service Values - passed in via DevOps repo (Terraform)                   │
 # └──────────────────────────────────────────────────────────────────────────┘
-cloudnativePG:
+dbOperator:
   enable: true
   env:
     - stg
@@ -36,6 +36,9 @@ kubecost:
 
 kubePrometheusStack:
   enable: true
+  grafanaCreds:
+    user:
+    pw:
 
 ollama:
   enable: true
