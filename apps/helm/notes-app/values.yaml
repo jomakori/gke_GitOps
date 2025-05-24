@@ -25,7 +25,7 @@ environments:
     apiHost: "staging.api.notes.net"
     uiHost: "staging.notes.net"
     dopplerToken: ""
-    tag: "pr-5"
+    tag: "pr-7"
     <<: *app_values
   # prod name is passed from argocd-appset
   - name: ""
