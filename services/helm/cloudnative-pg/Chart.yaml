@@ -8,5 +8,5 @@ appVersion: "1.25.1"
 
 dependencies:
   - name: cloudnative-pg
-    version: 0.1.7
+    version: 0.1.14
     repository: https://charts.bitnami.com/bitnami
