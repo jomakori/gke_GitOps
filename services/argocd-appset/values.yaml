@@ -20,6 +20,9 @@ dbOperator:
   env:
     - stg
     - prod
+  creds:
+    user:
+    pw:
 
 externalSecrets:
   enable: true
