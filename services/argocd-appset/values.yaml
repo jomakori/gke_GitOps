@@ -8,6 +8,9 @@ region: ""
 account: ""
 clusterName: ""
 clusterEndpoint: ""
+grafanaCreds:
+  admin:
+  pw:
 
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Service Values - passed in via DevOps repo (Terraform)                   │
@@ -21,10 +24,6 @@ dbOperator:
 externalSecrets:
   enable: true
   serviceAccountName:
-
-grafanaCreds:
-  - admin:
-  - pw:
 
 headlamp:
   enable: true
