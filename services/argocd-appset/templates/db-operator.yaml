@@ -4,7 +4,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: { . }}-db-operator
+  name: {{ . }}-db-operator
   namespace: argocd
 spec:
   project: default
@@ -17,9 +17,9 @@ spec:
         - values.yaml
       parameters:
         - name: stackgres-operator.authentication.user
-          value: "{{ $.Values.dbOperator.grafanaCreds.user }}"
+          value: "{{ $.Values.dbOperator.creds.user }}"
         - name: stackgres-operator.authentication.password
-          value: "{{ $.Values.dbOperator.grafanaCreds.pw }}"
+          value: "{{ $.Values.dbOperator.creds.pw }}"
         - name: stackgres-operator.grafana.user
           value: "{{ $.Values.grafanaCreds.admin }}"
         - name: stackgres-operator.grafana.password
@@ -33,6 +33,5 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - Replace=true
----
 {{- end }}
 {{- end -}}
