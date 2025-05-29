@@ -1,7 +1,7 @@
 #!/bin/bash
 ### Description: This script is used to calculate the number of pods a node can host, based on the EC2 instance type.
 ###
-### Example: sh max-pods-calculator.sh --instance-type m5.4xlarge --cni-version 1.9.0-eksbuild.1
+### Example: ./.k8s_ec2_pods_calculator.sh --instance-type m5.4xlarge --cni-version 1.9.0-eksbuild.1
 ###
 set -o pipefail
 set -o nounset
