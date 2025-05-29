@@ -3,7 +3,7 @@
 # Purpose: Used for linting + testing helm charts locally
 
 # Usage:
-# $ .useful-scripts/ct_check.sh <path-to-helm-chart> # MacOS/Linux only
+# $ ./.useful-scripts/gitops_test_chart.sh <path-to-helm-chart> # MacOS/Linux only
 ## Note: Helm Charts are hosted in:
 ## - apps/helm/<app-name>
 ## - services/helm/<service-name>
@@ -15,11 +15,10 @@ dir=$1
 cluster_context=$(kubectl config current-context 2>/dev/null)
 
 # Check if ct (Chart Testing) and yamllint are installed
-if ! command -v ct &> /dev/null || ! command -v yamllint &> /dev/null
-then
+if ! command -v ct &>/dev/null || ! command -v yamllint &>/dev/null; then
     missing_tools=""
-    if ! command -v ct &> /dev/null; then missing_tools+="ct "; fi
-    if ! command -v yamllint &> /dev/null; then missing_tools+="yamllint"; fi
+    if ! command -v ct &>/dev/null; then missing_tools+="ct "; fi
+    if ! command -v yamllint &>/dev/null; then missing_tools+="yamllint"; fi
     echo "$missing_tools is not installed. Please install it using 'brew install chart-testing' and/or 'brew install yamllint'."
     exit 1
 fi
@@ -32,13 +31,11 @@ if [ -z "$cluster_context" ]; then
     echo "ERROR: The EKS cluster credentials aren't set"
     exit 1
 else
-    printf "${GREEN}Testing out changes on: $cluster_context${NC}\n"
+    printf "Testing out changes on: ${GREEN}$cluster_context${NC}\n"
 fi
 
-# update the helm deps
-echo "Updating Helm repo in cluster..."
-
 # Prompt user for action
+printf "Selected ${GREEN}$dir${NC} Helm Chart \n"
 echo "Choose an option:"
 echo "  1) Lint"
 echo "  2) Lint & Test"

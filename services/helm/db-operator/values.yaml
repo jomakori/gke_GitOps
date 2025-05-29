@@ -1,0 +1,138 @@
+stackgres-operator:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Web Console Configuration                                                 │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  adminui:
+    service:
+      exposeHTTP: false
+      type: ClusterIP
+      loadBalancerIP:
+      loadBalancerSourceRanges:
+      nodePort:
+      nodePortHTTP:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   OpenTelemetry Collector Configuration                                     │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  collector:
+    name: stackgres-collector
+    receivers:
+      enabled: false
+      exporters: 1
+    resources:
+      limits:
+        memory: "4Gi"
+        cpu: "1"
+      requests:
+        memory: "1Gi"
+        cpu: "250m"
+    affinity: {}
+    annotations: {}
+    nodeSelector: {}
+    tolerations: []
+    serviceAccount:
+      annotations: {}
+    service:
+      annotations: {}
+      spec:
+        type: ClusterIP
+        ports:
+          - name: prom-http
+            protocol: TCP
+            port: 9464
+            targetPort: prom-http
+    ports:
+      - name: prom-http
+        protocol: TCP
+        containerPort: 9464
+    volumeMounts: []
+    volumes: []
+    config:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: "0.0.0.0:4317"
+              tls:
+                ca_file: "/etc/operator/certs/tls.crt"
+                cert_file: "/etc/operator/certs/tls.crt"
+                key_file: "/etc/operator/certs/tls.key"
+      processors:
+        memory_limiter:
+          check_interval: 1s
+          limit_percentage: 80
+          spike_limit_percentage: 15
+      exporters:
+        prometheus:
+          endpoint: "0.0.0.0:9464"
+          tls:
+            ca_file: "/etc/operator/certs/tls.crt"
+            cert_file: "/etc/operator/certs/tls.crt"
+            key_file: "/etc/operator/certs/tls.key"
+            reload_interval: 10m
+          send_timestamps: true
+          metric_expiration: 5m
+          enable_open_metrics: false
+          resource_to_telemetry_conversion:
+            enabled: false
+        otlp:
+          endpoint: stackgres-collector:4317
+          tls:
+            ca_file: "/etc/operator/certs/tls.crt"
+      service:
+        extensions: []
+        pipelines:
+          metrics:
+            receivers:
+            - prometheus
+            processors:
+            - memory_limiter
+            exporters:
+            - prometheus
+    prometheusOperator:
+      allowDiscovery: true
+      monitors: []
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Certificate Configuration                                                 │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  cert:
+    autoapprove: true
+    createForOperator: true
+    createForWebApi: true
+    createForCollector: true
+    regenerateCert: true
+    certDuration: 730
+    regenerateWebCert: true
+    regenerateWebRsa: true
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   RBAC Configuration                                                        │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  rbac:
+    create: true
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Authentication Configuration                                              │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  authentication:
+    type: jwt
+    createAdminSecret: true
+    user: test
+    password: test
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Grafana Integration                                                       │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  # grafana:
+  #   autoEmbed: true
+  #   schema: http
+  #   user:
+  #   password:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Extensions Configuration                                                  │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  extensions:
+    repositoryUrls:
+      - https://extensions.stackgres.io/postgres/repository
+    cache:
+      enabled: false
+      preloadedExtensions:
+        - x86_64/linux/timescaledb-1\.7\.4-pg12
+      persistentVolume:
+        size: 1Gi
