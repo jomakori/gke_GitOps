@@ -21,9 +21,9 @@ spec:
         - name: stackgres-operator.authentication.password
           value: "{{ $.Values.dbOperator.grafanaCreds.pw }}"
         - name: stackgres-operator.grafana.user
-          value: "{{ $.Values.kubePrometheusStack.creds.user }}"
+          value: "{{ $.Values.grafanaCreds.admin }}"
         - name: stackgres-operator.grafana.password
-          value: "{{ $.Values.kubePrometheusStack.creds.pw }}"
+          value: "{{ $.Values.grafanaCreds.pw }}"
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: {{ . }}-db-operator

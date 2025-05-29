@@ -16,6 +16,11 @@ spec:
     helm:
       valueFiles:
         - values.yaml
+      parameters:
+        - name: kube-prometheus-stack.adminUser
+          value: "{{ .Values.grafanaCreds.admin }}"
+        - name: kube-prometheus-stack.adminPassword
+          value: "{{ .Values.grafanaCreds.pw }}"
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: kube-prometheus-stack

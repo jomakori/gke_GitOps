@@ -10,7 +10,6 @@ stackgres-operator:
       loadBalancerSourceRanges:
       nodePort:
       nodePortHTTP:
-
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   OpenTelemetry Collector Configuration                                     │
   # └─────────────────────────────────────────────────────────────────────────────┘
@@ -92,7 +91,6 @@ stackgres-operator:
     prometheusOperator:
       allowDiscovery: true
       monitors: []
-
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Certificate Configuration                                                 │
   # └─────────────────────────────────────────────────────────────────────────────┘
@@ -105,31 +103,27 @@ stackgres-operator:
     certDuration: 730
     regenerateWebCert: true
     regenerateWebRsa: true
-
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   RBAC Configuration                                                        │
   # └─────────────────────────────────────────────────────────────────────────────┘
   rbac:
     create: true
-
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Authentication Configuration                                              │
   # └─────────────────────────────────────────────────────────────────────────────┘
   authentication:
     type: jwt
     createAdminSecret: true
-    user:
-    password:
-
+    user: test
+    password: test
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Grafana Integration                                                       │
   # └─────────────────────────────────────────────────────────────────────────────┘
-  grafana:
-    autoEmbed: true
-    schema: http
-    user:
-    password:
-
+  # grafana:
+  #   autoEmbed: true
+  #   schema: http
+  #   user:
+  #   password:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Extensions Configuration                                                  │
   # └─────────────────────────────────────────────────────────────────────────────┘

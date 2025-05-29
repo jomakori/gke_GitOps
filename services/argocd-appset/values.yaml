@@ -17,13 +17,14 @@ dbOperator:
   env:
     - stg
     - prod
-  creds:
-    user:
-    pw:
 
 externalSecrets:
   enable: true
   serviceAccountName:
+
+grafanaCreds:
+  - admin:
+  - pw:
 
 headlamp:
   enable: true
@@ -36,9 +37,6 @@ kubecost:
 
 kubePrometheusStack:
   enable: true
-  grafanaCreds:
-    user:
-    pw:
 
 ollama:
   enable: true

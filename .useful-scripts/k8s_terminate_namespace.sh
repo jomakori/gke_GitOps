@@ -7,7 +7,7 @@
 #           Description:
 #               This script is used to force-terminate kubernetes workspaces that are stuck in a terminating state.
 #           Usage:
-#               sh terminate_namespace.sh <namespace-1> <namespace-2> etc...
+#               ./.k8s_terminate_namespace.sh <namespace-1> <namespace-2> etc...
 #                NOTE: You can put as many namespaces under the parameters list when calling the script. The code will loop thru all the parameters submitted
 #           Source:
 #               https://sumanthkumarc.medium.com/debugging-namespace-deletion-issue-in-kubernetes-f6f8b40a4368
