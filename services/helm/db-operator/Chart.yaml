@@ -1,0 +1,12 @@
+apiVersion: v2
+name: db-operator
+description: A Helm chart for the cloudnative-pg - a PostgreSQL operator
+type: application
+
+version: 1.16.2
+appVersion: "1.16.2"
+
+dependencies:
+  - name: stackgres-operator
+    version: 1.16.2
+    repository: https://stackgres.io/downloads/stackgres-k8s/stackgres/helm/

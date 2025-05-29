@@ -12,18 +12,19 @@ clusterEndpoint: ""
 # ┌──────────────────────────────────────────────────────────────────────────┐
 # │ Service Values - passed in via DevOps repo (Terraform)                   │
 # └──────────────────────────────────────────────────────────────────────────┘
-cloudnativePG:
+dbOperator:
   enable: true
   env:
     - stg
     - prod
-  creds:
-    user:
-    pw:
 
 externalSecrets:
   enable: true
   serviceAccountName:
+
+grafanaCreds:
+  - admin:
+  - pw:
 
 headlamp:
   enable: true
