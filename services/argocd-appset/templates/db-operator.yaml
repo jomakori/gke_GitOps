@@ -32,4 +32,6 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - Replace=true
+      - ReplaceCRD=true
+      - SkipWebhooks=true
 {{- end }}
