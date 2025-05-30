@@ -29,6 +29,13 @@ spec:
       size: {{ if eq $env "prod" }}5Gi{{ else }}2Gi{{ end }}
     disableConnectionPooling: false
     disableMetricsExporter: false
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │     Resource Allocation                                                     │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+    resources:
+      requests:
+        cpu: {{ if eq $env "prod" }}"1"{{ else }}"500m"{{ end }}
+        memory: {{ if eq $env "prod" }}2Gi{{ else }}1Gi{{ end }}
   affinity:
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
@@ -39,14 +46,6 @@ spec:
             values:
             - {{ $env }}-db-cluster
         topologyKey: "kubernetes.io/hostname"
-
-  # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Resource Allocation                                                       │
-  # └─────────────────────────────────────────────────────────────────────────────┘
-  resources:
-    requests:
-      cpu: {{ if eq $env "prod" }}"1"{{ else }}"500m"{{ end }}
-      memory: {{ if eq $env "prod" }}2Gi{{ else }}1Gi{{ end }}
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Additional Configurations                                                 │
   # └─────────────────────────────────────────────────────────────────────────────┘
