@@ -30,7 +30,7 @@ spec:
       size: {{ if eq $env "prod" }}5Gi{{ else }}2Gi{{ end }}
     disableConnectionPooling: false
     disableMetricsExporter: false
-    affinity:
+    scheduling:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:
