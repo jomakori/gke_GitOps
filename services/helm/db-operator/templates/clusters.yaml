@@ -8,52 +8,72 @@ metadata:
   namespace: db-operator
 
 spec:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Postgres Configuration                                                    │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   postgres:
     version: "15"
-
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Autoscaling Configuration                                                 │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   autoscaling:
     minInstances: 1
     maxInstances: 4
-
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Pod Configuration                                                         │
+  # |   - Volume Configuration                                                    │
+  # │   - Fault-Tolerence Configuration                                           |
+  # └─────────────────────────────────────────────────────────────────────────────┘
   pods:
     persistentVolume:
       size: {{ if eq $env "prod" }}5Gi{{ else }}2Gi{{ end }}
-
-    resources:
-      requests:
-        cpu: {{ if eq $env "prod" }}"1"{{ else }}"500m"{{ end }}
-        memory: {{ if eq $env "prod" }}2Gi{{ else }}1Gi{{ end }}
-
     disableConnectionPooling: false
     disableMetricsExporter: false
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: cluster-name
+            operator: In
+            values:
+            - {{ $env }}-db-cluster
+        topologyKey: "kubernetes.io/hostname"
 
-    affinity:
-      podAntiAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchExpressions:
-            - key: cluster-name
-              operator: In
-              values:
-              - {{ $env }}-db-cluster
-          topologyKey: "kubernetes.io/hostname"
-
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Resource Allocation                                                       │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  resources:
+    requests:
+      cpu: {{ if eq $env "prod" }}"1"{{ else }}"500m"{{ end }}
+      memory: {{ if eq $env "prod" }}2Gi{{ else }}1Gi{{ end }}
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Additional Configurations                                                 │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   configurations:
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │   Backup Configuration                                                    │
+    # └───────────────────────────────────────────────────────────────────────────┘
     backups:
-      path: "/{{ $env }}-backups"
+    - path: "/{{ $env }}-backups"
       retention: 5
       cronSchedule: "0 0 * * *"
-
-    sgPoolingConfig:
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │   Connection Pooling Configuration                                        │
+    # └───────────────────────────────────────────────────────────────────────────┘
+    sgPoolingConfig: |
       connections:
         max: 200
         default: 5
-
-    sgPostgresConfig:
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │   PostgreSQL Configuration                                                │
+    # └───────────────────────────────────────────────────────────────────────────┘
+    sgPostgresConfig: |
       postgresql.conf:
         shared_buffers: "4GB"
         work_mem: "32MB"
         maintenance_work_mem: "1GB"
         effective_cache_size: "12GB"
         random_page_cost: "1.1"
+
 {{- end }}
