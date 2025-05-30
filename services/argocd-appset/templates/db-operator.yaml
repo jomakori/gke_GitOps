@@ -33,7 +33,6 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-      - Replace=true
       - ReplaceCRD=true
       - SkipWebhooks=true
       - Prune=true
