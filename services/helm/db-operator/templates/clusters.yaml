@@ -1,0 +1,59 @@
+{{- $environments := list "prod" "staging" -}}
+{{- range $env := $environments }}
+---
+apiVersion: stackgres.io/v1
+kind: SGCluster
+metadata:
+  name: {{ $env }}-db-cluster
+  namespace: db-operator
+
+spec:
+  postgres:
+    version: "15"
+
+  autoscaling:
+    minInstances: 1
+    maxInstances: 4
+
+  pods:
+    persistentVolume:
+      size: {{ if eq $env "prod" }}5Gi{{ else }}2Gi{{ end }}
+
+    resources:
+      requests:
+        cpu: {{ if eq $env "prod" }}"1"{{ else }}"500m"{{ end }}
+        memory: {{ if eq $env "prod" }}2Gi{{ else }}1Gi{{ end }}
+
+    disableConnectionPooling: false
+    disableMetricsExporter: false
+
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: cluster-name
+              operator: In
+              values:
+              - {{ $env }}-db-cluster
+          topologyKey: "kubernetes.io/hostname"
+
+  configurations:
+    backups:
+      path: "/{{ $env }}-backups"
+      retention: 5
+      cronSchedule: "0 0 * * *"
+
+    sgPoolingConfig:
+      connections:
+        max: 200
+        default: 5
+
+    sgPostgresConfig:
+      postgresql.conf:
+        shared_buffers: "4GB"
+        work_mem: "32MB"
+        maintenance_work_mem: "1GB"
+        effective_cache_size: "12GB"
+        random_page_cost: "1.1"
+{{- end }}

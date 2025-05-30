@@ -17,9 +17,6 @@ grafanaCreds:
 # └──────────────────────────────────────────────────────────────────────────┘
 dbOperator:
   enable: true
-  env:
-    - stg
-    - prod
   creds:
     user:
     pw:
