@@ -20,7 +20,7 @@ spec:
     minInstances: 1
     maxInstances: 4
   # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Instance Configuration                                                    │
+  # │   Instance Configuration                                                         │
   # |   - Volume Configuration                                                    │
   # │   - Resource Allocation                                                     │
   # │   - Fault-Tolerence Configuration                                           |
@@ -30,10 +30,6 @@ spec:
       size: {{ if eq $env "prod" }}5Gi{{ else }}2Gi{{ end }}
     disableConnectionPooling: false
     disableMetricsExporter: false
-    resources:
-      requests:
-        cpu: {{ if eq $env "prod" }}"1"{{ else }}"500m"{{ end }}
-        memory: {{ if eq $env "prod" }}2Gi{{ else }}1Gi{{ end }}
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
