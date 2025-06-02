@@ -33,7 +33,10 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-      - ReplaceCRD=true
-      - SkipWebhooks=true
-      - Prune=true
+    retry:
+      limit: 1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
 {{- end }}
