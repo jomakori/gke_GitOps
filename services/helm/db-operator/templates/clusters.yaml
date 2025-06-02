@@ -8,17 +8,18 @@ metadata:
   namespace: db-operator
 
 spec:
+  instances: 2
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Postgres Configuration                                                    │
   # └─────────────────────────────────────────────────────────────────────────────┘
   postgres:
-    version: "15"
+    version: "17"
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Autoscaling Configuration                                                 │
   # └─────────────────────────────────────────────────────────────────────────────┘
   autoscaling:
-    minInstances: 1
-    maxInstances: 4
+    minInstances: 2
+    maxInstances: 5
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Instance Configuration                                                         │
   # |   - Volume Configuration                                                    │
@@ -47,10 +48,11 @@ spec:
     # ┌───────────────────────────────────────────────────────────────────────────┐
     # │   Backup Configuration                                                    │
     # └───────────────────────────────────────────────────────────────────────────┘
-    backups:
-    - path: "/{{ $env }}-backups"
-      retention: 5
-      cronSchedule: "0 0 * * *"
+    # backups:
+    # - path: "/{{ $env }}-backups"
+    #   sgObjectStorage: "db-backup-storage"
+    #   retention: 5
+    #   cronSchedule: "0 0 * * *"
     # ┌───────────────────────────────────────────────────────────────────────────┐
     # │   Connection Pooling Configuration                                        │
     # └───────────────────────────────────────────────────────────────────────────┘
