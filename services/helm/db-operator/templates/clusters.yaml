@@ -20,6 +20,8 @@ spec:
   autoscaling:
     minInstances: 2
     maxInstances: 5
+    verticalPodAutoscaling:
+      enabled: false
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Instance Configuration                                                         │
   # |   - Volume Configuration                                                    │
