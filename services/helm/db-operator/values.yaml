@@ -1,3 +1,4 @@
+# Docs: https://stackgres.io/doc/latest/install/helm/parameters
 stackgres-operator:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Web Console Configuration                                                 │

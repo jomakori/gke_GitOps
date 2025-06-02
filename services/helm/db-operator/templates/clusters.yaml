@@ -13,15 +13,18 @@ spec:
   # │   Postgres Configuration                                                    │
   # └─────────────────────────────────────────────────────────────────────────────┘
   postgres:
-    version: "17"
+    version: 17
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Autoscaling Configuration                                                 │
   # └─────────────────────────────────────────────────────────────────────────────┘
   autoscaling:
+    mode: horizontal
     minInstances: 2
     maxInstances: 5
-    verticalPodAutoscaling:
-      enabled: false
+    horizontal:
+      replicasConnectionsUsageTarget: 0.75
+      memoryUsageTarget: 0.75
+      cpuUsageTarget: 0.75
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Instance Configuration                                                         │
   # |   - Volume Configuration                                                    │
@@ -33,6 +36,10 @@ spec:
       size: {{ if eq $env "prod" }}5Gi{{ else }}2Gi{{ end }}
     disableConnectionPooling: false
     disableMetricsExporter: false
+    resources:
+      requests:
+        cpu: 2
+        memory: "4Gi"
     scheduling:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
