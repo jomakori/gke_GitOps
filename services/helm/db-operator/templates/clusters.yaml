@@ -3,8 +3,7 @@
 # └──────────────────────────────────────────────────────────────────────────┘
 # Docs: https://stackgres.io/doc/latest/reference/crd/sgcluster
 
-{{- range $env := .Values.stackgres-operator.clusters.environments }}
----
+{{- range $env := .Values.stackgresOperator.clusters.environments }}
 apiVersion: stackgres.io/v1
 kind: SGCluster
 metadata:
