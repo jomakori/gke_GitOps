@@ -1,6 +1,6 @@
 # Docs: https://github.com/db-operator/charts/tree/main/charts/db-operator
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
-stackgres-operator:
+stackgresOperator:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Web Console Configuration                                                 │
   # └─────────────────────────────────────────────────────────────────────────────┘
@@ -58,7 +58,7 @@ stackgres-operator:
   # │   Backup Storage Configuration                                             │
   # └─────────────────────────────────────────────────────────────────────────────┘
   backupStorage:
-    enabled: False
+    enabled: false
 
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Cluster Configuration - via clusters.yaml                                 │
