@@ -1,3 +1,4 @@
+# Docs: https://github.com/opencost/opencost-helm-chart/tree/main/opencost
 opencost:
   networkPolicies:
     # -- Specifies whether networkpolicies should be created

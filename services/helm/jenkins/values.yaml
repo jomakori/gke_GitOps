@@ -1,3 +1,4 @@
+# Docs: https://github.com/jenkinsci/helm-charts/tree/main/charts/jenkins
 jenkins:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Global Attributes                                                         │

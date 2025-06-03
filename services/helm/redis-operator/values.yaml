@@ -1,3 +1,4 @@
+# Docs: https://github.com/OT-CONTAINER-KIT/redis-operator/tree/master/charts/redis-operator
 redis-cluster:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Private access cluster - no need                                          │

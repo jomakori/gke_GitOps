@@ -1,3 +1,4 @@
+# Docs: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
 # ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 # │ Kube Prometheus Stack Configuration                                                                              │
 # │ For more options, refer to official documentation:                                                               │

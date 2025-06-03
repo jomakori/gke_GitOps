@@ -1,3 +1,4 @@
+# Docs: https://github.com/external-secrets/external-secrets/tree/main/deploy/charts/external-secrets
 external-secrets:
   # -- If set, install and upgrade CRDs through helm chart.
   installCRDs: true
