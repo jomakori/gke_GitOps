@@ -22,7 +22,7 @@ spec:
     minInstances: 1
     maxInstances: 5
     horizontal:
-      replicasConnectionsUsageTarget: 0.5
+      replicasConnectionsUsageTarget: "0.5"
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Instance Configuration                                                         │
   # |   - Volume Configuration                                                    │
@@ -63,15 +63,5 @@ spec:
       connections:
         max: 200
         default: 5
-    # ┌───────────────────────────────────────────────────────────────────────────┐
-    # │   PostgreSQL Configuration                                                │
-    # └───────────────────────────────────────────────────────────────────────────┘
-    sgPostgresConfig: |
-      postgresql.conf:
-        shared_buffers: "4GB"
-        work_mem: "32MB"
-        maintenance_work_mem: "1GB"
-        effective_cache_size: "12GB"
-        random_page_cost: "1.1"
 
 {{- end }}
