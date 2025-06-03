@@ -8,7 +8,7 @@ metadata:
   namespace: db-operator
 
 spec:
-  instances: 2
+  instances: 1
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Postgres Configuration                                                    │
   # └─────────────────────────────────────────────────────────────────────────────┘
@@ -19,11 +19,10 @@ spec:
   # └─────────────────────────────────────────────────────────────────────────────┘
   autoscaling:
     mode: horizontal
-    minInstances: 2
+    minInstances: 1
     maxInstances: 5
     horizontal:
       replicasConnectionsUsageTarget: 0.5
-      memoryUsageTarget: 0.5
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Instance Configuration                                                         │
   # |   - Volume Configuration                                                    │
@@ -35,10 +34,6 @@ spec:
       size: {{ if eq $env "prod" }}5Gi{{ else }}2Gi{{ end }}
     disableConnectionPooling: false
     disableMetricsExporter: false
-    resources:
-      requests:
-        cpu: "2"
-        memory: "4Gi"
     scheduling:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
