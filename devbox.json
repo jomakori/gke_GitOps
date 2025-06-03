@@ -1,6 +1,6 @@
 {
   "packages": [
-    "yq-go@latest",
+    "yq-go@3.4.1",
     "git@latest"
   ],
   "shell": {
