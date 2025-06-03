@@ -1,0 +1,14 @@
+# Docs: https://github.com/kedacore/charts/tree/main/keda
+keda:
+  # Default values for KEDA
+  serviceAccount:
+    create: true
+    name: keda
+
+  # Enable metrics server
+  metricsServer:
+    enabled: true
+
+  # For prometheus scraping
+  webhooks:
+    enabled: true

@@ -1,3 +1,4 @@
+# Docs: https://github.com/headlamp-k8s/headlamp/tree/main/chart/headlamp
 headlamp:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   General Configuration                                                     │

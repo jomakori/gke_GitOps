@@ -1,0 +1,22 @@
+{{- if .Values.keda.enable }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keda
+  namespace: argocd
+spec:
+  destination:
+    server: {{ .Values.clusterEndpoint }}
+    namespace: keda
+  project: default
+  source:
+    path: helm/keda
+    repoURL: {{ .Values.repoUrl }}
+    targetRevision: {{ .Values.targetRevision }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}
