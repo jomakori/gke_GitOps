@@ -59,3 +59,15 @@ stackgres-operator:
   # └─────────────────────────────────────────────────────────────────────────────┘
   backupStorage:
     enabled: False
+
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Cluster Configuration - via clusters.yaml                                 │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  clusters:
+    environments:
+      - name: test
+        storageSize: 1Gi
+      - name: staging
+        storageSize: 1Gi
+      - name: prd
+        storageSize: 2Gi
