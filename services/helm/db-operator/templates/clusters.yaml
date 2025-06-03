@@ -1,5 +1,5 @@
 # Docs: https://stackgres.io/doc/latest/reference/crd/sgcluster
-{{- $environments := list "production" "staging" -}}
+{{- $environments := list "stg" "prd" -}}
 {{- range $env := $environments }}
 ---
 apiVersion: stackgres.io/v1
@@ -35,7 +35,7 @@ spec:
   pods:
     persistentVolume:
       storageClass: standard
-      size: {{ if eq $env "production" }}2Gi{{ else }}2Gi{{ end }}
+      size: {{ if eq $env "prd" }}2Gi{{ else }}2Gi{{ end }}
     # disableConnectionPooling: false
     disableMetricsExporter: false
   # ┌─────────────────────────────────────────────────────────────────────────────┐
