@@ -1,11 +1,14 @@
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ Custom Values Category: clusters                                         │
+# └──────────────────────────────────────────────────────────────────────────┘
 # Docs: https://stackgres.io/doc/latest/reference/crd/sgcluster
-{{- $environments := list "stg" "prd" -}}
-{{- range $env := $environments }}
+
+{{- range $env := .Values.stackgres-operator.clusters.environments }}
 ---
 apiVersion: stackgres.io/v1
 kind: SGCluster
 metadata:
-  name: {{ $env }}-db-cluster
+  name: {{ $envName }}-db-cluster
   namespace: db-operator
 
 spec:
@@ -35,7 +38,7 @@ spec:
   pods:
     persistentVolume:
       storageClass: standard
-      size: {{ if eq $env "prd" }}2Gi{{ else }}2Gi{{ end }}
+      size: {{ $env.storageSize }}
     # disableConnectionPooling: false
     disableMetricsExporter: false
   # ┌─────────────────────────────────────────────────────────────────────────────┐
