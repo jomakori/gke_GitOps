@@ -1,3 +1,4 @@
+# Docs: https://stackgres.io/doc/latest/reference/crd/sgcluster
 {{- $environments := list "prod" "staging" -}}
 {{- range $env := $environments }}
 ---
@@ -8,7 +9,8 @@ metadata:
   namespace: db-operator
 
 spec:
-  instances: 2
+  ## production-ready pre-existing config
+  profile: production
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Postgres Configuration                                                    │
   # └─────────────────────────────────────────────────────────────────────────────┘
@@ -31,19 +33,10 @@ spec:
   # └─────────────────────────────────────────────────────────────────────────────┘
   pods:
     persistentVolume:
+      storageClass: standard
       size: {{ if eq $env "prod" }}5Gi{{ else }}2Gi{{ end }}
-    disableConnectionPooling: false
+    # disableConnectionPooling: false
     disableMetricsExporter: false
-    scheduling:
-      podAntiAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchExpressions:
-            - key: cluster-name
-              operator: In
-              values:
-              - {{ $env }}-db-cluster
-          topologyKey: "kubernetes.io/hostname"
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Additional Configurations                                                 │
   # └─────────────────────────────────────────────────────────────────────────────┘
@@ -59,9 +52,9 @@ spec:
     # ┌───────────────────────────────────────────────────────────────────────────┐
     # │   Connection Pooling Configuration                                        │
     # └───────────────────────────────────────────────────────────────────────────┘
-    sgPoolingConfig: |
-      connections:
-        max: 200
-        default: 5
+    # sgPoolingConfig: |
+    #   connections:
+    #     max: 200
+    #     default: 5
 
 {{- end }}
