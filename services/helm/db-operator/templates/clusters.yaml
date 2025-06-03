@@ -8,7 +8,7 @@ metadata:
   namespace: db-operator
 
 spec:
-  instances: 1
+  instances: 2
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Postgres Configuration                                                    │
   # └─────────────────────────────────────────────────────────────────────────────┘
@@ -20,7 +20,7 @@ spec:
   autoscaling:
     mode: horizontal
     minInstances: 2
-    maxInstances: 5
+    maxInstances: 6
     horizontal:
       replicasConnectionsUsageTarget: "0.5"
   # ┌─────────────────────────────────────────────────────────────────────────────┐
