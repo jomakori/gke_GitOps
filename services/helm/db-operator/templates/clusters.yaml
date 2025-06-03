@@ -38,7 +38,7 @@ spec:
   pods:
     persistentVolume:
       storageClass: standard
-      size: {{ $env.storageSize | quote }}
+      size: {{ $env.storageSize }}
     # disableConnectionPooling: false
     disableMetricsExporter: false
   # ┌─────────────────────────────────────────────────────────────────────────────┐
