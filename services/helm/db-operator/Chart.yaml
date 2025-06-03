@@ -8,5 +8,5 @@ appVersion: "1.16.2"
 
 dependencies:
   - name: stackgres-operator
-    version: 1.16.2
+    version: 1.16.3
     repository: https://stackgres.io/downloads/stackgres-k8s/stackgres/helm/
