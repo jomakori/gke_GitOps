@@ -12,8 +12,8 @@ metadata:
   namespace: db-operator
 
 spec:
-  ## production-ready pre-existing config
-  profile: production
+  ## allow multiple db pods on the same node
+  profile: testing
   instances: 1
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Postgres Configuration                                                    │
