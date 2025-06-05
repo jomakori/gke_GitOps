@@ -48,7 +48,7 @@ spec:
     # │   Backup Configuration                                                    │
     # └───────────────────────────────────────────────────────────────────────────┘
     # backups:
-    # - path: "/{{ $env }}-backups"
+    # - path: "/{{ $env.name }}-backups"
     #   sgObjectStorage: "db-backup-storage"
     #   retention: 5
     #   cronSchedule: "0 0 * * *"
