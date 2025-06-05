@@ -16,7 +16,7 @@ grafanaCreds:
 # │ Service Values - passed in via DevOps repo (Terraform)                   │
 # └──────────────────────────────────────────────────────────────────────────┘
 dbOperator:
-  enable: false
+  enable: true
   creds:
     user:
     pw:
