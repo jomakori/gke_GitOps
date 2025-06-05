@@ -65,9 +65,7 @@ stackgresOperator:
   # └─────────────────────────────────────────────────────────────────────────────┘
   clusters:
     environments:
-      - name: test
+      - name: staging
         storageSize: 1Gi
-      - name: preview
-        storageSize: 1Gi
-      - name: active
+      - name: production
         storageSize: 2Gi
