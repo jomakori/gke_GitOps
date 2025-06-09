@@ -1,64 +1,21 @@
-# # ┌──────────────────────────────────────────────────────────────────────────┐
-# # │ Custom Values Category: clusters                                         │
-# # └──────────────────────────────────────────────────────────────────────────┘
-# # Docs: https://stackgres.io/doc/latest/reference/crd/sgcluster
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ Custom Values Category: clusters                                         │
+# └──────────────────────────────────────────────────────────────────────────┘
+# Docs: https://stackgres.io/doc/latest/reference/crd/sgcluster
 
-# {{- range $env := .Values.stackgresOperator.clusters.environments }}
-# ---
-# apiVersion: stackgres.io/v1
-# kind: SGCluster
-# metadata:
-#   name: {{ $env.name }}-db-cluster
-#   namespace: db-operator
-
-# spec:
-#   ## allow multiple db pods on the same node
-#   profile: testing
-#   instances: 1
-#   # ┌─────────────────────────────────────────────────────────────────────────────┐
-#   # │   Postgres Configuration                                                    │
-#   # └─────────────────────────────────────────────────────────────────────────────┘
-#   postgres:
-#     version: "17"
-#   # ┌─────────────────────────────────────────────────────────────────────────────┐
-#   # │   Autoscaling Configuration                                                 │
-#   # └─────────────────────────────────────────────────────────────────────────────┘
-#   autoscaling:
-#     mode: horizontal
-#     minInstances: 2
-#     maxInstances: 6
-#     horizontal:
-#       replicasConnectionsUsageTarget: "0.5"
-#   # ┌─────────────────────────────────────────────────────────────────────────────┐
-#   # │   Instance Configuration                                                         │
-#   # |   - Volume Configuration                                                    │
-#   # │   - Resource Allocation                                                     │
-#   # │   - Fault-Tolerence Configuration                                           |
-#   # └─────────────────────────────────────────────────────────────────────────────┘
-#   pods:
-#     persistentVolume:
-#       storageClass: standard
-#       size: {{ $env.storageSize }}
-#     # disableConnectionPooling: false
-#     disableMetricsExporter: false
-#   # ┌─────────────────────────────────────────────────────────────────────────────┐
-#   # │   Additional Configurations                                                 │
-#   # └─────────────────────────────────────────────────────────────────────────────┘
-#   configurations:
-#     # ┌───────────────────────────────────────────────────────────────────────────┐
-#     # │   Backup Configuration                                                    │
-#     # └───────────────────────────────────────────────────────────────────────────┘
-#     # backups:
-#     # - path: "/{{ $env.name }}-backups"
-#     #   sgObjectStorage: "db-backup-storage"
-#     #   retention: 5
-#     #   cronSchedule: "0 0 * * *"
-#     # ┌───────────────────────────────────────────────────────────────────────────┐
-#     # │   Connection Pooling Configuration                                        │
-#     # └───────────────────────────────────────────────────────────────────────────┘
-#     # sgPoolingConfig: |
-#     #   connections:
-#     #     max: 200
-#     #     default: 5
-
-# {{- end }}
+{{- range $env := .Values.stackgresOperator.clusters.environments }}
+---
+apiVersion: stackgres.io/v1
+kind: SGCluster
+metadata:
+  name: {{ $env.name }}-db-cluster
+  namespace: db-operator
+spec:
+  instances: 1
+  postgres:
+    version: 'latest'
+  pods:
+    persistentVolume:
+      storageClass: standard
+      size: {{ $env.storageSize }}
+{{- end }}
