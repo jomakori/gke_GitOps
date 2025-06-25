@@ -1,0 +1,5 @@
+# Default values for tailscale-operator.
+# This is a minimal values file. Add/override as needed for your environment.
+tailscale-operator:
+  apiServerProxy:
+    mode: noauth

@@ -48,3 +48,6 @@ redisOperator:
   environment:
     - production
     - staging
+
+tailscaleOperator:
+  enable: true
