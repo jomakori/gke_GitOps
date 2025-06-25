@@ -1,0 +1,35 @@
+{{- if and (.Values.tailscaleOperator) (.Values.tailscaleOperator.enable) -}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailscale-operator-{{ $env }}
+  namespace: {{ $.Values.argoNamespace | default "argocd" }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ $.Values.argoProject | default "default" }}
+  revisionHistoryLimit: 3
+  source:
+    repoURL: "{{ $.Values.repoUrl }}"
+    path: services/helm/tailscale-operator
+    targetRevision: "{{ $.Values.targetRevision }}"
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: {{ $.Values.destinationServer | default "https://kubernetes.default.svc" }}
+    namespace: {{ $envConfig.namespace | default (printf "tailscale-operator-%s" $env) }}
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+{{- end }}
