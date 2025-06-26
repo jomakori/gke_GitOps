@@ -1,5 +1,13 @@
 # Default values for tailscale-operator.
 # This is a minimal values file. Add/override as needed for your environment.
 tailscale-operator:
+  # Enable Kube proxy via Tailscale
   apiServerProxy:
     mode: noauth
+  # Set Access Permissions for Tailscale
+  oauth:
+    clientId:
+    clientSecret:
+  operatorConfig:
+    - "tag:k8s"
+    - "tag:k8s-operator"
