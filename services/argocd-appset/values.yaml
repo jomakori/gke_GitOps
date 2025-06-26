@@ -51,3 +51,5 @@ redisOperator:
 
 tailscaleOperator:
   enable: true
+  clientid:
+  clientsec:

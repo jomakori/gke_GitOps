@@ -17,6 +17,11 @@ spec:
     helm:
       valueFiles:
         - values.yaml
+      parameters:
+        - name: tailscale-operator.oauth.clientId
+          value: "{{ .Values.tailscaleOperator.clientid }}"
+        - name: tailscale-operator.oauth.clientSecret
+          value: "{{ .Values.tailscaleOperator.clientsec }}"
   destination:
     server: {{ $.Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: tailscale-operator
