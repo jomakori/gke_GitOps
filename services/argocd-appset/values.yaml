@@ -50,6 +50,6 @@ redisOperator:
     - staging
 
 tailscaleOperator:
-  enable: true
+  enable: false
   clientid:
   clientsec:
