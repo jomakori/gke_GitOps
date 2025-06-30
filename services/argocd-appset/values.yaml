@@ -1,6 +1,6 @@
-# ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Global Values - passed in via DevOps repo (Terraform)                    │
-# └──────────────────────────────────────────────────────────────────────────┘
+# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
+# │ Global Values - shared values - passed in via DevOps repo (Terraform)                    │
+# └──────────────────────────────────────────────────────────────────────────────────────────┘
 repoUrl: ""
 path: ""
 targetRevision: ""
@@ -12,11 +12,11 @@ grafanaCreds:
   admin:
   pw:
 
-# ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Service Values - passed in via DevOps repo (Terraform)                   │
-# └──────────────────────────────────────────────────────────────────────────┘
+# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
+# │ Service Values - individual values - passed in via DevOps repo (Terraform)               │
+# └──────────────────────────────────────────────────────────────────────────────────────────┘
 dbOperator:
-  enable: false
+  enable: true
   creds:
     user:
     pw:
@@ -48,8 +48,3 @@ redisOperator:
   environment:
     - production
     - staging
-
-tailscaleOperator:
-  enable: false
-  clientid:
-  clientsec:
