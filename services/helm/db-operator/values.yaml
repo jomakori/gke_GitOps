@@ -31,8 +31,8 @@ stackgresOperator:
   authentication:
     type: jwt
     createAdminSecret: true
-    user: test
-    password: test
+    user:
+    password:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Grafana Integration                                                       │
   # └─────────────────────────────────────────────────────────────────────────────┘
