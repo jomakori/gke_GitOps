@@ -22,8 +22,7 @@ rules:
   octal-values: disable
   quoted-strings: disable
   trailing-spaces: enable
-  truthy:
-    level: warning
+  truthy: disable
 ignore: |
   #### Files ####
   # Dynamic YAML files have syntax errors sometimes.
@@ -33,3 +32,4 @@ ignore: |
   #### Folders ####
   services/argocd-appset/templates/**
   apps/argocd-appset/templates/**
+  services/helm/db-operator/templates/**
