@@ -10,6 +10,9 @@ kind: SGCluster
 metadata:
   name: {{ $env.name }}-db-cluster
   namespace: db-operator
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   instances: 1
   postgres:
