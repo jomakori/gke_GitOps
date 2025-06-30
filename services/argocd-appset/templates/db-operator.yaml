@@ -1,46 +1,11 @@
 {{- if and (.Values.dbOperator) (.Values.dbOperator.enable) -}}
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: db-operator-crds
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
-spec:
-  project: default
-  source:
-    repoURL: "{{ $.Values.repoUrl }}"
-    path: services/helm/db-operator/crds
-    targetRevision: "{{ $.Values.targetRevision }}"
-    helm:
-      valueFiles:
-        - values.yaml
-  destination:
-    server: 'https://kubernetes.default.svc'
-    namespace: db-operator
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-      - ApplyOutOfSyncOnly=true
-    retry:
-      limit: 1
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 1m
----
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: db-operator
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   project: default
   source:
