@@ -39,7 +39,7 @@ spec:
     disableConnectionPooling: false
     disableMetricsExporter: false
     persistentVolume:
-      storageClass: standard
+      storageClass: csi-hostpath-sc
       size: {{ $env.storageSize }}
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Additional Configurations                                                 │
