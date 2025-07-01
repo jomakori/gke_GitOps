@@ -1,0 +1,10 @@
+apiVersion: v2
+name: tapir
+description: A Helm chart for Tapir
+type: application
+version: 1.0.0
+appVersion: "0.9.4"
+dependencies:
+  - name: tapir
+    version: 1.0.0
+    repository: "https://github.com/PacoVK/tapir-helm"
