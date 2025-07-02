@@ -38,10 +38,14 @@ spec:
       - ApplyOutOfSyncOnly=true
       - Replace=true # Required for CRD updates
       - SkipDryRunOnMissingResource=true # Skip dry-run if CRDs not yet present
+      - RespectExistingResources=true # Keep existing RBAC resources
     retry:
-      limit: 1
+      limit: 2
       backoff:
         duration: 5s
         factor: 2
-        maxDuration: 2m
+        maxDuration: 3m
+    managedNamespaceMetadata:
+      labels:
+        argocd.argoproj.io/sync-options: RespectExistingResources=true
 {{- end }}
