@@ -13,7 +13,7 @@ metadata:
 
 spec:
   ## allow multiple db pods on the same node
-  # profile: testing
+  profile: testing
   instances: 1
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Postgres Configuration                                                    │
