@@ -47,5 +47,5 @@ spec:
         maxDuration: 3m
     managedNamespaceMetadata:
       labels:
-        argocd.argoproj.io/sync-options: RespectExistingResources=true
+        argocd.argoproj.io/respect-existing: "true"
 {{- end }}
