@@ -12,7 +12,10 @@
         "services/helm/**/Chart.yaml",
         "services/helm/**/values.yaml"
       ],
-      "enabled": true
+      "enabled": true,
+      "releaseNotes": {
+        "enabled": true
+      }
     }
   ],
   "schedule": [
