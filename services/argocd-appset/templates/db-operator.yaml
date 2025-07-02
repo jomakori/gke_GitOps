@@ -6,6 +6,7 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-options: "Prune=false" # Disable pruning for initial sync
 spec:
   project: default
   source:
@@ -35,10 +36,12 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - ApplyOutOfSyncOnly=true
+      - Replace=true # Required for CRD updates
+      - SkipDryRunOnMissingResource=true # Skip dry-run if CRDs not yet present
     retry:
       limit: 1
       backoff:
         duration: 5s
         factor: 2
-        maxDuration: 1m
+        maxDuration: 2m
 {{- end }}
