@@ -4,9 +4,6 @@ kind: Application
 metadata:
   name: db-operator
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
-    argocd.argoproj.io/sync-options: "Prune=false" # Disable pruning for initial sync
 spec:
   project: default
   source:
@@ -34,11 +31,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
       - ApplyOutOfSyncOnly=true
-      - Replace=true # Required for CRD updates
-      - SkipDryRunOnMissingResource=true # Skip dry-run if CRDs not yet present
-      - RespectExistingResources=true # Keep existing RBAC resources
     retry:
       limit: 2
       backoff:
