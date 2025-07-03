@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "tapir.fullname" . }}
+  labels:
+    {{- include "tapir.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.pdb.annotations | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable | default 0 }}
+  maxUnavailable: {{ .Values.pdb.maxUnavailable | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "tapir.selectorLabels" . | nindent 6 }}

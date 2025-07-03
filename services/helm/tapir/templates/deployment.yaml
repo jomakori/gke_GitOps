@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tapir.fullname" . }}
+  labels:
+    {{- include "tapir.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.deployment.replicas | default 1 }}
+  revisionHistoryLimit: {{ .Values.deployment.revisionHistoryLimit | default 3 }}
+  selector:
+    matchLabels:
+      {{- include "tapir.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tapir.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- toYaml .Values.deployment.podAnnotations | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "tapir.serviceAccountName" . }}
+      containers:
+        - name: tapir
+          image: "{{ .Values.deployment.image.repository }}:{{ include \"tapir.defaultDeployTag\" . }}"
+          imagePullPolicy: {{ .Values.deployment.image.imagePullPolicy | default "Always" }}
+          ports:
+            - containerPort: {{ .Values.deployment.containerPort | default 8080 }}
+          env:
+            {{- include "tapir.env" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

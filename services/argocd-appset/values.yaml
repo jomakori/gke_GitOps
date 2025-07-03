@@ -16,7 +16,7 @@ grafanaCreds:
 # │ Service Values - individual values - passed in via DevOps repo (Terraform)               │
 # └──────────────────────────────────────────────────────────────────────────────────────────┘
 dbOperator:
-  enable: true
+  enable: false
   creds:
     user:
     pw:
