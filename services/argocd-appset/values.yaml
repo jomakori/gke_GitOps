@@ -48,3 +48,6 @@ redisOperator:
   environment:
     - production
     - staging
+
+tapir:
+  enable: true
