@@ -9,13 +9,18 @@ metadata:
 spec:
   project: {{ .Values.argoProject | default "default" }}
   revisionHistoryLimit: 3
-  source:
-    repoURL: "{{ .Values.repoUrl }}"
-    path: services/helm/tapir
-    targetRevision: "{{ .Values.targetRevision }}"
-    helm:
-      valueFiles:
-        - values.yaml
+  sources:
+    - repoURL: "https://github.com/PacoVK/tapir-helm.git"
+      path: charts
+      targetRevision: "main"
+    - repoURL: "{{ .Values.repoUrl }}"
+      path: services/helm/tapir
+      targetRevision: "{{ .Values.targetRevision }}"
+      ref: values
+  helm:
+    valueFiles:
+      - values.yaml  # Default values from the chart
+      - ref://values/values.yaml  # Your custom values from separate repo
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: tapir
