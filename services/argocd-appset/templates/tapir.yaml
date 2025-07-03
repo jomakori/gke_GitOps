@@ -1,0 +1,39 @@
+{{- if and (.Values.tapir) (.Values.tapir.enable) -}}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tapir
+  namespace: {{ .Values.argoNamespace | default "argocd" }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.argoProject | default "default" }}
+  revisionHistoryLimit: 3
+  sources:
+    - repoURL: "https://github.com/PacoVK/tapir-helm.git"
+      path: charts
+      targetRevision: "main"
+    - repoURL: "{{ .Values.repoUrl }}"
+      path: services/helm/tapir
+      targetRevision: "{{ .Values.targetRevision }}"
+      ref: values
+  helm:
+    valueFiles:
+      - values.yaml  # Default values from the chart
+      - ref://values/values.yaml  # Your custom values from separate repo
+  destination:
+    server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
+    namespace: tapir
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+{{- end }}
