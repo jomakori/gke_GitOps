@@ -1,0 +1,32 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "tapir.fullname" . }}
+  labels:
+    {{- include "tapir.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.certificate.secretName | default "tapir-tls" }}
+  issuerRef:
+    name: {{ .Values.certificate.issuer.name }}
+    kind: {{ .Values.certificate.issuer.kind | default "Issuer" }}
+    group: {{ .Values.certificate.issuer.group | default "cert-manager.io" }}
+  dnsNames:
+    - {{ .Values.certificate.domain | default "tapir.example.com" }}
+    {{- range .Values.certificate.additionalHosts }}
+    - {{ . }}
+    {{- end }}
+  duration: {{ .Values.certificate.duration | default "2160h" }}
+  renewBefore: {{ .Values.certificate.renewBefore | default "360h" }}
+  privateKey:
+    algorithm: {{ .Values.certificate.privateKey.algorithm | default "RSA" }}
+    encoding: {{ .Values.certificate.privateKey.encoding | default "PKCS1" }}
+    rotationPolicy: {{ .Values.certificate.privateKey.rotationPolicy | default "Never" }}
+    size: {{ .Values.certificate.privateKey.size | default 2048 }}
+  usages:
+    {{- range .Values.certificate.usages }}
+    - {{ . }}
+    {{- end }}
+  {{- with .Values.certificate.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
