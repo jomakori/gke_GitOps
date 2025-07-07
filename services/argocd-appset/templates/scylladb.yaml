@@ -1,4 +1,4 @@
-{{- if and (.Values.scylladb) (.values.scylladb.enable) }}
+{{- if and (.Values.scylladb) (.Values.scylladb.enable) -}}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
