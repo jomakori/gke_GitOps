@@ -10,14 +10,55 @@ kind: SGCluster
 metadata:
   name: {{ $env.name }}-db-cluster
   namespace: db-operator
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
+
 spec:
+  ## allow multiple db pods on the same node
+  profile: testing
   instances: 1
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Postgres Configuration                                                    │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   postgres:
-    version: 'latest'
+    version: "17"
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Autoscaling Configuration                                                 │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  autoscaling:
+    mode: horizontal
+    minInstances: 2
+    maxInstances: 6
+    horizontal:
+      replicasConnectionsUsageTarget: "0.5"
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Instance Configuration                                                         │
+  # |   - Volume Configuration                                                    │
+  # │   - Resource Allocation                                                     │
+  # │   - Fault-Tolerence Configuration                                           |
+  # └─────────────────────────────────────────────────────────────────────────────┘
   pods:
+    disableConnectionPooling: false
+    disableMetricsExporter: false
     persistentVolume:
-      storageClass: standard
+      storageClass: csi-hostpath-sc
       size: {{ $env.storageSize }}
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Additional Configurations                                                 │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  configurations:
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │   Backup Configuration                                                    │
+    # └───────────────────────────────────────────────────────────────────────────┘
+    # backups:
+    # - path: "/{{ $env.name }}-backups"
+    #   sgObjectStorage: "db-backup-storage"
+    #   retention: 5
+    #   cronSchedule: "0 0 * * *"
+    # ┌───────────────────────────────────────────────────────────────────────────┐
+    # │   Connection Pooling Configuration                                        │
+    # └───────────────────────────────────────────────────────────────────────────┘
+    sgPoolingConfig: |
+      connections:
+        max: 200
+        default: 5
+
 {{- end }}
