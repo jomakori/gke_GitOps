@@ -7,19 +7,19 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: {{ $.Values.repoUrl }}
+    repoURL: "{{ $.Values.repoUrl }"}
     path: services/helm/scylladb
-    targetRevision: {{ $.Values.targetRevision }}
+    targetRevision: "{{ $.Values.targetRevision }}"
     helm:
       valueFiles:
         - values.yaml
       parameters:
-        - name: scyllaDB.dbUser.user
-          value: {{ $.Values.scyllaDBCreds.user }}
-        - name: scyllaDB.dbUser.password
-          value: {{ $.Values.scyllaDBCreds.pw }}
+        - name: scylladb.dbUser.user
+          value: "{{ $.Values.scyllaDBCreds.user }}"
+        - name: scylladb.dbUser.password
+          value: "{{ $.Values.scyllaDBCreds.pw }}"
   destination:
-    server: {{ $.Values.clusterEndpoint }}
+    server: 'https://kubernetes.default.svc'
     namespace: scylladb
   syncPolicy:
     automated:
