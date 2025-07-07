@@ -17,9 +17,9 @@ spec:
         - name: mongodb.auth.host
           value: "{{ $.Values.mongoDBCreds.host }}"
         - name: mongodb.auth.usernames
-          value: "{{ join "," .Values.mongoDBCreds.user }}"
+          value: "{{ toYaml $.Values.mongoDBCreds.user | nindent 0 | trim }}"
         - name: mongodb.auth.passwords
-          value: "{{ join "," .Values.mongoDBCreds.pw }}"
+          value: "{{ toYaml $.Values.mongoDBCreds.pw | nindent 0 | trim }}"
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: mongodb
