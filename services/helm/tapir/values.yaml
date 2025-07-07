@@ -28,11 +28,11 @@ tapir:
       # ┌─────────────────────────────────────────────────────────────────────────────┐
       # │   Backend Configuration                                                   │
       # └─────────────────────────────────────────────────────────────────────────────┘
-      # Supported backends: elasticsearch, dynamodb, cosmosdb
+      # Supported backends: elasticsearch, dynamodb, cosmosdb (nonsql compatible)
       backends:
-        type: "dynamodb"
-        dynamodb:
-          host: "scylladb.scylladb.svc.cluster.local:9042"
+        type: "cosmosdb"
+        cosmosdb:
+          host: "mongodb.mongodb.svc.cluster.local:27017"
           user:
           password:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
