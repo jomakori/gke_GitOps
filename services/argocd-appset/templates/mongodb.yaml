@@ -16,9 +16,9 @@ spec:
       parameters:
         - name: mongodb.auth.host
           value: "{{ $.Values.mongoDBCreds.host }}"
-        - name: mongodb.auth.username
+        - name: mongodb.auth.usernames
           value: "{{ join "," .Values.mongoDBCreds.user }}"
-        - name: mongodb.auth.password
+        - name: mongodb.auth.passwords
           value: "{{ join "," .Values.mongoDBCreds.pw }}"
   destination:
     server: 'https://kubernetes.default.svc'
