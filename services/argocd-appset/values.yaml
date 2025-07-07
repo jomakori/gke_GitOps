@@ -11,7 +11,8 @@ clusterEndpoint: ""
 grafanaCreds:
   admin:
   pw:
-scyllaDBCreds:
+mongoDBCreds:
+  host:
   user:
   pw:
 
@@ -52,7 +53,7 @@ redisOperator:
     - production
     - staging
 
-scylladb:
+mongodb:
   enable: true
 
 tapir:

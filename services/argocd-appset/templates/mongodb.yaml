@@ -1,26 +1,28 @@
-{{- if and (.Values.scylladb) (.Values.scylladb.enable) -}}
+{{- if and (.Values.mongodb) (.Values.mongodb.enable) -}}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: scylladb
+  name: mongodb
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: "{{ $.Values.repoUrl }}"
-    path: services/helm/scylladb
+    path: services/helm/mongodb
     targetRevision: "{{ $.Values.targetRevision }}"
     helm:
       valueFiles:
         - values.yaml
       parameters:
-        - name: scylladb.dbUser.user
-          value: "{{ $.Values.scyllaDBCreds.user }}"
-        - name: scylladb.dbUser.password
-          value: "{{ $.Values.scyllaDBCreds.pw }}"
+        - name: mongodb.auth.host
+          value: "{{ $.Values.mongoDBCreds.host }}"
+        - name: mongodb.auth.username
+          value: ["{{ $.Values.mongoDBCreds.user }}"]
+        - name: mongodb.auth.password
+          value: ["{{ $.Values.mongoDBCreds.pw }}"]
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: scylladb
+    namespace: mongodb
   syncPolicy:
     automated:
       prune: true

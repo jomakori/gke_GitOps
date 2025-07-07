@@ -20,12 +20,18 @@ spec:
   helm:
     valueFiles:
       - values.yaml  # Default values from the chart
-      - ref://values/values.yaml  # Your custom values from separate repo
+      - ref://values/values.yaml  # Main configuration values
     parameters:
       - name: tapir.deployment.configuration.auth.github.clientId
         value: "{{ .Values.tapir.sso_clientID }}"
       - name: tapir.deployment.configuration.auth.github.clientSecret
         value: "{{ .Values.tapir.sso_clientSecret }}"
+      - name: tapir.deployment.configuration.backends.cosmosdb.host
+        value: "{{ .Values.mongoDBCreds.host }}"
+      - name: tapir.deployment.configuration.backends.cosmosdb.user
+        value: "{{ .Values.mongoDBCreds.user }}"
+      - name: tapir.deployment.configuration.backends.cosmosdb.password
+        value: "{{ .Values.mongoDBCreds.pw }}"
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: tapir
