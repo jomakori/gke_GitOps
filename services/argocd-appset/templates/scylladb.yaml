@@ -7,7 +7,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: "{{ $.Values.repoUrl }}
+    repoURL: "{{ $.Values.repoUrl }}"
     path: services/helm/scylladb
     targetRevision: "{{ $.Values.targetRevision }}"
     helm:
