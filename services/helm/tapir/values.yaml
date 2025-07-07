@@ -33,7 +33,7 @@ tapir:
         type: "dynamodb"
         dynamodb:
           host: "scylladb.scylladb.svc.cluster.local:9042"
-          user: "cassandra"
+          user:
           password:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Storage Configuration                                                     │
