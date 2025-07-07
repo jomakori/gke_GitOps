@@ -32,7 +32,7 @@ tapir:
       backends:
         type: "cosmosdb"
         cosmosdb:
-          host: "mongodb.mongodb.svc.cluster.local:27017"
+          host:
           user:
           password:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
