@@ -4,8 +4,6 @@ kind: Application
 metadata:
   name: db-operator
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
 spec:
   project: default
   source:
@@ -33,12 +31,14 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
       - ApplyOutOfSyncOnly=true
     retry:
-      limit: 1
+      limit: 2
       backoff:
         duration: 5s
         factor: 2
-        maxDuration: 1m
+        maxDuration: 3m
+    managedNamespaceMetadata:
+      labels:
+        argocd.argoproj.io/respect-existing: "true"
 {{- end }}
