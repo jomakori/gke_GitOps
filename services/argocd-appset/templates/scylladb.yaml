@@ -1,0 +1,31 @@
+{{- if and (.Values.scylladb) (.values.scylladb.enable) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: scylladb
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: {{ $.Values.repoUrl }}
+    path: services/helm/scylladb
+    targetRevision: {{ $.Values.targetRevision }}
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: {{ $.Values.clusterEndpoint }}
+    namespace: scylladb
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+{{- end }}

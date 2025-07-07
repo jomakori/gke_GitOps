@@ -51,3 +51,8 @@ redisOperator:
 
 tapir:
   enable: true
+  sso_clientID:
+  sso_clientSecret:
+
+scylladb:
+  enable: true
