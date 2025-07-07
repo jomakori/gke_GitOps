@@ -11,6 +11,9 @@ clusterEndpoint: ""
 grafanaCreds:
   admin:
   pw:
+scyllaDBCreds:
+  user:
+  pw:
 
 # ┌──────────────────────────────────────────────────────────────────────────────────────────┐
 # │ Service Values - individual values - passed in via DevOps repo (Terraform)               │
@@ -49,5 +52,11 @@ redisOperator:
     - production
     - staging
 
+scylladb:
+  enable: true
+
 tapir:
   enable: true
+  sso_clientID:
+  sso_clientSecret:
+

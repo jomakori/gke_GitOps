@@ -1,0 +1,15 @@
+apiVersion: v2
+name: scylladb
+description: A helm chart for ScyllaDB
+
+type: application
+
+# Application version
+appVersion: 2025.1.3
+
+# Chart source
+version: 4.0.4
+dependencies:
+  - name: scylladb
+    version: 4.0.4
+    repository: https://charts.bitnami.com/bitnami
