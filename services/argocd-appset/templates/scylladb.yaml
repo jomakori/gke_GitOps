@@ -13,6 +13,11 @@ spec:
     helm:
       valueFiles:
         - values.yaml
+      parameters:
+        - name: scyllaDB.dbUser.user
+          value: {{ $.Values.scyllaDBCreds.user }}
+        - name: scyllaDB.dbUser.password
+          value: {{ $.Values.scyllaDBCreds.pw }}
   destination:
     server: {{ $.Values.clusterEndpoint }}
     namespace: scylladb
