@@ -6,7 +6,7 @@ mongodb:
   auth:
     enabled: true
     usernames:
-    password:
+    passwords:
     databases:
       - tapir
   # ┌─────────────────────────────────────────────────────────────────────────────┐
