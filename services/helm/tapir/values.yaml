@@ -1,0 +1,58 @@
+
+# configuration: https://github.com/PacoVK/tapir/blob/main/docs/configuration.md
+tapir:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Service Configuration                                                     │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  service:
+    type: ClusterIP
+    portHttps: 8080
+
+  deployment:
+    # ┌─────────────────────────────────────────────────────────────────────────────┐
+    # │   Resource Configuration                                                    │
+    # └─────────────────────────────────────────────────────────────────────────────┘
+    resources:
+      requests:
+        cpu: 256m
+        memory: 256Mi
+    configuration:
+      # ┌─────────────────────────────────────────────────────────────────────────────┐
+      # │   OAuth Configuration                                                     │
+      # └─────────────────────────────────────────────────────────────────────────────┘
+      auth:
+        endpoint: "https://github.com/login/oauth/authorize"
+        clientId: 
+        clientSecret:
+      # ┌─────────────────────────────────────────────────────────────────────────────┐
+      # │   Backend Configuration                                                   │
+      # └─────────────────────────────────────────────────────────────────────────────┘
+      # Supported backends: elasticsearch, dynamodb, cosmosdb (nonsql compatible)
+      backends:
+        type: "cosmosdb"
+        cosmosdb:
+          host:
+          user:
+          password:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Storage Configuration                                                     │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+      storage:
+        # -- Storage type: s3, azureBlob, local
+        type: "local"
+        # -- Amount of minutes the signed download url is valid
+        storageAccessDuration: 5
+  persistence:
+    enabled: true
+    storageClass: "csi-hostpath-sc"
+    accessModes: ["ReadWriteOnce"]
+    size: "5Gi"
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Autoscaling Configuration                                                │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: 75
