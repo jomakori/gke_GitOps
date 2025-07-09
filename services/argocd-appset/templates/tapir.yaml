@@ -14,6 +14,8 @@ spec:
       path: charts
       targetRevision: "main"
   helm:
+    valueFiles:
+      - values.yaml
     valuesObject:
       # Unpublished helm chart - hence workaround
       # configuration: https://github.com/PacoVK/tapir/blob/main/docs/configuration.md
