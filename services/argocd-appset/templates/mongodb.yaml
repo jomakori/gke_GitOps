@@ -18,8 +18,10 @@ spec:
           value: "{{ $.Values.mongoDBCreds.host }}"
         - name: mongodb.auth.usernames
           value: [{{ $.Values.mongoDBCreds.user }}]
+          forceString: false
         - name: mongodb.auth.passwords
           value: [{{ $.Values.mongoDBCreds.pw }}]
+          forceString: false
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: mongodb
