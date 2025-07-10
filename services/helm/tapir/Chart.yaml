@@ -10,6 +10,6 @@ version: 1.0.0
 appVersion: "0.9.4"
 
 dependencies:
-  - name: Tapir
+  - name: tapir
     version: 1.0.0
-    repository: https://github.com/jomakori/tapir-helm
+    repository: oci://ghcr.io/jomakori/tapir-helm/tapir
