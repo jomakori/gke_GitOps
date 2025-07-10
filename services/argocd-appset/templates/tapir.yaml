@@ -10,9 +10,9 @@ spec:
   project: {{ .Values.argoProject | default "default" }}
   revisionHistoryLimit: 3
   sources:
-    - repoURL: "{{ .Values.repoUrl }}"
-      path: services/helm/tapir
-      targetRevision: "{{ .Values.targetRevision }}"
+    - repoURL: "https://github.com/jomakori/tapir-helm"
+      path: .
+      targetRevision: "tapir-1.0.0"
       helm:
         valueFiles:
           - values.yaml
