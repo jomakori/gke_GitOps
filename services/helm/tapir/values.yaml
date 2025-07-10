@@ -28,7 +28,7 @@ tapir:
       # │   Backend Configuration                                                   │
       # └─────────────────────────────────────────────────────────────────────────────┘
       # Supported backends: elasticsearch, dynamodb, cosmosdb (nonsql compatible)
-      backends:
+      backend:
         type: "cosmosdb"
         cosmosdb:
           host:
