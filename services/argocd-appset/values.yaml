@@ -44,6 +44,9 @@ kubecost:
 kubePrometheusStack:
   enable: true
 
+metricsServer:
+  enable: true
+
 ollama:
   enable: true
 
