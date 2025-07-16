@@ -21,9 +21,13 @@ tapir:
       # │   OAuth Configuration                                                     │
       # └─────────────────────────────────────────────────────────────────────────────┘
       auth:
-        endpoint: "https://github.com/login/oauth/authorize"
+        # Github client creds
         clientId: 
         clientSecret:
+        # GitHub OIDC endpoints
+        endpoint: "https://github.com"
+        path: "/login/oauth/authorize"
+        tokenPath: "/login/oauth/access_token"
       # ┌─────────────────────────────────────────────────────────────────────────────┐
       # │   Backend Configuration                                                   │
       # └─────────────────────────────────────────────────────────────────────────────┘
