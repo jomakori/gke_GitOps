@@ -22,7 +22,7 @@ tapir:
       # └─────────────────────────────────────────────────────────────────────────────┘
       auth:
         # Github client creds
-        clientId: 
+        clientId:
         clientSecret:
         # GitHub OIDC endpoints
         endpoint: "https://github.com"
@@ -35,9 +35,8 @@ tapir:
       backend:
         type: "cosmosdb"
         cosmosdb:
-          host:
-          user:
-          password:
+          endpoint:
+          masterKey:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Storage Configuration                                                     │
   # └─────────────────────────────────────────────────────────────────────────────┘
