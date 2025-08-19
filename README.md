@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://i0.wp.com/blog.knoldus.com/wp-content/uploads/2022/02/Screenshot-from-2022-02-09-11-26-59.png?w=1907&ssl=1" width="800" />
+  <img src="https://cdn.prod.website-files.com/62a8969da1ab56329dc8c41e/641867ee0e3f0b11930ebb48_AgroCD-03%201.png" width="400" />
 </p>
 <p align="center">
-    <h1 align="center">ArgoCD: Deploy-Sync EKS Services</h1>
+    <h1 align="center">ArgoCD: Deploy App/Services in K8s</h1>
 </p>
 <p align="center">
     <em><strong>Unleash GitOps:</strong> Simplify K8s deployment w/ ArgoCD & Helm</em>
