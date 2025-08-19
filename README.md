@@ -483,17 +483,11 @@ So the summary of these rules:
 <details>
     <summary><b>Click here for more</b></summary>
 
-#### A new user needs access to Kubernetes
-
-1. **Accenture Req:** Normal users can only log into the cluster under the `Admin` or `Engineers` IAM roles
-2. [Setup awscli with those role credentials here](https://bvaccel.atlassian.net/wiki/spaces/EN/pages/2861727765/Setting+up+AWScli+MacOS+only)
-3. [Log into the cluster](https://bvaccel.atlassian.net/wiki/spaces/EN/pages/3046768669/Setup+Kubernetes+w+SSO)
-
 #### The cluster needs to be re-created or re-synced
 
-1. Our cluster is managed by Terraform - [in this workspace](https://github.com/richcontext/devops/blob/main/eks-commerce-engine-k8s-cluster)
+1. Our cluster is managed by Terraform
 2. Prerequisites: Install/Setup awscli, terraform + doppler
-3. Pull in repo, `cd` into `eks-commerce-engine-k8s-cluster` folder
+3. Pull in repo, `cd` into cluster folder
    - Doppler must be setup use the `DevOps` ci config in folder - via `doppler setup` command
 4. Run these commands to re-sync cluster:
    ```
@@ -582,14 +576,5 @@ Only store your docker images privately on AWS ECR. This goes for pipeline image
 
 ## 🛠️ Troubleshooting
 
-### Help - Services in the cluster aren't connecting to the web
-
-#### Reason #1: The Load balancers or certificates need to sent to Accenture DNS team
-
-<details>
-    <summary><b>Solution</b></summary>
-
-- [Perform an emergency DNS request to remediate services](https://bvaccel.atlassian.net/wiki/spaces/EN/pages/2899443723/Emergency+DNS+Request+Accenture)
-</details>
 
 ---
