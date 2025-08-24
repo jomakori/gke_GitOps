@@ -45,6 +45,20 @@ spec:
           envFrom:
           - secretRef:
               name: {{ $env.name }}-vars
+          volumeMounts:
+          - name: data
+            mountPath: /data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-pvc
+          volumeMounts:
+          - name: data
+            mountPath: /data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-pvc
 ---
 apiVersion: apps/v1
 kind: Deployment

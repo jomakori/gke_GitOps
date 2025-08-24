@@ -16,6 +16,9 @@ spec:
     helm:
       valueFiles:
         - values.yaml
+      parameters:
+        - name: jenkins.persistence.storageClass
+          value: "{{ .Values.storageClass }}"
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: jenkins

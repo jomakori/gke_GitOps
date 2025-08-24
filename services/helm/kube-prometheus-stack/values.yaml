@@ -5,29 +5,28 @@
 # │ https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/values.yaml           │
 # └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 kube-prometheus-stack:
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │   Default Rules Configuration                                               │
-# │   - Create default rules for monitoring the cluster                         │
-# │   - Disable rules for unreachable components                                │
-# └─────────────────────────────────────────────────────────────────────────────┘
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Default Rules Configuration                                               │
+  # │   - Create default rules for monitoring the cluster                         │
+  # │   - Disable rules for unreachable components                                │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   defaultRules:
     create: true
     rules:
       etcd: false
       kubeScheduler: false
 
-
-# ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Set custom ACN approved ports for these services                         │
-# └──────────────────────────────────────────────────────────────────────────┘
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │ Set custom ACN approved ports for these services                         │
+  # └──────────────────────────────────────────────────────────────────────────┘
   alertmanager:
     service:
       port: 15010
-# ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-# │   Component Scraping Configuration                                                                                  │
-# │   Disable component scraping for the kube controller manager, etcd, and kube-scheduler                              │
-# │   These components are not reachable on EKS                                                                         │
-# └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+  # ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  # │   Component Scraping Configuration                                                                                  │
+  # │   Disable component scraping for the kube controller manager, etcd, and kube-scheduler                              │
+  # │   These components are not reachable on EKS                                                                         │
+  # └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
   kubeControllerManager:
     enabled: false
   kubeEtcd:
@@ -36,9 +35,9 @@ kube-prometheus-stack:
     enabled: false
   kubeSchedulerRecording:
     enabled: false
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │   Prometheus Configuration                                                  │
-# └─────────────────────────────────────────────────────────────────────────────┘
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Prometheus Configuration                                                  │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   prometheus:
     service:
       port: 15017
@@ -48,7 +47,7 @@ kube-prometheus-stack:
       storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: standard
+          storageClassName:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
@@ -67,9 +66,9 @@ kube-prometheus-stack:
             sourceLabels:
               - node
             targetLabel: instance
-# ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Prometheus Operator Configuration                                        │
-# └──────────────────────────────────────────────────────────────────────────┘
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │ Prometheus Operator Configuration                                        │
+  # └──────────────────────────────────────────────────────────────────────────┘
   prometheusOperator:
     enabled: true
     # Not using cert-manager
@@ -77,9 +76,9 @@ kube-prometheus-stack:
       enabled: false
     admissionWebhooks:
       enabled: false
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │   Grafana Configuration                                                     │
-# └─────────────────────────────────────────────────────────────────────────────┘
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Grafana Configuration                                                     │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   adminUser:
   adminPassword:
   grafana:

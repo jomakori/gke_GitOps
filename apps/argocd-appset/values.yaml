@@ -1,9 +1,14 @@
-# Repo Details - passed via Terraform (DevOps repo)
+# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
+# │ Global Values - shared values - passed in via DevOps repo (Terraform)                    │
+# └──────────────────────────────────────────────────────────────────────────────────────────┘
 repoUrl: ""
 path: ""
 targetRevision: ""
+storageClass: "csi-hostpath-sc"
 
-# Enable/Disable Apps + their environments
+# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
+# │ App Values - individual values - passed in via DevOps repo (Terraform)                   │
+# └──────────────────────────────────────────────────────────────────────────────────────────┘
 notesApp:
   enabled: false
   environment:

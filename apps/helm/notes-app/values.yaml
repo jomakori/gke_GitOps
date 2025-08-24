@@ -1,7 +1,8 @@
 ##########################
 # CONTROL APP COMPONENTS #
 ##########################
-apps: &app_values
+# > NOTE: Setup for multi-service deployment
+services: &app_values
   backend:
     port: 8080
     replicas: 1
@@ -9,6 +10,10 @@ apps: &app_values
       cpu: 100m
       memory: 256Mi
     image: ghcr.io/jomakori/note-app-backend
+    storage:
+      enabled: false
+      size: 1Gi
+      storageClass: "{{ .Values.storageClass }}"
   frontend:
     port: 8181
     replicas: 1
@@ -16,6 +21,10 @@ apps: &app_values
       cpu: 150m
       memory: 750Mi
     image: ghcr.io/jomakori/note-app-frontend
+    storage:
+      enabled: false
+      size: 1Gi
+      storageClass: "{{ .Values.storageClass }}"
 ############################
 # CONTROL APP ENVIRONMENTS #
 ############################

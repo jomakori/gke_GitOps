@@ -1,13 +1,18 @@
 ##########################
 # CONTROL APP COMPONENTS #
 ##########################
-apps: &app_values
+# > NOTE: Setup for single service deployment
+services: &app_values
   demoapp:
     port: 3000
     replicas: 2
     resourceRequests:
       cpu: 256m
       memory: 256Mi
+    storage:
+      enabled: false
+      size: 1Gi
+      storageClass: "{{ .Values.storageClass }}"
 ############################
 # CONTROL APP ENVIRONMENTS #
 ############################

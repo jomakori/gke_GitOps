@@ -13,20 +13,17 @@ spec:
     helm:
       valueFiles:
         - values.yaml
-      valuesObject:
-        # Note: ArgoCD doesn't support array params - hence workaround
-        # ┌─────────────────────────────────────────────────────────────────────────────┐
-        # │   Auth Configuration                                                        │
-        # └─────────────────────────────────────────────────────────────────────────────
-        mongodb:
-          auth:
-            enabled: true
-            usernames: [{{ $.Values.mongoDBCreds.user }}]
-            passwords: [{{ $.Values.mongoDBCreds.pw }}]
-            databases: [{{ $.Values.mongoDBCreds.user }}]
       parameters:
+        - name: mongodb.auth.usernames
+          value: "{{ $.Values.mongoDBCreds.user }}"
+        - name: mongodb.auth.passwords
+          value: "{{ $.Values.mongoDBCreds.pw }}"
+        - name: mongodb.auth.databases
+          value: "{{ $.Values.mongoDBCreds.user }}"
         - name: mongodb.auth.host
           value: "{{ $.Values.mongoDBCreds.host }}"
+        - name: mongodb.persistence.storageClass
+          value: "{{ $.Values.storageClass }}"
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: mongodb
