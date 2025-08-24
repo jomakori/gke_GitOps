@@ -8,6 +8,7 @@ region: ""
 account: ""
 clusterName: ""
 clusterEndpoint: ""
+storageClass: "csi-hostpath-sc"
 grafanaCreds:
   admin:
   pw:

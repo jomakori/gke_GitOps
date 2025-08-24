@@ -23,6 +23,8 @@ spec:
           value: "{{ .Values.grafanaCreds.admin }}"
         - name: kube-prometheus-stack.adminPassword
           value: "{{ .Values.grafanaCreds.pw }}"
+        - name: kube-prometheus-stack.prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName
+          value: "{{ .Values.storageClass }}"
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: kube-prometheus-stack

@@ -44,4 +44,11 @@ spec:
           envFrom:
           - secretRef:
               name: {{ $env.name }}-vars
+          volumeMounts:
+          - name: data
+            mountPath: /data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-pvc
 {{- end }}

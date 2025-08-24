@@ -21,6 +21,8 @@ spec:
       parameters:
         - name: redis-cluster.password
           value: "{{ $.Values.redisOperator.pw }}"
+        - name: redis-cluster.persistence.storageClass
+          value: "{{ $.Values.storageClass }}"
   destination:
     server: {{ $.Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: redis-operator-{{ . }}
