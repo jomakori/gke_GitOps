@@ -1,0 +1,18 @@
+FROM --platform=linux/amd64 jetpackio/devbox:latest
+
+# Installing your devbox project
+WORKDIR /code
+USER root:root
+RUN mkdir -p /code && chown ${DEVBOX_USER}:${DEVBOX_USER} /code
+USER ${DEVBOX_USER}:${DEVBOX_USER}
+COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} devbox.json devbox.json
+COPY --chown=${DEVBOX_USER}:${DEVBOX_USER} devbox.lock devbox.lock
+
+
+
+# Set up multi-architecture support
+RUN echo "extra-platforms = x86_64-linux aarch64-linux" >> /etc/nix/nix.conf
+
+RUN devbox run -- echo "Installed Packages." && nix-store --gc && nix-store --optimise
+
+CMD ["devbox", "shell"]

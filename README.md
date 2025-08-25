@@ -81,6 +81,127 @@ All our services and apps, like demoapp1 run on our Kubernetes cluster on AWS. W
 
 ---
 
+## 🧪 Advanced Testing Setup
+
+This repository now includes a comprehensive testing framework using DevBox for consistent development environments and multiple testing strategies.
+
+### Testing Framework Overview
+
+The testing setup includes:
+
+1. **Unit Tests** - Chart validation using chart-testing
+2. **Integration Tests** - Go-based tests for ArgoCD manifest validation
+3. **Infrastructure Tests** - TerraTest-style validation of Kubernetes resources
+4. **CI/CD Integration** - GitHub Actions workflows for automated testing
+
+### Running Tests with DevBox
+
+#### Prerequisites
+- Install [DevBox](https://www.jetify.com/devbox/)
+- Docker (for multi-architecture support)
+
+#### Available Test Commands
+
+```bash
+# Run all tests
+devbox run test:all
+
+# Run unit tests (chart testing)
+devbox run test:unit
+
+# Run integration tests
+devbox run test:integration
+
+# Run infrastructure tests
+devbox run test:terratests
+
+# Setup required tools (if not using DevBox)
+devbox run setup:tools
+```
+
+#### Manual Testing (without DevBox)
+
+```bash
+# Unit tests with chart-testing
+ct lint --config .tests/ct-config.yaml --all
+
+# Integration tests
+cd .tests/integration && go test -v -timeout 30m
+
+# Infrastructure tests
+cd .tests/terratests && go test -v -timeout 15m
+```
+
+### Test Configuration
+
+#### Chart Testing Configuration (`.tests/ct-config.yaml`)
+- Validates Helm charts against Kubernetes specifications
+- Includes custom linting rules for ArgoCD annotations
+- Tests with multiple value files (ci, dev, prod environments)
+
+#### Integration Tests (`.tests/integration/`)
+- Validates YAML structure and syntax
+- Checks for required ArgoCD annotations
+- Verifies Helm chart structure and templates
+
+#### Infrastructure Tests (`.tests/terratests/`)
+- Validates Kubernetes cluster access
+- Tests manifest file existence and structure
+- Verifies basic cluster functionality
+
+### CI/CD Integration
+
+The repository includes GitHub Actions workflows:
+
+1. **`test.yaml`** - Comprehensive test suite running on PR and push to main
+2. **`pull_request.yaml`** - Existing lint and test workflow
+
+#### Test Workflow Stages:
+1. **Unit Tests** - Chart validation with chart-testing
+2. **Integration Tests** - Go-based manifest validation
+3. **Infrastructure Tests** - Basic cluster and file structure tests
+4. **Test Summary** - Consolidated test results
+
+### Docker-based Testing
+
+For consistent testing across architectures, use the provided Dockerfile:
+
+```bash
+# Build the testing image
+docker build -t gitops-tests .
+
+# Run tests in container
+docker run -it gitops-tests devbox run test:all
+```
+
+### Customizing Tests
+
+#### Adding New Test Scenarios
+
+1. **Unit Tests**: Add test values in `.tests/ci-values.yaml`
+2. **Integration Tests**: Add Go test files in `.tests/integration/`
+3. **Infrastructure Tests**: Add Go test files in `.tests/terratests/`
+
+#### Test Configuration Files
+- `.tests/ct-config.yaml` - Chart testing configuration
+- `.tests/ci-values.yaml` - CI environment test values
+- `devbox.json` - Development environment and test scripts
+
+### Troubleshooting Tests
+
+#### Common Issues
+
+1. **Missing Dependencies**: Run `devbox run setup:tools`
+2. **Chart Testing Failures**: Check `.tests/ct-config.yaml` for excluded charts
+3. **Go Test Failures**: Ensure Go modules are downloaded with `go mod download`
+
+#### Platform-specific Notes
+
+- **Apple Silicon (M1/M2)**: Use the provided Dockerfile for amd64 compatibility
+- **Linux/Windows**: Native DevBox support available
+
+---
+
 ## 🗂️ Repository Structure
 
 In this repo, we have two main directories - which manages all our microservices for the EKS (Kubernetes) cluster. We currently have the Kubernetes manifests formatted to be deployed via Helm - [using the ArgoCD App of Apps blueprint](https://github.com/aws-samples/eks-blueprints-helm). ArgoCD deploys the helm charts and keeps the services synced by using this GitHub repo as the source of truth - [the GitOps way](https://about.gitlab.com/topics/gitops/#key-components-of-a-git-ops-workflow)
