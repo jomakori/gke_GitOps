@@ -1,0 +1,53 @@
+# Test values for CI environment
+global:
+  environment: ci
+  domain: ci.example.com
+
+# Demo app specific values
+demoapp:
+  replicaCount: 1
+  image:
+    tag: test
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-staging"
+
+# Notes app specific values
+notesapp:
+  replicaCount: 1
+  image:
+    tag: test
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+# Service configurations
+external-secrets:
+  enabled: true
+  installCRDs: true
+
+metrics-server:
+  enabled: true
+
+# Disable resource-intensive services in CI
+mongodb:
+  enabled: false
+
+redis-operator:
+  enabled: false
+
+ollama:
+  enabled: false

@@ -1,7 +1,13 @@
 {
   "packages": [
     "yq-go@latest",
-    "git@latest"
+    "git@latest",
+    "chart-testing@latest",
+    "helm@latest",
+    "kubectl@latest",
+    "yamllint@latest",
+    "go@latest",
+    "terraform@latest"
   ],
   "shell": {
     "scripts": {
@@ -17,6 +23,23 @@
         "git commit -m \"$GIT_MESSAGE\"",
         "git push",
         "echo '✅ Changes deployed'"
+      ],
+      "test:unit": [
+        "echo 'Running unit tests...'",
+        "ct lint --config .tests/ct-config.yaml --all"
+      ],
+      "test:integration": [
+        "echo 'Running integration tests...'",
+        "cd .tests/integration && go test -v -timeout 30m"
+      ],
+      "test:terratests": [
+        "echo 'Running terratests...'",
+        "cd .tests/terratests && go test -v -timeout 30m"
+      ],
+      "test:all": [
+        "devbox run test:unit",
+        "devbox run test:integration",
+        "devbox run test:terratests"
       ]
     }
   }
