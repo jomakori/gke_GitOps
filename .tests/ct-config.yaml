@@ -1,0 +1,57 @@
+# Chart Testing configuration for GitOps manifests
+chart-dirs:
+  - apps/helm
+  - services/helm
+  - apps/argocd-appset
+  - services/argocd-appset
+
+# Validate charts against target Kubernetes version
+validate-maintainers: false
+validate-chart-schema: true
+validate-yaml: true
+check-version-increment: false
+
+# Helm configuration
+helm-extra-args: --dry-run --debug
+helm-repo-extra-args: []
+
+# Test configuration
+chart-repos:
+  - bitnami=https://charts.bitnami.com/bitnami
+  - prometheus-community=https://prometheus-community.github.io/helm-charts
+  - jetstack=https://charts.jetstack.io
+  - argo=https://argoproj.github.io/argo-helm
+
+# Exclude patterns (files/directories to ignore)
+excluded-charts: []
+
+# Parallel testing
+max-processes: 4
+
+# Timeouts
+timeout: 300s
+
+# Linting rules
+lint-conf: .yamllint
+
+# Test values files for different scenarios
+remote: origin
+target-branch: main
+
+# Additional lint rules
+lint-rules:
+  # Require certain annotations
+  has-required-annotations:
+    - argocd.argoproj.io/sync-wave
+    - argocd.argoproj.io/sync-options
+
+  # Validate resource limits
+  has-resource-limits:
+    - spec.template.spec.containers[0].resources.limits
+    - spec.template.spec.containers[0].resources.requests
+
+# Test values for different environments
+test-values:
+  - ci-values.yaml
+  - dev-values.yaml
+  - prod-values.yaml
