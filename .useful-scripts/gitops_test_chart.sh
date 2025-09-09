@@ -11,7 +11,7 @@
 # Declarations
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
-dir=$1
+dir="$PWD"
 cluster_context=$(kubectl config current-context 2>/dev/null)
 
 # Check if ct (Chart Testing) and yamllint are installed
@@ -25,19 +25,29 @@ check_dependencies() {
     fi
 }
 
-# Lint function
+# Lint function (option 1)
 lint_chart() {
     printf "${GREEN}CT: Linting Helm Chart: ${dir} ${NC}\n"
     ct lint --charts "$dir" --validate-maintainers=false
 }
 
-# Lint & Test function
-lint_and_test_chart() {
-    printf "${GREEN}CT: Lint & Test Helm Chart: ${dir} ${NC}\n"
-    ct lint-and-install --charts "$dir" --validate-maintainers=false
+# CT Test function (option 2)
+test_chart_ct() {
+    printf "${GREEN}CT: Test Helm Chart: ${dir} ${NC}\n"
+    read -p "Set test values file (press Enter to skip): " CUSTOM_VALUES
+        read -p "Set Timeout (default 5m, press Enter to skip): " CUSTOM_TIMEOUT
+        TIMEOUT="5m"
+    if [ -n "$CUSTOM_TIMEOUT" ]; then
+        TIMEOUT="$CUSTOM_TIMEOUT"
+    fi
+    EXTRA_ARGS="--timeout=$TIMEOUT"
+    if [ -n "$CUSTOM_VALUES" ]; then
+        EXTRA_ARGS="--values=$CUSTOM_VALUES $EXTRA_ARGS"
+    fi
+    ct install --chart-dirs . --charts . --helm-extra-set-args="$EXTRA_ARGS"
 }
 
-# Test via Helm install function
+# Helm Test Function (option 3)
 test_install_chart() {
     read -p "Enter a release name for testing: " RELEASE_NAME
     if [ -z "$RELEASE_NAME" ]; then
@@ -45,11 +55,17 @@ test_install_chart() {
         exit 1
     fi
 
+    read -p "Custom values file (press Enter to skip): " CUSTOM_VALUES
+
     printf "${GREEN}Building helm dependencies...${NC}\n"
     helm dependency build "$dir"
 
     printf "${GREEN}Installing helm chart with release name: $RELEASE_NAME${NC}\n"
-    helm install "$RELEASE_NAME" "$dir" -n "$RELEASE_NAME" --create-namespace --wait --wait-for-jobs --timeout 5m
+    INSTALL_CMD="helm install \"$RELEASE_NAME\" \"$dir\" -n \"$RELEASE_NAME\" --create-namespace --wait --wait-for-jobs"
+    if [ -n "$CUSTOM_VALUES" ]; then
+        INSTALL_CMD="$INSTALL_CMD -f \"$CUSTOM_VALUES\""
+    fi
+    eval $INSTALL_CMD
 
     if [ $? -eq 0 ]; then
         echo "Chart installed successfully!"
@@ -91,15 +107,15 @@ if [ -z "$cluster_context" ]; then
     echo "ERROR: The EKS cluster credentials aren't set"
     exit 1
 else
-    printf "Testing out changes on: ${GREEN}$cluster_context${NC}\n"
+    printf "Testing out changes on: ${GREEN}$cluster_context${NC} cluster\n"
 fi
 
 # Prompt user for action
-printf "Selected ${GREEN}$dir${NC} Helm Chart \n"
+printf "Selected Helm Chart: ${GREEN}$dir${NC}\n"
 echo "Choose an option:"
 echo "  1) Lint"
-echo "  2) Lint & Test"
-echo "  3) Test - via Helm install"
+echo "  2) Test - via ct"
+echo "  3) Test - via Helm"
 echo "  4) Uninstall chart"
 read -p "Enter choice [1-4]: " user_choice
 
@@ -108,7 +124,7 @@ case "$user_choice" in
         lint_chart
         ;;
     2)
-        lint_and_test_chart
+        test_chart_ct
         ;;
     3)
         test_install_chart
