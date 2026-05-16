@@ -8,13 +8,13 @@ type: application
 
 # The chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
-version: 0.16.1
+version: 2.5.0
 
 # Version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: "v0.16.1"
+appVersion: "v2.5.0"
 
 dependencies:
   - name: external-secrets
-    version: 0.16.1
+    version: 2.5.0
     repository: https://charts.external-secrets.io/
