@@ -3,14 +3,9 @@ headlamp:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   General Configuration                                                     │
   # └─────────────────────────────────────────────────────────────────────────────┘
-  config:
-    pluginsDir: /build/plugins
   clusterRoleBinding:
     create: true
-    name: headlamp-admin-binding
-    subjects:
-      - kind: ServiceAccount
-        name: system:cluster-admin
+    clusterRoleName: cluster-admin
 
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Headlamp Plugins Configuration                                            │

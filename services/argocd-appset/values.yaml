@@ -33,9 +33,6 @@ externalSecrets:
 headlamp:
   enable: true
 
-jenkins:
-  enable: true
-
 keda:
   enable: true
 
@@ -59,8 +56,3 @@ redisOperator:
 
 mongodb:
   enable: true
-
-tapir:
-  enable: true
-  sso_clientID:
-  sso_clientSecret:
