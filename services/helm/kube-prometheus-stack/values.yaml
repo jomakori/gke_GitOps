@@ -45,13 +45,13 @@ kube-prometheus-stack:
       # Prometheus StorageSpec for persistent data on AWS EBS
       # ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/storage.md
       storageSpec:
-      volumeClaimTemplate:
-        spec:
-          storageClassName:
-          accessModes: ["ReadWriteOnce"]
-          resources:
-            requests:
-              storage: 30Gi
+        volumeClaimTemplate:
+          spec:
+            storageClassName:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 30Gi
     kubelet:
       serviceMonitor:
         relabelings:
@@ -79,7 +79,7 @@ kube-prometheus-stack:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Grafana Configuration                                                     │
   # └─────────────────────────────────────────────────────────────────────────────┘
-  adminUser:
-  adminPassword:
   grafana:
+    adminUser:
+    adminPassword:
     enabled: true
