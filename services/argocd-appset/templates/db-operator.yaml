@@ -34,7 +34,6 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
-      - ServerSideApply=true
       - RespectIgnoreDifferences=true
     retry:
       limit: 2
