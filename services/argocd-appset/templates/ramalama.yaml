@@ -1,26 +1,26 @@
-{{- if and (.Values.ollama) (.Values.ollama.enable) -}}
+{{- if and (.Values.ramalama) (.Values.ramalama.enable) -}}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ollama
+  name: ramalama
   namespace: {{ .Values.argoNamespace | default "argocd" }}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "6"
 spec:
   project: {{ .Values.argoProject | default "default" }}
   revisionHistoryLimit: 3
   source:
     repoURL: "{{ .Values.repoUrl }}"
-    path: services/helm/ollama
+    path: services/helm/ramalama
     targetRevision: "{{ .Values.targetRevision }}"
     helm:
       valueFiles:
         - values.yaml
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
-    namespace: ollama
+    namespace: ramalama
   syncPolicy:
     automated:
       prune: true
