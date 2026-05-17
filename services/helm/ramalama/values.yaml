@@ -1,0 +1,17 @@
+image: quay.io/ramalama/ramalama
+tag: latest
+
+replicas: 1
+
+# Model to download at startup (from Hugging Face).
+# Path is derived from alias: /models/<alias>.gguf
+model:
+  # Qwen3-4B Q4_K_M — fits ~4GB GPU buffer, built-in thinking/reasoning mode
+  url: https://huggingface.co/bartowski/Qwen_Qwen3-4B-GGUF/resolve/main/Qwen_Qwen3-4B-Q4_K_M.gguf
+  alias: qwen3
+
+# GPU resource from generic-device-plugin
+gpuResourceLimit: 1
+
+service:
+  port: 8080

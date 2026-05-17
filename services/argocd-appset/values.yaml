@@ -45,7 +45,10 @@ kubePrometheusStack:
 metricsServer:
   enable: true
 
-ollama:
+genericDevicePlugin:
+  enable: true
+
+ramalama:
   enable: true
 
 redisOperator:

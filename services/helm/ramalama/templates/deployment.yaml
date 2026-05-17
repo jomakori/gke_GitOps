@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ramalama
+  labels:
+    app.kubernetes.io/name: ramalama
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ramalama
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ramalama
+    spec:
+      initContainers:
+      - name: download-model
+        image: curlimages/curl:latest
+        command:
+        - sh
+        - -c
+        - |
+          curl -L -o /models/{{ .Values.model.alias }}.gguf {{ .Values.model.url }}
+        volumeMounts:
+        - name: models
+          mountPath: /models
+      containers:
+      - name: llama-server
+        image: {{ .Values.image }}:{{ .Values.tag }}
+        command:
+        - llama-server
+        - --host
+        - "0.0.0.0"
+        - --port
+        - "{{ .Values.service.port }}"
+        - --model
+        - /models/{{ .Values.model.alias }}.gguf
+        - --alias
+        - {{ .Values.model.alias }}
+        - -ngl
+        - "999"
+        ports:
+        - containerPort: {{ .Values.service.port }}
+          name: http
+          protocol: TCP
+        resources:
+          limits:
+            squat.ai/dri: {{ .Values.gpuResourceLimit }}
+        volumeMounts:
+        - name: models
+          mountPath: /models
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      volumes:
+      - name: models
+        emptyDir: {}

@@ -1,6 +1,0 @@
-# Docs: https://github.com/ollama/ollama/tree/main/deploy/helm/ollama
-ollama:
-  ollama:
-    models:
-      pull:
-        - gemma3:1b
