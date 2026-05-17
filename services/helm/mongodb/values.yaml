@@ -1,6 +1,14 @@
 # Source: https://artifacthub.io/packages/helm/bitnami/mongodb
 mongodb:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Image Configuration                                                       │
+  # │   Bitnami removed images from docker.io/bitnami. Use bitnamilegacy fork.    │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/mongodb
+    tag: 8.0.13-debian-12-r0
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Storage Configuration                                                     │
   # └─────────────────────────────────────────────────────────────────────────────┘
   persistence:
