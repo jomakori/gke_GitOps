@@ -1,24 +1,27 @@
-# Source: https://artifacthub.io/packages/helm/bitnami/mongodb
-mongodb:
-  # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Image Configuration                                                       │
-  # │   Bitnami removed images from docker.io/bitnami. Use bitnamilegacy fork.    │
-  # └─────────────────────────────────────────────────────────────────────────────┘
-  image:
-    registry: docker.io
-    repository: bitnamilegacy/mongodb
-    tag: 8.0.13-debian-12-r0
-  # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Storage Configuration                                                     │
-  # └─────────────────────────────────────────────────────────────────────────────┘
-  persistence:
-    enabled: true
-    storageClass:
-    size: "10Gi"
-  # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Resource Configuration                                                    │
-  # └─────────────────────────────────────────────────────────────────────────────┘
-  resources:
-    requests:
-      cpu: "256m"
-      memory: "512Mi"
+# Official MongoDB image (multi-arch: amd64 + arm64)
+image:
+  registry: docker.io
+  repository: mongo
+  tag: "8.3.1"
+
+# Authentication — single user is created as root
+auth:
+  username: ""
+  password: ""
+  database: ""
+
+# Service
+service:
+  port: 27017
+
+# Persistent storage
+persistence:
+  enabled: true
+  storageClass: ""
+  size: "10Gi"
+
+# Resource limits
+resources:
+  requests:
+    cpu: "256m"
+    memory: "512Mi"

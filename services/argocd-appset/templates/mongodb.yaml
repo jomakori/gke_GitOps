@@ -16,15 +16,13 @@ spec:
       valueFiles:
         - values.yaml
       parameters:
-        - name: mongodb.auth.usernames
-          value: '{{"{"}}{{ $.Values.mongoDBCreds.user }}{{"}"}}'
-        - name: mongodb.auth.passwords
-          value: '{{"{"}}{{ $.Values.mongoDBCreds.pw }}{{"}"}}'
-        - name: mongodb.auth.databases
-          value: '{{"{"}}{{ $.Values.mongoDBCreds.user }}{{"}"}}'
-        - name: mongodb.auth.host
-          value: "{{ $.Values.mongoDBCreds.host }}"
-        - name: mongodb.persistence.storageClass
+        - name: auth.username
+          value: "{{ $.Values.mongoDBCreds.user }}"
+        - name: auth.password
+          value: "{{ $.Values.mongoDBCreds.pw }}"
+        - name: auth.database
+          value: "{{ $.Values.mongoDBCreds.user }}"
+        - name: persistence.storageClass
           value: "{{ $.Values.storageClass }}"
   destination:
     server: 'https://kubernetes.default.svc'
