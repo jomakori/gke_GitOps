@@ -23,8 +23,8 @@ spec:
           value: "{{ .Values.grafanaCreds.admin }}"
         - name: kube-prometheus-stack.grafana.adminPassword
           value: "{{ .Values.grafanaCreds.pw }}"
-        - name: kube-prometheus-stack.prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName
-          value: "{{ .Values.storageClass }}"
+        # storageClass is set in values.yaml; not overridden here
+        # so Prometheus uses the cluster's default storage class
   destination:
     server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" }}
     namespace: kube-prometheus-stack
