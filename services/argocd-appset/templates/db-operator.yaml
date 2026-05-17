@@ -34,6 +34,8 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 2
       backoff:
@@ -43,4 +45,10 @@ spec:
     managedNamespaceMetadata:
       labels:
         argocd.argoproj.io/respect-existing: "true"
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /status
+        - /metadata/annotations
 {{- end }}
