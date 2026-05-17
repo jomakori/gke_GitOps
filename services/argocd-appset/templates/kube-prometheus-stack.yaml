@@ -19,9 +19,9 @@ spec:
       valueFiles:
         - values.yaml
       parameters:
-        - name: kube-prometheus-stack.adminUser
+        - name: kube-prometheus-stack.grafana.adminUser
           value: "{{ .Values.grafanaCreds.admin }}"
-        - name: kube-prometheus-stack.adminPassword
+        - name: kube-prometheus-stack.grafana.adminPassword
           value: "{{ .Values.grafanaCreds.pw }}"
         - name: kube-prometheus-stack.prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName
           value: "{{ .Values.storageClass }}"

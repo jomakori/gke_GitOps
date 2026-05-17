@@ -17,7 +17,7 @@ spec:
         - values.yaml
       parameters:
         - name: mongodb.auth.usernames
-          value: "{{ $.Values.mongoDBCreds.user }}"
+          value: '{{"{"}}{{ $.Values.mongoDBCreds.user }}{{"}"}}'
         - name: mongodb.auth.passwords
           value: "{{ $.Values.mongoDBCreds.pw }}"
         - name: mongodb.auth.databases
