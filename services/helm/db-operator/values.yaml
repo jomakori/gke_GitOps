@@ -55,7 +55,7 @@ stackgresOperator:
         size: 1Gi
         accessModes:
         - ReadWriteOnce
-        storageClass: csi-hostpath-sc
+        storageClass: local-path
 
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Backup Storage Configuration                                             │
