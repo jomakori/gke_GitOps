@@ -8,7 +8,7 @@ region: ""
 account: ""
 clusterName: ""
 clusterEndpoint: ""
-storageClass: "standard"
+storageClass: "local-path"
 grafanaCreds:
   admin:
   pw:
