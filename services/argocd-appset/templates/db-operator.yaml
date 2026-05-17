@@ -13,6 +13,7 @@ spec:
     path: services/helm/db-operator
     targetRevision: "{{ $.Values.targetRevision }}"
     helm:
+      skipCrds: true
       valueFiles:
         - values.yaml
       parameters:
