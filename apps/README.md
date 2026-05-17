@@ -1,57 +1,51 @@
-# Apps Folder
+# Apps
 
-This folder contains the GitOps configuration for 1st-party applications we build and host in this Kubernetes cluster.
+This folder contains GitOps configuration for **1st-party applications** — my own workloads running on the jmak-lab Minikube cluster.
 
-## Documentation
+## Structure
 
-This repository can be used in concert with the [Amazon EKS Blueprints framework](https://catalog.workshops.aws/eks-blueprints-terraform/en-US/030-provision-eks-cluster/6-bootstrap-argocd). Please see the [ArgoCD add-on documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#app-of-apps) for details on how to easily how to configure microservices workloads in the cluster using ArgoCD
-
-## Repo Structure
-
-The structure of this repository follows the ArgoCD [App of Apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#app-of-apps) pattern. The configuration in this repository is organized into two directories: `helm` and `argocd-appset`.
+Follows the ArgoCD [App-of-Apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#app-of-apps) pattern.
 
 ```
-├── 📦helm
-└── 📦argocd-appset
+apps/
+├── argocd-appset/          ← ArgoCD Application manifests
+│   ├── Chart.yaml
+│   ├── templates/
+│   │   ├── namespaces.yaml
+│   │   ├── demo-app.yaml
+│   │   └── notes-app.yaml
+│   └── values.yaml
+└── helm/                   ← Helm chart source for each app
+    ├── demo-app/
+    └── notes-app/
 ```
 
 ### argocd-appset
 
-The `argocd-appset` directory contains the ArgoCD application manifest needed for the deployment of each application. These manifests defines the application and where its resources (Helm Chart) are held - within this repo. You can learn more about [ArgoCD Application manifests here](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/)
-```
-📦argocd-appset
- ┣ 📂templates
- ┃ ┣ 📜demoapp1.yaml
- ┃ ┣ 📜demoapp.yaml
- ┃ ┗ 📜namespaces.yaml
- ┣ 📜Chart.yaml
- ┗ 📜values.yaml
-```
+ArgoCD Application manifests that tell ArgoCD where to find each app's Helm chart and what parameters to pass. Templates use values from `values.yaml` — some of which are injected by Terraform (Doppler tokens).
 
-### Helm
+### helm
 
-The `helm` directory contains the actual helm template for each of our apps and their custom values. The `templates` subfolder hosts the actual kubernetes manifests for our app deployment - including the service, ingress, etc. They are `yaml` based manifests that use dynamic templating - hence the `.tpl` extension
+Each app has a standard Helm chart with template files (`.tpl` extension for Go-templated YAML):
 
 ```
-📦helm
- ┣ 📂demoapp1
- ┃ ┣ 📂templates
- ┃ ┃ ┣ 📜deployment.tpl
- ┃ ┃ ┣ 📜doppler_secrets.tpl
- ┃ ┃ ┣ 📜hpa.tpl
- ┃ ┃ ┣ 📜ingress.tpl
- ┃ ┃ ┣ 📜service-account.tpl
- ┃ ┃ ┗ 📜service.tpl
- ┃ ┣ 📜Chart.yaml
- ┃ ┗ 📜values.yaml
- ┗ 📂demoapp
- ┃ ┣ 📂templates
- ┃ ┃ ┣ 📜deployment.tpl
- ┃ ┃ ┣ 📜doppler_secrets.tpl
- ┃ ┃ ┣ 📜hpa.tpl
- ┃ ┃ ┣ 📜ingress.tpl
- ┃ ┃ ┣ 📜service-account.tpl
- ┃ ┃ ┗ 📜service.tpl
- ┃ ┣ 📜Chart.yaml
- ┃ ┗ 📜values.yaml
+helm/<app>/
+├── Chart.yaml
+├── values.yaml
+└── templates/
+    ├── deployment.tpl
+    ├── doppler_secrets.tpl
+    ├── hpa.tpl
+    ├── ingress.tpl
+    ├── service-account.tpl
+    └── service.tpl
 ```
+
+## Adding an App
+
+1. Create a Helm chart under `helm/<app-name>/`
+2. Add a namespace in `argocd-appset/templates/namespaces.yaml`
+3. Create an Application manifest in `argocd-appset/templates/<app-name>.yaml`
+4. Register it in `argocd-appset/values.yaml`
+5. If it needs environment secrets, add Doppler tokens to the Terraform config in `k8s-maklab-cluster`
+6. Test and PR
