@@ -19,9 +19,9 @@ spec:
         - name: mongodb.auth.usernames
           value: '{{"{"}}{{ $.Values.mongoDBCreds.user }}{{"}"}}'
         - name: mongodb.auth.passwords
-          value: "{{ $.Values.mongoDBCreds.pw }}"
+          value: '{{"{"}}{{ $.Values.mongoDBCreds.pw }}{{"}"}}'
         - name: mongodb.auth.databases
-          value: "{{ $.Values.mongoDBCreds.user }}"
+          value: '{{"{"}}{{ $.Values.mongoDBCreds.user }}{{"}"}}'
         - name: mongodb.auth.host
           value: "{{ $.Values.mongoDBCreds.host }}"
         - name: mongodb.persistence.storageClass
