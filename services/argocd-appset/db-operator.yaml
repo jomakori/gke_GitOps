@@ -1,0 +1,57 @@
+name: db-operator
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: services/helm/db-operator
+  targetRevision: main
+  helm:
+    values: |
+      stackgresOperator:
+        adminui:
+          service:
+            exposeHTTP: false
+            type: ClusterIP
+        cert:
+          autoapprove: true
+          createForOperator: true
+          createForWebApi: true
+          createForCollector: true
+          regenerateCert: true
+          certDuration: 730
+          regenerateWebCert: true
+          regenerateWebRsa: true
+        rbac:
+          create: true
+        authentication:
+          type: jwt
+          createAdminSecret: true
+          user: null
+          password: null
+        grafana:
+          autoEmbed: true
+          schema: http
+          user: null
+          password: null
+        extensions:
+          repositoryUrls:
+            - https://extensions.stackgres.io/postgres/repository
+          cache:
+            enabled: true
+            preloadedExtensions:
+              - x86_64/linux/timescaledb-1\.7\.4-pg12
+            persistentVolume:
+              size: 1Gi
+              accessModes:
+                - ReadWriteOnce
+              storageClass: local-path
+        backupStorage:
+          enabled: false
+        clusters:
+          environments:
+            - name: staging
+              storageSize: 1Gi
+            - name: production
+              storageSize: 2Gi
+destination:
+  server: https://kubernetes.default.svc
+  namespace: db-operator
+syncWave: 0

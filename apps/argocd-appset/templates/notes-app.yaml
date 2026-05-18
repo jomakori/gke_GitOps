@@ -38,13 +38,9 @@ spec:
         # Defines staging values
         - name: environments[0].name
           value: "{{ .Values.notesApp.environment.staging.namespace }}"
-        - name: environments[0].dopplerToken
-          value: "{{ .Values.notesApp.environment.staging.dopplerToken }}"
         # Defines production values
         - name: environments[1].name
           value: "{{ .Values.notesApp.environment.production.namespace }}"
-        - name: environments[1].dopplerToken
-          value: "{{ .Values.notesApp.environment.production.dopplerToken }}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

@@ -1,0 +1,34 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: cluster-mesh
+  namespace: istio-system
+spec:
+  profile: default
+  components:
+    base:
+      enabled: true
+    pilot:
+      enabled: true
+    ingressGateways:
+      - name: istio-ingressgateway
+        enabled: true
+    egressGateways:
+      - name: istio-egressgateway
+        enabled: false
+    cni:
+      enabled: false
+  meshConfig:
+    enableTracing: true
+    defaultConfig:
+      terminationDrainDuration: 30s
+      proxyMetadata:
+        ISTIO_META_DNS_CAPTURE: "true"
+    accessLogFile: /dev/stdout
+    accessLogFormat: JSON
+  values:
+    global:
+      meshID: jmak-lab
+      multiCluster:
+        clusterName: jmak-lab
+      network: k8s-network

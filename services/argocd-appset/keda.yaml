@@ -1,0 +1,19 @@
+name: keda
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: services/helm/keda
+  targetRevision: main
+  helm:
+    values: |
+      keda:
+        serviceAccount:
+          create: true
+          name: keda
+        metricsServer:
+          enabled: true
+        webhooks:
+          enabled: true
+destination:
+  server: https://kubernetes.default.svc
+  namespace: keda
+syncWave: 0

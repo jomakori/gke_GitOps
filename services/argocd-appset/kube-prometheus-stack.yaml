@@ -1,0 +1,27 @@
+name: kube-prometheus-stack
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: services/helm/kube-prometheus-stack
+  targetRevision: main
+  helm:
+    values: |
+      defaultRules:
+        create: true
+        rules:
+          etcd: false
+        kubeScheduler: false
+      alertmanager:
+        service:
+          port: 15010
+      kubeControllerManager:
+        enabled: false
+      kubeEtcd:
+        enabled: false
+      kubeSchedulerAlerting:
+        enabled: false
+      kubeSchedulerRecording:
+        enabled: false
+destination:
+  server: https://kubernetes.default.svc
+  namespace: kube-prometheus-stack
+syncWave: 1

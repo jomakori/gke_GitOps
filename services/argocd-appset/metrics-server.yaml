@@ -1,0 +1,19 @@
+name: metrics-server
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: services/helm/metrics-server
+  targetRevision: main
+  helm:
+    values: |
+      metrics-server:
+        replicas: 3
+        containerPort: 10250
+        podDisruptionBudget:
+          enabled: true
+          maxUnavailable: 1
+        args:
+          - --kubelet-insecure-tls
+destination:
+  server: https://kubernetes.default.svc
+  namespace: metrics-server
+syncWave: 0
