@@ -1,0 +1,9 @@
+name: demo-app
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: apps/helm/demo-app
+  targetRevision: main
+destination:
+  server: https://kubernetes.default.svc
+  namespace: demo-app
+syncWave: 10

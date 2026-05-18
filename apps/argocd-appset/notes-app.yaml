@@ -1,0 +1,9 @@
+name: notes-app
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: apps/helm/notes-app
+  targetRevision: main
+destination:
+  server: https://kubernetes.default.svc
+  namespace: notes-app
+syncWave: 10

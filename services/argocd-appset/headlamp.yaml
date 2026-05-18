@@ -1,0 +1,31 @@
+name: headlamp
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: services/helm/headlamp
+  targetRevision: main
+  helm:
+    values: |
+      headlamp:
+        clusterRoleBinding:
+          create: true
+          clusterRoleName: cluster-admin
+        initContainers:
+          - command:
+              - /bin/sh
+              - -c
+              - mkdir -p /build/plugins && cp -r /plugins/* /build/plugins/
+            image: quay.io/kubescape/headlamp-plugin:latest
+            name: kubescape-plugin
+            volumeMounts:
+              - mountPath: /build/plugins
+                name: headlamp-plugins
+        volumeMounts:
+          - name: headlamp-plugins
+            mountPath: /build/plugins
+        volumes:
+          - name: headlamp-plugins
+            emptyDir: {}
+destination:
+  server: https://kubernetes.default.svc
+  namespace: headlamp
+syncWave: 0

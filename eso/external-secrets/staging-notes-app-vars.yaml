@@ -1,0 +1,17 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: staging-notes-app-vars
+  namespace: staging-notes-app
+spec:
+  refreshInterval: 30s
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: doppler-auth
+  target:
+    name: staging-notes-app-vars
+    deletionPolicy: Merge
+  dataFrom:
+    - find:
+        name:
+          regexp: .*

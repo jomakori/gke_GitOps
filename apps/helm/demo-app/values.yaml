@@ -21,7 +21,6 @@ environments:
   - name: ""
     host: "oauth.demo.net"
     rollout: active
-    dopplerToken: ""
     image:
       repository: 123456.dkr.ecr.us-east-2.amazonaws.com/demoapp
       tag: "latest"

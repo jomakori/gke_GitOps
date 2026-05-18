@@ -1,0 +1,20 @@
+name: ramalama
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: services/helm/ramalama
+  targetRevision: main
+  helm:
+    values: |
+      image: quay.io/ramalama/ramalama
+      tag: latest
+      replicas: 1
+      model:
+        url: https://huggingface.co/bartowski/Qwen_Qwen3-4B-GGUF/resolve/main/Qwen_Qwen3-4B-Q4_K_M.gguf
+        alias: qwen3
+      gpuResourceLimit: 1
+      service:
+        port: 8080
+destination:
+  server: https://kubernetes.default.svc
+  namespace: ramalama
+syncWave: 0

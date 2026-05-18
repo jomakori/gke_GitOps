@@ -1,0 +1,12 @@
+name: mongodb
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: services/helm/mongodb
+  targetRevision: main
+  helm:
+    values: |
+      storageClass: csi-hostpath-sc
+destination:
+  server: https://kubernetes.default.svc
+  namespace: mongodb
+syncWave: 0

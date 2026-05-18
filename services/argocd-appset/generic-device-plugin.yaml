@@ -1,0 +1,55 @@
+name: generic-device-plugin
+source:
+  repoURL: https://github.com/jomakori/gke_GitOps
+  path: services/helm/generic-device-plugin
+  targetRevision: main
+  helm:
+    values: |
+      generic-device-plugin:
+        image:
+          repository: ghcr.io/squat/generic-device-plugin
+          pullPolicy: IfNotPresent
+          tag: latest
+        controller:
+          type: daemonset
+        securityContext:
+          privileged: true
+        env:
+          DOMAIN: squat.ai
+        persistence:
+          device-plugins:
+            enabled: true
+            type: hostPath
+            hostPath: /var/lib/kubelet/device-plugins
+          dev:
+            enabled: true
+            type: hostPath
+            hostPath: /dev
+        config:
+          enabled: true
+          data: |-
+            devices:
+              - name: dri
+                groups:
+                  - count: 4
+                    paths:
+                      - path: /dev/dri
+        service:
+          main:
+            ports:
+              http:
+                port: 8080
+        probes:
+          liveness:
+            type: HTTP
+            path: /health
+          readiness:
+            type: HTTP
+            path: /health
+          startup:
+            type: HTTP
+            path: /health
+destination:
+  server: https://kubernetes.default.svc
+  namespace: generic-device-plugin
+syncWave: 0
