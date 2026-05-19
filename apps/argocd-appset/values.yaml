@@ -2,21 +2,97 @@
 # │ Global Values - shared values - passed in via DevOps repo (Terraform)                    │
 # └──────────────────────────────────────────────────────────────────────────────────────────┘
 repoUrl: ""
-path: ""
 targetRevision: ""
 storageClass: "csi-hostpath-sc"
+argoNamespace: ""
+argoProject: ""
+destinationServer: ""
 
 # ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ App Values - individual values - passed in via DevOps repo (Terraform)                   │
+# │ App Environment Values - per-app environment config - injected by Terraform              │
 # └──────────────────────────────────────────────────────────────────────────────────────────┘
 notesApp:
-  enabled: false
   environment:
     staging:
       namespace: staging-notes-app
-      # access to Doppler secrets - passed via Terraform (DevOps repo)
       dopplerToken: ""
     production:
       namespace: prod-notes-app
-      # access to Doppler secrets - passed via Terraform (DevOps repo)
       dopplerToken: ""
+
+demoApp:
+  environment:
+    staging:
+      namespace: staging-demo-app
+      dopplerToken: ""
+    production:
+      namespace: prod-demo-app
+      dopplerToken: ""
+
+# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
+# │ App Configurations                                                                       │
+# └──────────────────────────────────────────────────────────────────────────────────────────┘
+apps:
+  notesApp:
+    enable: false
+    name: notes-app
+    syncWave: "0"
+    helmPath: apps/helm/notes-app
+    destNamespace: argocd
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+          - /spec/replicas
+      - group: apps
+        kind: Secret
+        jsonPointers:
+          - /metadata/argocd.argoproj.io/sync-wave
+    parameters:
+      - name: environments[0].name
+        value: "{{ .Values.notesApp.environment.staging.namespace }}"
+      - name: environments[0].dopplerToken
+        value: "{{ .Values.notesApp.environment.staging.dopplerToken }}"
+      - name: environments[1].name
+        value: "{{ .Values.notesApp.environment.production.namespace }}"
+      - name: environments[1].dopplerToken
+        value: "{{ .Values.notesApp.environment.production.dopplerToken }}"
+
+  demoApp:
+    enable: false
+    name: demo-app
+    syncWave: "0"
+    helmPath: apps/helm/demo-app
+    destNamespace: argocd
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+          - /spec/replicas
+      - group: apps
+        kind: Secret
+        jsonPointers:
+          - /metadata/argocd.argoproj.io/sync-wave
+    parameters:
+      - name: environments[0].name
+        value: "{{ .Values.demoApp.environment.staging.namespace }}"
+      - name: environments[0].dopplerToken
+        value: "{{ .Values.demoApp.environment.staging.dopplerToken }}"
+      - name: environments[1].name
+        value: "{{ .Values.demoApp.environment.production.namespace }}"
+      - name: environments[1].dopplerToken
+        value: "{{ .Values.demoApp.environment.production.dopplerToken }}"
