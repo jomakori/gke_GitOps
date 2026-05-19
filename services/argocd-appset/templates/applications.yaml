@@ -1,0 +1,13 @@
+{{- range $key, $cfg := .Values.services }}
+{{- if $cfg.enable }}
+{{- if $cfg.environments }}
+{{- range $env := $cfg.environments }}
+---
+{{ include "argocd.application.multi" (dict "config" $cfg "env" $env "root" $) }}
+{{- end }}
+{{- else }}
+---
+{{ include "argocd.application" (dict "key" $key "config" $cfg "root" $) }}
+{{- end }}
+{{- end }}
+{{- end }}
