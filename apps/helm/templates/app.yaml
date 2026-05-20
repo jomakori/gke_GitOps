@@ -1,0 +1,3 @@
+{{- $appName := required "appName must be set (--set appName=<name>)" .Values.appName }}
+{{- $appConfig := required (printf "App '%s' not found in values" $appName) (index .Values $appName) }}
+{{- include "app.manifests" (dict "appName" $appName "appConfig" $appConfig "root" $) }}

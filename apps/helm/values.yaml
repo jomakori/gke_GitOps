@@ -1,0 +1,60 @@
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ Global Settings — shared across all apps                         │
+# └──────────────────────────────────────────────────────────────────┘
+domain: maklab.net
+registry: 123456.dkr.ecr.us-east-2.amazonaws.com
+storageClass: "csi-hostpath-sc"
+
+ingress:
+  targetType: ip
+  successCodes: "200"
+  certificateArn: "arn:aws:acm:us-east-2:123456:certificate/6e1523fd-ced9-4d7e-abe8-0ed7e0d63fac"
+  sslPolicy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ App Specs — each app is a top-level key                          │
+# │ Select which app renders via: --set appName=<key>                │
+# │                                                                  │
+# │ Conventions (can be overridden per app):                         │
+# │   enable_staging : true        (staging ON unless explicitly off)│
+# │   subdomain     : <appName>    (prod) / <appName>-staging        │
+# │   HPA.minReplicas : service.replicas  (defaults to replicas)     │
+# └──────────────────────────────────────────────────────────────────┘
+
+demoApi:
+  enable_staging: true
+  enable_scaling:
+    HPA:
+      minReplicas: 2
+      maxReplicas: 6
+  environments:
+    staging:
+      tag: 1.23
+    production:
+      tag: 1.43
+  service:
+    port: 3000
+    resourceRequests:
+      cpu: 256m
+      memory: 256Mi
+    storage:
+      size: 1Gi
+
+notesUi:
+  enable_staging: true
+  enable_scaling:
+    HPA:
+      minReplicas: 1
+      maxReplicas: 6
+  environments:
+    staging:
+      tag: "pr-7"
+    production:
+      tag: "1.0.1"
+  service:
+    port: 8080
+    resourceRequests:
+      cpu: 100m
+      memory: 256Mi
+    storage:
+      size: 1Gi
