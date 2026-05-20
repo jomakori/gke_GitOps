@@ -1,13 +1,14 @@
 # Create envs/namespaces for apps
+# Namespace derived from app key (kebab) + env name
 {{- range $key, $cfg := .Values.apps }}
 {{- if $cfg.enable }}
-{{- $appEnv := index $.Values $key }}
-{{- range $envName, $env := $appEnv.environment }}
+{{- $kebabKey := include "kebab" $key }}
+{{- range $envName, $env := (index $.Values $key).environment }}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: {{ $env.namespace }}
+    name: {{ $kebabKey }}-{{ $envName }}
 {{- end }}
 {{- end }}
 {{- end }}

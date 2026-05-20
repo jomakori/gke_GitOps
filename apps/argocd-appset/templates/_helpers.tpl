@@ -1,7 +1,16 @@
+{{- /* ── Helpers ─────────────────────────────────────────────────────── */}}
+{{- /*
+  kebab converts CamelCase to kebab-case.
+  Ex: demoApi → demo-api, notesUi → notes-ui.
+*/}}
+{{- define "kebab" -}}
+{{- regexReplaceAll "(.)([A-Z])" . "${1}-${2}" | lower -}}
+{{- end -}}
+
 {{- define "argocd.application" -}}
 {{- $cfg := .config -}}
 {{- $root := .root -}}
-{{- $name := $cfg.name -}}
+{{- $name := .name -}}
 {{- $namespace := $cfg.argocdNamespace | default (printf "%s" ($root.Values.argoNamespace | default "argocd")) -}}
 {{- $project := $cfg.argoProject | default (printf "%s" ($root.Values.argoProject | default "default")) -}}
 apiVersion: argoproj.io/v1alpha1

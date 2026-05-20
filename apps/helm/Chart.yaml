@@ -1,6 +1,6 @@
 apiVersion: v2
-name: notes-app
-description: A Helm chart for notes-app
+name: apps
+description: Spec-driven Helm chart for all application workloads
 version: 0.1.0
 appVersion: "1.0"
 maintainers:

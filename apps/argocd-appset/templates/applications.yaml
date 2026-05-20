@@ -1,6 +1,6 @@
 {{- range $key, $cfg := .Values.apps }}
 {{- if $cfg.enable }}
 ---
-{{- include "argocd.application" (dict "config" $cfg "root" $) }}
+{{- include "argocd.application" (dict "name" $key "config" $cfg "root" $) }}
 {{- end }}
 {{- end }}

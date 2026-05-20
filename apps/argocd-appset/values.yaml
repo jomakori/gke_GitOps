@@ -9,35 +9,31 @@ argoProject: ""
 destinationServer: ""
 
 # ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ App Environment Values - per-app environment config - injected by Terraform              │
+# │ App Environment Values - per-app env config - injected by Terraform                      │
+# │ Keys match the apps keys below — used for dopplerToken injection.                        │
 # └──────────────────────────────────────────────────────────────────────────────────────────┘
-notesApp:
+demoApi:
   environment:
     staging:
-      namespace: staging-notes-app
       dopplerToken: ""
     production:
-      namespace: prod-notes-app
       dopplerToken: ""
 
-demoApp:
+notesUi:
   environment:
     staging:
-      namespace: staging-demo-app
       dopplerToken: ""
     production:
-      namespace: prod-demo-app
       dopplerToken: ""
 
 # ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ App Configurations                                                                       │
+# │ App Configurations — key = app name (used for Application metadata.name + chart lookup)  │
 # └──────────────────────────────────────────────────────────────────────────────────────────┘
 apps:
-  notesApp:
+  demoApi:
     enable: false
-    name: notes-app
     syncWave: "0"
-    helmPath: apps/helm/notes-app
+    helmPath: apps/helm/
     destNamespace: argocd
     argocdNamespace: argocd
     argoProject: default
@@ -56,20 +52,17 @@ apps:
         jsonPointers:
           - /metadata/argocd.argoproj.io/sync-wave
     parameters:
-      - name: environments[0].name
-        value: "{{ .Values.notesApp.environment.staging.namespace }}"
-      - name: environments[0].dopplerToken
-        value: "{{ .Values.notesApp.environment.staging.dopplerToken }}"
-      - name: environments[1].name
-        value: "{{ .Values.notesApp.environment.production.namespace }}"
-      - name: environments[1].dopplerToken
-        value: "{{ .Values.notesApp.environment.production.dopplerToken }}"
+      - name: appName
+        value: "demoApi"
+      - name: demoApi.environments.staging.dopplerToken
+        value: "{{ .Values.demoApi.environment.staging.dopplerToken }}"
+      - name: demoApi.environments.production.dopplerToken
+        value: "{{ .Values.demoApi.environment.production.dopplerToken }}"
 
-  demoApp:
+  notesUi:
     enable: false
-    name: demo-app
     syncWave: "0"
-    helmPath: apps/helm/demo-app
+    helmPath: apps/helm/
     destNamespace: argocd
     argocdNamespace: argocd
     argoProject: default
@@ -88,11 +81,9 @@ apps:
         jsonPointers:
           - /metadata/argocd.argoproj.io/sync-wave
     parameters:
-      - name: environments[0].name
-        value: "{{ .Values.demoApp.environment.staging.namespace }}"
-      - name: environments[0].dopplerToken
-        value: "{{ .Values.demoApp.environment.staging.dopplerToken }}"
-      - name: environments[1].name
-        value: "{{ .Values.demoApp.environment.production.namespace }}"
-      - name: environments[1].dopplerToken
-        value: "{{ .Values.demoApp.environment.production.dopplerToken }}"
+      - name: appName
+        value: "notesUi"
+      - name: notesUi.environments.staging.dopplerToken
+        value: "{{ .Values.notesUi.environment.staging.dopplerToken }}"
+      - name: notesUi.environments.production.dopplerToken
+        value: "{{ .Values.notesUi.environment.production.dopplerToken }}"
