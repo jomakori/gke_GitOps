@@ -1,36 +1,12 @@
-# Global Values — passed in via Terraform
-repoUrl: ""
-targetRevision: ""
-storageClass: "local-path"
+# Global Values - shared values - passed in via DevOps repo (Terraform)
 argoNamespace: ""
 argoProject: ""
-destinationServer: ""
-
-# Centralized parameters
-grafanaCreds:
-  admin:
-  pw:
-
-mongoDBCreds:
-  host:
-  user:
-  pw:
-
-dbOperator:
-  creds:
-    user:
-    pw:
-
-externalSecrets:
-  serviceAccountName:
-
-opencost:
-  opencost:
-    exporter:
-      defaultClusterId:
-
-redisOperator:
-  pw:
+clusterDomain: ""
+clusterName: ""
+clusterServer: ""
+repoUrl: ""
+storageClass:
+targetRevision: ""
 
 # Service Configurations
 services:
@@ -78,11 +54,7 @@ services:
         namespace: kube-prometheus-stack
         jsonPointers:
           - /spec/template/spec/containers/0/resources
-    parameters:
-      - name: kube-prometheus-stack.grafana.adminUser
-        value: "{{ .Values.grafanaCreds.admin }}"
-      - name: kube-prometheus-stack.grafana.adminPassword
-        value: "{{ .Values.grafanaCreds.pw }}"
+    dopplerConfig: "svc_grafana"
 
   # Wave 1 — Istio CRDs + secret engine
   istioBase:
@@ -156,6 +128,7 @@ services:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+    dopplerConfig: "svc_cloudflare"
 
   externalDns:
     enable: true
@@ -205,15 +178,10 @@ services:
         kind: CustomResourceDefinition
         jqPathExpressions:
           - .
+    dopplerConfig: "svc_postgres"
     parameters:
-      - name: stackgres-operator.authentication.user
-        value: "{{ .Values.dbOperator.creds.user }}"
-      - name: stackgres-operator.authentication.password
-        value: "{{ .Values.dbOperator.creds.pw }}"
-      - name: stackgres-operator.grafana.user
-        value: "{{ .Values.grafanaCreds.admin }}"
-      - name: stackgres-operator.grafana.password
-        value: "{{ .Values.grafanaCreds.pw }}"
+      - name: persistence.storageClass
+        value: "{{ .Values.storageClass }}"
 
   mongodb:
     enable: true
@@ -226,13 +194,8 @@ services:
     selfHeal: true
     syncOptions:
       - CreateNamespace=true
+    dopplerConfig: "svc_mongodb"
     parameters:
-      - name: auth.username
-        value: "{{ .Values.mongoDBCreds.user }}"
-      - name: auth.password
-        value: "{{ .Values.mongoDBCreds.pw }}"
-      - name: auth.database
-        value: "{{ .Values.mongoDBCreds.user }}"
       - name: persistence.storageClass
         value: "{{ .Values.storageClass }}"
 
@@ -292,7 +255,5 @@ services:
       - Replace=true
       - ServerSideApply=true
     parameters:
-      - name: redis-cluster.password
-        value: "{{ .Values.redisOperator.pw }}"
       - name: redis-cluster.persistence.storageClass
         value: "{{ .Values.storageClass }}"

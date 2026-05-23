@@ -5,14 +5,14 @@ external-dns:
     name: cloudflare
 
   # ── Cloudflare credentials (injected via ExternalSecret → K8s Secret) ─
-  # Secret name: cloudflare-api-token  (key: api-token)
+  # Secret name: cloudflare-api-token  (key: CF_API_TOKEN)
   # Created by istio-config chart via ExternalSecret → Doppler
   env:
     - name: CF_API_TOKEN
       valueFrom:
         secretKeyRef:
           name: cloudflare-api-token
-          key: api-token
+          key: CF_API_TOKEN
 
   # ── Sources: watch Istio Gateway hosts + Services ─────────────────────
   sources:
