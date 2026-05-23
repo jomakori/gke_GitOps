@@ -1,14 +1,21 @@
 # Create envs/namespaces for apps
 # Namespace derived from app key (kebab) + env name
+# Istio ambient mode is enrolled by default; set enable_istio: false in values to opt out.
 {{- range $key, $cfg := .Values.apps }}
 {{- if $cfg.enable }}
 {{- $kebabKey := include "kebab" $key }}
-{{- range $envName, $env := (index $.Values $key).environment }}
+{{- $appSpec := index $.Values $key }}
+{{- $enableIstio := ne (printf "%v" ($appSpec.enable_istio | default true)) "false" }}
+{{- range $envName, $env := $appSpec.environment }}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-    name: {{ $kebabKey }}-{{ $envName }}
+  name: {{ $kebabKey }}-{{ $envName }}
+  {{- if $enableIstio }}
+  labels:
+    istio.io/dataplane-mode: ambient
+  {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

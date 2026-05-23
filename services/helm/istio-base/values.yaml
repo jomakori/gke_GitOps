@@ -1,0 +1,5 @@
+# istio/base — CRDs and cluster-scoped Istio resources
+# No configuration needed; defaults are correct for ambient mode.
+base:
+  # Install CRDs via the chart (ArgoCD skipCrds=false for this chart)
+  enableCRDTemplates: true

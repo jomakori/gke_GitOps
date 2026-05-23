@@ -1,0 +1,11 @@
+apiVersion: v2
+name: istio-ingressgateway
+description: Istio ingress gateway — single shared gateway for maklab.net
+type: application
+version: 1.25.2
+appVersion: "1.25.2"
+
+dependencies:
+  - name: gateway
+    version: 1.25.2
+    repository: https://istio-release.storage.googleapis.com/charts

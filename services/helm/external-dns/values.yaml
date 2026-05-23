@@ -1,0 +1,56 @@
+# ExternalDNS — Cloudflare provider, watches Istio Gateway + Service sources
+external-dns:
+  # ── Provider ───────────────────────────────────────────────────────────
+  provider:
+    name: cloudflare
+
+  # ── Cloudflare credentials (injected via ExternalSecret → K8s Secret) ─
+  # Secret name: cloudflare-api-token  (key: api-token)
+  # Created by istio-config chart via ExternalSecret → Doppler
+  env:
+    - name: CF_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: cloudflare-api-token
+          key: api-token
+
+  # ── Sources: watch Istio Gateway hosts + Services ─────────────────────
+  sources:
+    - istio-gateway
+    - istio-virtualservice
+    - service
+
+  # ── Domain filter: only manage maklab.net ─────────────────────────────
+  domainFilters:
+    - maklab.net
+
+  # ── DNS record management policy ──────────────────────────────────────
+  policy: upsert-only   # safe default — never deletes DNS records
+
+  # ── TXT registry prevents conflicts between clusters ──────────────────
+  registry: txt
+  txtOwnerId: gke-maklab
+  txtPrefix: "external-dns-"
+
+  # ── Cloudflare-specific: fetch all records pages ───────────────────────
+  extraArgs:
+    - --cloudflare-dns-records-per-page=5000
+
+  # ── RBAC ───────────────────────────────────────────────────────────────
+  rbac:
+    create: true
+
+  # ── Resource limits ────────────────────────────────────────────────────
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+  # ── Node placement ─────────────────────────────────────────────────────
+  nodeSelector:
+    intent: apps
+
+  # ── Log level ──────────────────────────────────────────────────────────
+  logLevel: info

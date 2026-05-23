@@ -24,9 +24,10 @@
 {{- $storageClass := $root.Values.storageClass | default "csi-hostpath-sc" }}
 {{- $ingressCfg   := $root.Values.ingress      | default dict }}
 
-{{- /* App-level defaults (enable_staging, enable_domain, scaling, service) */}}
+{{- /* App-level defaults (enable_staging, enable_domain, enable_istio, scaling, service) */}}
 {{- $enableStaging := ne (printf "%v" $app.enable_staging) "false" }}
 {{- $enableDomain  := ne (printf "%v" $app.enable_domain) "false" }}
+{{- $enableIstio   := ne (printf "%v" ($app.enable_istio | default true)) "false" }}
 {{- $enableScaling := $app.enable_scaling }}
 {{- $hpa          := dict }}
 {{- if kindIs "map" $enableScaling }}
@@ -47,12 +48,12 @@
 {{- $tag         := $env.tag | default "latest" }}
 {{- $fullDomain  := printf "%s.%s" $subdomain $domain }}
 
-{{- /* ── Ingress overrides (app-level > global) ───────────────── */}}
-{{- $appIngress    := $app.ingress | default dict }}
-{{- $targetType    := $appIngress.targetType    | default $ingressCfg.targetType    | default "ip" }}
-{{- $successCodes  := $appIngress.successCodes  | default $ingressCfg.successCodes  | default "200" }}
-{{- $certArn       := $appIngress.certificateArn | default $ingressCfg.certificateArn }}
-{{- $sslPolicy     := $appIngress.sslPolicy     | default $ingressCfg.sslPolicy     | default "ELBSecurityPolicy-TLS13-1-2-2021-06" }}
+{{- /* ── Istio routing config (app-level overrides) ────────────── */}}
+{{- $istioSpec     := $app.istio | default dict }}
+{{- $gatewayRef    := $istioSpec.gateway | default "istio-system/maklab-gateway" }}
+{{- $retryAttempts := $istioSpec.retryAttempts | default 3 }}
+{{- $retryTimeout  := $istioSpec.retryTimeout | default "5s" }}
+{{- $requestTimeout := $istioSpec.requestTimeout | default "30s" }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
 {{- /* ServiceAccount + Registry Secret                              */}}
@@ -209,46 +210,38 @@ spec:
     protocol: TCP
     port: 80
     targetPort: {{ $svc.port }}
-  - name: https
-    protocol: TCP
-    port: 443
-    targetPort: {{ $svc.port }}
-  type: NodePort
+  type: {{ ternary "ClusterIP" "NodePort" $enableIstio }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
-{{- /* Ingress (ALB) — conditional on enable_domain                    */}}
+{{- /* VirtualService — Istio routing (replaces ALB Ingress)           */}}
+{{- /* Conditional on enable_domain AND enable_istio                   */}}
 {{- /* ═════════════════════════════════════════════════════════════ */}}
-{{- if $enableDomain }}
+{{- if and $enableDomain $enableIstio }}
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: networking.istio.io/v1
+kind: VirtualService
 metadata:
-  name: {{ $namespace }}-ingress
+  name: {{ $namespace }}-vs
   namespace: {{ $namespace }}
-  annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/target-type: {{ $targetType }}
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/certificate-arn: {{ $certArn | quote }}
-    alb.ingress.kubernetes.io/ssl-policy: {{ $sslPolicy | quote }}
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/success-codes: {{ $successCodes | quote }}
   labels:
     app: {{ $appName }}
     env: {{ $envName }}
 spec:
-  rules:
-    - host: {{ $fullDomain }}
-      http:
-        paths:
-        - path: /
-          pathType: Prefix
-          backend:
-            service:
-              name: {{ $kebabName }}-{{ $envName }}
-              port:
-                number: 80
+  hosts:
+    - {{ $fullDomain | quote }}
+  gateways:
+    - {{ $gatewayRef }}
+  http:
+    - timeout: {{ $requestTimeout }}
+      retries:
+        attempts: {{ $retryAttempts }}
+        perTryTimeout: {{ $retryTimeout }}
+        retryOn: gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: {{ $kebabName }}-{{ $envName }}.{{ $namespace }}.svc.cluster.local
+            port:
+              number: 80
 {{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}

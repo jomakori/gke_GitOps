@@ -22,6 +22,12 @@ Pre-built, off-the-shelf tools the cluster depends on. Each service has its own 
 
 | Service | Chart | Purpose |
 |---------|-------|---------|
+| [istio-base](services/helm/istio-base/) | istio/base | Istio CRDs and cluster-scoped resources |
+| [istiod](services/helm/istiod/) | istio/istiod | Istio control plane — ambient mode, STRICT mTLS |
+| [istio-ingressgateway](services/helm/istio-ingressgateway/) | istio/gateway | Shared ingress gateway for `*.maklab.net` |
+| [istio-config](services/helm/istio-config/) | custom | Gateway, PeerAuthentication, cert-manager ClusterIssuer + Certificate |
+| [cert-manager](services/helm/cert-manager/) | jetstack/cert-manager | Automated TLS via Let's Encrypt + Cloudflare DNS-01 |
+| [external-dns](services/helm/external-dns/) | external-dns/external-dns | Automatic Cloudflare DNS records from Istio Gateway hosts |
 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, and alerting |
 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA |
 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection into namespaces |
