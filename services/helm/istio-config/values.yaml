@@ -1,9 +1,11 @@
+dopplerConfig: "svc_cloudflare"
+
 domain: maklab.net
 certEmail: admin@maklab.net
 
 cloudflare:
   apiTokenSecretName: cloudflare-api-token
-  apiTokenSecretKey: api-token
+  apiTokenSecretKey: CF_API_TOKEN
 
 gateway:
   name: maklab-gateway

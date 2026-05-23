@@ -1,34 +1,29 @@
-# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ Global Values - shared values - passed in via DevOps repo (Terraform)                    │
-# └──────────────────────────────────────────────────────────────────────────────────────────┘
-repoUrl: ""
-targetRevision: ""
-storageClass: "csi-hostpath-sc"
+# Global Values - shared values - passed in via DevOps repo (Terraform)
 argoNamespace: ""
 argoProject: ""
-destinationServer: ""
+clusterDomain: ""
+clusterName: ""
+clusterServer: ""
+repoUrl: ""
+storageClass: ""
+targetRevision: ""
 
-# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ App Environment Values - per-app env config - injected by Terraform                      │
-# │ Keys match the apps keys below — used for dopplerToken injection.                        │
-# └──────────────────────────────────────────────────────────────────────────────────────────┘
+# App Environment Values — dopplerConfig maps to ClusterSecretStore/doppler-{name}
 demoApi:
   environment:
     staging:
-      dopplerToken: ""
+      dopplerConfig: demo-api-staging
     production:
-      dopplerToken: ""
+      dopplerConfig: demo-api-prod
 
 notesUi:
   environment:
     staging:
-      dopplerToken: ""
+      dopplerConfig: notes-ui-staging
     production:
-      dopplerToken: ""
+      dopplerConfig: notes-ui-prod
 
-# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ App Configurations — key = app name (used for Application metadata.name + chart lookup)  │
-# └──────────────────────────────────────────────────────────────────────────────────────────┘
+# App Configurations — key = app name (used for Application metadata.name + chart lookup)
 apps:
   demoApi:
     enable: false
@@ -54,10 +49,10 @@ apps:
     parameters:
       - name: appName
         value: "demoApi"
-      - name: demoApi.environments.staging.dopplerToken
-        value: "{{ .Values.demoApi.environment.staging.dopplerToken }}"
-      - name: demoApi.environments.production.dopplerToken
-        value: "{{ .Values.demoApi.environment.production.dopplerToken }}"
+      - name: demoApi.environments.staging.dopplerConfig
+        value: "{{ .Values.demoApi.environment.staging.dopplerConfig }}"
+      - name: demoApi.environments.production.dopplerConfig
+        value: "{{ .Values.demoApi.environment.production.dopplerConfig }}"
 
   notesUi:
     enable: false
@@ -83,7 +78,7 @@ apps:
     parameters:
       - name: appName
         value: "notesUi"
-      - name: notesUi.environments.staging.dopplerToken
-        value: "{{ .Values.notesUi.environment.staging.dopplerToken }}"
-      - name: notesUi.environments.production.dopplerToken
-        value: "{{ .Values.notesUi.environment.production.dopplerToken }}"
+      - name: notesUi.environments.staging.dopplerConfig
+        value: "{{ .Values.notesUi.environment.staging.dopplerConfig }}"
+      - name: notesUi.environments.production.dopplerConfig
+        value: "{{ .Values.notesUi.environment.production.dopplerConfig }}"

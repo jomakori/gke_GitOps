@@ -28,17 +28,17 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "mongodb.fullname" . }}
-                  key: username
+                  key: MONGODB_USER
             - name: MONGO_INITDB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "mongodb.fullname" . }}
-                  key: password
+                  key: MONGODB_PW
             - name: MONGO_INITDB_DATABASE
               valueFrom:
                 secretKeyRef:
                   name: {{ include "mongodb.fullname" . }}
-                  key: database
+                  key: MONGODB_DB
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:

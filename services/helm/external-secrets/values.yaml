@@ -5,3 +5,27 @@ external-secrets:
   replicaCount: 2
   serviceAccount:
     create: true
+
+# ClusterSecretStores — one per Doppler config, all using the same machine token
+clusterSecretStores:
+  svc_grafana:
+    project: devops
+    config: svc_grafana
+  svc_mongodb:
+    project: devops
+    config: svc_mongodb
+  svc_postgres:
+    project: devops
+    config: svc_postgres
+  svc_cloudflare:
+    project: devops
+    config: svc_cloudflare
+  zurabase-dev:
+    project: zurabase
+    config: dev
+  zurabase-stg:
+    project: zurabase
+    config: stg
+  zurabase-prd:
+    project: zurabase
+    config: prd

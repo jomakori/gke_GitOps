@@ -1,3 +1,5 @@
+dopplerConfig: "svc_mongodb"
+
 # Official MongoDB image (multi-arch: amd64 + arm64)
 image:
   registry: docker.io

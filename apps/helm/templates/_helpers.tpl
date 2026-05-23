@@ -85,35 +85,8 @@ metadata:
 type: kubernetes.io/dockercfg
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
-{{- /* Doppler Secret Chain (sync-wave ordered)                      */}}
+{{- /* ExternalSecret — pulls from Doppler via ClusterSecretStore    */}}
 {{- /* ═════════════════════════════════════════════════════════════ */}}
----
-apiVersion: v1
-kind: Secret
-metadata:
-    name: doppler-token-auth
-    namespace: {{ $namespace }}
-    annotations:
-      argocd.argoproj.io/sync-wave: "-3"
-type: Opaque
-data:
-    dopplerToken: {{ b64enc ($env.dopplerToken | default "") | quote }}
----
-apiVersion: external-secrets.io/v1beta1
-kind: SecretStore
-metadata:
-  name: doppler-token-auth
-  namespace: {{ $namespace }}
-  annotations:
-      argocd.argoproj.io/sync-wave: "-2"
-spec:
-  provider:
-    doppler:
-      auth:
-        secretRef:
-          dopplerToken:
-            name: doppler-token-auth
-            key: dopplerToken
 ---
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
@@ -124,8 +97,8 @@ metadata:
       argocd.argoproj.io/sync-wave: "-1"
 spec:
   secretStoreRef:
-    kind: SecretStore
-    name: doppler-token-auth
+    kind: ClusterSecretStore
+    name: doppler-{{ $env.dopplerConfig }}
   refreshInterval: 10s
   target:
     name: {{ $namespace }}-vars

@@ -1,3 +1,5 @@
+dopplerConfig: "svc_postgres"
+
 # Docs: https://github.com/db-operator/charts/tree/main/charts/db-operator
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
 stackgresOperator:
@@ -31,8 +33,6 @@ stackgresOperator:
   authentication:
     type: jwt
     createAdminSecret: true
-    user:
-    password:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Grafana Integration                                                       │
   # └─────────────────────────────────────────────────────────────────────────────┘

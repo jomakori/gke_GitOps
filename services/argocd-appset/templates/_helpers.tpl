@@ -40,7 +40,7 @@ spec:
         {{- end }}
       {{- end }}
   destination:
-    server: {{ $root.Values.destinationServer | default "https://kubernetes.default.svc" }}
+    server: {{ $root.Values.clusterServer | default "https://kubernetes.default.svc" }}
     namespace: {{ $cfg.destNamespace | quote }}
   syncPolicy:
     automated:
@@ -102,7 +102,7 @@ spec:
         {{- end }}
       {{- end }}
   destination:
-    server: {{ $root.Values.destinationServer | default "https://kubernetes.default.svc" }}
+    server: {{ $root.Values.clusterServer | default "https://kubernetes.default.svc" }}
     namespace: {{ printf "%s-%s" $cfg.destNamespace $env | quote }}
   syncPolicy:
     automated:
