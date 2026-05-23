@@ -1,0 +1,30 @@
+# cert-manager — automated TLS via Let's Encrypt + Cloudflare DNS-01
+cert-manager:
+  # Install CRDs via the chart
+  crds:
+    enabled: true
+
+  # ── Replica count ──────────────────────────────────────────────────────
+  replicaCount: 2
+
+  # ── Node placement ─────────────────────────────────────────────────────
+  nodeSelector:
+    intent: apps
+
+  # ── Prometheus metrics ─────────────────────────────────────────────────
+  prometheus:
+    enabled: true
+    servicemonitor:
+      enabled: true
+
+  # ── Webhook ────────────────────────────────────────────────────────────
+  webhook:
+    replicaCount: 2
+    nodeSelector:
+      intent: apps
+
+  # ── CA Injector ────────────────────────────────────────────────────────
+  cainjector:
+    replicaCount: 2
+    nodeSelector:
+      intent: apps

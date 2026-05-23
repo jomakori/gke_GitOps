@@ -1,6 +1,4 @@
-# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ Global Values - shared values - passed in via DevOps repo (Terraform)                    │
-# └──────────────────────────────────────────────────────────────────────────────────────────┘
+# Global Values — passed in via Terraform
 repoUrl: ""
 targetRevision: ""
 storageClass: "local-path"
@@ -8,6 +6,7 @@ argoNamespace: ""
 argoProject: ""
 destinationServer: ""
 
+# Centralized parameters
 grafanaCreds:
   admin:
   pw:
@@ -33,14 +32,159 @@ opencost:
 redisOperator:
   pw:
 
-# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ Service Configurations                                                                   │
-# └──────────────────────────────────────────────────────────────────────────────────────────┘
+# Service Configurations
 services:
+  # Wave 0 — no deps
+  metricsServer:
+    enable: true
+    name: metrics-server
+    syncWave: "0"
+    helmPath: services/helm/metrics-server
+    destNamespace: kube-system
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    syncOptions:
+      - Replace=true
+
+  genericDevicePlugin:
+    enable: true
+    name: generic-device-plugin
+    syncWave: "0"
+    helmPath: services/helm/generic-device-plugin
+    destNamespace: kube-system
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+
+  kubePrometheusStack:
+    enable: true
+    name: kube-prometheus-stack
+    syncWave: "0"
+    helmPath: services/helm/kube-prometheus-stack
+    destNamespace: kube-prometheus-stack
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+      - ServerSideApply=true
+    ignoreDifferences:
+      - group: apps
+        kind: DaemonSet
+        name: kube-prometheus-stack-prometheus-node-exporter
+        namespace: kube-prometheus-stack
+        jsonPointers:
+          - /spec/template/spec/containers/0/resources
+    parameters:
+      - name: kube-prometheus-stack.grafana.adminUser
+        value: "{{ .Values.grafanaCreds.admin }}"
+      - name: kube-prometheus-stack.grafana.adminPassword
+        value: "{{ .Values.grafanaCreds.pw }}"
+
+  # Wave 1 — Istio CRDs + secret engine
+  istioBase:
+    enable: true
+    name: istio-base
+    syncWave: "1"
+    helmPath: services/helm/istio-base
+    destNamespace: istio-system
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
+  externalSecrets:
+    enable: true
+    name: external-secrets
+    syncWave: "1"
+    helmPath: services/helm/external-secrets
+    destNamespace: external-secrets
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+    parameters:
+      - name: external-secrets.serviceAccount.name
+        value: "{{ .Values.externalSecrets.serviceAccountName }}"
+
+  # Wave 2 — needs wave 1: istiod←istio-base CRDs, cert-manager before istio-config
+  istiod:
+    enable: true
+    name: istiod
+    syncWave: "2"
+    helmPath: services/helm/istiod
+    destNamespace: istio-system
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
+  certManager:
+    enable: true
+    name: cert-manager
+    syncWave: "2"
+    helmPath: services/helm/cert-manager
+    destNamespace: cert-manager
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
+  # Wave 3 — ingressgateway needs istiod (wave 2)
+  istioIngressgateway:
+    enable: true
+    name: istio-ingressgateway
+    syncWave: "3"
+    helmPath: services/helm/istio-ingressgateway
+    destNamespace: istio-system
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+  # Wave 4 — istio-config needs cert-manager + ingressgateway + cloudflare secret; data services run in parallel
+  istioConfig:
+    enable: true
+    name: istio-config
+    syncWave: "4"
+    helmPath: services/helm/istio-config
+    destNamespace: istio-system
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
+  externalDns:
+    enable: true
+    name: external-dns
+    syncWave: "4"
+    helmPath: services/helm/external-dns
+    destNamespace: external-dns
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+  keda:
+    enable: true
+    name: keda
+    syncWave: "4"
+    helmPath: services/helm/keda
+    destNamespace: keda
+    argocdNamespace: argocd
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
   dbOperator:
     enable: true
     name: db-operator
-    syncWave: "3"
+    syncWave: "4"
     helmPath: services/helm/db-operator
     destNamespace: db-operator
     argocdNamespace: argocd
@@ -71,96 +215,6 @@ services:
       - name: stackgres-operator.grafana.password
         value: "{{ .Values.grafanaCreds.pw }}"
 
-  externalSecrets:
-    enable: true
-    name: external-secrets
-    syncWave: "1"
-    helmPath: services/helm/external-secrets
-    destNamespace: external-secrets
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-    parameters:
-      - name: external-secrets.serviceAccount.name
-        value: "{{ .Values.externalSecrets.serviceAccountName }}"
-
-  genericDevicePlugin:
-    enable: true
-    name: generic-device-plugin
-    syncWave: "0"
-    helmPath: services/helm/generic-device-plugin
-    destNamespace: kube-system
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-
-  headlamp:
-    enable: true
-    name: headlamp
-    syncWave: "4"
-    helmPath: services/helm/headlamp
-    destNamespace: headlamp
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-
-  keda:
-    enable: true
-    name: keda
-    syncWave: "2"
-    helmPath: services/helm/keda
-    destNamespace: keda
-    argocdNamespace: argocd
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-
-  kubePrometheusStack:
-    enable: true
-    name: kube-prometheus-stack
-    syncWave: "1"
-    helmPath: services/helm/kube-prometheus-stack
-    destNamespace: kube-prometheus-stack
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-      - ServerSideApply=true
-    ignoreDifferences:
-      - group: apps
-        kind: DaemonSet
-        name: kube-prometheus-stack-prometheus-node-exporter
-        namespace: kube-prometheus-stack
-        jsonPointers:
-          - /spec/template/spec/containers/0/resources
-    parameters:
-      - name: kube-prometheus-stack.grafana.adminUser
-        value: "{{ .Values.grafanaCreds.admin }}"
-      - name: kube-prometheus-stack.grafana.adminPassword
-        value: "{{ .Values.grafanaCreds.pw }}"
-
-  metricsServer:
-    enable: true
-    name: metrics-server
-    syncWave: "0"
-    helmPath: services/helm/metrics-server
-    destNamespace: kube-system
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    syncOptions:
-      - Replace=true
-
   mongodb:
     enable: true
     name: mongodb
@@ -182,6 +236,7 @@ services:
       - name: persistence.storageClass
         value: "{{ .Values.storageClass }}"
 
+  # Wave 5 — deploy the other services
   opencost:
     enable: true
     name: opencost
@@ -197,10 +252,22 @@ services:
       - name: clusterName
         value: "{{ .Values.opencost.opencost.exporter.defaultClusterId }}"
 
+  headlamp:
+    enable: true
+    name: headlamp
+    syncWave: "5"
+    helmPath: services/helm/headlamp
+    destNamespace: headlamp
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+
   ramalama:
     enable: true
     name: ramalama
-    syncWave: "6"
+    syncWave: "5"
     helmPath: services/helm/ramalama
     destNamespace: ramalama
     finalizers:
@@ -212,7 +279,7 @@ services:
   redisOperator:
     enable: false
     name: redis-operator
-    syncWave: "3"
+    syncWave: "5"
     helmPath: services/helm/redis-operator
     destNamespace: redis-operator
     finalizers:
