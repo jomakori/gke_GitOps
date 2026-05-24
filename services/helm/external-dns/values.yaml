@@ -1,4 +1,6 @@
 # ExternalDNS — Cloudflare provider, watches Istio Gateway + Service sources
+dopplerConfig: "svc_cloudflare"
+
 external-dns:
   # ── Provider ───────────────────────────────────────────────────────────
   provider:
