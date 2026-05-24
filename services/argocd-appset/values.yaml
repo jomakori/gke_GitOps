@@ -117,6 +117,7 @@ services:
     selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - SkipSchemaValidation=true
 
   # Wave 4 — istio-config needs cert-manager + ingressgateway + cloudflare secret; data services run in parallel
   istioConfig:

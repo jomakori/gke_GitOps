@@ -1,41 +1,41 @@
 # istio/gateway — ingress gateway deployment
 # Single shared gateway for all maklab.net subdomains.
-gateway:
-  name: istio-ingressgateway
 
-  # ── Service: LoadBalancer for external traffic ─────────────────────────
-  service:
-    type: LoadBalancer
-    ports:
-      - name: http2
-        port: 80
-        targetPort: 80
-        protocol: TCP
-      - name: https
-        port: 443
-        targetPort: 443
-        protocol: TCP
+name: istio-ingressgateway
 
-  # ── Labels used by Istio Gateway selector ─────────────────────────────
-  labels:
-    app: istio-ingressgateway
-    istio: ingressgateway
+# ── Labels used by Istio Gateway selector ─────────────────────────────
+labels:
+  app: istio-ingressgateway
+  istio: ingressgateway
 
-  # ── Node placement (same pool as apps) ────────────────────────────────
-  nodeSelector:
-    intent: apps
+# ── Service: LoadBalancer for external traffic ─────────────────────────
+service:
+  type: LoadBalancer
+  ports:
+    - name: http2
+      port: 80
+      targetPort: 80
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: 443
+      protocol: TCP
 
-  # ── Resource limits ────────────────────────────────────────────────────
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      memory: 256Mi
+# ── Node placement (same pool as apps) ────────────────────────────────
+nodeSelector:
+  intent: apps
 
-  # ── HPA for gateway pods ──────────────────────────────────────────────
-  autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 5
-    targetCPUUtilizationPercentage: 80
+# ── Resource limits ────────────────────────────────────────────────────
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+# ── HPA for gateway pods ──────────────────────────────────────────────
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
