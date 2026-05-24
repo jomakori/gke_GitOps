@@ -19,6 +19,7 @@ services:
     destNamespace: kube-system
     finalizers:
       - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
     syncOptions:
       - Replace=true
 
@@ -30,6 +31,7 @@ services:
     destNamespace: kube-system
     finalizers:
       - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - Replace=true
@@ -45,7 +47,6 @@ services:
     selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - Replace=true
       - ServerSideApply=true
     ignoreDifferences:
       - group: apps
@@ -76,6 +77,9 @@ services:
     destNamespace: external-secrets
     finalizers:
       - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    retryLimit: 5
+    retryMaxDuration: 3m
     syncOptions:
       - CreateNamespace=true
       - Replace=true
@@ -208,6 +212,7 @@ services:
     destNamespace: opencost
     finalizers:
       - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - Replace=true
@@ -223,6 +228,7 @@ services:
     destNamespace: headlamp
     finalizers:
       - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - Replace=true
@@ -235,6 +241,7 @@ services:
     destNamespace: ramalama
     finalizers:
       - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - Replace=true
