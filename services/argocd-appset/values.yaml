@@ -83,9 +83,6 @@ services:
     syncOptions:
       - CreateNamespace=true
       - Replace=true
-    parameters:
-      - name: external-secrets.serviceAccount.name
-        value: "{{ .Values.externalSecrets.serviceAccountName }}"
 
   # Wave 2 — needs wave 1: istiod←istio-base CRDs, cert-manager before istio-config
   istiod:
@@ -218,7 +215,7 @@ services:
       - Replace=true
     parameters:
       - name: clusterName
-        value: "{{ .Values.opencost.opencost.exporter.defaultClusterId }}"
+        value: "{{ .Values.clusterName }}"
 
   headlamp:
     enable: true
