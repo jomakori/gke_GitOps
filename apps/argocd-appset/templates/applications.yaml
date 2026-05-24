@@ -1,6 +1,13 @@
 {{- range $key, $cfg := .Values.apps }}
 {{- if $cfg.enable }}
+{{- /* gateways.enable_public -> {appKey}.enable_domain=true param for app chart VirtualService */}}
+{{- $extraParams := list }}
+{{- if $cfg.gateways.enable_public }}
+{{-   $extraParams = append $extraParams (dict "name" (printf "%s.enable_domain" $key) "value" "true") }}
+{{- end }}
+{{- $mergedParams := concat ($cfg.parameters | default list) $extraParams }}
+{{- $appCfg := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
 ---
-{{- include "argocd.application" (dict "name" $key "config" $cfg "root" $) }}
+{{- include "argocd.application" (dict "name" $key "config" $appCfg "root" $) }}
 {{- end }}
 {{- end }}
