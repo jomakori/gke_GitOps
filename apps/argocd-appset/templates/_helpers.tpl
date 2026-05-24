@@ -42,7 +42,7 @@ spec:
       parameters:
         {{- range . }}
         - name: {{ .name }}
-          value: {{ tpl .value $root }}
+          value: {{ tpl .value $root | quote }}
         {{- end }}
       {{- end }}
   destination:
