@@ -88,7 +88,7 @@ type: kubernetes.io/dockercfg
 {{- /* ExternalSecret — pulls from Doppler via ClusterSecretStore    */}}
 {{- /* ═════════════════════════════════════════════════════════════ */}}
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: {{ $namespace }}-vars
@@ -98,7 +98,7 @@ metadata:
 spec:
   secretStoreRef:
     kind: ClusterSecretStore
-    name: doppler-{{ $env.dopplerConfig }}
+    name: doppler-{{ $env.dopplerConfig | replace "_" "-" }}
   refreshInterval: 10s
   target:
     name: {{ $namespace }}-vars
