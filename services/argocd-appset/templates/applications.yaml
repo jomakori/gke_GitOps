@@ -5,6 +5,34 @@
 ---
 {{ include "argocd.application.multi" (dict "config" $cfg "env" $env "root" $) }}
 {{- end }}
+{{- else if eq $key "istioConfig" }}
+{{- /* istioConfig aggregates gateways.enable_public from all services
+       and derives routing params by convention:
+         host          = {name}.{domain}    (overridable via gateways.host)
+         dest host     = {name}.{namespace}.svc.cluster.local  (overridable)
+         dest port     = 80                 (overridable)
+*/}}
+{{- $gatewayParams := list }}
+{{- range $sk, $sv := $.Values.services }}
+{{- if and $sv.enable $sv.gateways $sv.gateways.enable_public }}
+{{-   $svName := $sv.name | default $sk }}
+{{-   $host := $sv.gateways.host | default (printf "%s.%s" $svName $.Values.domain) }}
+{{-   $destHost := printf "%s.%s.svc.cluster.local" $svName $sv.destNamespace }}
+{{-   $destPort := "80" }}
+{{-   if $sv.gateways.destination }}
+{{-     if $sv.gateways.destination.host }}{{ $destHost = $sv.gateways.destination.host }}{{ end }}
+{{-     if $sv.gateways.destination.port }}{{ $destPort = $sv.gateways.destination.port | toString }}{{ end }}
+{{-   end }}
+{{-   $gatewayParams = append $gatewayParams (dict "name" (printf "virtualServices.%s.enabled" $sk) "value" "true") }}
+{{-   $gatewayParams = append $gatewayParams (dict "name" (printf "virtualServices.%s.host" $sk) "value" $host) }}
+{{-   $gatewayParams = append $gatewayParams (dict "name" (printf "virtualServices.%s.destination.host" $sk) "value" $destHost) }}
+{{-   $gatewayParams = append $gatewayParams (dict "name" (printf "virtualServices.%s.destination.port" $sk) "value" $destPort) }}
+{{- end }}
+{{- end }}
+{{- $mergedParams := concat ($cfg.parameters | default list) $gatewayParams }}
+{{- $istioConfig := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
+---
+{{ include "argocd.application" (dict "key" $key "config" $istioConfig "root" $) }}
 {{- else }}
 ---
 {{ include "argocd.application" (dict "key" $key "config" $cfg "root" $) }}

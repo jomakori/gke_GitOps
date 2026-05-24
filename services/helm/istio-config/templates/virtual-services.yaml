@@ -1,0 +1,27 @@
+{{- if .Values.virtualServices }}
+{{- range $name, $vs := .Values.virtualServices }}
+{{- if $vs.enabled }}
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.gateway.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  hosts:
+    - {{ required (printf "virtualServices.%s.host is required" $name) $vs.host | quote }}
+  gateways:
+    - {{ $.Values.gateway.name }}
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: {{ required (printf "virtualServices.%s.destination.host is required" $name) $vs.destination.host }}
+            port:
+              number: {{ $vs.destination.port | default 80 }}
+{{- end }}
+{{- end }}
+{{- end }}
