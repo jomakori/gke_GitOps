@@ -225,7 +225,7 @@ services:
     gateways:
       enable_public: true
       destination:
-        port: 9003
+        port: 9090
     syncOptions:
       - CreateNamespace=true
       - Replace=true
