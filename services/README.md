@@ -10,13 +10,22 @@ Follows the ArgoCD [App-of-Apps](https://argo-cd.readthedocs.io/en/stable/operat
 services/
 ├── argocd-appset/          ← ArgoCD Application manifests
 │   ├── Chart.yaml
-│   ├── templates/           ← One Application per service (11 total)
-│   └── values.yaml
-└── helm/                   ← Helm chart source for each service
+│   ├── templates/
+│   │   ├── _helpers.tpl     ← Template helpers (service registration logic)
+│   │   └── applications.yaml ← Single template auto-generates all Applications
+│   └── values.yaml           ← Service registry (enable/disable, sync waves, parameters)
+└── helm/                   ← Helm chart source for each service (18 charts)
+    ├── cert-manager/
+    ├── cloudflare-tunnel/
     ├── db-operator/
+    ├── external-dns/
     ├── external-secrets/
     ├── generic-device-plugin/
     ├── headlamp/
+    ├── istio-base/
+    ├── istio-config/
+    ├── istio-ingressgateway/
+    ├── istiod/
     ├── keda/
     ├── kube-prometheus-stack/
     ├── metrics-server/
@@ -28,16 +37,26 @@ services/
 
 ### argocd-appset
 
-Each template defines an ArgoCD `Application` resource pointing at the corresponding Helm chart in `services/helm/`. Services are toggled on/off via `values.yaml` — some values (Grafana creds, DB creds) are injected by Terraform at apply time.
+A single `applications.yaml` template auto-generates all ArgoCD `Application` resources from `values.yaml`, using `_helpers.tpl` for logic. Services are toggled on/off via `values.yaml` — parameters like `clusterDomain` are injected by Terraform and propagated through ArgoCD appset values.
 
 ### helm
 
-Each service is a minimal Helm chart containing only `Chart.yaml` and `values.yaml` (templates come from the upstream chart).
+Charts fall into three patterns:
+
+| Pattern | Count | Description |
+|---------|-------|-------------|
+| **Thin Wrapper** | 9 | `Chart.yaml` with upstream `dependencies` only, no local templates |
+| **Custom** | 4 | Full local templates, no upstream dependency |
+| **Hybrid** | 5 | Upstream dependency + local templates for extra resources (ExternalSecrets, ClusterSecretStores, etc.) |
 
 ## Adding a Service
 
-1. Add the Helm chart under `helm/<service-name>/` with upstream repo/dependency
-2. Create an Application manifest in `argocd-appset/templates/<service-name>.yaml`
-3. Register and configure it in `argocd-appset/values.yaml`
-4. If it needs secrets, add Terraform variables to `k8s-maklab-cluster` and pass them through `argocd_app-of-apps/services.yml`
-5. Test and PR
+1. **Create the Helm chart** under `helm/<service-name>/` — thin wrapper (upstream dep), hybrid (upstream + local templates), or custom (full templates).
+2. **Register it** in `argocd-appset/values.yaml` with an `enable: true/false` flag, syncWave, destNamespace, and any parameters.
+3. **Wire secrets** via ESO: add a `dopplerConfig` key in the values entry. No Terraform changes needed — the ExternalSecret template pulls the entire config from Doppler.
+4. **If public ingress is needed**, set `gateways.enable_public: true` — the `applications.yaml` template auto-injects VirtualService parameters.
+5. **Validate locally**:
+   ```bash
+   .useful-scripts/ct_check.sh services/helm/<name>
+   ```
+6. **PR and merge** — ArgoCD auto-syncs.

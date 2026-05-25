@@ -24,4 +24,16 @@ virtualServices:
     destination:
       host: argo-cd-argocd-server.argocd.svc.cluster.local
       port: 80
+  opencost:
+    enabled: false
+    host: opencost.maklab.net
+    destination:
+      host: opencost.opencost.svc.cluster.local
+      port: 9090
+  headlamp:
+    enabled: false
+    host: headlamp.maklab.net
+    destination:
+      host: headlamp.headlamp.svc.cluster.local
+      port: 80
 
