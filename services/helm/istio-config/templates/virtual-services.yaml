@@ -1,6 +1,7 @@
 {{- if .Values.virtualServices }}
 {{- range $name, $vs := .Values.virtualServices }}
 {{- if $vs.enabled }}
+---
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
