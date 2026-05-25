@@ -203,6 +203,16 @@ services:
         value: "{{ .Values.storageClass }}"
 
   # Wave 5 — deploy the other services
+  cloudflareTunnel:
+    enable: true
+    name: cloudflare-tunnel
+    syncWave: "5"
+    helmPath: services/helm/cloudflare-tunnel
+    destNamespace: cloudflare-tunnel
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
   opencost:
     enable: true
     name: opencost

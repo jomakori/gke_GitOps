@@ -1,0 +1,10 @@
+# Doppler config for TUNNEL_TOKEN
+dopplerConfig: "svc_cloudflare"
+
+image: cloudflare/cloudflared
+tag: latest
+
+replicas: 2
+
+# Tunnel name — must match the tunnel created by Terraform
+tunnelName: maklab-cluster
