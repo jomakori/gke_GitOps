@@ -126,6 +126,7 @@ services:
     syncWave: "4"
     helmPath: services/helm/istio-config
     destNamespace: istio-system
+    prune: false
     selfHeal: true
     syncOptions:
       - CreateNamespace=true

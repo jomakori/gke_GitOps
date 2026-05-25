@@ -44,7 +44,7 @@ spec:
     namespace: {{ $cfg.destNamespace | quote }}
   syncPolicy:
     automated:
-      prune: true
+      prune: {{ $cfg.prune | default true }}
       {{- if $cfg.selfHeal }}
       selfHeal: true
       {{- end }}
@@ -106,7 +106,7 @@ spec:
     namespace: {{ printf "%s-%s" $cfg.destNamespace $env | quote }}
   syncPolicy:
     automated:
-      prune: true
+      prune: {{ $cfg.prune | default true }}
       {{- if $cfg.selfHeal }}
       selfHeal: true
       {{- end }}
