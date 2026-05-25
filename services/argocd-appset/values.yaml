@@ -131,6 +131,15 @@ services:
       - CreateNamespace=true
       - ServerSideApply=true
     dopplerConfig: "svc_cloudflare"
+    parameters:
+      - name: virtualServices.argocd.enabled
+        value: "true"
+      - name: virtualServices.argocd.host
+        value: argocd.maklab.net
+      - name: virtualServices.argocd.destination.host
+        value: argo-cd-argocd-server.argocd.svc.cluster.local
+      - name: virtualServices.argocd.destination.port
+        value: "80"
 
   externalDns:
     enable: true
