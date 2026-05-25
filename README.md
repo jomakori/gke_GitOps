@@ -7,10 +7,10 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 ```
 .
 ├── services/          ← 3rd-party infrastructure
-│   ├── helm/          ← Helm charts (17 services)
-│   └── argocd-appset/ ← App-of-Apps manifests
+│   ├── helm/          ← Helm charts (18 services)
+│   └── argocd-appset/ ← App-of-Apps manifests (single applications.yaml template)
 ├── apps/              ← Application workloads
-│   ├── helm/          ← Helm charts (notes-app, demo-app)
+│   ├── helm/          ← Single parameterized Helm chart (chart name: apps)
 │   └── argocd-appset/ ← App-of-Apps manifests
 ├── .github/workflows/ ← PR lint workflow
 ├── .pre-commit-config.yaml
@@ -24,7 +24,7 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 | Service | Chart | Purpose |
 |---------|-------|---------|
 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA |
-| [generic-device-plugin](services/helm/generic-device-plugin/) | custom | Device plugin for hardware resources |
+| [generic-device-plugin](services/helm/generic-device-plugin/) | gabe565/generic-device-plugin | Device plugin for /dev/dri (virtio-gpu) as schedulable resource |
 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, and alerting |
 | [istio-base](services/helm/istio-base/) | istio/base | Istio CRDs and cluster-scoped resources |
 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO |
@@ -36,6 +36,7 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling |
 | [db-operator](services/helm/db-operator/) | db-operator/db-operator | Database lifecycle management (StackGres Postgres) |
 | [mongodb](services/helm/mongodb/) | mongodb/mongodb | MongoDB document store |
+| [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge |
 | [opencost](services/helm/opencost/) | opencost/opencost | Cost monitoring and allocation |
 | [headlamp](services/helm/headlamp/) | headlamp/headlamp | Kubernetes UI dashboard |
 | [ramalama](services/helm/ramalama/) | custom | AI/ML model serving |
@@ -45,10 +46,12 @@ Toggled on/off via `services/argocd-appset/values.yaml`.
 
 ### Apps
 
-| App | Environments | Secrets |
-|-----|-------------|---------|
-| [notes-app](apps/helm/notes-app/) | staging + production | Doppler tokens per environment |
-| [demo-app](apps/helm/demo-app/) | single | — |
+Both apps use a [single parameterized chart](apps/helm/) (chart name: `apps`) invoked via `--set appName=<key>`. All manifests (Deployment, Service, HPA, VirtualService, ExternalSecret, PVC) are generated from a single `_helpers.tpl` — no per-app chart directories.
+
+| App Key | Environments | Status |
+|---------|-------------|--------|
+| `demoApi` | staging + production | `enable: false` (ready to activate) |
+| `notesUi` | staging + production | `enable: false` (ready to activate) |
 
 Toggled via `apps/argocd-appset/values.yaml`.
 
@@ -65,7 +68,7 @@ No secrets in this repo. The chain:
 | Doppler Config | Used By | Secrets |
 |---------------|---------|---------|
 | `svc_grafana` | Grafana | `GRAFANA_ADMIN`, `GRAFANA_PW` |
-| `svc_cloudflare` | istio-config, external-dns | `CF_API_TOKEN` |
+| `svc_cloudflare` | istio-config, external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
 | `svc_postgres` | db-operator (StackGres) | `PG_USER`, `PG_PW`, `PG_HOST` |
 | `svc_mongodb` | MongoDB | `MONGODB_USER`, `MONGODB_PW`, `MONGODB_DB` |
 
@@ -73,17 +76,22 @@ New secrets are added in the Doppler dashboard — the ExternalSecret already pu
 
 ## Adding a Service or App
 
-1. **Create the Helm chart** under `services/helm/<name>/` or `apps/helm/<name>/`.
-2. **Add an ArgoCD Application manifest** in the corresponding `argocd-appset/templates/` dir.
-3. **Register it** in the corresponding `argocd-appset/values.yaml` with an `enable: true/false` flag.
-4. **Wire secrets** via ESO: add a `dopplerConfig` key in the values entry and create an ExternalSecret template using `dataFrom.extract`. No Terraform changes needed.
+For **services**, the `applications.yaml` template auto-generates Application resources from `services/argocd-appset/values.yaml`:
+1. **Create the Helm chart** under `services/helm/<name>/` (or add upstream dependency in `Chart.yaml`).
+2. **Register it** in `services/argocd-appset/values.yaml` with an `enable: true/false` flag, sync wave, and namespace.
+3. **Wire secrets** via ESO: add a `dopplerConfig` key in the values entry matching a ClusterSecretStore. No Terraform changes needed.
+4. **If public ingress is needed**, set `gateways.enable_public: true` — the template auto-generates VirtualService parameters.
 5. **Validate locally**:
    ```bash
    .useful-scripts/ct_check.sh services/helm/<name>
    ```
 6. **PR and merge** — ArgoCD auto-syncs.
 
-For apps, also add a namespace entry in `apps/argocd-appset/templates/namespaces.yaml`.
+For **apps**, the single parameterized chart at `apps/helm/` generates all manifests:
+1. **Add an entry** in `apps/argocd-appset/values.yaml` with app key, environments, and dopplerConfig per environment.
+2. **Add a namespace** in `apps/argocd-appset/templates/namespaces.yaml`.
+3. **Set `enable: true`** — both apps are currently disabled, ready for activation when workloads are ready.
+4. **PR and merge** — ArgoCD auto-syncs.
 
 ## CI & Automation
 
