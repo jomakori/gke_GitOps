@@ -227,9 +227,6 @@ services:
     syncOptions:
       - CreateNamespace=true
       - Replace=true
-    parameters:
-      - name: opencost.clusterName
-        value: "{{ .Values.clusterName }}"
 
   headlamp:
     enable: true
