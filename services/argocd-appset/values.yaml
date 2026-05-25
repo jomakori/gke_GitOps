@@ -55,6 +55,12 @@ services:
         namespace: kube-prometheus-stack
         jsonPointers:
           - /spec/template/spec/containers/0/resources
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.dataFrom[].find.conversionStrategy
+          - .spec.dataFrom[].find.decodingStrategy
+          - .spec.dataFrom[].find.nullBytePolicy
     dopplerConfig: "svc_grafana"
 
   # Wave 1 — Istio CRDs + secret engine
@@ -68,6 +74,11 @@ services:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+    ignoreDifferences:
+      - group: admissionregistration.k8s.io
+        kind: ValidatingWebhookConfiguration
+        jsonPointers:
+          - /webhooks/0/clientConfig/caBundle
 
   externalSecrets:
     enable: true
@@ -95,6 +106,17 @@ services:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+    ignoreDifferences:
+      - group: admissionregistration.k8s.io
+        kind: ValidatingWebhookConfiguration
+        jsonPointers:
+          - /webhooks/0/clientConfig/caBundle
+      - group: apps
+        kind: Deployment
+        name: istiod
+        jsonPointers:
+          - /spec/template/metadata/annotations
+          - /spec/template/spec/containers/0/resources
 
   certManager:
     enable: true
@@ -132,6 +154,13 @@ services:
       - CreateNamespace=true
       - ServerSideApply=true
     dopplerConfig: "svc_cloudflare"
+    ignoreDifferences:
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.dataFrom[].find.conversionStrategy
+          - .spec.dataFrom[].find.decodingStrategy
+          - .spec.dataFrom[].find.nullBytePolicy
     parameters:
       - name: virtualServices.argocd.enabled
         value: "true"
