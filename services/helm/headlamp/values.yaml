@@ -1,4 +1,11 @@
 # Docs: https://github.com/headlamp-k8s/headlamp/tree/main/chart/headlamp
+
+# User-facing ServiceAccount with ClusterRoleBinding for logging into Headlamp.
+# Generate a token: kubectl create token <name> -n headlamp --duration=24h
+userServiceAccount:
+  name: headlamp-user
+  clusterRole: cluster-admin
+
 headlamp:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   General Configuration                                                     │
