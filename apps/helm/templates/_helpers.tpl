@@ -19,7 +19,7 @@
 {{- $root      := .root }}
 
 {{- /* Global defaults */}}
-{{- $domain       := $root.Values.domain       | default "maklab.net" }}
+{{- $domain       := $root.Values.clusterDomain | default "maklab.net" }}
 {{- $registry     := $root.Values.registry }}
 {{- $storageClass := $root.Values.storageClass | default "csi-hostpath-sc" }}
 {{- $ingressCfg   := $root.Values.ingress      | default dict }}

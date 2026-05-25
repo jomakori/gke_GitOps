@@ -13,7 +13,7 @@ spec:
     solvers:
       - selector:
           dnsZones:
-            - {{ .Values.domain }}
+            - {{ .Values.clusterDomain }}
         dns01:
           cloudflare:
             apiTokenSecretRef:

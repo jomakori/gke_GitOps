@@ -13,8 +13,8 @@ spec:
     name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
-    - "*.{{ .Values.domain }}"
-    - {{ .Values.domain | quote }}
+    - "*.{{ .Values.clusterDomain }}"
+    - {{ .Values.clusterDomain | quote }}
   privateKey:
     algorithm: ECDSA
     size: 256

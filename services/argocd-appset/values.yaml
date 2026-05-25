@@ -4,7 +4,6 @@ argoProject: ""
 clusterDomain: ""
 clusterName: ""
 clusterServer: ""
-domain: maklab.net
 repoUrl: ""
 storageClass:
 targetRevision: ""

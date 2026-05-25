@@ -8,7 +8,7 @@
 {{- else if eq $key "istioConfig" }}
 {{- /* istioConfig aggregates gateways.enable_public from all services
        and derives routing params by convention:
-         host          = {name}.{domain}    (overridable via gateways.host)
+          host          = {name}.{clusterDomain}    (overridable via gateways.host)
          dest host     = {name}.{namespace}.svc.cluster.local  (overridable)
          dest port     = 80                 (overridable)
 */}}
@@ -16,7 +16,7 @@
 {{- range $sk, $sv := $.Values.services }}
 {{- if and $sv.enable $sv.gateways $sv.gateways.enable_public }}
 {{-   $svName := $sv.name | default $sk }}
-{{-   $host := $sv.gateways.host | default (printf "%s.%s" $svName $.Values.domain) }}
+{{-   $host := $sv.gateways.host | default (printf "%s.%s" $svName $.Values.clusterDomain) }}
 {{-   $destHost := printf "%s.%s.svc.cluster.local" $svName $sv.destNamespace }}
 {{-   $destPort := "80" }}
 {{-   if $sv.gateways.destination }}

@@ -1,7 +1,7 @@
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ Global Settings — shared across all apps                         │
 # └──────────────────────────────────────────────────────────────────┘
-domain: maklab.net
+clusterDomain: maklab.net
 registry: 123456.dkr.ecr.us-east-2.amazonaws.com
 storageClass: "csi-hostpath-sc"
 

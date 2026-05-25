@@ -1,6 +1,6 @@
 dopplerConfig: "svc_cloudflare"
 
-domain: maklab.net
+clusterDomain: maklab.net
 certEmail: admin@maklab.net
 
 cloudflare:
