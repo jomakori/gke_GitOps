@@ -82,6 +82,10 @@ kube-prometheus-stack:
   # │   Grafana Configuration                                                     │
   # └─────────────────────────────────────────────────────────────────────────────┘
   grafana:
-    adminUser:
-    adminPassword:
+    admin:
+      existingSecret: "grafana-admin-credentials"
+      userKey: "admin-user"
+      passwordKey: "admin-password"
+    adminUser: "placeholder"
+    adminPassword: "placeholder"
     enabled: true
