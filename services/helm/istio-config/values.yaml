@@ -17,3 +17,11 @@ certificate:
   duration: 2160h
   renewBefore: 720h
 
+virtualServices:
+  argocd:
+    enabled: true
+    host: argocd.maklab.net
+    destination:
+      host: argo-cd-argocd-server.argocd.svc.cluster.local
+      port: 80
+
