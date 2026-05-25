@@ -222,6 +222,8 @@ services:
     finalizers:
       - resources-finalizer.argocd.argoproj.io
     selfHeal: true
+    gateways:
+      enable_public: true
     syncOptions:
       - CreateNamespace=true
       - Replace=true
