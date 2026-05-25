@@ -73,12 +73,7 @@ services:
     selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
-    ignoreDifferences:
-      - group: admissionregistration.k8s.io
-        kind: ValidatingWebhookConfiguration
-        jsonPointers:
-          - /webhooks/0/clientConfig/caBundle
+      - Replace=true
 
   externalSecrets:
     enable: true
@@ -105,18 +100,7 @@ services:
     selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
-    ignoreDifferences:
-      - group: admissionregistration.k8s.io
-        kind: ValidatingWebhookConfiguration
-        jsonPointers:
-          - /webhooks/0/clientConfig/caBundle
-      - group: apps
-        kind: Deployment
-        name: istiod
-        jsonPointers:
-          - /spec/template/metadata/annotations
-          - /spec/template/spec/containers/0/resources
+      - Replace=true
 
   certManager:
     enable: true
