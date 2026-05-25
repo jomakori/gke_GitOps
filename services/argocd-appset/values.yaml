@@ -62,6 +62,12 @@ services:
           - .spec.dataFrom[].find.decodingStrategy
           - .spec.dataFrom[].find.nullBytePolicy
     dopplerConfig: "svc_grafana"
+    gateways:
+      enable_public: true
+      host: grafana.maklab.net
+      destination:
+        host: kube-prometheus-stack-grafana.kube-prometheus-stack.svc.cluster.local
+        port: 80
 
   # Wave 1 — Istio CRDs + secret engine
   istioBase:
