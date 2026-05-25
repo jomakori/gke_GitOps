@@ -228,7 +228,7 @@ services:
       - CreateNamespace=true
       - Replace=true
     parameters:
-      - name: clusterName
+      - name: opencost.clusterName
         value: "{{ .Values.clusterName }}"
 
   headlamp:
