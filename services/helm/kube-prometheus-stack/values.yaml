@@ -84,8 +84,8 @@ kube-prometheus-stack:
   grafana:
     admin:
       existingSecret: "grafana-admin-credentials"
-      userKey: "admin-user"
-      passwordKey: "admin-password"
-    adminUser: "placeholder"
-    adminPassword: "placeholder"
+      userKey: "ADMIN_USER"
+      passwordKey: "ADMIN_PASSWORD"
+    adminUser: "admin"
+    adminPassword: "changeme"
     enabled: true
