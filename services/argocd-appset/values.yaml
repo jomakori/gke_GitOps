@@ -224,6 +224,8 @@ services:
     selfHeal: true
     gateways:
       enable_public: true
+      destination:
+        port: 9003
     syncOptions:
       - CreateNamespace=true
       - Replace=true
