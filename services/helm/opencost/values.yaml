@@ -4,14 +4,14 @@ opencost:
   opencost:
     prometheus:
       namespace: kube-prometheus-stack
-      port: 8080
+      port: 15017
       labels:
         app.kubernetes.io/name: prometheus
       internal:
         enabled: true
         serviceName: kube-prometheus-stack-prometheus
         namespaceName: kube-prometheus-stack
-        port: 8080
+        port: 15017
         scheme: http
     exporter:
       defaultClusterId: ""
