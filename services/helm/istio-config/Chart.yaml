@@ -1,6 +1,0 @@
-apiVersion: v2
-name: istio-config
-description: Istio cluster-wide config — Gateway, PeerAuthentication, cert-manager ClusterIssuer + Certificate
-type: application
-version: 0.1.0
-appVersion: "0.1.0"

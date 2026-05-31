@@ -1,0 +1,106 @@
+# ── Upstream sub-chart values ────────────────────────────────────────────
+
+# istio/base — CRDs and cluster-scoped Istio resources
+base:
+  enableCRDTemplates: true
+
+# istiod — Istio control plane (ambient mode, STRICT mTLS)
+istiod:
+  profile: ambient
+  meshConfig:
+    trustDomain: cluster.local
+    accessLogFile: /dev/stdout
+    defaultConfig:
+      proxyStatsMatcher:
+        inclusionRegexps:
+          - ".*outlier_detection.*"
+          - ".*circuit_breakers.*"
+          - ".*upstream_rq_retry.*"
+          - ".*upstream_cx_.*"
+    enablePrometheusMerge: true
+  pilot:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+    nodeSelector:
+      intent: apps
+  telemetry:
+    enabled: true
+    v2:
+      prometheus:
+        enabled: true
+
+# istio/gateway — ingress gateway deployment (aliased to avoid collision with local .Values.gateway)
+ingress-gateway:
+  name: istio-ingressgateway
+  labels:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  service:
+    type: LoadBalancer
+    ports:
+      - name: http2
+        port: 80
+        targetPort: 80
+        protocol: TCP
+      - name: https
+        port: 443
+        targetPort: 443
+        protocol: TCP
+  nodeSelector:
+    intent: apps
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+# ── Local template values (from istio-config) ────────────────────────────
+
+dopplerConfig: "svc_cloudflare"
+
+clusterDomain: maklab.net
+certEmail: admin@maklab.net
+
+cloudflare:
+  apiTokenSecretName: cloudflare-api-token
+  apiTokenSecretKey: CF_API_TOKEN
+
+gateway:
+  name: maklab-gateway
+  namespace: istio-system
+
+certificate:
+  name: wildcard-maklab-net
+  secretName: wildcard-maklab-net-tls
+  duration: 2160h
+  renewBefore: 720h
+
+virtualServices:
+  argocd:
+    enabled: true
+    host: argocd.maklab.net
+    destination:
+      host: argo-cd-argocd-server.argocd.svc.cluster.local
+      port: 80
+  opencost:
+    enabled: false
+    host: opencost.maklab.net
+    destination:
+      host: opencost.opencost.svc.cluster.local
+      port: 9090
+  headlamp:
+    enabled: false
+    host: headlamp.maklab.net
+    destination:
+      host: headlamp.headlamp.svc.cluster.local
+      port: 80
