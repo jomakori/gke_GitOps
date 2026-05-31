@@ -18,8 +18,9 @@
 {{- if and $sv.enable $sv.gateways $sv.gateways.enable_public }}
 {{-   $svName := $sv.name | default $sk }}
 {{-   $subdomain := $sv.gateways.subdomain | default $svName }}
-{{-   $destSvc  := $sv.gateways.destination.serviceName | default $svName }}
-{{-   $destPort := $sv.gateways.destination.servicePort | default 80 | toString }}
+{{-   $destCfg  := $sv.gateways.destination | default dict }}
+{{-   $destSvc  := $destCfg.serviceName | default $svName }}
+{{-   $destPort := $destCfg.servicePort | default 80 | toString }}
 {{-   $host     := printf "%s.%s" $subdomain $.Values.clusterDomain }}
 {{-   $destHost := printf "%s.%s.svc.cluster.local" $destSvc $sv.destNamespace }}
 {{-   $vsKey    := $subdomain }}
