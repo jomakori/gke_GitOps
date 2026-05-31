@@ -5,6 +5,20 @@ external-secrets:
   replicaCount: 2
   serviceAccount:
     create: true
+  webhook:
+    certManager:
+      enabled: true
+      addInjectorAnnotations: true
+      cert:
+        issuerRef:
+          group: cert-manager.io
+          kind: ClusterIssuer
+          name: eso-selfsigned
+        duration: 87600h  # 10y — internal webhook cert
+        privateKey:
+          rotationPolicy: Always
+          algorithm: ECDSA
+          size: 256
 
 # ClusterSecretStores — one per Doppler config, all using the same machine token
 clusterSecretStores:
