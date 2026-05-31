@@ -11,17 +11,16 @@ targetRevision: ""
 # Service Configurations
 services:
   # Wave 0 — no deps
-  metricsServer:
+  certManager:
     enable: true
-    name: metrics-server
+    name: cert-manager
     syncWave: "0"
-    helmPath: services/helm/metrics-server
-    destNamespace: kube-system
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
+    helmPath: services/helm/cert-manager
+    destNamespace: cert-manager
     selfHeal: true
     syncOptions:
-      - Replace=true
+      - CreateNamespace=true
+      - ServerSideApply=true
 
   genericDevicePlugin:
     enable: true
@@ -36,51 +35,19 @@ services:
       - CreateNamespace=true
       - Replace=true
 
-  kubePrometheusStack:
+  metricsServer:
     enable: true
-    name: kube-prometheus-stack
+    name: metrics-server
     syncWave: "0"
-    helmPath: services/helm/kube-prometheus-stack
-    destNamespace: kube-prometheus-stack
+    helmPath: services/helm/metrics-server
+    destNamespace: kube-system
     finalizers:
       - resources-finalizer.argocd.argoproj.io
     selfHeal: true
     syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-    ignoreDifferences:
-      - group: apps
-        kind: DaemonSet
-        name: kube-prometheus-stack-prometheus-node-exporter
-        namespace: kube-prometheus-stack
-        jsonPointers:
-          - /spec/template/spec/containers/0/resources
-      - group: external-secrets.io
-        kind: ExternalSecret
-        jqPathExpressions:
-          - .spec.dataFrom[].find.conversionStrategy
-          - .spec.dataFrom[].find.decodingStrategy
-          - .spec.dataFrom[].find.nullBytePolicy
-    dopplerConfig: "svc_grafana"
-    gateways:
-      enable_public: true
-      host: grafana.maklab.net
-      destination:
-        host: kube-prometheus-stack-grafana.kube-prometheus-stack.svc.cluster.local
-        port: 80
-
-  # Wave 1 — Istio CRDs + secret engine
-  istioBase:
-    enable: true
-    name: istio-base
-    syncWave: "1"
-    helmPath: services/helm/istio-base
-    destNamespace: istio-system
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
       - Replace=true
 
+  # Wave 1 — Secret engine
   externalSecrets:
     enable: true
     name: external-secrets
@@ -96,50 +63,13 @@ services:
       - CreateNamespace=true
       - Replace=true
 
-  # Wave 0 — cert-manager before external-secrets (ESO's webhook needs cert-manager)
-  certManager:
+  # Wave 2 — Istio umbrella (after external-secrets ClusterSecretStores are ready)
+  istio:
     enable: true
-    name: cert-manager
-    syncWave: "0"
-    helmPath: services/helm/cert-manager
-    destNamespace: cert-manager
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-
-  # Wave 2 — needs wave 1: istiod←istio-base CRDs
-  istiod:
-    enable: true
-    name: istiod
+    name: istio
     syncWave: "2"
-    helmPath: services/helm/istiod
+    helmPath: services/helm/istio
     destNamespace: istio-system
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-
-  # Wave 3 — ingressgateway needs istiod (wave 2)
-  istioIngressgateway:
-    enable: true
-    name: istio-ingressgateway
-    syncWave: "3"
-    helmPath: services/helm/istio-ingressgateway
-    destNamespace: istio-system
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - SkipSchemaValidation=true
-
-  # Wave 4 — istio-config needs cert-manager + ingressgateway + cloudflare secret; data services run in parallel
-  istioConfig:
-    enable: true
-    name: istio-config
-    syncWave: "4"
-    helmPath: services/helm/istio-config
-    destNamespace: istio-system
-    prune: false
     selfHeal: true
     syncOptions:
       - CreateNamespace=true
@@ -194,7 +124,6 @@ services:
     destNamespace: db-operator
     argocdNamespace: argocd
     argoProject: default
-    skipCrds: true
     selfHeal: true
     syncOptions:
       - CreateNamespace=true
@@ -232,6 +161,39 @@ services:
         value: "{{ .Values.storageClass }}"
 
   # Wave 5 — deploy the other services
+  kubePrometheusStack:
+    enable: true
+    name: kube-prometheus-stack
+    syncWave: "5"
+    helmPath: services/helm/kube-prometheus-stack
+    destNamespace: kube-prometheus-stack
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    ignoreDifferences:
+      - group: apps
+        kind: DaemonSet
+        name: kube-prometheus-stack-prometheus-node-exporter
+        namespace: kube-prometheus-stack
+        jsonPointers:
+          - /spec/template/spec/containers/0/resources
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.dataFrom[].find.conversionStrategy
+          - .spec.dataFrom[].find.decodingStrategy
+          - .spec.dataFrom[].find.nullBytePolicy
+    dopplerConfig: "svc_grafana"
+    gateways:
+      enable_public: true
+      subdomain: grafana
+      destination:
+        serviceName: kube-prometheus-stack-grafana
+        servicePort: 80
+
   cloudflareTunnel:
     enable: true
     name: cloudflare-tunnel

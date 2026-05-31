@@ -21,28 +21,27 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 
 ### Services
 
-| Service | Chart | Purpose |
-|---------|-------|---------|
-| [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA |
-| [generic-device-plugin](services/helm/generic-device-plugin/) | gabe565/generic-device-plugin | Device plugin for /dev/dri (virtio-gpu) as schedulable resource |
-| [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, and alerting |
-| [istio-base](services/helm/istio-base/) | istio/base | Istio CRDs and cluster-scoped resources |
-| [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO |
-| [istiod](services/helm/istiod/) | istio/istiod | Istio control plane — ambient mode, STRICT mTLS |
-| [cert-manager](services/helm/cert-manager/) | jetstack/cert-manager | Automated TLS via Let's Encrypt + Cloudflare DNS-01 |
-| [istio-ingressgateway](services/helm/istio-ingressgateway/) | istio/gateway | Shared ingress gateway for `*.maklab.net` |
-| [istio-config](services/helm/istio-config/) | custom | Gateway, PeerAuthentication, cert-manager ClusterIssuer + Certificate |
-| [external-dns](services/helm/external-dns/) | external-dns/external-dns | Automatic Cloudflare DNS records from Istio Gateway hosts |
-| [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling |
-| [db-operator](services/helm/db-operator/) | db-operator/db-operator | Database lifecycle management (StackGres Postgres) |
-| [mongodb](services/helm/mongodb/) | mongodb/mongodb | MongoDB document store |
-| [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge |
-| [opencost](services/helm/opencost/) | opencost/opencost | Cost monitoring and allocation |
-| [headlamp](services/helm/headlamp/) | headlamp/headlamp | Kubernetes UI dashboard |
-| [ramalama](services/helm/ramalama/) | custom | AI/ML model serving |
-| [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management (disabled by default) |
+All services registered in `services/argocd-appset/values.yaml` — synced in wave order by ArgoCD:
 
-Toggled on/off via `services/argocd-appset/values.yaml`.
+| Wave | Service | Chart | Purpose |
+|------|---------|-------|---------|
+| 0 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA |
+| 0 | [generic-device-plugin](services/helm/generic-device-plugin/) | gabe565/generic-device-plugin | Device plugin for /dev/dri as schedulable resource |
+| 0 | [cert-manager](services/helm/cert-manager/) | jetstack/cert-manager | Automated TLS via Let's Encrypt + Cloudflare DNS-01 |
+| 1 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO |
+| 2 | [istio](services/helm/istio/) | custom umbrella | Istio CRDs, control plane, ingress gateway, and config (Gateway, ClusterIssuer, Certificate, VirtualServices) |
+| 2 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, alerting, Grafana |
+| 4 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts |
+| 4 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling |
+| 4 | [db-operator](services/helm/db-operator/) | db-operator/db-operator | Database lifecycle management (StackGres Postgres) |
+| 4 | [mongodb](services/helm/mongodb/) | mongodb/mongodb | MongoDB document store |
+| 5 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge |
+| 5 | [opencost](services/helm/opencost/) | opencost/opencost | Cost monitoring and allocation |
+| 5 | [headlamp](services/helm/headlamp/) | headlamp/headlamp | Kubernetes UI dashboard |
+| 5 | [ramalama](services/helm/ramalama/) | custom | AI/ML model serving |
+| 5 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management (disabled by default) |
+
+Dependency chain: cert-manager → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 4+ services (all need external-secrets). kube-prometheus-stack at wave 2 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs.
 
 ### Apps
 
@@ -68,7 +67,7 @@ No secrets in this repo. The chain:
 | Doppler Config | Used By | Secrets |
 |---------------|---------|---------|
 | `svc_grafana` | Grafana | `GRAFANA_ADMIN`, `GRAFANA_PW` |
-| `svc_cloudflare` | istio-config, external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
+| `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
 | `svc_postgres` | db-operator (StackGres) | `PG_USER`, `PG_PW`, `PG_HOST` |
 | `svc_mongodb` | MongoDB | `MONGODB_USER`, `MONGODB_PW`, `MONGODB_DB` |
 
@@ -80,7 +79,18 @@ For **services**, the `applications.yaml` template auto-generates Application re
 1. **Create the Helm chart** under `services/helm/<name>/` (or add upstream dependency in `Chart.yaml`).
 2. **Register it** in `services/argocd-appset/values.yaml` with an `enable: true/false` flag, sync wave, and namespace.
 3. **Wire secrets** via ESO: add a `dopplerConfig` key in the values entry matching a ClusterSecretStore. No Terraform changes needed.
-4. **If public ingress is needed**, set `gateways.enable_public: true` — the template auto-generates VirtualService parameters.
+4. **If public ingress is needed**, set `gateways.enable_public: true` — the template auto-generates a VirtualService via the istio umbrella chart. For custom subdomains or non-default service names:
+
+   ```yaml
+   gateways:
+     enable_public: true       # required
+     subdomain: my-app          # optional — defaults to chart name
+     destination:
+       serviceName: my-svc      # optional — defaults to chart name
+       servicePort: 8080        # optional — defaults to 80
+   ```
+
+   The template derives everything from centralized `clusterDomain` + `destNamespace`: host → `{subdomain}.{clusterDomain}`, dest → `{serviceName}.{destNamespace}.svc.cluster.local`, VS name → `{subdomain}`.
 5. **Validate locally**:
    ```bash
    .useful-scripts/ct_check.sh services/helm/<name>
