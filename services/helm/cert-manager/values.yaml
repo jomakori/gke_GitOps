@@ -17,10 +17,11 @@ cert-manager:
     intent: apps
 
   # ── Prometheus metrics ─────────────────────────────────────────────────
+  # Disabled — depends on kube-prometheus-stack CRDs (circular sync risk)
   prometheus:
     enabled: true
     servicemonitor:
-      enabled: true
+      enabled: false
 
   # ── Webhook ────────────────────────────────────────────────────────────
   webhook:
