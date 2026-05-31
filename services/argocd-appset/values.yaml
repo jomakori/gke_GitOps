@@ -96,7 +96,19 @@ services:
       - CreateNamespace=true
       - Replace=true
 
-  # Wave 2 — needs wave 1: istiod←istio-base CRDs, cert-manager before istio-config
+  # Wave 0 — cert-manager before external-secrets (ESO's webhook needs cert-manager)
+  certManager:
+    enable: true
+    name: cert-manager
+    syncWave: "0"
+    helmPath: services/helm/cert-manager
+    destNamespace: cert-manager
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
+  # Wave 2 — needs wave 1: istiod←istio-base CRDs
   istiod:
     enable: true
     name: istiod
@@ -107,17 +119,6 @@ services:
     syncOptions:
       - CreateNamespace=true
       - Replace=true
-
-  certManager:
-    enable: true
-    name: cert-manager
-    syncWave: "2"
-    helmPath: services/helm/cert-manager
-    destNamespace: cert-manager
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
 
   # Wave 3 — ingressgateway needs istiod (wave 2)
   istioIngressgateway:
