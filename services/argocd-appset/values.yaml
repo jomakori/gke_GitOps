@@ -95,7 +95,6 @@ services:
           - .webhooks[].rules[].scope
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
     parameters:
       - name: virtualServices.argocd.enabled
         value: "true"
