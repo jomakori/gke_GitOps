@@ -23,7 +23,7 @@ resources:
     memory: 12Gi
 
 persistence:
-  enabled: true
+  enabled: false
   size: 25Gi
   storageClass: ""
   accessMode: ReadWriteOnce
