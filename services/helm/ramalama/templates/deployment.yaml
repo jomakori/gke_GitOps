@@ -14,8 +14,6 @@ spec:
       labels:
         app.kubernetes.io/name: ramalama
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: jmak-lab-cluster-m04
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -144,6 +142,6 @@ spec:
           periodSeconds: 5
       volumes:
       - name: models
-        hostPath:
-          path: /opt/ramalama-models
-          type: DirectoryOrCreate
+        persistentVolumeClaim:
+          claimName: ramalama-models
+          readOnly: false
