@@ -130,6 +130,7 @@ services:
       - RespectIgnoreDifferences=true
     retryLimit: 2
     retryMaxDuration: 3m
+    skipCrds: true
     managedNamespaceMetadata:
       labels:
         argocd.argoproj.io/respect-existing: "true"
@@ -139,9 +140,6 @@ services:
         jqPathExpressions:
           - .
     dopplerConfig: "svc_postgres"
-    parameters:
-      - name: persistence.storageClass
-        value: "{{ .Values.storageClass }}"
 
   # Wave 5 — Other services, post-deps
   cloudflareTunnel:
