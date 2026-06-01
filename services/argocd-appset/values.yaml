@@ -71,9 +71,6 @@ services:
     helmPath: services/helm/istio
     destNamespace: istio-system
     selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
     dopplerConfig: "svc_cloudflare"
     ignoreDifferences:
       - group: external-secrets.io
@@ -104,6 +101,10 @@ services:
           - /spec/template/spec/containers/0/readinessProbe/successThreshold
           - /spec/template/spec/containers/0/readinessProbe/httpGet/scheme
           - /spec/strategy/type
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
     parameters:
       - name: virtualServices.argocd.enabled
         value: "true"
