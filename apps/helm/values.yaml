@@ -13,15 +13,24 @@ storageClass: "csi-hostpath-sc"
 # │   enable_staging : true        (staging ON unless explicitly off)│
 # │   subdomain     : <appName>    (prod) / <appName>-staging        │
 # │   HPA.minReplicas : service.replicas  (defaults to replicas)     │
+# │   enable_db     : {...}        (spec-driven DB — see demoApi)    │
 # └──────────────────────────────────────────────────────────────────┘
 
 demoApi:
   enable_staging: true
   enable_istio: true
+  enable_db:
+    type: postgres
+    deployment: cluster
+    version: "17"
+    storage: 10Gi
   enable_scaling:
     HPA:
       minReplicas: 2
       maxReplicas: 6
+    db:
+      minInstances: 2
+      maxInstances: 5
   istio:
     gateway: istio-system/maklab-gateway
     requestTimeout: 30s

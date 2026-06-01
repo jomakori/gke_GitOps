@@ -1,0 +1,9 @@
+# Docs: https://docs.percona.com/percona-operator-for-mongodb/
+psmdb-operator:
+  watchAllNamespaces: true
+  rbac:
+    create: true
+  serviceAccount:
+    create: true
+  disableTelemetry: false
+  logLevel: "INFO"

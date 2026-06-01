@@ -1,11 +1,8 @@
 dopplerConfig: "svc_postgres"
 
-# Docs: https://github.com/db-operator/charts/tree/main/charts/db-operator
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
 stackgresOperator:
-  # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Web Console Configuration                                                 │
-  # └─────────────────────────────────────────────────────────────────────────────┘
+  # opt for virtualService
   adminui:
     service:
       exposeHTTP: false
@@ -62,13 +59,3 @@ stackgresOperator:
   # └─────────────────────────────────────────────────────────────────────────────┘
   backupStorage:
     enabled: false
-
-  # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Cluster Configuration - via clusters.yaml                                 │
-  # └─────────────────────────────────────────────────────────────────────────────┘
-  clusters:
-    environments:
-      - name: staging
-        storageSize: 1Gi
-      - name: production
-        storageSize: 2Gi

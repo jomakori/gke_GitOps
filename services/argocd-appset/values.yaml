@@ -129,12 +129,12 @@ services:
       - CreateNamespace=true
       - ServerSideApply=true
 
-  dbOperator:
+  postgresOperator:
     enable: false
-    name: db-operator
+    name: postgres-operator
     syncWave: "4"
-    helmPath: services/helm/db-operator
-    destNamespace: db-operator
+    helmPath: services/helm/postgres-operator
+    destNamespace: postgres-operator
     argocdNamespace: argocd
     argoProject: default
     selfHeal: true
@@ -157,21 +157,29 @@ services:
       - name: persistence.storageClass
         value: "{{ .Values.storageClass }}"
 
-  mongodb:
+  mongodbOperator:
     enable: false
-    name: mongodb
+    name: mongodb-operator
     syncWave: "4"
-    helmPath: services/helm/mongodb
-    destNamespace: mongodb
+    helmPath: services/helm/mongodb-operator
+    destNamespace: mongodb-operator
     argocdNamespace: argocd
     argoProject: default
     selfHeal: true
     syncOptions:
       - CreateNamespace=true
-    dopplerConfig: "svc_mongodb"
-    parameters:
-      - name: persistence.storageClass
-        value: "{{ .Values.storageClass }}"
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+    retryLimit: 2
+    retryMaxDuration: 3m
+    managedNamespaceMetadata:
+      labels:
+        argocd.argoproj.io/respect-existing: "true"
+    ignoreDifferences:
+      - group: apiextensions.k8s.io
+        kind: CustomResourceDefinition
+        jqPathExpressions:
+          - .
 
   # Wave 5 — deploy the other services
   kubePrometheusStack:
