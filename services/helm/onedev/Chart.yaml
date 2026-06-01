@@ -8,8 +8,3 @@ appVersion: "15.0.8"
 
 maintainers:
   - name: local
-
-dependencies:
-  - name: onedev
-    version: 15.0.8
-    repository: https://code.onedev.io/onedev/~helm

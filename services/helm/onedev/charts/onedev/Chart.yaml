@@ -1,0 +1,17 @@
+apiVersion: v2
+name: onedev
+version: 15.0.8
+description: All-In-One DevOps Platform
+type: application
+keywords:
+  - onedev
+  - devops
+  - vcs
+  - cicd
+home: https://onedev.io
+maintainers:
+  - name: Robin Shen
+    email:  robin@onedev.io
+  - name: Abdul Khaliq
+    email: a.khaliq@outlook.my
+appVersion: 15.0.8

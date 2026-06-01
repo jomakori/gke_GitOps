@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ods.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "ods.labels" . | nindent 4 }}
+  {{- if .Values.service.annotations }}
+  annotations: {{ toYaml .Values.service.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+{{- if .Values.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy }}
+{{- end }}
+{{- if .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+{{- end }}
+{{- if .Values.service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ .Values.service.ipFamilyPolicy }}
+{{- end }}
+{{- if .Values.service.ipFamilies }}
+  ipFamilies: {{ toYaml .Values.service.ipFamilies | nindent 4 }}
+{{- end }}
+  ports:
+  - name: http
+    port: {{ default "80" .Values.service.ports.http }}
+    targetPort: http
+    protocol: TCP
+{{- if not .Values.service.separateSSH.enabled }}
+  - name: ssh
+    port: {{ default "22" .Values.service.ports.ssh }}
+    targetPort: ssh
+    protocol: TCP
+{{- end }}
+{{- if .Values.service.nodePort }}
+    nodePort: {{ .Values.service.nodePort }}
+    {{- end }}
+  selector: {{ include "ods.template-labels" . | nindent 4 }}
+  {{- if .Values.service.topologyKeys }}
+  topologyKeys: {{ toYaml .Values.service.topologyKeys | nindent 4 }}
+  {{- end }}
+  sessionAffinity: ClientIP
+---
+{{ $ssh := .Values.service.separateSSH }}
+{{- if $ssh.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ods.fullname" . }}-ssh
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "ods.labels" . | nindent 4 }}
+  {{- if $ssh.annotations }}
+  annotations: {{ toYaml $ssh.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $ssh.type }}
+{{- if eq $ssh.type "LoadBalancer" }}
+{{- if $ssh.loadBalancerIP }}
+  loadBalancerIP: {{ $ssh.loadBalancerIP }}
+{{- end -}}
+{{- if $ssh.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+{{- range $ssh.loadBalancerSourceRanges }}
+    - {{ . }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if and $ssh.clusterIP (eq $ssh.type "ClusterIP") }}
+  clusterIP: {{ $ssh.clusterIP }}
+{{- end }}
+{{- if $ssh.externalIPs }}
+  externalIPs:
+    {{- toYaml $ssh.externalIPs | nindent 4 }}
+{{- end }}
+{{- if $ssh.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ $ssh.ipFamilyPolicy }}
+{{- end }}
+{{- with $ssh.ipFamilies }}
+  ipFamilies:
+{{- toYaml . | nindent 4 }}
+{{- end -}}
+{{- if $ssh.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ $ssh.externalTrafficPolicy }}
+{{- end }}
+  ports:
+  - name: ssh
+    port: {{ default "22" $ssh.port }}
+    targetPort: ssh
+    protocol: TCP
+{{- if $ssh.nodePort }}
+    nodePort: {{ $ssh.nodePort }}
+{{- end }}
+  selector: {{ include "ods.template-labels" . | nindent 4 }}
+{{- if $ssh.topologyKeys }}
+    topologyKeys: {{ toYaml $ssh.topologyKeys | nindent 4 }}
+  {{- end }}
+{{- end -}}
