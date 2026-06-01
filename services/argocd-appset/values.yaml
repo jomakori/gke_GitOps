@@ -116,7 +116,7 @@ services:
       - CreateNamespace=true
 
   keda:
-    enable: true
+    enable: false
     name: keda
     syncWave: "4"
     helmPath: services/helm/keda
@@ -130,7 +130,7 @@ services:
       - ServerSideApply=true
 
   dbOperator:
-    enable: true
+    enable: false
     name: db-operator
     syncWave: "4"
     helmPath: services/helm/db-operator
@@ -158,7 +158,7 @@ services:
         value: "{{ .Values.storageClass }}"
 
   mongodb:
-    enable: true
+    enable: false
     name: mongodb
     syncWave: "4"
     helmPath: services/helm/mongodb
@@ -216,38 +216,6 @@ services:
     selfHeal: true
     syncOptions:
       - CreateNamespace=true
-
-  opencost:
-    enable: true
-    name: opencost
-    syncWave: "5"
-    helmPath: services/helm/opencost
-    destNamespace: opencost
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
-    gateways:
-      enable_public: true
-      destination:
-        port: 9090
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-
-  headlamp:
-    enable: true
-    name: headlamp
-    syncWave: "5"
-    helmPath: services/helm/headlamp
-    destNamespace: headlamp
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
-    gateways:
-      enable_public: true
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
 
   ramalama:
     enable: true
