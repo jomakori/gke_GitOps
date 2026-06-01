@@ -14,6 +14,15 @@ spec:
       labels:
         app.kubernetes.io/name: ramalama
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: ramalama
+              topologyKey: kubernetes.io/hostname
       initContainers:
       - name: download-model
         image: curlimages/curl:latest
@@ -83,7 +92,13 @@ spec:
           name: http
           protocol: TCP
         resources:
+          requests:
+            cpu: {{ .Values.resources.requests.cpu | quote }}
+            memory: {{ .Values.resources.requests.memory }}
+            squat.ai/dri: {{ .Values.gpuResourceLimit }}
           limits:
+            cpu: {{ .Values.resources.limits.cpu | quote }}
+            memory: {{ .Values.resources.limits.memory }}
             squat.ai/dri: {{ .Values.gpuResourceLimit }}
         volumeMounts:
         - name: models
