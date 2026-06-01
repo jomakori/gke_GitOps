@@ -17,7 +17,6 @@ services/
 └── helm/                   ← Helm chart source for each service (15 charts)
     ├── cert-manager/
     ├── cloudflare-tunnel/
-    ├── db-operator/
     ├── external-dns/
     ├── external-secrets/
     ├── generic-device-plugin/
@@ -26,7 +25,8 @@ services/
     ├── keda/
     ├── kube-prometheus-stack/
     ├── metrics-server/
-    ├── mongodb/
+    ├── mongodb-operator/
+    ├── postgres-operator/
     ├── opencost/
     ├── ramalama/
     └── redis-operator/

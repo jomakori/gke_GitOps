@@ -33,8 +33,8 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 2 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, alerting, Grafana |
 | 4 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts |
 | 4 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling |
-| 4 | [db-operator](services/helm/db-operator/) | db-operator/db-operator | Database lifecycle management (StackGres Postgres) |
-| 4 | [mongodb](services/helm/mongodb/) | mongodb/mongodb | MongoDB document store |
+| 4 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) |
+| 4 | [mongodb-operator](services/helm/mongodb-operator/) | psmdb-operator | MongoDB operator (Percona) |
 | 5 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge |
 | 5 | [opencost](services/helm/opencost/) | opencost/opencost | Cost monitoring and allocation |
 | 5 | [headlamp](services/helm/headlamp/) | headlamp/headlamp | Kubernetes UI dashboard |
@@ -68,8 +68,8 @@ No secrets in this repo. The chain:
 |---------------|---------|---------|
 | `svc_grafana` | Grafana | `GRAFANA_ADMIN`, `GRAFANA_PW` |
 | `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
-| `svc_postgres` | db-operator (StackGres) | `PG_USER`, `PG_PW`, `PG_HOST` |
-| `svc_mongodb` | MongoDB | `MONGODB_USER`, `MONGODB_PW`, `MONGODB_DB` |
+| `svc_postgres` | postgres-operator (StackGres) | `PG_USER`, `PG_PW`, `PG_HOST` |
+| `svc_mongodb` | mongodb-operator | `MONGODB_USER`, `MONGODB_PW`, `MONGODB_DB` |
 
 New secrets are added in the Doppler dashboard — the ExternalSecret already pulls the entire config.
 
