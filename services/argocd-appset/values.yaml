@@ -13,50 +13,36 @@ services:
   # Wave 0 — no deps
   certManager:
     enable: true
-    name: cert-manager
     syncWave: "0"
-    helmPath: services/helm/cert-manager
-    destNamespace: cert-manager
-    selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
 
   genericDevicePlugin:
     enable: true
-    name: generic-device-plugin
     syncWave: "0"
-    helmPath: services/helm/generic-device-plugin
     destNamespace: kube-system
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
+    finalizer: true
+
     syncOptions:
       - CreateNamespace=true
       - Replace=true
 
   metricsServer:
     enable: true
-    name: metrics-server
     syncWave: "0"
-    helmPath: services/helm/metrics-server
     destNamespace: kube-system
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
+    finalizer: true
+
     syncOptions:
       - Replace=true
 
   # Wave 1 — Secret engine
   externalSecrets:
     enable: true
-    name: external-secrets
     syncWave: "1"
-    helmPath: services/helm/external-secrets
-    destNamespace: external-secrets
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
+    finalizer: true
+
     retryLimit: 5
     retryMaxDuration: 3m
     syncOptions:
@@ -66,11 +52,8 @@ services:
   # Wave 2 — Istio umbrella (after external-secrets ClusterSecretStores are ready)
   istio:
     enable: true
-    name: istio
     syncWave: "2"
-    helmPath: services/helm/istio
     destNamespace: istio-system
-    selfHeal: true
     dopplerConfig: "svc_cloudflare"
     ignoreDifferences:
       - group: external-secrets.io
@@ -79,9 +62,6 @@ services:
           - .spec.dataFrom[].find.conversionStrategy
           - .spec.dataFrom[].find.decodingStrategy
           - .spec.dataFrom[].find.nullBytePolicy
-      # ValidatingWebhookConfigurations are mutated post-creation by:
-      #   - the k8s API server (defaults matchPolicy, namespaceSelector, timeoutSeconds, service.port, scope)
-      #   - the istiod controller (injects caBundle, flips failurePolicy Ignore→Fail)
       - group: admissionregistration.k8s.io
         kind: ValidatingWebhookConfiguration
         jqPathExpressions:
@@ -93,8 +73,6 @@ services:
           - .webhooks[].timeoutSeconds
           - .webhooks[].clientConfig.service.port
           - .webhooks[].rules[].scope
-    syncOptions:
-      - CreateNamespace=true
     parameters:
       - name: virtualServices.argocd.enabled
         value: "true"
@@ -105,39 +83,47 @@ services:
       - name: virtualServices.argocd.destination.port
         value: "80"
 
+  # Wave 3 - critical services like dns, dbs, autoscaling
+
   externalDns:
     enable: true
-    name: external-dns
-    syncWave: "4"
-    helmPath: services/helm/external-dns
-    destNamespace: external-dns
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+    syncWave: "3"
 
   keda:
     enable: false
-    name: keda
-    syncWave: "4"
-    helmPath: services/helm/keda
-    destNamespace: keda
+    syncWave: "3"
     argocdNamespace: argocd
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
+    finalizer: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
 
-  postgresOperator:
+  mongodbOperator:
     enable: false
-    name: postgres-operator
-    syncWave: "4"
-    helmPath: services/helm/postgres-operator
-    destNamespace: postgres-operator
+    syncWave: "3"
     argocdNamespace: argocd
     argoProject: default
-    selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+    retryLimit: 2
+    retryMaxDuration: 3m
+    managedNamespaceMetadata:
+      labels:
+        argocd.argoproj.io/respect-existing: "true"
+    ignoreDifferences:
+      - group: apiextensions.k8s.io
+        kind: CustomResourceDefinition
+        jqPathExpressions:
+          - .
+
+  postgresOperator:
+    enable: true
+    syncWave: "3"
+    argocdNamespace: argocd
+    argoProject: default
     syncOptions:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
@@ -157,40 +143,16 @@ services:
       - name: persistence.storageClass
         value: "{{ .Values.storageClass }}"
 
-  mongodbOperator:
-    enable: false
-    name: mongodb-operator
+  # Wave 5 — Other services, post-deps
+  cloudflareTunnel:
+    enable: true
     syncWave: "4"
-    helmPath: services/helm/mongodb-operator
-    destNamespace: mongodb-operator
-    argocdNamespace: argocd
-    argoProject: default
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ApplyOutOfSyncOnly=true
-      - RespectIgnoreDifferences=true
-    retryLimit: 2
-    retryMaxDuration: 3m
-    managedNamespaceMetadata:
-      labels:
-        argocd.argoproj.io/respect-existing: "true"
-    ignoreDifferences:
-      - group: apiextensions.k8s.io
-        kind: CustomResourceDefinition
-        jqPathExpressions:
-          - .
 
-  # Wave 5 — deploy the other services
   kubePrometheusStack:
     enable: true
-    name: kube-prometheus-stack
-    syncWave: "5"
-    helmPath: services/helm/kube-prometheus-stack
-    destNamespace: kube-prometheus-stack
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
+    dopplerConfig: "svc_grafana"
+    finalizer: true
+    syncWave: "4"
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
@@ -207,45 +169,26 @@ services:
           - .spec.dataFrom[].find.conversionStrategy
           - .spec.dataFrom[].find.decodingStrategy
           - .spec.dataFrom[].find.nullBytePolicy
-    dopplerConfig: "svc_grafana"
     gateways:
       enable_public: true
       subdomain: grafana
       destination:
         serviceName: kube-prometheus-stack-grafana
-        servicePort: 80
 
-  cloudflareTunnel:
-    enable: true
-    name: cloudflare-tunnel
-    syncWave: "5"
-    helmPath: services/helm/cloudflare-tunnel
-    destNamespace: cloudflare-tunnel
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
 
-  ramalama:
+  onedev:
     enable: true
-    name: ramalama
-    syncWave: "5"
-    helmPath: services/helm/ramalama
-    destNamespace: ramalama
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
+    syncWave: "4"
+    gateways:
+      enable_public: true
+    parameters:
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
 
   redisOperator:
     enable: false
-    name: redis-operator
-    syncWave: "5"
-    helmPath: services/helm/redis-operator
-    destNamespace: redis-operator
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
+    syncWave: "4"
+    finalizer: true
     environments:
       - production
       - staging
@@ -256,3 +199,11 @@ services:
     parameters:
       - name: redis-cluster.persistence.storageClass
         value: "{{ .Values.storageClass }}"
+
+  ramalama:
+    enable: true
+    syncWave: "4"
+    finalizer: true
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
