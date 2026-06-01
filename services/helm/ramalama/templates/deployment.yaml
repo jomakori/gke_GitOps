@@ -25,12 +25,13 @@ spec:
               topologyKey: kubernetes.io/hostname
       initContainers:
       - name: download-model
-        image: curlimages/curl:latest
+        image: alpine:latest
         command:
         - sh
         - -c
         - |
           set -e
+          apk add --no-cache wget
           mkdir -p /models/slots
           MODEL="/models/{{ .Values.model.alias }}.gguf"
           MIN_SIZE=$((17 * 1024 * 1024 * 1024))
@@ -41,7 +42,7 @@ spec:
           fi
           if [ ! -f "$MODEL" ]; then
             echo "Downloading {{ .Values.model.alias }} (~18GB)..."
-            curl -# -L --limit-rate 100M --retry 3 --retry-delay 5 -o "$MODEL" {{ .Values.model.url }}
+            wget --progress=bar:force --limit-rate=100M --tries=3 --waitretry=5 -O "$MODEL" {{ .Values.model.url }}
             echo "Download complete."
           else
             echo "Model exists, skipping download."
@@ -51,51 +52,13 @@ spec:
           mountPath: /models
       containers:
       - name: llama-server
-        image: {{ .Values.image }}:{{ .Values.tag }}
+        image: alpine:latest
         command:
-        - llama-server
-        - --host
-        - "0.0.0.0"
-        - --port
-        - "{{ .Values.service.port }}"
-        - --model
-        - /models/{{ .Values.model.alias }}.gguf
-        - --alias
-        - {{ .Values.model.alias }}
-        - -ngl
-        - "999"
-        {{- if .Values.inference.flashAttn }}
-        - --flash-attn
-        - "on"
-        {{- end }}
-        {{- if .Values.inference.cacheTypeK }}
-        - --cache-type-k
-        - {{ .Values.inference.cacheTypeK }}
-        {{- end }}
-        {{- if .Values.inference.cacheTypeV }}
-        - --cache-type-v
-        - {{ .Values.inference.cacheTypeV }}
-        {{- end }}
-        - --ctx-size
-        - "{{ .Values.inference.ctxSize }}"
-        - --batch-size
-        - "{{ .Values.inference.batchSize }}"
-        - --ubatch-size
-        - "{{ .Values.inference.ubatchSize }}"
-        {{- if ne (.Values.inference.threads | int) 0 }}
-        - -t
-        - "{{ .Values.inference.threads }}"
-        {{- end }}
-        {{- if .Values.inference.mlock }}
-        - --mlock
-        {{- end }}
-        {{- if .Values.inference.slotSavePath }}
-        - --slot-save-path
-        - {{ .Values.inference.slotSavePath }}
-        {{- end }}
-        {{- if .Values.inference.noWarmup }}
-        - --no-warmup
-        {{- end }}
+        - sh
+        - -c
+        - |
+          apk add --no-cache libstdc++ libgcc
+          exec /models/llama-server --host 0.0.0.0 --port {{ .Values.service.port }} --model /models/{{ .Values.model.alias }}.gguf --alias {{ .Values.model.alias }} -ngl 999 {{- if .Values.inference.flashAttn }} --flash-attn on {{ end }}{{- if .Values.inference.cacheTypeK }} --cache-type-k {{ .Values.inference.cacheTypeK }} {{ end }}{{- if .Values.inference.cacheTypeV }} --cache-type-v {{ .Values.inference.cacheTypeV }} {{ end }} --ctx-size {{ .Values.inference.ctxSize }} --batch-size {{ .Values.inference.batchSize }} --ubatch-size {{ .Values.inference.ubatchSize }}{{- if ne (.Values.inference.threads | int) 0 }} -t {{ .Values.inference.threads }} {{ end }}{{- if .Values.inference.mlock }} --mlock {{ end }}{{- if .Values.inference.slotSavePath }} --slot-save-path {{ .Values.inference.slotSavePath }} {{ end }}{{- if .Values.inference.noWarmup }} --no-warmup {{ end }}
         ports:
         - containerPort: {{ .Values.service.port }}
           name: http
