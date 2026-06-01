@@ -207,6 +207,7 @@ services:
     syncOptions:
       - CreateNamespace=true
       - Replace=true
+      - ServerSideApply=true
     parameters:
       - name: persistence.storageClass
         value: "{{ .Values.storageClass }}"
