@@ -1,0 +1,27 @@
+apiVersion: stackgres.io/v1
+kind: SGCluster
+metadata:
+  name: {{ .Values.postgresql.clusterName }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  instances: {{ .Values.postgresql.instances }}
+  postgres:
+    version: "latest"
+  profile: {{ .Values.postgresql.profile | quote }}
+  {{- if .Values.postgresql.sgInstanceProfile }}
+  sgInstanceProfile: {{ .Values.postgresql.sgInstanceProfile | quote }}
+  {{- end }}
+  pods:
+    persistentVolume:
+      size: {{ .Values.postgresql.storage }}
+      {{- if .Values.storageClass }}
+      storageClass: {{ .Values.storageClass }}
+      {{- end }}
+    disableMetricsExporter: true
+    disableConnectionPooling: true
+    disablePostgresUtil: false
+  configurations:
+    sgPostgresConfig: ""
+    sgPoolingConfig: ""

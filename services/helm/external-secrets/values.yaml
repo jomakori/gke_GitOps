@@ -34,6 +34,9 @@ clusterSecretStores:
   svc_cloudflare:
     project: devops
     config: svc_cloudflare
+  svc_onedev:
+    project: devops
+    config: svc_onedev
   zurabase-dev:
     project: zurabase
     config: dev

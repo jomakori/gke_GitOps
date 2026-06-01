@@ -1,0 +1,15 @@
+apiVersion: v2
+name: onedev
+description: A Helm chart for OneDev - an all-in-one DevOps platform
+type: application
+
+version: 15.0.8
+appVersion: "15.0.8"
+
+maintainers:
+  - name: local
+
+dependencies:
+  - name: onedev
+    version: 15.0.8
+    repository: https://code.onedev.io/onedev/~helm
