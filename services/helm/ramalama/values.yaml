@@ -6,12 +6,38 @@ replicas: 1
 # Model to download at startup (from Hugging Face).
 # Path is derived from alias: /models/<alias>.gguf
 model:
-  # Qwen3-4B Q4_K_M — fits ~4GB GPU buffer, built-in thinking/reasoning mode
-  url: https://huggingface.co/bartowski/Qwen_Qwen3-4B-GGUF/resolve/main/Qwen_Qwen3-4B-Q4_K_M.gguf
-  alias: qwen3
+  # Qwen3.6-27B Q4_K_M — ~18GB, built-in thinking/reasoning mode
+  url: https://huggingface.co/bartowski/Qwen_Qwen3.6-27B-GGUF/resolve/main/Qwen_Qwen3.6-27B-Q4_K_M.gguf
+  alias: qwen3.6-27b
 
 # GPU resource from generic-device-plugin
 gpuResourceLimit: 1
+
+persistence:
+  enabled: true
+  size: 25Gi
+  storageClass: ""
+  accessMode: ReadWriteOnce
+
+inference:
+  # Flash attention — reduces memory from O(n²) to O(n) for long contexts
+  flashAttn: true
+  # KV cache quantization — halves KV cache memory with minimal quality loss
+  cacheTypeK: q8_0
+  cacheTypeV: q8_0
+  # Context window — 32K balances memory vs capability (max is 262K)
+  ctxSize: 32768
+  # Batch size for prompt ingestion — larger = faster prompt processing
+  batchSize: 2048
+  ubatchSize: 512
+  # CPU threads — 0 = auto-detect optimal count
+  threads: 0
+  # Lock model in RAM — prevents swapping in constrained VM
+  mlock: true
+  # Persist KV cache to PVC — avoids reprocessing prompts after restarts
+  slotSavePath: /models/slots
+  # Skip warmup on startup — faster cold start, slightly slower first request
+  noWarmup: true
 
 service:
   port: 8080
