@@ -20,7 +20,7 @@ resources:
     memory: 8Gi
   limits:
     cpu: "8"
-    memory: 12Gi
+    memory: 14Gi
 
 persistence:
   enabled: true
