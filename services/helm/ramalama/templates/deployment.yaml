@@ -57,7 +57,7 @@ spec:
         - sh
         - -c
         - |
-          apk add --no-cache libstdc++ libgcc
+          apk add --no-cache libstdc++ libgcc libgomp
           exec /models/llama-server --host 0.0.0.0 --port {{ .Values.service.port }} --model /models/{{ .Values.model.alias }}.gguf --alias {{ .Values.model.alias }} -ngl 999 {{- if .Values.inference.flashAttn }} --flash-attn on {{ end }}{{- if .Values.inference.cacheTypeK }} --cache-type-k {{ .Values.inference.cacheTypeK }} {{ end }}{{- if .Values.inference.cacheTypeV }} --cache-type-v {{ .Values.inference.cacheTypeV }} {{ end }} --ctx-size {{ .Values.inference.ctxSize }} --batch-size {{ .Values.inference.batchSize }} --ubatch-size {{ .Values.inference.ubatchSize }}{{- if ne (.Values.inference.threads | int) 0 }} -t {{ .Values.inference.threads }} {{ end }}{{- if .Values.inference.mlock }} --mlock {{ end }}{{- if .Values.inference.slotSavePath }} --slot-save-path {{ .Values.inference.slotSavePath }} {{ end }}{{- if .Values.inference.noWarmup }} --no-warmup {{ end }}
         ports:
         - containerPort: {{ .Values.service.port }}
