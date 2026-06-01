@@ -35,8 +35,9 @@ spec:
           MODEL="/models/{{ .Values.model.alias }}.gguf"
           # Minimum expected size (~17GB) — delete truncated files from interrupted downloads
           MIN_SIZE=$((17 * 1024 * 1024 * 1024))
-          if [ -f "$MODEL" ] && [ "$(wc -c < "$MODEL" 2>/dev/null || echo 0)" -lt "$MIN_SIZE" ]; then
-            echo "Model is incomplete ($(($(wc -c < "$MODEL" 2>/dev/null || echo 0) / 1048576)) MB), re-downloading..."
+          SIZE() { stat -c %s "$MODEL" 2>/dev/null || echo 0; }
+          if [ -f "$MODEL" ] && [ "$(SIZE)" -lt "$MIN_SIZE" ]; then
+            echo "Model is incomplete ($(($(SIZE) / 1048576)) MB), re-downloading..."
             rm -f "$MODEL"
           fi
           if [ ! -f "$MODEL" ]; then
@@ -45,7 +46,7 @@ spec:
             CURL_PID=$!
             while kill -0 $CURL_PID 2>/dev/null; do
               if [ -f "$MODEL" ]; then
-                echo "$(($(wc -c < "$MODEL" 2>/dev/null || echo 0) / 1048576)) MB downloaded"
+                echo "$(($(SIZE) / 1048576)) MB downloaded"
               fi
               sleep 30
             done
