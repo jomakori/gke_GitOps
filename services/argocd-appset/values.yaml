@@ -16,8 +16,17 @@ services:
     syncWave: "0"
     syncOptions:
       - CreateNamespace=true
-      - Replace=true
       - ServerSideApply=true
+
+  genericDevicePlugin:
+    enable: true
+    syncWave: "0"
+    destNamespace: kube-system
+    finalizer: true
+
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
 
   metricsServer:
     enable: true
