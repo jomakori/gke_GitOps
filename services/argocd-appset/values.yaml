@@ -88,6 +88,7 @@ services:
   externalDns:
     enable: true
     syncWave: "3"
+    dopplerConfig: "svc_cloudflare"
 
   keda:
     enable: false
@@ -128,9 +129,9 @@ services:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
       - RespectIgnoreDifferences=true
+      - ServerSideApply=true
     retryLimit: 2
     retryMaxDuration: 3m
-    skipCrds: true
     managedNamespaceMetadata:
       labels:
         argocd.argoproj.io/respect-existing: "true"
@@ -145,6 +146,7 @@ services:
   cloudflareTunnel:
     enable: true
     syncWave: "4"
+    dopplerConfig: "svc_cloudflare"
 
   kubePrometheusStack:
     enable: true
