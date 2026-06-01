@@ -41,8 +41,8 @@ inference:
   ubatchSize: 512
   # CPU threads — 0 = auto-detect optimal count
   threads: 0
-  # Lock model in RAM — prevents swapping in constrained VM
-  mlock: true
+  # Lock model in RAM — disabled: OOMs 12Gi limit on 14.6Gi nodes
+  mlock: false
   # Persist KV cache to PVC — avoids reprocessing prompts after restarts
   slotSavePath: /models/slots
   # Skip warmup on startup — faster cold start, slightly slower first request
