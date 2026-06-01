@@ -42,8 +42,8 @@ onedev:
     host: "onedev-pg.onedev.svc.cluster.local"
     port: "5432"
     name: "postgres"
-    user: ""
-    password: ""
+    user: "onedev"
+    password: "placeholder"
     maximumPoolSize: "25"
 
   # Env overrides — appended after hardcoded env vars in the chart template.
