@@ -21,7 +21,13 @@ spec:
         - sh
         - -c
         - |
-          curl -L -o /models/{{ .Values.model.alias }}.gguf {{ .Values.model.url }}
+          mkdir -p /models/slots
+          if [ ! -f /models/{{ .Values.model.alias }}.gguf ]; then
+            echo "Downloading model..."
+            curl -L --retry 3 --retry-delay 5 -o /models/{{ .Values.model.alias }}.gguf {{ .Values.model.url }}
+          else
+            echo "Model already exists, skipping download."
+          fi
         volumeMounts:
         - name: models
           mountPath: /models
@@ -40,6 +46,38 @@ spec:
         - {{ .Values.model.alias }}
         - -ngl
         - "999"
+        {{- if .Values.inference.flashAttn }}
+        - --flash-attn
+        - "on"
+        {{- end }}
+        {{- if .Values.inference.cacheTypeK }}
+        - --cache-type-k
+        - {{ .Values.inference.cacheTypeK }}
+        {{- end }}
+        {{- if .Values.inference.cacheTypeV }}
+        - --cache-type-v
+        - {{ .Values.inference.cacheTypeV }}
+        {{- end }}
+        - --ctx-size
+        - "{{ .Values.inference.ctxSize }}"
+        - --batch-size
+        - "{{ .Values.inference.batchSize }}"
+        - --ubatch-size
+        - "{{ .Values.inference.ubatchSize }}"
+        {{- if ne (.Values.inference.threads | int) 0 }}
+        - -t
+        - "{{ .Values.inference.threads }}"
+        {{- end }}
+        {{- if .Values.inference.mlock }}
+        - --mlock
+        {{- end }}
+        {{- if .Values.inference.slotSavePath }}
+        - --slot-save-path
+        - {{ .Values.inference.slotSavePath }}
+        {{- end }}
+        {{- if .Values.inference.noWarmup }}
+        - --no-warmup
+        {{- end }}
         ports:
         - containerPort: {{ .Values.service.port }}
           name: http
@@ -50,11 +88,18 @@ spec:
         volumeMounts:
         - name: models
           mountPath: /models
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 60
         livenessProbe:
           httpGet:
             path: /health
             port: http
-          initialDelaySeconds: 60
+          initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
@@ -64,4 +109,6 @@ spec:
           periodSeconds: 5
       volumes:
       - name: models
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: ramalama-models
+          readOnly: false
