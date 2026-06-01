@@ -93,13 +93,6 @@ services:
           - .webhooks[].timeoutSeconds
           - .webhooks[].clientConfig.service.port
           - .webhooks[].rules[].scope
-      # Deployment readiness probe fields are defaulted by the k8s API server
-      - group: apps
-        kind: Deployment
-        jsonPointers:
-          - /spec/template/spec/containers/0/readinessProbe/failureThreshold
-          - /spec/template/spec/containers/0/readinessProbe/successThreshold
-          - /spec/template/spec/containers/0/readinessProbe/httpGet/scheme
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
