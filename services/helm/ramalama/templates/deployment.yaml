@@ -30,12 +30,23 @@ spec:
         - sh
         - -c
         - |
+          set -e
           mkdir -p /models/slots
-          if [ ! -f /models/{{ .Values.model.alias }}.gguf ]; then
-            echo "Downloading model..."
-            curl -L --retry 3 --retry-delay 5 -o /models/{{ .Values.model.alias }}.gguf {{ .Values.model.url }}
+          MODEL="/models/{{ .Values.model.alias }}.gguf"
+          if [ ! -f "$MODEL" ]; then
+            echo "Downloading {{ .Values.model.alias }} (~18GB)..."
+            curl -L --retry 3 --retry-delay 5 -o "$MODEL" {{ .Values.model.url }} &
+            CURL_PID=$!
+            while kill -0 $CURL_PID 2>/dev/null; do
+              if [ -f "$MODEL" ]; then
+                echo "$(($(wc -c < "$MODEL" 2>/dev/null || echo 0) / 1048576)) MB downloaded"
+              fi
+              sleep 30
+            done
+            wait $CURL_PID
+            echo "Download complete."
           else
-            echo "Model already exists, skipping download."
+            echo "Model exists, skipping download."
           fi
         volumeMounts:
         - name: models
