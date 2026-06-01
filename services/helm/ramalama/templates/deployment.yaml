@@ -33,7 +33,6 @@ spec:
           set -e
           mkdir -p /models/slots
           MODEL="/models/{{ .Values.model.alias }}.gguf"
-          # Minimum expected size (~17GB) — delete truncated files from interrupted downloads
           MIN_SIZE=$((17 * 1024 * 1024 * 1024))
           SIZE() { stat -c %s "$MODEL" 2>/dev/null || echo 0; }
           if [ -f "$MODEL" ] && [ "$(SIZE)" -lt "$MIN_SIZE" ]; then
@@ -42,15 +41,7 @@ spec:
           fi
           if [ ! -f "$MODEL" ]; then
             echo "Downloading {{ .Values.model.alias }} (~18GB)..."
-            curl -sS -L --limit-rate 100M --retry 3 --retry-delay 5 -o "$MODEL" {{ .Values.model.url }} &
-            CURL_PID=$!
-            while kill -0 $CURL_PID 2>/dev/null; do
-              if [ -f "$MODEL" ]; then
-                echo "$(($(SIZE) / 1048576)) MB downloaded"
-              fi
-              sleep 30
-            done
-            wait $CURL_PID
+            curl -# -L --limit-rate 100M --retry 3 --retry-delay 5 -o "$MODEL" {{ .Values.model.url }}
             echo "Download complete."
           else
             echo "Model exists, skipping download."
