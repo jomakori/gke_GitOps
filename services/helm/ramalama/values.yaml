@@ -15,8 +15,8 @@ gpuResourceLimit: 1
 # Requests for scheduler binpacking, limits cap OOM risk on 14.6Gi nodes
 resources:
   requests:
-    cpu: "8"
-    memory: 14Gi
+    cpu: "4"
+    memory: 8Gi
   limits:
     cpu: "8"
     memory: 14Gi
