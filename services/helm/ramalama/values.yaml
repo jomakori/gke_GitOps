@@ -4,10 +4,9 @@ tag: latest
 replicas: 1
 
 # Model to download at startup (from Hugging Face).
-# Path is derived from alias: /models/<alias>.gguf
+# IQ2_XXS ~9GB — fits in 14.6Gi node RAM
 model:
-  # Qwen3.6-27B Q4_K_M — ~18GB, built-in thinking/reasoning mode
-  url: https://huggingface.co/bartowski/Qwen_Qwen3.6-27B-GGUF/resolve/main/Qwen_Qwen3.6-27B-Q4_K_M.gguf
+  url: https://huggingface.co/bartowski/Qwen_Qwen3.6-27B-GGUF/resolve/main/Qwen_Qwen3.6-27B-IQ2_XXS.gguf
   alias: qwen3.6-27b
 
 # GPU resource from generic-device-plugin
@@ -16,8 +15,8 @@ gpuResourceLimit: 1
 # Requests for scheduler binpacking, limits cap OOM risk on 14.6Gi nodes
 resources:
   requests:
-    cpu: "4"
-    memory: 8Gi
+    cpu: "8"
+    memory: 14Gi
   limits:
     cpu: "8"
     memory: 14Gi
@@ -29,16 +28,16 @@ persistence:
   accessMode: ReadWriteOnce
 
 inference:
-  # Flash attention — reduces memory from O(n²) to O(n) for long contexts
-  flashAttn: true
-  # KV cache quantization — halves KV cache memory with minimal quality loss
-  cacheTypeK: q8_0
-  cacheTypeV: q8_0
-  # Context window — 32K balances memory vs capability (max is 262K)
-  ctxSize: 32768
-  # Batch size for prompt ingestion — larger = faster prompt processing
-  batchSize: 2048
-  ubatchSize: 512
+  # Flash attention — disabled to save memory
+  flashAttn: false
+  # KV cache quantization — disabled to save memory
+  cacheTypeK: ""
+  cacheTypeV: ""
+  # Context window — 4K to fit in 14Gi node
+  ctxSize: 4096
+  # Batch size — minimal for memory
+  batchSize: 256
+  ubatchSize: 128
   # CPU threads — 0 = auto-detect optimal count
   threads: 0
   # Lock model in RAM — disabled: OOMs 12Gi limit on 14.6Gi nodes
