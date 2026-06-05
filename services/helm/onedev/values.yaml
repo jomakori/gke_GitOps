@@ -14,6 +14,12 @@ postgresql:
   sgInstanceProfile: ""
   # -- Profile for the SGCluster (development = no anti-affinity, no resource limits)
   profile: "development"
+  # -- PostgreSQL major version (must match SGPostgresConfig.postgresVersion)
+  postgresVersion: "latest"
+  # -- SGPostgresConfig resource name
+  sgPostgresConfig: "onedev-pg-config"
+  # -- SGPoolingConfig resource name (not used when disableConnectionPooling=true)
+  sgPoolingConfig: "onedev-pg-pooling"
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │   OneDev Configuration (upstream chart values)                              │
