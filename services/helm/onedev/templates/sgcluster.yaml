@@ -22,6 +22,12 @@ spec:
     disableMetricsExporter: true
     disableConnectionPooling: true
     disablePostgresUtil: false
+  {{- if or .Values.postgresql.sgPostgresConfig .Values.postgresql.sgPoolingConfig }}
   configurations:
-    sgPostgresConfig: ""
-    sgPoolingConfig: ""
+    {{- if .Values.postgresql.sgPostgresConfig }}
+    sgPostgresConfig: {{ .Values.postgresql.sgPostgresConfig | quote }}
+    {{- end }}
+    {{- if .Values.postgresql.sgPoolingConfig }}
+    sgPoolingConfig: {{ .Values.postgresql.sgPoolingConfig | quote }}
+    {{- end }}
+  {{- end }}
