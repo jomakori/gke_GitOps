@@ -4,7 +4,7 @@ metadata:
   name: {{ .Values.postgresql.clusterName }}
   namespace: {{ .Release.Namespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   instances: {{ .Values.postgresql.instances }}
   postgres:

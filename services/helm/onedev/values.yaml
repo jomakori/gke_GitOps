@@ -15,7 +15,7 @@ postgresql:
   # -- Profile for the SGCluster (development = no anti-affinity, no resource limits)
   profile: "development"
   # -- PostgreSQL major version (must match SGPostgresConfig.postgresVersion)
-  postgresVersion: "latest"
+  postgresVersion: "18"
   # -- SGPostgresConfig resource name
   sgPostgresConfig: "onedev-pg-config"
   # -- SGPoolingConfig resource name (not used when disableConnectionPooling=true)
