@@ -41,7 +41,7 @@ onedev:
     host: "onedev-pg.onedev.svc.cluster.local"
     port: "5432"
     name: "postgres"
-    user: "onedev"
+    user: "postgres"
     password: "placeholder"
     maximumPoolSize: "25"
 
