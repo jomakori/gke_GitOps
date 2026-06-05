@@ -1,4 +1,4 @@
-dopplerConfig: "svc_postgres"
+dopplerConfig: "svc_postgres_operator"
 
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
 stackgresOperator:
@@ -29,7 +29,8 @@ stackgresOperator:
   # └─────────────────────────────────────────────────────────────────────────────┘
   authentication:
     type: jwt
-    createAdminSecret: true
+    # ExternalSecret stackgres-restapi-admin provides ADMIN_USER/ADMIN_PASSWORD from Doppler
+    createAdminSecret: false
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Grafana Integration                                                       │
   # └─────────────────────────────────────────────────────────────────────────────┘

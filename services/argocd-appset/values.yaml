@@ -130,7 +130,7 @@ services:
         kind: CustomResourceDefinition
         jqPathExpressions:
           - .
-    dopplerConfig: "svc_postgres"
+    dopplerConfig: "svc_postgres_operator"
 
   # Wave 5 — Other services, post-deps
   cloudflareTunnel:
