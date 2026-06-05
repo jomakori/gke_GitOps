@@ -18,16 +18,6 @@ services:
       - CreateNamespace=true
       - ServerSideApply=true
 
-  genericDevicePlugin:
-    enable: true
-    syncWave: "0"
-    destNamespace: kube-system
-    finalizer: true
-
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-
   metricsServer:
     enable: true
     syncWave: "0"
@@ -198,16 +188,4 @@ services:
       - ServerSideApply=true
     parameters:
       - name: redis-cluster.persistence.storageClass
-        value: "{{ .Values.storageClass }}"
-
-  ramalama:
-    enable: true
-    syncWave: "4"
-    finalizer: true
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-      - ServerSideApply=true
-    parameters:
-      - name: persistence.storageClass
         value: "{{ .Values.storageClass }}"
