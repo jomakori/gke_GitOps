@@ -28,9 +28,9 @@ clusterSecretStores:
   svc_mongodb:
     project: devops
     config: svc_mongodb
-  svc_postgres:
+  svc_postgres_operator:
     project: devops
-    config: svc_postgres
+    config: svc_postgres_operator
   svc_cloudflare:
     project: devops
     config: svc_cloudflare
