@@ -14,21 +14,20 @@ services/
 │   │   ├── _helpers.tpl     ← Template helpers (service registration logic)
 │   │   └── applications.yaml ← Single template auto-generates all Applications
 │   └── values.yaml           ← Service registry (enable/disable, sync waves, parameters)
-└── helm/                   ← Helm chart source for each service (15 charts)
+└── helm/                   ← Helm chart source for each service (14 charts)
     ├── cert-manager/
     ├── cloudflare-tunnel/
     ├── external-dns/
     ├── external-secrets/
-    ├── generic-device-plugin/
     ├── headlamp/
     ├── istio/
     ├── keda/
     ├── kube-prometheus-stack/
     ├── metrics-server/
     ├── mongodb-operator/
-    ├── postgres-operator/
+    ├── onedev/
     ├── opencost/
-    ├── ramalama/
+    ├── postgres-operator/
     └── redis-operator/
 ```
 
@@ -44,7 +43,7 @@ Charts fall into three patterns:
 |---------|-------|-------------|
 | **Thin Wrapper** | 6 | `Chart.yaml` with upstream `dependencies` only, no local templates |
 | **Custom** | 4 | Full local templates, no upstream dependency |
-| **Hybrid** | 5 | Upstream dependency + local templates for extra resources (ExternalSecrets, ClusterSecretStores, etc.) |
+| **Hybrid** | 6 | Upstream dependency + local templates for extra resources (ExternalSecrets, ClusterSecretStores, SGCluster, etc.) |
 
 ## Adding a Service
 

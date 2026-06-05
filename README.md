@@ -7,7 +7,7 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 ```
 .
 ├── services/          ← 3rd-party infrastructure
-│   ├── helm/          ← Helm charts (18 services)
+│   ├── helm/          ← Helm charts (14 services)
 │   └── argocd-appset/ ← App-of-Apps manifests (single applications.yaml template)
 ├── apps/              ← Application workloads
 │   ├── helm/          ← Single parameterized Helm chart (chart name: apps)
@@ -23,25 +23,22 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 
 All services registered in `services/argocd-appset/values.yaml` — synced in wave order by ArgoCD:
 
-| Wave | Service | Chart | Purpose |
-|------|---------|-------|---------|
-| 0 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA |
-| 0 | [generic-device-plugin](services/helm/generic-device-plugin/) | gabe565/generic-device-plugin | Device plugin for /dev/dri as schedulable resource |
-| 0 | [cert-manager](services/helm/cert-manager/) | jetstack/cert-manager | Automated TLS via Let's Encrypt + Cloudflare DNS-01 |
-| 1 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO |
-| 2 | [istio](services/helm/istio/) | custom umbrella | Istio CRDs, control plane, ingress gateway, and config (Gateway, ClusterIssuer, Certificate, VirtualServices) |
-| 2 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, alerting, Grafana |
-| 4 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts |
-| 4 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling |
-| 4 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) |
-| 4 | [mongodb-operator](services/helm/mongodb-operator/) | psmdb-operator | MongoDB operator (Percona) |
-| 5 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge |
-| 5 | [opencost](services/helm/opencost/) | opencost/opencost | Cost monitoring and allocation |
-| 5 | [headlamp](services/helm/headlamp/) | headlamp/headlamp | Kubernetes UI dashboard |
-| 5 | [ramalama](services/helm/ramalama/) | custom | AI/ML model serving |
-| 5 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management (disabled by default) |
+| Wave | Service | Chart | Purpose | Status |
+|------|---------|-------|---------|--------|
+| 0 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA | enabled |
+| 0 | [cert-manager](services/helm/cert-manager/) | jetstack/cert-manager | Automated TLS via Let's Encrypt + Cloudflare DNS-01 | enabled |
+| 1 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO | enabled |
+| 2 | [istio](services/helm/istio/) | custom umbrella | base + istiod + ingress gateway (single chart, 3 upstream deps) | enabled |
+| 3 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts | enabled |
+| 3 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) | enabled |
+| 3 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling | **disabled** |
+| 3 | [mongodb-operator](services/helm/mongodb-operator/) | psmdb-operator | MongoDB operator (Percona) | **disabled** |
+| 4 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, alerting, Grafana | enabled |
+| 4 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
+| 4 | [onedev](services/helm/onedev/) | custom (vendored upstream + SGCluster) | All-in-one DevOps platform (Git, CI/CD, issue tracker) with StackGres PostgreSQL | enabled |
+| 4 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management | **disabled** |
 
-Dependency chain: cert-manager → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 4+ services (all need external-secrets). kube-prometheus-stack at wave 2 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs.
+Dependency chain: cert-manager → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs.
 
 ### Apps
 
@@ -68,7 +65,8 @@ No secrets in this repo. The chain:
 |---------------|---------|---------|
 | `svc_grafana` | Grafana | `GRAFANA_ADMIN`, `GRAFANA_PW` |
 | `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
-| `svc_postgres` | postgres-operator (StackGres) | `PG_USER`, `PG_PW`, `PG_HOST` |
+| `svc_postgres_operator` | postgres-operator (StackGres) | `ADMIN_USER`, `ADMIN_PASSWORD` |
+| `svc_onedev` | onedev | `DB_PASSWORD`, `DB_USER` |
 | `svc_mongodb` | mongodb-operator | `MONGODB_USER`, `MONGODB_PW`, `MONGODB_DB` |
 
 New secrets are added in the Doppler dashboard — the ExternalSecret already pulls the entire config.
