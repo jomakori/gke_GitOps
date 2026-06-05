@@ -131,6 +131,13 @@ services:
         kind: CustomResourceDefinition
         jqPathExpressions:
           - .
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.data[].remoteRef.conversionStrategy
+          - .spec.data[].remoteRef.decodingStrategy
+          - .spec.data[].remoteRef.metadataPolicy
+          - .spec.data[].remoteRef.nullBytePolicy
     dopplerConfig: "svc_postgres_operator"
 
   # Wave 5 — Other services, post-deps
