@@ -8,7 +8,7 @@ metadata:
 spec:
   instances: {{ .Values.postgresql.instances }}
   postgres:
-    version: "latest"
+    version: {{ .Values.postgresql.postgresVersion | default "latest" | quote }}
   profile: {{ .Values.postgresql.profile | quote }}
   {{- if .Values.postgresql.sgInstanceProfile }}
   sgInstanceProfile: {{ .Values.postgresql.sgInstanceProfile | quote }}

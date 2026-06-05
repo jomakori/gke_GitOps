@@ -1,0 +1,13 @@
+apiVersion: stackgres.io/v1
+kind: SGPoolingConfig
+metadata:
+  name: {{ .Values.postgresql.sgPoolingConfig }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  pgBouncer:
+    pgbouncer.ini:
+      pgbouncer:
+        pool_mode: transaction
+        max_client_conn: "100"
