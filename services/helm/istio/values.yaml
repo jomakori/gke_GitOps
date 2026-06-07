@@ -76,6 +76,9 @@ certEmail: admin@maklab.net
 cloudflare:
   apiTokenSecretName: cloudflare-api-token
   apiTokenSecretKey: CF_API_TOKEN
+  access:
+    teamDomain: ""
+    audienceTag: ""
 
 gateway:
   name: maklab-gateway
