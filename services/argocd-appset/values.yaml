@@ -7,6 +7,8 @@ clusterServer: ""
 repoUrl: ""
 storageClass:
 targetRevision: ""
+accessTeamDomain: ""
+accessAudienceTag: ""
 
 # Service Configurations
 services:

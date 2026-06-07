@@ -1,0 +1,25 @@
+{{- range $name, $vs := .Values.virtualServices }}
+{{- if and $vs.enabled $vs.enablePrivate }}
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: require-cf-access-{{ $name }}
+  namespace: {{ $.Values.gateway.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notRequestPrincipals: ["*"]
+      to:
+        - operation:
+            hosts:
+              - {{ $vs.host }}
+---
+{{- end }}
+{{- end }}
