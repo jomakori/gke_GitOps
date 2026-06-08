@@ -158,6 +158,15 @@ openclaw:
     persistence:
       data:
         size: 10Gi
+        advancedMounts:
+          main:
+            init-plugins:
+              - path: /home/node/.openclaw
+      tmp:
+        advancedMounts:
+          main:
+            init-plugins:
+              - path: /tmp
 
     ingress:
       main:
