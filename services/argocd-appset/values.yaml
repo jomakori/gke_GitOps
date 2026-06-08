@@ -185,6 +185,22 @@ services:
       - name: storageClass
         value: "{{ .Values.storageClass }}"
 
+  openclaw:
+    enable: true
+    syncWave: "5"
+    destNamespace: openclaw
+    dopplerConfig: "svc_openclaw"
+    gateways:
+      enable_private: true
+      subdomain: openclaw
+      destination:
+        servicePort: 18789
+    parameters:
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
+    syncOptions:
+      - CreateNamespace=true
+
   redisOperator:
     enable: false
     syncWave: "4"
