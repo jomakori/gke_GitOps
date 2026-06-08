@@ -15,6 +15,8 @@ spec:
       jwksUri: https://{{ .Values.cloudflare.access.teamDomain }}.cloudflareaccess.com/cdn-cgi/access/certs
       audiences:
         - {{ .Values.cloudflare.access.audienceTag }}
+      fromHeaders:
+        - name: Cf-Access-Jwt-Assertion
       forwardOriginalToken: true
       outputPayloadToHeader: x-cf-access-jwt-payload
 {{- end }}
