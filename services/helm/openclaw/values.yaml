@@ -24,7 +24,9 @@ openclaw:
                 set -e
                 echo "[init-plugins] Installing oh-my-openclaw..."
                 node /app/dist/index.js plugins install npm:@happycastle/oh-my-openclaw@latest
-                node /app/dist/index.js plugins enable oh-my-openclaw
+                node /app/dist/index.js plugins enable oh-my-openclaw 2>/dev/null || true
+                echo "[init-plugins] Running doctor --fix..."
+                node /app/dist/index.js doctor --fix 2>/dev/null || true
                 echo "[init-plugins] Done"
             env:
               HOME: /home/node
@@ -111,7 +113,7 @@ openclaw:
 
               // oh-my-openclaw plugin sub-agent configs
               "plugins": {
-                "allow": ["oh-my-openclaw"],
+                "bundledDiscovery": "allowlist",
                 "entries": {
                   "oh-my-openclaw": {
                     "enabled": true,
