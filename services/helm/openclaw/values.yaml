@@ -21,9 +21,8 @@ openclaw:
               - sh
               - -c
               - |
-                set -e
                 echo "[init-plugins] Installing oh-my-openclaw..."
-                node /app/dist/index.js plugins install npm:@happycastle/oh-my-openclaw@latest
+                node /app/dist/index.js plugins install npm:@happycastle/oh-my-openclaw@latest 2>/dev/null || true
                 node /app/dist/index.js plugins enable oh-my-openclaw 2>/dev/null || true
                 echo "[init-plugins] Running doctor --fix..."
                 node /app/dist/index.js doctor --fix 2>/dev/null || true
@@ -67,9 +66,6 @@ openclaw:
                 "trustedProxies": ["10.0.0.1"],
                 "controlUi": {
                   "allowedOrigins": ["https://openclaw.maklab.net"]
-                },
-                "token": {
-                  "generate": false
                 }
               },
 
