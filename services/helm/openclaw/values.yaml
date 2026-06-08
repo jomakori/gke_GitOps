@@ -158,7 +158,6 @@ openclaw:
     persistence:
       data:
         size: 10Gi
-        storageClass: "{{ .Values.storageClass }}"
 
     ingress:
       main:
