@@ -3,6 +3,8 @@
 
 openclaw:
   app-template:
+    # Use v2026.6.8 — required for WhatsApp plugin API compatibility
+    openclawVersion: "2026.6.8"
     # Overwrite config on every sync (strict GitOps)
     configMode: overwrite
     # Skip ClawHub skills — we use oh-my-openclaw plugin instead
@@ -23,6 +25,8 @@ openclaw:
               - |
                 echo "[init-plugins] Installing oh-my-openclaw..."
                 node /app/dist/index.js plugins install npm:@happycastle/oh-my-openclaw@latest 2>/dev/null || true
+                echo "[init-plugins] Installing WhatsApp plugin..."
+                node /app/dist/index.js plugins install clawhub:@openclaw/whatsapp 2>/dev/null || true
                 node /app/dist/index.js plugins enable oh-my-openclaw 2>/dev/null || true
                 echo "[init-plugins] Running doctor --fix..."
                 node /app/dist/index.js doctor --fix 2>/dev/null || true
