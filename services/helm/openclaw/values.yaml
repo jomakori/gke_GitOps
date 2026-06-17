@@ -164,6 +164,7 @@ openclaw:
               // WhatsApp channel — personal number mode
               "channels": {
                 "whatsapp": {
+                  "enabled": true,
                   "dmPolicy": "allowlist",
                   "selfChatMode": true,
                   "allowFrom": ["${WHATSAPP_ALLOW_FROM}"],
