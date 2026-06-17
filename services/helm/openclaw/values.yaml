@@ -154,6 +154,20 @@ openclaw:
                   "search": { "enabled": false },
                   "fetch": { "enabled": true }
                 }
+              },
+
+              // WhatsApp channel — personal number mode
+              "channels": {
+                "whatsapp": {
+                  "dmPolicy": "allowlist",
+                  "selfChatMode": true,
+                  "allowFrom": ["${WHATSAPP_ALLOW_FROM}"],
+                  "sendReadReceipts": true,
+                  "textChunkLimit": 4000,
+                  "chunkMode": "length",
+                  "replyToMode": "off",
+                  "reactionLevel": "minimal"
+                }
               }
             }
 
