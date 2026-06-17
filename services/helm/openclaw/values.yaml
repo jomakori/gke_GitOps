@@ -34,6 +34,9 @@ openclaw:
             env:
               HOME: /home/node
               NPM_CONFIG_CACHE: /tmp/.npm
+            envFrom:
+              - secretRef:
+                  name: openclaw-secrets
             securityContext:
               runAsUser: 1000
               runAsGroup: 1000
