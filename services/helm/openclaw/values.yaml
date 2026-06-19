@@ -72,7 +72,13 @@ openclaw:
               "gateway": {
                 "port": 18789,
                 "mode": "local",
-                "trustedProxies": ["10.0.0.1"],
+                "trustedProxies": ["10.244.0.0/16"],
+                "auth": {
+                  "mode": "trusted-proxy",
+                  "trustedProxy": {
+                    "userHeader": "Cf-Access-Authenticated-User-Email"
+                  }
+                },
                 "controlUi": {
                   "allowedOrigins": ["https://openclaw.maklab.net"]
                 }
