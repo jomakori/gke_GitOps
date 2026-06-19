@@ -76,9 +76,10 @@ openclaw:
                 "auth": {
                   "mode": "trusted-proxy",
                   "trustedProxy": {
-                    "userHeader": "Cf-Access-Authenticated-User-Email"
-                  }
-                },
+                  "userHeader": "Cf-Access-Authenticated-User-Email",
+                  "allowLoopback": true
+                }
+              },
                 "controlUi": {
                   "allowedOrigins": ["https://openclaw.maklab.net"]
                 }
