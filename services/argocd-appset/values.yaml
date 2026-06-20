@@ -181,6 +181,9 @@ services:
     syncWave: "4"
     gateways:
       enable_public: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
     ignoreDifferences:
       - group: ""
         kind: Secret
