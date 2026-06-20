@@ -63,13 +63,3 @@ onedev:
       operator: "Equal"
       value: "apps"
       effect: "NoSchedule"
-
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-          - matchExpressions:
-              - key: class
-                operator: In
-                values:
-                  - guaranteed
