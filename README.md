@@ -37,8 +37,9 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 4 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
 | 4 | [onedev](services/helm/onedev/) | custom (vendored upstream + SGCluster) | All-in-one DevOps platform (Git, CI/CD, issue tracker) with StackGres PostgreSQL | enabled |
 | 4 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management | **disabled** |
+| 5 | [openclaw](services/helm/openclaw/) | openclaw-helm | AI assistant gateway — WhatsApp channel, Cloudflare Access trusted-proxy auth | enabled |
 
-Dependency chain: cert-manager → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs.
+Dependency chain: cert-manager → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4/5 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs.
 
 ### Apps
 
@@ -68,6 +69,7 @@ No secrets in this repo. The chain:
 | `svc_postgres_operator` | postgres-operator (StackGres) | `ADMIN_USER`, `ADMIN_PASSWORD` |
 | `svc_onedev` | onedev | `DB_PASSWORD`, `DB_USER` |
 | `svc_mongodb` | mongodb-operator | `MONGODB_USER`, `MONGODB_PW`, `MONGODB_DB` |
+| `svc_openclaw` | openclaw | `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `OPENCODE_API_KEY`, `WHATSAPP_ALLOW_FROM`, `OPENCLAW_GATEWAY_PASSWORD`, `TRUSTED_PROXY_IPS` |
 
 New secrets are added in the Doppler dashboard — the ExternalSecret already pulls the entire config.
 
