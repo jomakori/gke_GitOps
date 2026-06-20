@@ -1,0 +1,39 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+This chart wraps [jetstack/cert-manager](https://charts.jetstack.io) — the automated TLS certificate management controller for Kubernetes. It is a **thin wrapper** chart with no local templates. All configuration is passed through to the upstream dependency.
+
+### TLS chain
+
+cert-manager issues wildcard TLS certificates via **Let's Encrypt** using the **Cloudflare DNS-01** challenge. The full chain:
+
+1. cert-manager validates domain ownership by creating a `_acme-challenge` TXT record in Cloudflare (requires `CF_API_TOKEN`).
+2. On success, Let's Encrypt issues a wildcard certificate `*.<clusterDomain>` (default domain configured via `clusterDomain`).
+3. The certificate is stored in a `Secret` in `istio-system` and consumed by the Istio ingress gateway.
+4. cert-manager's built-in renewal controller re-issues certificates before expiry.
+
+Cert-manager uses public DNS resolvers (`8.8.8.8:53`, `1.1.1.1:53`) exclusively for DNS-01 validation — no cluster DNS to avoid split-brain.
+
+### Setup
+
+| Aspect | Detail |
+|--------|--------|
+| **Namespace** | `cert-manager` |
+| **Sync wave** | 0 (before all services that need TLS) |
+| **CRDs** | Installed via chart (`crds.enabled: true`) |
+| **Node placement** | Components on `intent: apps` nodes |
+| **Doppler config** | None — reads `CF_API_TOKEN` from `cloudflare-api-token` `Secret` in `cert-manager` namespace, created by the Istio umbrella chart's ExternalSecret (wave -1) |
+
+### Dependencies
+
+cert-manager must be healthy before any chart that creates `Certificate` or `ClusterIssuer` resources (notably the Istio umbrella chart at wave 2). The `letsencrypt-prod` ClusterIssuer and the wildcard Certificate are created by the Istio chart, not by this chart.
+
+{{ template "chart.valuesSection" . }}

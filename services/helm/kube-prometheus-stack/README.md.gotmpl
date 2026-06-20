@@ -1,0 +1,53 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+This chart is a thin wrapper around the upstream [prometheus-community/kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) chart. It deploys a complete monitoring stack: Prometheus, Alertmanager, and Grafana.
+
+### Sync wave and namespace
+
+- **Sync wave**: 4 — ensures `external-secrets` ClusterSecretStores exist before the Grafana ExternalSecret syncs.
+- **Namespace**: `kube-prometheus-stack`
+
+### Doppler config
+
+A local `ExternalSecret` (sync-wave: `-1`) pulls the `svc_grafana` Doppler config and creates a `grafana-admin-credentials` Secret. The upstream Grafana chart is configured to use this existing secret:
+
+| Secret Key | Source |
+|------------|--------|
+| `ADMIN_USER` | Doppler `GRAFANA_ADMIN` |
+| `ADMIN_PASSWORD` | Doppler `GRAFANA_PW` |
+
+### Ingress
+
+Grafana is exposed at `grafana.maklab.net` via the istio umbrella VirtualService (auto-generated from `enable_public: true` in the services appset).
+
+### Disabled components
+
+The following upstream components are disabled — they are not reachable on Minikube:
+
+- `kubeEtcd`
+- `kubeControllerManager`
+- `kubeSchedulerAlerting` / `kubeSchedulerRecording`
+- Prometheus operator admission webhooks (no cert-manager dependency)
+- Prometheus operator TLS
+
+### Ports
+
+| Service | Port |
+|---------|------|
+| Prometheus | 15017 |
+| Alertmanager | 15010 |
+
+### Storage
+
+Prometheus TSDB uses a 30Gi PVC via the `local-path` storage class. Alertmanager and Grafana use the upstream defaults (emptyDir — no persistent storage configured).
+
+{{ template "chart.valuesSection" . }}

@@ -1,13 +1,11 @@
-# keda
-
-![Version: 2.19.0](https://img.shields.io/badge/Version-2.19.0-informational?style=flat-square) ![AppVersion: 2.19.0](https://img.shields.io/badge/AppVersion-2.19.0-informational?style=flat-square)
-A Helm chart for Kubernetes Event-driven Autoscaling (KEDA)
-
-## Requirements
-
-| Repository | Name | Version |
-|------------|------|---------|
-| https://kedacore.github.io/charts | keda | 2.19.0 |
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
 
 ## Under the hood
 
@@ -30,11 +28,4 @@ KEDA installs as a metrics adapter that HPA objects can reference via `ScaledObj
 
 The chart enables the metrics server (required for ScaledObject to expose custom metrics to HPA) and webhooks (for validating ScaledObject/ScaledJob resources). A dedicated service account `keda` is created with RBAC for cluster-wide scaling operations.
 
-## Values
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| keda.metricsServer.enabled | bool | `true` |  |
-| keda.serviceAccount.create | bool | `true` |  |
-| keda.serviceAccount.name | string | `"keda"` |  |
-| keda.webhooks.enabled | bool | `true` |  |
+{{ template "chart.valuesSection" . }}

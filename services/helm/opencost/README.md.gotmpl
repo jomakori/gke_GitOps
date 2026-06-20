@@ -1,0 +1,50 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+This chart is a thin wrapper around the upstream [opencost/opencost-helm-chart](https://github.com/opencost/opencost-helm-chart). It deploys [OpenCost](https://www.opencost.io/) — the open-source Kubernetes cost monitoring tool (the engine behind KubeCost).
+
+### Sync wave and namespace
+
+- **Sync wave**: 4
+- **Namespace**: `opencost`
+
+### Prometheus scraping
+
+OpenCost is configured to scrape the internal Prometheus instance in the `kube-prometheus-stack` namespace:
+
+| Parameter | Value |
+|-----------|-------|
+| Service name | `kube-prometheus-stack-prometheus` |
+| Port | 15017 |
+| Scheme | `http` |
+
+No additional secret or Doppler config is needed — OpenCost reads Prometheus metrics directly.
+
+### Ingress
+
+Public ingress is **disabled by default** (`enable_public: false` in the services appset). OpenCost is accessed via `kubectl port-forward` for ad-hoc cost analysis. No VirtualService is auto-generated.
+
+### Node scheduling
+
+OpenCost pods are scheduled on `intent: apps` nodes. No tolerations or dedicated affinity are configured.
+
+### UI
+
+The OpenCost UI is enabled (`opencost.ui.enabled: true`). It binds to port 9003 inside the cluster and is reachable via port-forward or kubectl proxy.
+
+### Features
+
+- KSM v1 metrics only (`EMIT_KSM_V1_METRICS_ONLY: true`)
+- Kube state metrics v1 emit enabled
+- ServiceMonitor is **disabled** (no additional scrape targets needed — OpenCost queries Prometheus directly)
+- Default cluster ID is empty (uses auto-detected cluster name)
+
+{{ template "chart.valuesSection" . }}

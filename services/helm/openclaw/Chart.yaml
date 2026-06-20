@@ -1,11 +1,8 @@
 apiVersion: v2
 name: openclaw
-description: Hybrid chart — upstream openclaw-helm + ExternalSecret for Doppler secrets
+description: OpenClaw AI assistant gateway, powered by OpenCrust
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "2026.5.22"
-
-dependencies:
-  - name: openclaw
-    version: "1.5.40"
-    repository: oci://ghcr.io/serhanekicii/openclaw-helm
+maintainers:
+  - name: local

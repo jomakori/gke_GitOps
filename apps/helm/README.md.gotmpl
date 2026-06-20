@@ -1,0 +1,79 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Setup
+
+This is a **single parameterized chart** that generates all Kubernetes manifests for every application workload. It is invoked from the apps ArgoCD AppSet with `--set appName=<key>`. The chart name is `apps`.
+
+### Architecture
+
+All manifests are produced by a single 373-line `_helpers.tpl` define (`app.manifests`). The `app.yaml` template looks up the app config via `index .Values <appName>` and delegates to `app.manifests`. There is one invocation per app per environment.
+
+### Generated resources
+
+| Resource | Condition |
+|----------|-----------|
+| `ServiceAccount` + ECR `dockercfg` Secret | Always |
+| `ExternalSecret` | `environments.<env>.dopplerConfig` is set |
+| `SGCluster` (StackGres) or `PerconaServerMongoDB` | `enable_db.type` is `postgres` or `mongodb` |
+| `Deployment` | Always (scheduled on `intent: apps` nodes) |
+| `Service` | Always (ClusterIP when Istio, NodePort otherwise) |
+| `VirtualService` | `enable_domain` + `enable_istio` (both default true) |
+| `HorizontalPodAutoscaler` | `enable_scaling.HPA` is set |
+| `PersistentVolumeClaim` | `service.storage.size` is set |
+
+### Database provisioning
+
+When `enable_db` is set, the chart generates an operator CR in the app namespace:
+
+| DB type | Operator CR | Autoscaling |
+|---------|-------------|-------------|
+| `postgres` | `SGCluster` (StackGres) | Connection-based horizontal (`replicasConnectionsUsageTarget: 0.5`) |
+| `mongodb` | `PerconaServerMongoDB` (Percona) | Static replica set size (no connection-based scaling) |
+
+- `deployment: db` → single instance (fixed)
+- `deployment: cluster` → multiple instances with PDB
+
+Sync wave for all DB resources: `-1` (before the app pod).
+
+### Environments
+
+Each app supports `staging` and `production` environments. Per-environment config:
+
+| Field | Source | Default |
+|-------|--------|---------|
+| Subdomain | `environments.<env>.subdomain` | `<appName>` (prod) / `staging.<appName>` (staging) |
+| Image tag | `environments.<env>.tag` | `latest` |
+| Doppler config | `environments.<env>.dopplerConfig` | (none — ExternalSecret only created when set) |
+| Namespace | Auto | `<appName-kebab>-<envName>` |
+
+Staging can be disabled per-app via `enable_staging: false`.
+
+### Ingress
+
+When `enable_domain` + `enable_istio` are true, a `VirtualService` is generated:
+
+- **Host**: `<subdomain>.<clusterDomain>` (e.g., `demo-api.maklab.net`)
+- **Gateway**: `istio-system/maklab-gateway` (overridable via `istio.gateway`)
+- **Retry**: 3 attempts, 5s per-try timeout, on gateway/connect/retriable errors
+- **Timeout**: 30s
+
+### Global config
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `clusterDomain` | `maklab.net` | Domain for all VirtualService hosts |
+| `registry` | `123456.dkr.ecr.us-east-2.amazonaws.com` | ECR registry for app images |
+| `storageClass` | `csi-hostpath-sc` | Default PVC storage class |
+
+### Node scheduling
+
+All app deployments use `nodeSelector: intent: apps` to land on application-dedicated nodes.
+
+{{ template "chart.valuesSection" . }}

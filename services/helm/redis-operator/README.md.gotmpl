@@ -1,13 +1,11 @@
-# redis-operator
-
-![Version: 13.0.4](https://img.shields.io/badge/Version-13.0.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 7.4.1](https://img.shields.io/badge/AppVersion-7.4.1-informational?style=flat-square)
-A Helm chart for deploying redis-cluster using a Redis operator
-
-## Requirements
-
-| Repository | Name | Version |
-|------------|------|---------|
-| https://charts.bitnami.com/bitnami | redis-cluster | 13.0.4 |
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
 
 ## Under the hood
 
@@ -33,16 +31,4 @@ Volume size defaults to 50Gi per node (6 × 50Gi = 300Gi total cluster capacity)
 
 Authentication is disabled (`global.redis.password: ""`) — the cluster is accessible only within the cluster network. No Doppler config or ExternalSecret is needed.
 
-## Values
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| redis-cluster.cluster.nodes | int | `6` |  |
-| redis-cluster.global.redis.password | string | `""` |  |
-| redis-cluster.persistence.size | string | `"50Gi"` |  |
-| redis-cluster.persistence.storageClass | string | `nil` |  |
-| redis-cluster.redis.nodeSelector.intent | string | `"apps"` |  |
-| redis-cluster.redis.resources.requests.cpu | string | `"512m"` |  |
-| redis-cluster.redis.resources.requests.memory | string | `"1Gi"` |  |
-| redis-cluster.redis.resourcesPreset | string | `"none"` |  |
-| redis-cluster.updateJob.nodeSelector.intent | string | `"apps"` |  |
+{{ template "chart.valuesSection" . }}
