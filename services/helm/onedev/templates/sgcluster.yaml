@@ -22,6 +22,7 @@ spec:
     disableMetricsExporter: true
     disableConnectionPooling: true
     disablePostgresUtil: false
+  {{- if or .Values.postgresql.sgPostgresConfig .Values.postgresql.sgPoolingConfig }}
   configurations:
     {{- if .Values.postgresql.sgPostgresConfig }}
     sgPostgresConfig: {{ .Values.postgresql.sgPostgresConfig | quote }}
@@ -29,12 +30,4 @@ spec:
     {{- if .Values.postgresql.sgPoolingConfig }}
     sgPoolingConfig: {{ .Values.postgresql.sgPoolingConfig | quote }}
     {{- end }}
-    credentials:
-      users:
-        superuser:
-          username:
-            name: onedev-pg-credentials
-            key: dbUser
-          password:
-            name: onedev-pg-credentials
-            key: dbPassword
+  {{- end }}
