@@ -185,8 +185,8 @@ services:
       - group: ""
         kind: Secret
         name: onedev-secrets
-        jsonPointers:
-          - /data/dbPassword
+        jqPathExpressions:
+          - .data
       - group: stackgres.io
         kind: SGPostgresConfig
         name: onedev-pg-config
