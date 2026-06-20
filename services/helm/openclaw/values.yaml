@@ -83,7 +83,8 @@ openclaw:
                 }
               },
                 "controlUi": {
-                  "allowedOrigins": ["https://openclaw.maklab.net"]
+                  "allowedOrigins": ["https://openclaw.maklab.net"],
+                  "dangerouslyDisableDeviceAuth": true
                 }
               },
 
