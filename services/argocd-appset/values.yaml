@@ -188,6 +188,7 @@ services:
       - group: ""
         kind: Secret
         name: onedev-secrets
+        namespace: onedev
         jsonPointers:
           - /data
       - group: stackgres.io
