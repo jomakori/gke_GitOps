@@ -181,6 +181,22 @@ services:
     syncWave: "4"
     gateways:
       enable_public: true
+    ignoreDifferences:
+      - group: ""
+        kind: Secret
+        name: onedev-secrets
+        jsonPointers:
+          - /data/dbPassword
+      - group: stackgres.io
+        kind: SGPostgresConfig
+        name: onedev-pg-config
+        jqPathExpressions:
+          - .spec.postgresql.conf
+      - group: stackgres.io
+        kind: SGPoolingConfig
+        name: onedev-pg-pooling
+        jqPathExpressions:
+          - .spec.pgBouncer.pgbouncer.ini.pgbouncer
     parameters:
       - name: storageClass
         value: "{{ .Values.storageClass }}"
