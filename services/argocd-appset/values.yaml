@@ -124,6 +124,7 @@ services:
       - ServerSideApply=true
     retryLimit: 2
     retryMaxDuration: 3m
+    skipCrds: true
     managedNamespaceMetadata:
       labels:
         argocd.argoproj.io/respect-existing: "true"

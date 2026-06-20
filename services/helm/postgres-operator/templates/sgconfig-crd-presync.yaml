@@ -1,0 +1,50 @@
+---
+# Pre-install workaround: the upstream StackGres hook uses `kubectl replace` for
+# the SGConfig CRD, which fails on a fresh cluster because the CRD does not exist.
+# This hook runs before the upstream hook and idempotently applies the CRD.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-sgconfig-crd-bootstrap
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "-50"
+data:
+  SGConfig.yaml: |
+{{ .Files.Get "files/SGConfig.yaml" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-bootstrap-sgconfig-crd
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "1"
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      serviceAccountName: {{ .Release.Name }}-init
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: bootstrap-sgconfig-crd
+          image: quay.io/ongres/kubectl:v1.31.3-build-6.38
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -ecx
+            - |
+              kubectl apply -f /SGConfig.yaml
+          volumeMounts:
+            - name: sgconfig-crd
+              mountPath: /SGConfig.yaml
+              subPath: SGConfig.yaml
+      volumes:
+        - name: sgconfig-crd
+          configMap:
+            name: {{ .Release.Name }}-sgconfig-crd-bootstrap
