@@ -191,12 +191,12 @@ services:
         kind: SGPostgresConfig
         name: onedev-pg-config
         jqPathExpressions:
-          - .spec.postgresql.conf
+          - .spec."postgresql.conf"
       - group: stackgres.io
         kind: SGPoolingConfig
         name: onedev-pg-pooling
         jqPathExpressions:
-          - .spec.pgBouncer.pgbouncer.ini.pgbouncer
+          - .spec.pgBouncer."pgbouncer.ini".pgbouncer
     parameters:
       - name: storageClass
         value: "{{ .Values.storageClass }}"
