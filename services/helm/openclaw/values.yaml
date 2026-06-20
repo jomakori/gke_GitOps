@@ -30,6 +30,8 @@ openclaw:
                 node /app/dist/index.js plugins enable oh-my-openclaw 2>/dev/null || true
                 echo "[init-plugins] Resolving env vars in config..."
                 sed -i "s|\${WHATSAPP_ALLOW_FROM}|${WHATSAPP_ALLOW_FROM}|g" /home/node/.openclaw/openclaw.json
+                sed -i "s|\${OPENCLAW_GATEWAY_PASSWORD}|${OPENCLAW_GATEWAY_PASSWORD}|g" /home/node/.openclaw/openclaw.json
+                sed -i "s|__TRUSTED_PROXY_IPS__|${TRUSTED_PROXY_IPS}|g" /home/node/.openclaw/openclaw.json
                 echo "[init-plugins] Running doctor --fix..."
                 node /app/dist/index.js doctor --fix 2>/dev/null || true
                 echo "[init-plugins] Done"
@@ -72,12 +74,12 @@ openclaw:
               "gateway": {
                 "port": 18789,
                 "mode": "local",
-                "trustedProxies": ["127.0.0.1", "10.244.0.0/16"],
+                "trustedProxies": __TRUSTED_PROXY_IPS__,
                 "auth": {
                   "mode": "trusted-proxy",
+                  "password": "${OPENCLAW_GATEWAY_PASSWORD}",
                   "trustedProxy": {
-                  "userHeader": "Cf-Access-Authenticated-User-Email",
-                  "allowLoopback": true
+                  "userHeader": "Cf-Access-Authenticated-User-Email"
                 }
               },
                 "controlUi": {
