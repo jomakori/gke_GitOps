@@ -214,7 +214,7 @@ services:
       enable_private: true
       subdomain: openclaw
       destination:
-        servicePort: 18789
+        servicePort: 3888
     parameters:
       - name: storageClass
         value: "{{ .Values.storageClass }}"

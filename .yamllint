@@ -25,11 +25,10 @@ rules:
   truthy: disable
 ignore: |
   #### Files ####
-  # Dynamic YAML files have syntax errors sometimes.
   *.tmpl
   .pre-commit-config.yaml
 
   #### Folders ####
   services/argocd-appset/templates/**
   apps/argocd-appset/templates/**
-  services/helm/db-operator/templates/**
+  services/helm/*/templates/**

@@ -1,13 +1,11 @@
-# metrics-server
-
-![Version: 3.13.0](https://img.shields.io/badge/Version-3.13.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.8.0](https://img.shields.io/badge/AppVersion-0.8.0-informational?style=flat-square)
-A Helm chart for Metrics Server
-
-## Requirements
-
-| Repository | Name | Version |
-|------------|------|---------|
-| https://kubernetes-sigs.github.io/metrics-server | metrics-server | 3.13.0 |
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
 
 ## Under the hood
 
@@ -29,15 +27,4 @@ Three replicas with a PodDisruptionBudget allowing at most 1 unavailable — ens
 
 Metrics Server has no ExternalSecret — it does not need any secrets or external configuration.
 
-## Values
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| metrics-server.args[0] | string | `"--kubelet-insecure-tls"` |  |
-| metrics-server.containerPort | int | `10250` |  |
-| metrics-server.podDisruptionBudget.enabled | bool | `true` |  |
-| metrics-server.podDisruptionBudget.maxUnavailable | int | `1` |  |
-| metrics-server.replicas | int | `3` |  |
-| metrics-server.resources.limits.memory | string | `"500Mi"` |  |
-| metrics-server.resources.requests.cpu | string | `"200m"` |  |
-| metrics-server.resources.requests.memory | string | `"300Mi"` |  |
+{{ template "chart.valuesSection" . }}

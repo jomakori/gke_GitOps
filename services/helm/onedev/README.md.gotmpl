@@ -1,0 +1,80 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Setup
+
+This is a **custom chart** that combines the vendored upstream OneDev chart with local templates for database provisioning via StackGres.
+
+### Sync wave and namespace
+
+- **Sync wave**: 4
+- **Namespace**: `onedev`
+
+### Local templates (4)
+
+| Template | Kind | Sync wave | Purpose |
+|----------|------|-----------|---------|
+| `sgpostgresconfig.yaml` | `SGPostgresConfig` | 0 | PostgreSQL config (timezone) |
+| `sgpoolingconfig.yaml` | `SGPoolingConfig` | 0 | Connection pooling via pgBouncer |
+| `sgcluster.yaml` | `SGCluster` | 1 | External PostgreSQL cluster `onedev-pg` |
+| `externalsecret.yaml` | `ExternalSecret` | 5 | Doppler secret injection |
+
+The StackGres config resources (SGPostgresConfig, SGPoolingConfig) are created at wave 0 so they exist before the SGCluster references them at wave 1. The ExternalSecret is at wave 5 to ensure the `onedev` deployment exists before secrets are injected.
+
+### Doppler config
+
+The ExternalSecret pulls `DB_PASSWORD` from the `svc_onedev` Doppler config and maps it to the `dbPassword` key in the `onedev-secrets` Secret. The upstream OneDev chart references this secret for database authentication.
+
+| Secret Key | Doppler Source |
+|------------|----------------|
+| `dbPassword` | `DB_PASSWORD` |
+| `dbUser` (hardcoded) | `DB_USER` (injected via values) |
+
+### Database
+
+OneDev uses an external PostgreSQL database managed by StackGres:
+
+| Parameter | Value |
+|-----------|-------|
+| Cluster name | `onedev-pg` |
+| Instances | 1 (single primary, no replicas) |
+| Postgres version | 18 |
+| Storage | 5Gi |
+| Pooling | Transaction mode, max 100 client connections |
+| Profile | `development` (no anti-affinity, no resource limits) |
+
+The connection URL is `onedev-pg.onedev.svc.cluster.local:5432` — internal cluster DNS, no TLS.
+
+### Ingress
+
+OneDev does **not** expose a public ingress via the istio umbrella. Access is through `kubectl port-forward` or direct pod networking.
+
+### Node scheduling
+
+OneDev runs on dedicated app infrastructure:
+
+- **Node selector**: `intent: apps`
+- **Tolerations**: `dedicated=apps:NoSchedule`
+- **Affinity**: `class=guaranteed`
+
+### Persistence
+
+| Volume | Size | Storage class |
+|--------|------|---------------|
+| OneDev data (repos, artifacts, config) | 50Gi | Default (cluster) |
+| PostgreSQL data | 5Gi | Default (cluster) |
+
+### Resources
+
+| Container | Request | Limit |
+|-----------|---------|-------|
+| OneDev | 500m CPU, 1Gi RAM | 2 CPU, 4Gi RAM |
+| PostgreSQL | 1 core, 2Gi RAM | StackGres default instance profile |
+
+{{ template "chart.valuesSection" . }}

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openclaw-config
+  labels:
+    app.kubernetes.io/name: openclaw
+data:
+  config.yml: |
+{{ toYaml .Values.config | indent 4 }}

@@ -1,205 +1,235 @@
-# Overrides for the upstream openclaw-helm chart
-# See https://github.com/serhanekicii/openclaw-helm for full options
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ OpenClaw - AI assistant gateway powered by OpenCrust             │
+# │                                                                  │
+# │ Image: ghcr.io/opencrust-org/opencrust                           │
+# │ Config: https://github.com/opencrust-org/opencrust               │
+# └──────────────────────────────────────────────────────────────────┘
 
-openclaw:
-  app-template:
-    # Use v2026.6.8 — required for WhatsApp plugin API compatibility
-    openclawVersion: "2026.6.8"
-    # Overwrite config on every sync (strict GitOps)
-    configMode: overwrite
-    # Skip ClawHub skills — we use oh-my-openclaw plugin instead
-    skills: []
+# -- Doppler project; set by ArgoCD appset. Creates ExternalSecret when present.
+#    Expected env vars: ANTHROPIC_API_KEY, WHATSAPP_ACCESS_TOKEN, etc.
+dopplerConfig: ""
 
-    controllers:
-      main:
-        initContainers:
-          # Existing init containers (init-config, init-skills) are defined upstream
-          # and keep their default behavior.
-          init-plugins:
-            image:
-              repository: ghcr.io/openclaw/openclaw
-              tag: "{{ .Values.openclawVersion }}"
-            command:
-              - sh
-              - -c
-              - |
-                echo "[init-plugins] Installing oh-my-openclaw..."
-                node /app/dist/index.js plugins install npm:@happycastle/oh-my-openclaw@latest 2>/dev/null || true
-                echo "[init-plugins] Installing WhatsApp plugin..."
-                node /app/dist/index.js plugins install clawhub:@openclaw/whatsapp 2>/dev/null || true
-                node /app/dist/index.js plugins enable oh-my-openclaw 2>/dev/null || true
-                echo "[init-plugins] Resolving env vars in config..."
-                sed -i "s|\${WHATSAPP_ALLOW_FROM}|${WHATSAPP_ALLOW_FROM}|g" /home/node/.openclaw/openclaw.json
-                sed -i "s|\${OPENCLAW_GATEWAY_PASSWORD}|${OPENCLAW_GATEWAY_PASSWORD}|g" /home/node/.openclaw/openclaw.json
-                sed -i "s|__TRUSTED_PROXY_IPS__|${TRUSTED_PROXY_IPS}|g" /home/node/.openclaw/openclaw.json
-                echo "[init-plugins] Running doctor --fix..."
-                node /app/dist/index.js doctor --fix 2>/dev/null || true
-                echo "[init-plugins] Done"
-            env:
-              HOME: /home/node
-              NPM_CONFIG_CACHE: /tmp/.npm
-            envFrom:
-              - secretRef:
-                  name: openclaw-secrets
-            securityContext:
-              runAsUser: 1000
-              runAsGroup: 1000
-              runAsNonRoot: true
-              readOnlyRootFilesystem: true
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
+# -- Container image
+image:
+  repository: ghcr.io/opencrust-org/opencrust
+  tag: latest
+  pullPolicy: IfNotPresent
 
-        containers:
-          main:
-            # Inject LLM keys + gateway token from Doppler-backed secret
-            envFrom:
-              - secretRef:
-                  name: openclaw-secrets
+# -- Init container image for config rendering (needs sh + sed)
+initImage:
+  repository: busybox
+  tag: "1.36.1"
+  pullPolicy: IfNotPresent
 
-            resources:
-              requests:
-                cpu: 200m
-                memory: 512Mi
-              limits:
-                cpu: 2000m
-                memory: 3Gi
+# -- Service settings
+service:
+  port: 3888
 
-    configMaps:
-      config:
-        data:
-          openclaw.json: |
-            {
-              "gateway": {
-                "port": 18789,
-                "mode": "local",
-                "trustedProxies": __TRUSTED_PROXY_IPS__,
-                "auth": {
-                  "mode": "trusted-proxy",
-                  "password": "${OPENCLAW_GATEWAY_PASSWORD}",
-                  "trustedProxy": {
-                  "userHeader": "Cf-Access-Authenticated-User-Email"
-                }
-              },
-                "controlUi": {
-                  "allowedOrigins": ["https://openclaw.maklab.net"],
-                  "dangerouslyDisableDeviceAuth": true
-                }
-              },
+# -- Resource requests/limits
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
 
-              "browser": {
-                "enabled": true,
-                "defaultProfile": "default",
-                "profiles": {
-                  "default": {
-                    "cdpUrl": "http://localhost:9222",
-                    "color": "#4285F4"
-                  }
-                }
-              },
+# -- HPA scaling (optional)
+enable_scaling: false
+hpa:
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
 
-              "agents": {
-                "defaults": {
-                  "workspace": "/home/node/.openclaw/workspace",
-                  "model": {
-                    "primary": "anthropic/claude-sonnet-4-6",
-                    "fallbacks": ["openai/gpt-4.1", "google/gemini-3.1-pro"]
-                  },
-                  "userTimezone": "America/Chicago",
-                  "timeoutSeconds": 600,
-                  "maxConcurrent": 1
-                },
-                "list": [
-                  {
-                    "id": "main",
-                    "default": true,
-                    "identity": {
-                      "name": "OpenClaw",
-                      "emoji": "🦞"
-                    },
-                    "model": {
-                      "primary": "anthropic/claude-sonnet-4-6"
-                    },
-                    "tools": { "profile": "full" }
-                  }
-                ]
-              },
+# -- Storage (ReadWriteMany for multi-replica scaling)
+storage:
+  size: 5Gi
+  storageClass: ""
+  accessMode: ReadWriteMany
 
-              // oh-my-openclaw plugin sub-agent configs
-              "plugins": {
-                "bundledDiscovery": "allowlist",
-                "entries": {
-                  "oh-my-openclaw": {
-                    "enabled": true,
-                    "config": {
-                      "max_ralph_iterations": 10,
-                      "todo_enforcer_enabled": false,
-                      "comment_checker_enabled": true,
-                      "model_routing": {
-                        "quick": { "model": "anthropic/claude-sonnet-4-6" },
-                        "deep": { "model": "anthropic/claude-opus-4-6" },
-                        "ultrabrain": { "model": "openai/gpt-5.3-codex" },
-                        "visual-engineering": { "model": "google/gemini-3.1-pro" }
-                      }
-                    }
-                  }
-                }
-              },
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ OpenCrust config.yml                                            │
+# │ See https://github.com/opencrust-org/opencrust for full schema  │
+# └──────────────────────────────────────────────────────────────────┘
+config:
+  # OpenCrust gateway only supports host/port/api_key/rate_limit.
+  # Cloudflare Access auth happens at the Istio ingress layer.
+  gateway:
+    host: "0.0.0.0"
+    port: 3888
 
-              "session": {
-                "scope": "per-sender",
-                "store": "/home/node/.openclaw/sessions",
-                "reset": {
-                  "mode": "idle",
-                  "idleMinutes": 60
-                }
-              },
+  llm:
+    anthropic:
+      provider: anthropic
+      model: claude-sonnet-4-5-20250929
+    claude-opus:
+      provider: anthropic
+      model: claude-opus-4-6
+    claude-haiku:
+      provider: anthropic
+      model: claude-haiku-4-5-20251001
+    deepseek:
+      provider: deepseek
+      model: deepseek-chat
+    moonshot:
+      provider: openai
+      model: moonshot-v1-auto
+      base_url: https://api.moonshot.ai/v1
+    moonshot-kimi:
+      provider: openai
+      model: kimi-k2.6
+      base_url: https://api.moonshot.ai/v1
+    opencode:
+      provider: openai
+      model: opencode-zen
+      base_url: https://opencode.ai/zen/v1
+    opencode-big-pickle:
+      provider: openai
+      model: big-pickle
+      base_url: https://opencode.ai/zen/v1
+    opencode-deepseek-flash:
+      provider: openai
+      model: deepseek-v4-flash-free
+      base_url: https://opencode.ai/zen/v1
+    opencode-north-mini:
+      provider: openai
+      model: north-mini-code-free
+      base_url: https://opencode.ai/zen/v1
+    opencode-mimo:
+      provider: openai
+      model: mimo-v2.5-free
+      base_url: https://opencode.ai/zen/v1
 
-              "logging": {
-                "level": "info",
-                "consoleLevel": "info",
-                "consoleStyle": "compact",
-                "redactSensitive": "tools"
-              },
+  agent:
+    default_provider: opencode-big-pickle
+    max_tokens: 4096
+    max_context_tokens: 100000
+    system_prompt: |
+      You are OpenClaw, a personal AI assistant running on Kubernetes.
+      You use oh-my-openagent for multi-agent orchestration and task delegation.
 
-              "tools": {
-                "profile": "full",
-                "web": {
-                  "search": { "enabled": false },
-                  "fetch": { "enabled": true }
-                }
-              },
+      When the user gives a request:
+      1. ANALYZE — understand what's needed
+      2. PLAN — break it down into subtasks
+      3. DELEGATE — use the `handoff` tool to dispatch work to specialized sub-agents
+      4. REVIEW — check results from sub-agents
+      5. SYNTHESIZE — combine results into a coherent answer
 
-              // WhatsApp channel — personal number mode
-              "channels": {
-                "whatsapp": {
-                  "enabled": true,
-                  "dmPolicy": "allowlist",
-                  "selfChatMode": true,
-                  "allowFrom": ["${WHATSAPP_ALLOW_FROM}"],
-                  "sendReadReceipts": true,
-                  "textChunkLimit": 4000,
-                  "chunkMode": "length",
-                  "replyToMode": "off",
-                  "reactionLevel": "minimal"
-                }
-              }
-            }
+      Available sub-agents:
+      - sisyphus — orchestrator for complex multi-step tasks
+      - hephaestus — builder for implementation work
+      - oracle — architecture and design consultant (read-only)
+      - librarian — codebase search and documentation lookup
+      - explore — contextual grep and pattern discovery
+      - prometheus — task planning and work breakdown
+      - metis — pre-planning ambiguity analysis
+      - momus — plan review and gap detection
+      - atlas — heavy-lifting implementation and refactoring
+      - sisyphus-junior — focused single-task executor
+      - ultraworker — deep research on hard problems
+      - coder — code generation and implementation
+      - researcher — deep research and analysis
 
-    persistence:
-      data:
-        size: 10Gi
-        advancedMounts:
-          main:
-            init-plugins:
-              - path: /home/node/.openclaw
-      tmp:
-        advancedMounts:
-          main:
-            init-plugins:
-              - path: /tmp
+      When a task is simple, handle it directly. For complex or multi-step
+      work, always delegate via handoff.
 
-    ingress:
-      main:
-        enabled: false
+  agents:
+    sisyphus:
+      provider: opencode-big-pickle
+      system_prompt: |
+        You are Sisyphus, orchestrator agent. Decompose complex tasks
+        into parallel subtasks and oversee execution.
+        Use handoff to delegate to sub-agents when needed.
+    hephaestus:
+      provider: opencode-north-mini
+      system_prompt: |
+        You are Hephaestus, a builder agent. Implement features,
+        fix bugs, and write tests. Follow existing patterns.
+    oracle:
+      provider: opencode-big-pickle
+      system_prompt: |
+        You are Oracle, a read-only architecture consultant.
+        Analyze designs, identify problems, and propose solutions.
+        Do not implement. Do not write code.
+    librarian:
+      provider: opencode-deepseek-flash
+      system_prompt: |
+        You are Librarian. Search codebases, read docs, find
+        implementation examples. Return concise answers.
+    explore:
+      provider: opencode-deepseek-flash
+      system_prompt: |
+        You are Explore. Contextual grep for codebases.
+        Find patterns, locate files, map module structure.
+    multimodal-looker:
+      provider: opencode-mimo
+      system_prompt: |
+        You are Multimodal Looker. Analyze images, PDFs,
+        and diagrams. Extract specific information.
+    prometheus:
+      provider: moonshot-kimi
+      system_prompt: |
+        You are Prometheus, plan agent. Break down tasks into
+        structured work plans with parallel execution opportunities.
+    metis:
+      provider: opencode-big-pickle
+      system_prompt: |
+        You are Metis, pre-planning consultant. Identify hidden
+        intentions, ambiguities, and AI failure points.
+    momus:
+      provider: moonshot-kimi
+      system_prompt: |
+        You are Momus, plan critic. Evaluate plans for clarity,
+        verifiability, and completeness. Catch gaps.
+    atlas:
+      provider: opencode-big-pickle
+      system_prompt: |
+        You are Atlas. Heavy-lifting implementation and
+        cross-file refactoring. Follow existing patterns.
+    sisyphus-junior:
+      provider: moonshot-kimi
+      system_prompt: |
+        You are Sisyphus-Junior, focused task executor.
+        Same discipline as Sisyphus, no delegation.
+    ultraworker:
+      provider: opencode-big-pickle
+      system_prompt: |
+        You are Ultraworker. Autonomous problem-solving on
+        hairy problems requiring deep research.
+    opencrust:
+      provider: opencode-big-pickle
+      system_prompt: |
+        You are OpenCrust, the sidecar orchestrator.
+        Route requests to the right agent and synthesize results.
+    coder:
+      provider: deepseek
+      system_prompt: |
+        You are a coder agent. Write clean, correct code.
+        Follow existing patterns, don't suppress type errors,
+        and verify your work.
+    researcher:
+      provider: opencode
+      system_prompt: |
+        You are a research agent. Find information, read docs,
+        and summarize findings. Be thorough and cite sources.
+
+  channels:
+    whatsapp:
+      type: whatsapp
+      enabled: true
+      dm_policy: allowlist
+      allow_from:
+        - ${WHATSAPP_ALLOW_FROM}
+      self_chat_mode: true
+      send_read_receipts: true
+      text_chunk_limit: 4000
+      chunk_mode: length
+      reply_to_mode: "off"
+      reaction_level: minimal
+
+  memory:
+    enabled: true
+
+  data_dir: /data
+  log_level: info
