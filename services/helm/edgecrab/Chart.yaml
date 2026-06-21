@@ -1,0 +1,8 @@
+apiVersion: v2
+name: edgecrab
+description: EdgeCrab AI orchestrator — Rust-native, combining OpenClaw and Hermes agent in a resource-light binary
+type: application
+version: 0.1.0
+appVersion: "0.10.0"
+maintainers:
+  - name: local

@@ -26,9 +26,9 @@ clusterSecretStores:
   svc_onedev:
     project: devops
     config: svc_onedev
-  svc_openclaw:
+  svc_edgecrab:
     project: devops
-    config: svc_openclaw
+    config: svc_edgecrab
   zurabase-dev:
     project: zurabase
     config: dev

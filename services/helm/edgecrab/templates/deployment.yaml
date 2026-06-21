@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: openclaw
+  name: edgecrab
   labels:
-    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/name: edgecrab
 spec:
   replicas: 1
   strategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      app.kubernetes.io/name: openclaw
+      app.kubernetes.io/name: edgecrab
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: openclaw
+        app.kubernetes.io/name: edgecrab
       annotations:
         reloader.stakater.com/auto: "true"
     spec:
@@ -24,83 +24,62 @@ spec:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
 
-      serviceAccountName: openclaw
-
-      initContainers:
-        - name: init-config
-          image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
-          imagePullPolicy: {{ .Values.initImage.pullPolicy }}
-          command:
-            - sh
-            - -c
-            - |
-              set -e
-              echo "[init-config] Rendering config.yml with Doppler secrets..."
-              cp /tmp/config/config.yml /etc/opencrust/config.yml
-              sed -i "s|\${WHATSAPP_ALLOW_FROM}|${WHATSAPP_ALLOW_FROM}|g" /etc/opencrust/config.yml
-              mkdir -p /data/.config/opencrust
-              cp /etc/opencrust/config.yml /data/.config/opencrust/config.yml
-              echo "[init-config] Done"
-          envFrom:
-            - secretRef:
-                name: openclaw-secrets
-          securityContext:
-            runAsUser: 1000
-            runAsGroup: 1000
-            runAsNonRoot: true
-            readOnlyRootFilesystem: true
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: config-template
-              mountPath: /tmp/config
-              readOnly: true
-            - name: config
-              mountPath: /etc/opencrust
-            - name: data
-              mountPath: /data
-            - name: tmp
-              mountPath: /tmp
+      serviceAccountName: edgecrab
 
       containers:
-        - name: opencrust
+        - name: edgecrab
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /usr/local/bin/edgecrab
+          args:
+            - gateway
+            - start
+            - --foreground
 
           env:
             - name: HOME
-              value: /data
-            - name: OPENAI_API_KEY
+              value: /home/edgecrab
+            - name: EDGECRAB_GATEWAY_PORT
+              value: "{{ .Values.service.port }}"
+            - name: EDGECRAB_GATEWAY_HOST
+              value: "0.0.0.0"
+            - name: WHATSAPP_ENABLED
+              value: "true"
+            - name: WHATSAPP_ALLOW_FROM
               valueFrom:
                 secretKeyRef:
-                  name: openclaw-secrets
-                  key: OPENCODE_API_KEY
+                  name: edgecrab-secrets
+                  key: WHATSAPP_ALLOW_FROM
+            - name: ZAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: edgecrab-secrets
+                  key: ZAI_API_KEY
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openclaw-secrets
+                  name: edgecrab-secrets
                   key: ANTHROPIC_API_KEY
             - name: DEEPSEEK_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openclaw-secrets
+                  name: edgecrab-secrets
                   key: DEEPSEEK_API_KEY
             - name: MOONSHOT_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openclaw-secrets
+                  name: edgecrab-secrets
                   key: MOONSHOT_API_KEY
             - name: OPENCODE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openclaw-secrets
+                  name: edgecrab-secrets
                   key: OPENCODE_API_KEY
 
           envFrom:
             - secretRef:
-                name: openclaw-secrets
+                name: edgecrab-secrets
 
           securityContext:
             runAsNonRoot: true
@@ -118,7 +97,7 @@ spec:
           livenessProbe:
             tcpSocket:
               port: http
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
@@ -126,7 +105,7 @@ spec:
           readinessProbe:
             tcpSocket:
               port: http
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
@@ -134,7 +113,7 @@ spec:
           startupProbe:
             tcpSocket:
               port: http
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 30
@@ -144,21 +123,25 @@ spec:
 
           volumeMounts:
             - name: config
-              mountPath: /etc/opencrust
-              readOnly: true
+              mountPath: /home/edgecrab/.edgecrab
             - name: data
-              mountPath: /data
+              mountPath: /home/edgecrab/.edgecrab/memories
+              subPath: memories
+            - name: data
+              mountPath: /home/edgecrab/.edgecrab/skills
+              subPath: skills
+            - name: data
+              mountPath: /home/edgecrab/.edgecrab/sessions
+              subPath: sessions
             - name: tmp
               mountPath: /tmp
 
       volumes:
-        - name: config-template
-          configMap:
-            name: openclaw-config
         - name: config
-          emptyDir: {}
+          configMap:
+            name: edgecrab-config
         - name: data
           persistentVolumeClaim:
-            claimName: openclaw-data
+            claimName: edgecrab-data
         - name: tmp
           emptyDir: {}

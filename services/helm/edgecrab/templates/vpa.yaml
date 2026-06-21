@@ -1,0 +1,26 @@
+{{- if .Values.vpa.enabled }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: edgecrab
+  labels:
+    app.kubernetes.io/name: edgecrab
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: edgecrab
+  updatePolicy:
+    updateMode: {{ .Values.vpa.updatePolicy.updateMode | default "Auto" }}
+  resourcePolicy:
+    containerPolicies:
+      - containerName: edgecrab
+        minAllowed:
+          cpu: {{ .Values.vpa.minAllowed.cpu }}
+          memory: {{ .Values.vpa.minAllowed.memory }}
+        maxAllowed:
+          cpu: {{ .Values.vpa.maxAllowed.cpu }}
+          memory: {{ .Values.vpa.maxAllowed.memory }}
+        controlledResources: {{ .Values.vpa.controlledResources | toJson }}
+        controlledValues: RequestsAndLimits
+{{- end }}
