@@ -44,6 +44,8 @@ spec:
               value: "{{ .Values.service.port }}"
             - name: EDGECRAB_GATEWAY_HOST
               value: "0.0.0.0"
+            - name: OPENAI_COMPATIBLE_BASE_URL
+              value: "https://api.z.ai/api/paas/v4"
             - name: WHATSAPP_ENABLED
               value: "true"
             - name: WHATSAPP_ALLOW_FROM
