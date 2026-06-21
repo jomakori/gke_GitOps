@@ -23,6 +23,8 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 
 All services registered in `services/argocd-appset/values.yaml` — synced in wave order by ArgoCD:
 
+**Wave Philosophy**: Infrastructure with no deps → Secret infrastructure → Core networking → Edge infrastructure → Operators → General services → Apps
+
 | Wave | Service | Chart | Purpose | Status |
 |------|---------|-------|---------|--------|
 | 0 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA | enabled |
@@ -30,26 +32,26 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 0 | [vpa](services/helm/vpa/) | fairwinds/vpa | Vertical Pod Autoscaler — auto-adjust CPU/memory requests | enabled |
 | 1 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO | enabled |
 | 2 | [istio](services/helm/istio/) | custom umbrella | base + istiod + ingress gateway (single chart, 3 upstream deps) | enabled |
-| 3 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts | enabled |
-| 3 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) | enabled |
-| 3 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling | **disabled** |
-| 3 | [mongodb-operator](services/helm/mongodb-operator/) | psmdb-operator | MongoDB operator (Percona) | **disabled** |
-| 4 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, alerting, Grafana | enabled |
-| 4 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
-| 4 | [onedev](services/helm/onedev/) | custom (vendored upstream + SGCluster) | All-in-one DevOps platform (Git, CI/CD, issue tracker) with StackGres PostgreSQL | enabled |
-| 4 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management | **disabled** |
-| 5 | [edgecrab](services/helm/edgecrab/) | custom | OpenClaw AI orchestrator (EdgeCrab) — WhatsApp gateway, multi-agent routing, z.ai ultrabrain | enabled |
+| 3 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
+| 4 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts | enabled |
+| 4 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) | enabled |
+| 4 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling | **disabled** |
+| 4 | [mongodb-operator](services/helm/mongodb-operator/) | psmdb-operator | MongoDB operator (Percona) | **disabled** |
+| 5 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, alerting, Grafana | enabled |
+| 5 | [onedev](services/helm/onedev/) | custom (vendored upstream + SGCluster) | All-in-one DevOps platform (Git, CI/CD, issue tracker) with StackGres PostgreSQL | enabled |
+| 5 | [edgecrab](services/helm/edgecrab/) | custom | EdgeCrab AI orchestrator — WhatsApp gateway, multi-agent routing, z.ai ultrabrain | enabled |
+| 5 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management | **disabled** |
 
-Dependency chain: cert-manager + VPA → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4/5 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs. edgecrab VPA requires VPA CRDs installed at wave 0.
+Dependency chain: cert-manager + VPA → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs. edgecrab VPA requires VPA CRDs installed at wave 0.
 
 ### Apps
 
-Both apps use a [single parameterized chart](apps/helm/) (chart name: `apps`) invoked via `--set appName=<key>`. All manifests (Deployment, Service, HPA, VirtualService, ExternalSecret, PVC) are generated from a single `_helpers.tpl` — no per-app chart directories.
+Apps at **wave 6+** (depend on all services being ready). Both apps use a [single parameterized chart](apps/helm/) (chart name: `apps`) invoked via `--set appName=<key>`. All manifests (Deployment, Service, HPA, VirtualService, ExternalSecret, PVC) are generated from a single `_helpers.tpl` — no per-app chart directories.
 
-| App Key | Environments | Status |
-|---------|-------------|--------|
-| `demoApi` | staging + production | `enable: false` (ready to activate) |
-| `notesUi` | staging + production | `enable: false` (ready to activate) |
+| Wave | App Key | Environments | Status |
+|------|---------|-------------|--------|
+| 6 | `demoApi` | staging + production | `enable: false` (ready to activate) |
+| 6 | `notesUi` | staging + production | `enable: false` (ready to activate) |
 
 Toggled via `apps/argocd-appset/values.yaml`.
 

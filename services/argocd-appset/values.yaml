@@ -83,16 +83,21 @@ services:
       - name: virtualServices.argocd.destination.port
         value: "80"
 
-  # Wave 3 - critical services like dns, dbs, autoscaling
-
-  externalDns:
+  # Wave 3 — Edge infrastructure (after istio for backend routing)
+  cloudflareTunnel:
     enable: true
     syncWave: "3"
     dopplerConfig: "svc_cloudflare"
 
+  # Wave 4 — Operators (no endpoint deps)
+  externalDns:
+    enable: true
+    syncWave: "4"
+    dopplerConfig: "svc_cloudflare"
+
   keda:
     enable: false
-    syncWave: "3"
+    syncWave: "4"
     argocdNamespace: argocd
     finalizer: true
     syncOptions:
@@ -101,7 +106,7 @@ services:
 
   mongodbOperator:
     enable: false
-    syncWave: "3"
+    syncWave: "4"
     argocdNamespace: argocd
     argoProject: default
 
@@ -122,7 +127,7 @@ services:
 
   postgresOperator:
     enable: true
-    syncWave: "3"
+    syncWave: "4"
     argocdNamespace: argocd
     argoProject: default
     syncOptions:
@@ -150,17 +155,12 @@ services:
           - .spec.data[].remoteRef.nullBytePolicy
     dopplerConfig: "svc_postgres_operator"
 
-  # Wave 5 — Other services, post-deps
-  cloudflareTunnel:
-    enable: true
-    syncWave: "4"
-    dopplerConfig: "svc_cloudflare"
-
+  # Wave 5 — General services
   kubePrometheusStack:
     enable: true
     dopplerConfig: "svc_grafana"
     finalizer: true
-    syncWave: "4"
+    syncWave: "5"
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
@@ -186,7 +186,7 @@ services:
 
   onedev:
     enable: true
-    syncWave: "4"
+    syncWave: "5"
     gateways:
       enable_public: true
     syncOptions:
@@ -226,7 +226,7 @@ services:
 
   redisOperator:
     enable: false
-    syncWave: "4"
+    syncWave: "5"
     finalizer: true
     environments:
       - production

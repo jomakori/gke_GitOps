@@ -27,7 +27,7 @@ notesUi:
 apps:
   demoApi:
     enable: false
-    syncWave: "0"
+    syncWave: "6"
     helmPath: apps/helm/
     destNamespace: argocd
     argocdNamespace: argocd
@@ -58,7 +58,7 @@ apps:
 
   notesUi:
     enable: false
-    syncWave: "0"
+    syncWave: "6"
     helmPath: apps/helm/
     destNamespace: argocd
     argocdNamespace: argocd
