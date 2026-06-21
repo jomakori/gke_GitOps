@@ -38,6 +38,8 @@ spec:
               echo "[init-config] Rendering config.yml with Doppler secrets..."
               cp /tmp/config/config.yml /etc/opencrust/config.yml
               sed -i "s|\${WHATSAPP_ALLOW_FROM}|${WHATSAPP_ALLOW_FROM}|g" /etc/opencrust/config.yml
+              mkdir -p /data/.config/opencrust
+              cp /etc/opencrust/config.yml /data/.config/opencrust/config.yml
               echo "[init-config] Done"
           envFrom:
             - secretRef:
@@ -57,6 +59,8 @@ spec:
               readOnly: true
             - name: config
               mountPath: /etc/opencrust
+            - name: data
+              mountPath: /data
             - name: tmp
               mountPath: /tmp
 
@@ -64,6 +68,35 @@ spec:
         - name: opencrust
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          env:
+            - name: HOME
+              value: /data
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: OPENCODE_API_KEY
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: ANTHROPIC_API_KEY
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: DEEPSEEK_API_KEY
+            - name: MOONSHOT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: MOONSHOT_API_KEY
+            - name: OPENCODE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openclaw-secrets
+                  key: OPENCODE_API_KEY
 
           envFrom:
             - secretRef:
