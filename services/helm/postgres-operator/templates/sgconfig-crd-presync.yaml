@@ -39,7 +39,7 @@ spec:
             - /bin/bash
             - -ecx
             - |
-              kubectl apply -f /SGConfig.yaml
+              kubectl create -f /SGConfig.yaml 2>/dev/null || kubectl replace -f /SGConfig.yaml
           volumeMounts:
             - name: sgconfig-crd
               mountPath: /SGConfig.yaml
