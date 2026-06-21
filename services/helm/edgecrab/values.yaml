@@ -57,9 +57,11 @@ storage:
 # │ See https://github.com/raphaelmansuy/edgecrab for full schema    │
 # └──────────────────────────────────────────────────────────────────┘
 config:
-  # -- Default model: z.ai glm-5.2 as ultrabrain
+  # -- Default model: z.ai glm-5.2 as ultrabrain (openai-compatible)
   model:
-    default: "zai/glm-5.2"
+    default: "openai-compatible/glm-5.2"
+    base_url: "https://api.z.ai/api/paas/v4"
+    api_key_env: "ZAI_API_KEY"
     fallback:
       model: "claude-opus-4-6"
       provider: "anthropic"
