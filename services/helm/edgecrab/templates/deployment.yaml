@@ -123,16 +123,10 @@ spec:
 
           volumeMounts:
             - name: config
+              mountPath: /home/edgecrab/.edgecrab/config.yaml
+              subPath: config.yaml
+            - name: data
               mountPath: /home/edgecrab/.edgecrab
-            - name: data
-              mountPath: /home/edgecrab/.edgecrab/memories
-              subPath: memories
-            - name: data
-              mountPath: /home/edgecrab/.edgecrab/skills
-              subPath: skills
-            - name: data
-              mountPath: /home/edgecrab/.edgecrab/sessions
-              subPath: sessions
             - name: tmp
               mountPath: /tmp
 
