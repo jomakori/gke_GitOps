@@ -48,6 +48,14 @@ services:
     syncOptions:
       - CreateNamespace=true
       - Replace=true
+    ignoreDifferences:
+      - group: ""
+        kind: Secret
+        name: external-secrets-webhook
+        namespace: external-secrets
+        jsonPointers:
+          - /data
+          - /type
 
   # Wave 2 — Istio umbrella (after external-secrets ClusterSecretStores are ready)
   istio:
