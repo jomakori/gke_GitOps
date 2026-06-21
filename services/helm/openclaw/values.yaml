@@ -1,7 +1,7 @@
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ OpenClaw - AI assistant gateway powered by OpenCrust             │
 # │                                                                  │
-# │ Image: ghcr.io/opencrust-org/opencrust                           │
+# │ Image: opencrust:v0.2.9 (built locally)                          │
 # │ Config: https://github.com/opencrust-org/opencrust               │
 # └──────────────────────────────────────────────────────────────────┘
 
@@ -11,8 +11,8 @@ dopplerConfig: ""
 
 # -- Container image
 image:
-  repository: ghcr.io/opencrust-org/opencrust
-  tag: latest
+  repository: localhost:5000/opencrust
+  tag: v0.2.9
   pullPolicy: IfNotPresent
 
 # -- Init container image for config rendering (needs sh + sed)
@@ -46,7 +46,7 @@ hpa:
 storage:
   size: 5Gi
   storageClass: ""
-  accessMode: ReadWriteMany
+  accessMode: ReadWriteOnce
 
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ OpenCrust config.yml                                            │
@@ -73,11 +73,11 @@ config:
       provider: deepseek
       model: deepseek-chat
     moonshot:
-      provider: openai
+      provider: moonshot
       model: moonshot-v1-auto
       base_url: https://api.moonshot.ai/v1
     moonshot-kimi:
-      provider: openai
+      provider: moonshot
       model: kimi-k2.6
       base_url: https://api.moonshot.ai/v1
     opencode:
