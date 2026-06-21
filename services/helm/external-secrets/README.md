@@ -49,7 +49,7 @@ The store references `doppler-machine-token` in the `external-secrets` namespace
 | `doppler-svc-postgres-operator` | devops | svc_postgres_operator | postgres-operator |
 | `doppler-svc-onedev` | devops | svc_onedev | onedev |
 | `doppler-svc-mongodb` | devops | svc_mongodb | mongodb-operator, app PerconaServerMongoDB CRs |
-| `doppler-svc-openclaw` | devops | svc_openclaw | openclaw |
+| `doppler-svc-edgecrab` | devops | svc_edgecrab | edgecrab |
 | `doppler-zurabase-dev` | zurabase | dev | future zurabase service |
 | `doppler-zurabase-stg` | zurabase | stg | future zurabase service |
 | `doppler-zurabase-prd` | zurabase | prd | future zurabase service |
@@ -81,8 +81,8 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | clusterSecretStores.svc_mongodb.project | string | `"devops"` |  |
 | clusterSecretStores.svc_onedev.config | string | `"svc_onedev"` |  |
 | clusterSecretStores.svc_onedev.project | string | `"devops"` |  |
-| clusterSecretStores.svc_openclaw.config | string | `"svc_openclaw"` |  |
-| clusterSecretStores.svc_openclaw.project | string | `"devops"` |  |
+| clusterSecretStores.svc_edgecrab.config | string | `"svc_edgecrab"` |  |
+| clusterSecretStores.svc_edgecrab.project | string | `"devops"` |  |
 | clusterSecretStores.svc_postgres_operator.config | string | `"svc_postgres_operator"` |  |
 | clusterSecretStores.svc_postgres_operator.project | string | `"devops"` |  |
 | clusterSecretStores.zurabase-dev.config | string | `"dev"` |  |

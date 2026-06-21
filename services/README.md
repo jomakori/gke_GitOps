@@ -14,7 +14,7 @@ services/
 │   │   ├── _helpers.tpl     ← Template helpers (service registration logic)
 │   │   └── applications.yaml ← Single template auto-generates all Applications
 │   └── values.yaml           ← Service registry (enable/disable, sync waves, parameters)
-└── helm/                   ← Helm chart source for each service (14 charts)
+└── helm/                   ← Helm chart source for each service (15 charts)
     ├── cert-manager/
     ├── cloudflare-tunnel/
     ├── external-dns/
@@ -28,7 +28,8 @@ services/
     ├── onedev/
     ├── opencost/
     ├── postgres-operator/
-    └── redis-operator/
+    ├── redis-operator/
+    └── vpa/
 ```
 
 ### argocd-appset
@@ -41,7 +42,7 @@ Charts fall into three patterns:
 
 | Pattern | Count | Description |
 |---------|-------|-------------|
-| **Thin Wrapper** | 6 | `Chart.yaml` with upstream `dependencies` only, no local templates |
+| **Thin Wrapper** | 7 | `Chart.yaml` with upstream `dependencies` only, no local templates |
 | **Custom** | 4 | Full local templates, no upstream dependency |
 | **Hybrid** | 6 | Upstream dependency + local templates for extra resources (ExternalSecrets, ClusterSecretStores, SGCluster, etc.) |
 

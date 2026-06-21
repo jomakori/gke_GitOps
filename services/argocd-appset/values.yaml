@@ -29,6 +29,14 @@ services:
     syncOptions:
       - Replace=true
 
+  vpa:
+    enable: true
+    syncWave: "0"
+    destNamespace: vpa
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
   # Wave 1 — Secret engine
   externalSecrets:
     enable: true
@@ -205,16 +213,11 @@ services:
       - name: storageClass
         value: "{{ .Values.storageClass }}"
 
-  openclaw:
+  edgecrab:
     enable: true
     syncWave: "5"
-    destNamespace: openclaw
-    dopplerConfig: "svc_openclaw"
-    gateways:
-      enable_private: true
-      subdomain: openclaw
-      destination:
-        servicePort: 3888
+    destNamespace: edgecrab
+    dopplerConfig: "svc_edgecrab"
     parameters:
       - name: storageClass
         value: "{{ .Values.storageClass }}"

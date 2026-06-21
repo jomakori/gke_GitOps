@@ -7,7 +7,7 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 ```
 .
 ├── services/          ← 3rd-party infrastructure
-│   ├── helm/          ← Helm charts (14 services)
+│   ├── helm/          ← Helm charts (15 services)
 │   └── argocd-appset/ ← App-of-Apps manifests (single applications.yaml template)
 ├── apps/              ← Application workloads
 │   ├── helm/          ← Single parameterized Helm chart (chart name: apps)
@@ -27,6 +27,7 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 |------|---------|-------|---------|--------|
 | 0 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA | enabled |
 | 0 | [cert-manager](services/helm/cert-manager/) | jetstack/cert-manager | Automated TLS via Let's Encrypt + Cloudflare DNS-01 | enabled |
+| 0 | [vpa](services/helm/vpa/) | fairwinds/vpa | Vertical Pod Autoscaler — auto-adjust CPU/memory requests | enabled |
 | 1 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO | enabled |
 | 2 | [istio](services/helm/istio/) | custom umbrella | base + istiod + ingress gateway (single chart, 3 upstream deps) | enabled |
 | 3 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts | enabled |
@@ -37,9 +38,9 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 4 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
 | 4 | [onedev](services/helm/onedev/) | custom (vendored upstream + SGCluster) | All-in-one DevOps platform (Git, CI/CD, issue tracker) with StackGres PostgreSQL | enabled |
 | 4 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management | **disabled** |
-| 5 | [openclaw](services/helm/openclaw/) | custom | OpenClaw AI assistant gateway (OpenCrust) — WhatsApp Web QR pairing, multi-agent routing | enabled |
+| 5 | [edgecrab](services/helm/edgecrab/) | custom | OpenClaw AI orchestrator (EdgeCrab) — WhatsApp gateway, multi-agent routing, z.ai ultrabrain | enabled |
 
-Dependency chain: cert-manager → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4/5 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs.
+Dependency chain: cert-manager + VPA → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4/5 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs. edgecrab VPA requires VPA CRDs installed at wave 0.
 
 ### Apps
 
@@ -69,7 +70,7 @@ No secrets in this repo. The chain:
 | `svc_postgres_operator` | postgres-operator (StackGres) | `ADMIN_USER`, `ADMIN_PASSWORD` |
 | `svc_onedev` | onedev | `DB_PASSWORD`, `DB_USER` |
 | `svc_mongodb` | mongodb-operator | `MONGODB_USER`, `MONGODB_PW`, `MONGODB_DB` |
-| `svc_openclaw` | openclaw | `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `WHATSAPP_AGENT_NUMBER`, `WHATSAPP_ALLOW_FROM` |
+| `svc_edgecrab` | edgecrab | `ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `WHATSAPP_ALLOW_FROM` |
 
 New secrets are added in the Doppler dashboard — the ExternalSecret already pulls the entire config.
 

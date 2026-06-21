@@ -1,0 +1,65 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+This chart deploys [EdgeCrab](https://github.com/raphaelmansuy/edgecrab) — a Rust-native AI orchestrator that combines:
+
+- **OpenClaw** — 17 messaging gateways, always-on presence
+- **Hermes Agent** — autonomous reasoning, persistent memory, user-first alignment
+
+### Key Features
+
+- **16 LLM Providers** — Anthropic, OpenAI, z.ai, DeepSeek, Moonshot, OpenCode, and more
+- **17 Messaging Gateways** — WhatsApp, Telegram, Discord, Slack, Signal, Matrix, and more
+- **Sub-agent Delegation** — Spawn specialized agents for parallel task execution
+- **Persistent Memory** — Cross-session learning via MEMORY.md and Honcho integration
+- **Skills Library** — Reusable agent procedures with bundled helper files
+- **LSP Integration** — Semantic code intelligence for file operations
+- **VPA Scaling** — Vertical Pod Autoscaler for single-pod resource optimization
+
+### Doppler config
+
+The ExternalSecret pulls the entire `svc_edgecrab` Doppler config. Required keys:
+
+| Secret | Purpose |
+|--------|---------|
+| `ZAI_API_KEY` | z.ai provider (ultrabrain) |
+| `ANTHROPIC_API_KEY` | Claude provider (fallback) |
+| `DEEPSEEK_API_KEY` | DeepSeek provider |
+| `MOONSHOT_API_KEY` | Moonshot / Kimi provider |
+| `OPENCODE_API_KEY` | OpenCode Zen provider |
+| `WHATSAPP_ALLOW_FROM` | Allowed WhatsApp sender |
+
+### WhatsApp Setup
+
+After the pod starts, exec in and run:
+
+```bash
+edgecrab whatsapp      # launches QR code scanner wizard
+# Scan with your phone — session persists across restarts
+```
+
+The WhatsApp gateway uses Baileys bridge (local Node subprocess) for message delivery.
+
+### Access
+
+EdgeCrab runs as a headless gateway service — no web UI. Interaction happens via messaging platforms (WhatsApp, Telegram, etc.). The gateway binds to `0.0.0.0:8642` internally for health probes and optional API access.
+
+### VPA (Vertical Pod Autoscaler)
+
+This chart uses VPA instead of HPA for single-pod scaling. VPA automatically adjusts CPU and memory requests based on actual workload.
+
+**Prerequisites**: VPA must be installed on the cluster. Install via:
+
+```bash
+kubectl apply -f https://github.com/kubernetes/autoscaler/releases/latest/download/vertical-pod-autoscaler.yaml
+```
+
+{{ template "chart.valuesSection" . }}

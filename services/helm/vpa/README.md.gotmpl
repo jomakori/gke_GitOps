@@ -1,0 +1,51 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Overview
+
+VPA automatically adjusts the CPU and memory resource requests of running pods. It's ideal for:
+
+- Single-pod deployments where HPA (horizontal scaling) doesn't apply
+- Workloads with variable resource needs
+- Right-sizing containers based on actual usage
+
+## Components
+
+- **Recommender**: Monitors resource usage and generates recommendations
+- **Updater**: Evicts pods to apply new recommendations
+- **Admission Controller**: Injects recommended resources into new pods
+
+## Usage
+
+Other charts can create VPA resources by including the VPA CRD:
+
+```yaml
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: my-app
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  updatePolicy:
+    updateMode: Auto
+  resourcePolicy:
+    containerPolicies:
+      - containerName: my-container
+        minAllowed:
+          cpu: 100m
+          memory: 256Mi
+        maxAllowed:
+          cpu: 2000m
+          memory: 2Gi
+```
+
+{{ template "chart.valuesSection" . }}

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: vpa
+description: Vertical Pod Autoscaler - automatically adjusts CPU and memory requests for pods
+type: application
+version: 0.1.0
+appVersion: "1.2.0"
+maintainers:
+  - name: local
+dependencies:
+  - name: vpa
+    version: "4.6.0"
+    repository: "https://charts.fairwinds.com/stable"

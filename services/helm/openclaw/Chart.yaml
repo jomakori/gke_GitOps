@@ -1,8 +1,0 @@
-apiVersion: v2
-name: openclaw
-description: OpenClaw AI assistant gateway, powered by OpenCrust
-type: application
-version: 0.2.0
-appVersion: "2026.5.22"
-maintainers:
-  - name: local
