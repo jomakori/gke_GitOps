@@ -10,7 +10,6 @@ data:
     const pino = require('pino');
     const http = require('http');
     const fs = require('fs');
-    const path = require('path');
 
     const PORT = process.env.BRIDGE_PORT || 3000;
     const SESSION_PATH = process.env.SESSION_PATH || '/session';
@@ -43,7 +42,7 @@ data:
         
         if (connection === 'close') {
           connectionStatus = 'disconnected';
-          const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+          const shouldReconnect = lastDisconnect && lastDisconnect.error && lastDisconnect.error.output && lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut;
           console.log('Connection closed, reconnecting:', shouldReconnect);
           if (shouldReconnect) {
             setTimeout(startSocket, 5000);
@@ -72,7 +71,7 @@ data:
             senderId: senderNum,
             senderName: msg.pushName || null,
             fromMe: msg.key.fromMe,
-            body: msg.message?.conversation || msg.message?.extendedTextMessage?.text || '',
+            body: msg.message && (msg.message.conversation || (msg.message.extendedTextMessage && msg.message.extendedTextMessage.text)) || '',
             mediaUrls: [],
           };
           
@@ -139,11 +138,15 @@ data:
         req.on('end', async () => {
           try {
             const { chatId, question, interactionId, choices } = JSON.parse(body);
-            const text = choices 
-              ? `${question}\n\n${choices.map((c, i) => \`\${i + 1}. \${c}\`).join('\\n')}`
-              : question;
+            let text = question;
+            if (choices && choices.length > 0) {
+              text = question + '\n\n';
+              for (let i = 0; i < choices.length; i++) {
+                text += (i + 1) + '. ' + choices[i] + '\n';
+              }
+            }
             await sock.sendMessage(chatId, { text });
-            res.end(JSON.stringify({ success: true, used_buttons: false, used_list: !!choices }));
+            res.end(JSON.stringify({ success: true, used_buttons: false, used_list: !!(choices && choices.length > 0) }));
           } catch (error) {
             res.end(JSON.stringify({ success: false, error: error.message }));
           }
@@ -156,6 +159,6 @@ data:
     });
 
     server.listen(PORT, '0.0.0.0', () => {
-      console.log(\`WhatsApp bridge listening on port \${PORT}\`);
+      console.log('WhatsApp bridge listening on port ' + PORT);
       startSocket();
     });
