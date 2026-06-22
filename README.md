@@ -23,7 +23,7 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 
 All services registered in `services/argocd-appset/values.yaml` — synced in wave order by ArgoCD:
 
-**Wave Philosophy**: Infrastructure with no deps → Secret infrastructure → Core networking → Edge infrastructure → Operators → General services → Apps
+**Wave Philosophy**: Init services → Secret services → Core networking services → Edge networking services → Operator services → General services → Apps
 
 | Wave | Service | Chart | Purpose | Status |
 |------|---------|-------|---------|--------|
