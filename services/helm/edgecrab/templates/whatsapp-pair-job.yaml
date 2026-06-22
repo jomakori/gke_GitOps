@@ -1,0 +1,61 @@
+{{- if .Values.whatsapp.pairing.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: edgecrab-whatsapp-pair
+  labels:
+    app.kubernetes.io/name: edgecrab
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: pair
+          image: node:20-bookworm-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cd /bridge
+              npm install --ignore-scripts @whiskeysockets/baileys pino qrcode-terminal
+              node -e "
+                const { makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+                const pino = require('pino');
+                const qrcode = require('qrcode-terminal');
+                
+                (async () => {
+                  const { state, saveCreds } = await useMultiFileAuthState('/session');
+                  const sock = makeWASocket({
+                    auth: state,
+                    printQRInTerminal: true,
+                    logger: pino({ level: 'silent' }),
+                    browser: ['EdgeCrab', 'Chrome', '1.0.0'],
+                  });
+                  
+                  sock.ev.on('creds.update', saveCreds);
+                  sock.ev.on('connection.update', ({ connection }) => {
+                    if (connection === 'open') {
+                      console.log('\\n✅ WhatsApp paired successfully!');
+                      process.exit(0);
+                    }
+                  });
+                })();
+              "
+          volumeMounts:
+            - name: whatsapp-bridge
+              mountPath: /bridge
+            - name: whatsapp-session
+              mountPath: /session
+      volumes:
+        - name: whatsapp-bridge
+          configMap:
+            name: edgecrab-whatsapp-bridge
+        - name: whatsapp-session
+          {{- if .Values.whatsapp.sessionStorage.enabled }}
+          persistentVolumeClaim:
+            claimName: edgecrab-whatsapp-session
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}
