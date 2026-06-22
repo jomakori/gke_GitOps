@@ -26,24 +26,29 @@ spec:
 
       serviceAccountName: edgecrab
 
-      # Init container: install npm dependencies for WhatsApp bridge
       initContainers:
-        - name: install-bridge-deps
+        - name: setup-bridge
           image: node:20-bookworm-slim
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
           command:
             - /bin/sh
             - -c
             - |
+              set -e
+              echo "Setting up WhatsApp bridge..."
+              cp /scripts/bridge.js /bridge/
               cd /bridge
-              if [ ! -d "node_modules" ]; then
-                echo "Installing WhatsApp bridge dependencies..."
-                npm install --ignore-scripts @whiskeysockets/baileys pino qrcode-terminal
-              fi
+              echo "Installing npm dependencies..."
+              npm install @whiskeysockets/baileys pino qrcode-terminal
+              echo "Done!"
           volumeMounts:
-            - name: whatsapp-bridge
+            - name: bridge-scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: bridge-workdir
               mountPath: /bridge
-            - name: bridge-modules
-              mountPath: /bridge/node_modules
 
       containers:
         # Main EdgeCrab container
@@ -152,7 +157,6 @@ spec:
             - name: data
               mountPath: /home/edgecrab/.edgecrab
 
-        # WhatsApp bridge sidecar (Node.js + Baileys)
         - name: whatsapp-bridge
           image: node:20-bookworm-slim
           command:
@@ -160,11 +164,8 @@ spec:
             - -c
             - |
               cd /bridge
-              echo "Starting WhatsApp bridge..."
-              node bridge.js \
-                --port 3000 \
-                --session /session \
-                --mode self-chat
+              echo "Starting WhatsApp bridge on port 3000..."
+              node bridge.js
           env:
             - name: WHATSAPP_MODE
               value: "self-chat"
@@ -178,10 +179,8 @@ spec:
               containerPort: 3000
               protocol: TCP
           volumeMounts:
-            - name: whatsapp-bridge
+            - name: bridge-workdir
               mountPath: /bridge
-            - name: bridge-modules
-              mountPath: /bridge/node_modules
             - name: whatsapp-session
               mountPath: /session
           resources:
@@ -199,10 +198,10 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: edgecrab-data
-        - name: whatsapp-bridge
+        - name: bridge-scripts
           configMap:
             name: edgecrab-whatsapp-bridge
-        - name: bridge-modules
+        - name: bridge-workdir
           emptyDir: {}
         - name: whatsapp-session
           {{- if .Values.whatsapp.sessionStorage.enabled }}
