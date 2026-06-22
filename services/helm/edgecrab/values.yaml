@@ -52,6 +52,17 @@ storage:
   storageClass: ""
   accessMode: ReadWriteOnce
 
+# -- WhatsApp bridge sidecar configuration
+whatsapp:
+  enabled: true
+  bridgePort: 3000
+  sessionStorage:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+  pairing:
+    enabled: false
+
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ EdgeCrab config.yaml                                             │
 # │ See https://github.com/raphaelmansuy/edgecrab for full schema    │
