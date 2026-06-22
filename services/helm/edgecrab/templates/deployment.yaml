@@ -26,7 +26,27 @@ spec:
 
       serviceAccountName: edgecrab
 
+      # Init container: install npm dependencies for WhatsApp bridge
+      initContainers:
+        - name: install-bridge-deps
+          image: node:20-bookworm-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cd /bridge
+              if [ ! -d "node_modules" ]; then
+                echo "Installing WhatsApp bridge dependencies..."
+                npm install --ignore-scripts @whiskeysockets/baileys pino qrcode-terminal
+              fi
+          volumeMounts:
+            - name: whatsapp-bridge
+              mountPath: /bridge
+            - name: bridge-modules
+              mountPath: /bridge/node_modules
+
       containers:
+        # Main EdgeCrab container
         - name: edgecrab
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -48,6 +68,8 @@ spec:
               value: "https://api.z.ai/api/paas/v4"
             - name: WHATSAPP_ENABLED
               value: "true"
+            - name: WHATSAPP_BRIDGE_URL
+              value: "http://127.0.0.1:3000"
             - name: WHATSAPP_ALLOW_FROM
               valueFrom:
                 secretKeyRef:
@@ -129,8 +151,46 @@ spec:
               subPath: config.yaml
             - name: data
               mountPath: /home/edgecrab/.edgecrab
-            - name: tmp
-              mountPath: /tmp
+
+        # WhatsApp bridge sidecar (Node.js + Baileys)
+        - name: whatsapp-bridge
+          image: node:20-bookworm-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cd /bridge
+              echo "Starting WhatsApp bridge..."
+              node bridge.js \
+                --port 3000 \
+                --session /session \
+                --mode self-chat
+          env:
+            - name: WHATSAPP_MODE
+              value: "self-chat"
+            - name: WHATSAPP_ALLOWED_USERS
+              valueFrom:
+                secretKeyRef:
+                  name: edgecrab-secrets
+                  key: WHATSAPP_ALLOW_FROM
+          ports:
+            - name: bridge
+              containerPort: 3000
+              protocol: TCP
+          volumeMounts:
+            - name: whatsapp-bridge
+              mountPath: /bridge
+            - name: bridge-modules
+              mountPath: /bridge/node_modules
+            - name: whatsapp-session
+              mountPath: /session
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
 
       volumes:
         - name: config
@@ -139,5 +199,15 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: edgecrab-data
-        - name: tmp
+        - name: whatsapp-bridge
+          configMap:
+            name: edgecrab-whatsapp-bridge
+        - name: bridge-modules
           emptyDir: {}
+        - name: whatsapp-session
+          {{- if .Values.whatsapp.sessionStorage.enabled }}
+          persistentVolumeClaim:
+            claimName: edgecrab-whatsapp-session
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
