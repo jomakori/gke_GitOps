@@ -12,9 +12,9 @@ spec:
     runtime: go
     modelConfig: google-gemini-3-5-flash
     systemMessageFrom:
-      configMapKeyRef:
-        name: kagent-prompts
-        key: writing-agent-system.txt
+      name: kagent-prompts
+      key: writing-agent-system.txt
+      type: ConfigMap
   platform: substrate
   substrate:
     workerPoolRef:

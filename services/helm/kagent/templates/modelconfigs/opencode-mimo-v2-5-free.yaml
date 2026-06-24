@@ -9,6 +9,5 @@ spec:
   model: opencode/mimo-v2.5-free
   provider: OpenAI
   baseUrl: http://headroom.kagent.svc.cluster.local:8787
-  apiKeySecret:
-    name: kagent-secrets
-    key: OPENAI_API_KEY
+  apiKeySecret: kagent-secrets
+  apiKeySecretKey: OPENAI_API_KEY

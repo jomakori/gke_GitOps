@@ -14,9 +14,9 @@ spec:
     runtime: go
     modelConfig: opencode-mimo-v2-5-free
     systemMessageFrom:
-      configMapKeyRef:
-        name: kagent-prompts
-        key: multimodal-looker-system.txt
+      name: kagent-prompts
+      key: multimodal-looker-system.txt
+      type: ConfigMap
   platform: substrate
   substrate:
     workerPoolRef:

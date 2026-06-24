@@ -14,9 +14,9 @@ spec:
     runtime: go
     modelConfig: moonshotai-kimi-k2-6
     systemMessageFrom:
-      configMapKeyRef:
-        name: kagent-prompts
-        key: prometheus-system.txt
+      name: kagent-prompts
+      key: prometheus-system.txt
+      type: ConfigMap
   platform: substrate
   substrate:
     workerPoolRef:

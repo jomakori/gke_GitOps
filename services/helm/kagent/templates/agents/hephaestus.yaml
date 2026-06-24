@@ -14,9 +14,9 @@ spec:
     runtime: go
     modelConfig: opencode-north-mini-code-free
     systemMessageFrom:
-      configMapKeyRef:
-        name: kagent-prompts
-        key: hephaestus-system.txt
+      name: kagent-prompts
+      key: hephaestus-system.txt
+      type: ConfigMap
   platform: substrate
   substrate:
     workerPoolRef:
