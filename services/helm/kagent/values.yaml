@@ -97,4 +97,4 @@ database:
   pgClientImage: "postgres:18-alpine"
   storage: 5Gi
   pgVersion: "18"
-  profile: size-s
+  profile: development
