@@ -49,7 +49,6 @@ The store references `doppler-machine-token` in the `external-secrets` namespace
 | `doppler-svc-postgres-operator` | devops | svc_postgres_operator | postgres-operator |
 | `doppler-svc-onedev` | devops | svc_onedev | onedev |
 | `doppler-svc-mongodb` | devops | svc_mongodb | mongodb-operator, app PerconaServerMongoDB CRs |
-| `doppler-svc-edgecrab` | devops | svc_edgecrab | edgecrab |
 | `doppler-zurabase-dev` | zurabase | dev | future zurabase service |
 | `doppler-zurabase-stg` | zurabase | stg | future zurabase service |
 | `doppler-zurabase-prd` | zurabase | prd | future zurabase service |
