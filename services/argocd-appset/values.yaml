@@ -203,6 +203,15 @@ services:
         value: "{{ .Values.clusterDomain }}"
     syncOptions:
       - CreateNamespace=true
+    ignoreDifferences:
+      - group: kagent.dev
+        kind: ModelConfig
+        jqPathExpressions:
+          - .spec.baseUrl
+      - group: stackgres.io
+        kind: SGPostgresConfig
+        jqPathExpressions:
+          - .spec.postgresql.conf
 
   kubePrometheusStack:
     enable: true
