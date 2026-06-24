@@ -1,21 +1,11 @@
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ Headroom — proxy-based multi-LLM provider                       │
 # │                                                                  │
-# │ Image: ghcr.io/chopratejas/headroom:v0.27.0-code-slim-nonroot    │
-# │ Backend: OpenRouter                                              │
-# │                                                                  │
-# │ Single-replica deployment with SQLite CCR cache.                 │
-# │ Internal-only — no ingress or VirtualService.                    │
-# └──────────────────────────────────────────────────────────────────┘
-
-# -- Doppler config; set by ArgoCD appset. Creates ExternalSecret when present.
-#    Expected keys: OPENAI_API_KEY
-dopplerConfig: ""
-
+# │ Image: ghcr.io/chopratejas/headroom:v0.27.0                        │
 # -- Container image (official Headroom from GHCR)
 image:
   repository: ghcr.io/chopratejas/headroom
-  tag: "v0.27.0-code-slim-nonroot"
+  tag: "v0.27.0"
   pullPolicy: IfNotPresent
 
 # -- Service settings (proxy port)
