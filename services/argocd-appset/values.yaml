@@ -210,6 +210,7 @@ services:
           - .spec.baseUrl
       - group: stackgres.io
         kind: SGPostgresConfig
+        name: kagent-pg-config
         jqPathExpressions:
           - '.spec."postgresql.conf"'
 
