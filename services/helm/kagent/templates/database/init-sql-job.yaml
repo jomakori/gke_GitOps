@@ -27,17 +27,17 @@ spec:
             - name: PGUSER
               valueFrom:
                 secretKeyRef:
-                  name: kagent-pg-secrets
+                  name: kagent-pg
                   key: KAGENT_PG_USER
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: kagent-pg-secrets
-                  key: KAGENT_PG_PASSWORD
+                  name: kagent-pg
+                  key: superuser-password
             - name: PGDATABASE
               valueFrom:
                 secretKeyRef:
-                  name: kagent-pg-secrets
+                  name: kagent-pg
                   key: KAGENT_PG_DB
   backoffLimit: 10
   ttlSecondsAfterFinished: 3600
