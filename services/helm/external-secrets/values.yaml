@@ -26,9 +26,9 @@ clusterSecretStores:
   svc_onedev:
     project: devops
     config: svc_onedev
-  svc_edgecrab:
+  svc_kagent:
     project: devops
-    config: svc_edgecrab
+    config: svc_kagent
   zurabase-dev:
     project: zurabase
     config: dev

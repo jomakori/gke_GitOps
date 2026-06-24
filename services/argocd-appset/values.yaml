@@ -97,11 +97,32 @@ services:
     syncWave: "3"
     dopplerConfig: "svc_cloudflare"
 
+  kagentSubstrate:
+    enable: true
+    syncWave: "3"
+    destNamespace: ate-system
+    parameters:
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
+    syncOptions:
+      - CreateNamespace=true
+
   # Wave 4 — Operators (no endpoint deps)
   externalDns:
     enable: true
     syncWave: "4"
     dopplerConfig: "svc_cloudflare"
+
+  headroom:
+    enable: true
+    syncWave: "4"
+    destNamespace: kagent
+    dopplerConfig: "svc_kagent"
+    parameters:
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
+    syncOptions:
+      - CreateNamespace=true
 
   keda:
     enable: false
@@ -164,6 +185,25 @@ services:
     dopplerConfig: "svc_postgres_operator"
 
   # Wave 5 — General services
+  kagent:
+    enable: true
+    syncWave: "5"
+    destNamespace: kagent
+    dopplerConfig: "svc_kagent"
+    gateways:
+      enable_private: true
+      subdomain: kagent
+      destination:
+        serviceName: kagent-ui
+        servicePort: 8080
+    parameters:
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
+      - name: clusterDomain
+        value: "{{ .Values.clusterDomain }}"
+    syncOptions:
+      - CreateNamespace=true
+
   kubePrometheusStack:
     enable: true
     dopplerConfig: "svc_grafana"
@@ -221,17 +261,6 @@ services:
       - name: storageClass
         value: "{{ .Values.storageClass }}"
 
-  edgecrab:
-    enable: true
-    syncWave: "5"
-    destNamespace: edgecrab
-    dopplerConfig: "svc_edgecrab"
-    parameters:
-      - name: storageClass
-        value: "{{ .Values.storageClass }}"
-    syncOptions:
-      - CreateNamespace=true
-
   redisOperator:
     enable: false
     syncWave: "5"
@@ -246,3 +275,11 @@ services:
     parameters:
       - name: redis-cluster.persistence.storageClass
         value: "{{ .Values.storageClass }}"
+
+  kagentDiscord:
+    enable: true
+    syncWave: "6"
+    destNamespace: kagent
+    dopplerConfig: "svc_kagent"
+    syncOptions:
+      - CreateNamespace=true
