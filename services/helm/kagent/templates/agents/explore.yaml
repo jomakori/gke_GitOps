@@ -14,9 +14,9 @@ spec:
     runtime: go
     modelConfig: opencode-deepseek-v4-flash-free
     systemMessageFrom:
-      configMapKeyRef:
-        name: kagent-prompts
-        key: explore-system.txt
+      name: kagent-prompts
+      key: explore-system.txt
+      type: ConfigMap
   platform: substrate
   substrate:
     workerPoolRef:

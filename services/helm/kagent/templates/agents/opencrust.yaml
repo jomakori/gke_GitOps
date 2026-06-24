@@ -14,9 +14,9 @@ spec:
     runtime: go
     modelConfig: opencode-big-pickle
     systemMessageFrom:
-      configMapKeyRef:
-        name: kagent-prompts
-        key: opencrust-system.txt
+      name: kagent-prompts
+      key: opencrust-system.txt
+      type: ConfigMap
   platform: substrate
   substrate:
     workerPoolRef:

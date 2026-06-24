@@ -12,9 +12,9 @@ spec:
     runtime: go
     modelConfig: opencode-big-pickle
     systemMessageFrom:
-      configMapKeyRef:
-        name: kagent-prompts
-        key: ultrabrain-agent-system.txt
+      name: kagent-prompts
+      key: ultrabrain-agent-system.txt
+      type: ConfigMap
   platform: substrate
   substrate:
     workerPoolRef:
