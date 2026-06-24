@@ -1,11 +1,11 @@
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ Headroom — proxy-based multi-LLM provider                       │
 # │                                                                  │
-# │ Image: ghcr.io/chopratejas/headroom:v0.27.0                        │
+# │ Image: ghcr.io/chopratejas/headroom:latest                         │
 # -- Container image (official Headroom from GHCR)
 image:
   repository: ghcr.io/chopratejas/headroom
-  tag: "v0.27.0"
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 # -- Service settings (proxy port)
