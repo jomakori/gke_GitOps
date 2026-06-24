@@ -1,0 +1,21 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: ultrabrain-agent-fb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagent.labels" . | nindent 4 }}
+spec:
+  type: Declarative
+  description: "Fallback ultrabrain agent when primary model fails — moderate-difficulty reasoning"
+  declarative:
+    runtime: go
+    modelConfig: opencode-big-pickle
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: ultrabrain-agent-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default

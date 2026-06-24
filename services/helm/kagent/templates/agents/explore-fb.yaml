@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: explore-fb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kagent
+    agent-type: fallback
+    agent-role: researcher
+spec:
+  type: Declarative
+  description: "Fallback codebase pattern discovery when primary model fails"
+  declarative:
+    runtime: go
+    modelConfig: moonshotai-kimi-k2-6
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: explore-fb-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default

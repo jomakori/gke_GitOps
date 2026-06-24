@@ -1,0 +1,44 @@
+{{- if .Values.database.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kagent-pg-init-vector
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init-vector
+          image: "{{ .Values.database.pgClientImage }}"
+          command:
+            - bash
+            - -ce
+            - |
+              until pg_isready -h kagent-pg -U "${PGUSER}"; do
+                echo "waiting for postgres..."
+                sleep 3
+              done
+              psql -h kagent-pg -U "${PGUSER}" -d "${PGDATABASE}" -c "CREATE EXTENSION IF NOT EXISTS vector;"
+              echo "pgvector extension enabled"
+          env:
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: kagent-pg-secrets
+                  key: KAGENT_PG_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kagent-pg-secrets
+                  key: KAGENT_PG_PASSWORD
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: kagent-pg-secrets
+                  key: KAGENT_PG_DB
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 3600
+{{- end }}

@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: sisyphus-fb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kagent
+    agent-type: fallback
+    agent-role: orchestrator
+spec:
+  type: Declarative
+  description: "Fallback orchestrator. Same role as sisyphus, different model."
+  declarative:
+    runtime: go
+    modelConfig: moonshotai-kimi-k2-6
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: sisyphus-fb-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default

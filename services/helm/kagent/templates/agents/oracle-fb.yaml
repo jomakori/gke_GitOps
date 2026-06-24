@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: oracle-fb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kagent
+    agent-type: fallback
+    agent-role: architect
+spec:
+  type: Declarative
+  description: "Fallback architect. Same role as oracle, different model."
+  declarative:
+    runtime: go
+    modelConfig: moonshotai-kimi-k2-6
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: oracle-fb-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default

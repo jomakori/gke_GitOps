@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: opencrust
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kagent
+    agent-type: primary
+    agent-role: worker
+spec:
+  type: Declarative
+  description: "Code generator. Write production code."
+  declarative:
+    runtime: go
+    modelConfig: opencode-big-pickle
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: opencrust-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: kagent
+description: Kagent native K8s orchestration — Agent/ModelConfig CRDs, ExternalSecret, Database, Prompts (upstream kagent-crds + kagent installed separately via ArgoCD)
+type: application
+version: 0.1.0
+appVersion: "0.9.9"
+maintainers:
+  - name: local

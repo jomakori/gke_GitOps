@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: explore
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kagent
+    agent-type: primary
+    agent-role: researcher
+spec:
+  type: Declarative
+  description: "Codebase pattern discovery. Find files, usages, structures."
+  declarative:
+    runtime: go
+    modelConfig: opencode-deepseek-v4-flash-free
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: explore-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default

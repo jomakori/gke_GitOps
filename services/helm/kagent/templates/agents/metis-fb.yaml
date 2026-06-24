@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: metis-fb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kagent
+    agent-type: fallback
+    agent-role: planner
+spec:
+  type: Declarative
+  description: "Fallback planner. Same role as metis, different model."
+  declarative:
+    runtime: go
+    modelConfig: moonshotai-kimi-k2-6
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: metis-fb-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default

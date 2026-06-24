@@ -1,0 +1,41 @@
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ Kagent Discord bot                                                │
+# │                                                                  │
+# │ Image: ghcr.io/jmakori/kagent-discord-bot                        │
+# │                                                                  │
+# │ Go-based bot that listens to Discord and forwards messages       │
+# │ to an A2A agent via HTTP. Exposes /healthz on port 8080.         │
+# └──────────────────────────────────────────────────────────────────┘
+
+# -- Doppler config; set by ArgoCD appset. Creates ExternalSecret when present.
+#    Expected keys: DISCORD_BOT_TOKEN
+dopplerConfig: ""
+
+# -- Container image
+image:
+  repository: ghcr.io/jmakori/kagent-discord-bot
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# -- Service settings (ClusterIP for DNS discovery only — bot has no inbound port)
+service:
+  port: 8080
+
+# -- Resource requests/limits
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# -- Discord bot configuration
+config:
+  # -- A2A endpoint for the backing agent
+  #    Format: http://kagent-service.<namespace>:8083/api/a2a/kagent/<agent-name>
+  kagentA2aUrl: "http://kagent-service.kagent:8083/api/a2a/kagent/sisyphus"
+  # -- Only respond to messages mentioning the bot
+  mentionOnly: true
+  # -- Restrict to a specific Discord channel (empty = all channels)
+  channelOnly: ""

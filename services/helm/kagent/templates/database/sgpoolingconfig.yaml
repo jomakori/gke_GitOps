@@ -1,0 +1,15 @@
+{{- if .Values.database.enabled }}
+apiVersion: stackgres.io/v1
+kind: SGPoolingConfig
+metadata:
+  name: kagent-pg-pooling
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  pgBouncer:
+    pgbouncer.ini:
+      pgbouncer:
+        pool_mode: transaction
+        max_client_conn: "100"
+{{- end }}

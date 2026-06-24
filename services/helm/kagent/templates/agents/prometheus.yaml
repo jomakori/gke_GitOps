@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagent.labels" . | nindent 4 }}
+    agent-type: primary
+    agent-role: planner
+spec:
+  type: Declarative
+  description: "Strategic planner. Builds step-by-step implementation plans from high-level objectives."
+  declarative:
+    runtime: go
+    modelConfig: moonshotai-kimi-k2-6
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: prometheus-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default

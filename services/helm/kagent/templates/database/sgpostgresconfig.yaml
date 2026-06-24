@@ -1,0 +1,14 @@
+{{- if .Values.database.enabled }}
+apiVersion: stackgres.io/v1
+kind: SGPostgresConfig
+metadata:
+  name: kagent-pg-config
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  postgresVersion: {{ .Values.database.pgVersion | quote }}
+  sgInstanceProfile: {{ .Values.database.profile | quote }}
+  postgresql.conf:
+    shared_preload_libraries: "vector"
+{{- end }}
