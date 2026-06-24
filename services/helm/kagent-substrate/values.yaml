@@ -1,0 +1,5 @@
+# Substrate control plane configuration
+# Deploys to ate-system namespace (upstream convention)
+# WorkerPool created by kagent chart (substrateWorkerPool.create=true)
+substrate: {}
+  # Defaults from upstream are fine for homelab

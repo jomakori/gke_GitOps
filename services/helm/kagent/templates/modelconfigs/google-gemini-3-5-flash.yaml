@@ -1,0 +1,14 @@
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: google-gemini-3-5-flash
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagent.labels" . | nindent 4 }}
+spec:
+  model: google/gemini-3.5-flash
+  provider: OpenAI
+  baseUrl: http://headroom.kagent.svc.cluster.local:8787
+  apiKeySecret:
+    name: kagent-secrets
+    key: OPENAI_API_KEY

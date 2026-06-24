@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: hephaestus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagent.labels" . | nindent 4 }}
+    agent-type: primary
+    agent-role: worker
+spec:
+  type: Declarative
+  description: "Deep implementation coder. Writes production-quality code for assigned implementation tasks."
+  declarative:
+    runtime: go
+    modelConfig: opencode-north-mini-code-free
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: hephaestus-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default

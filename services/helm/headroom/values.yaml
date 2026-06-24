@@ -1,0 +1,51 @@
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ Headroom — proxy-based multi-LLM provider                       │
+# │                                                                  │
+# │ Image: ghcr.io/chopratejas/headroom:v0.27.0-code-slim-nonroot    │
+# │ Backend: OpenRouter                                              │
+# │                                                                  │
+# │ Single-replica deployment with SQLite CCR cache.                 │
+# │ Internal-only — no ingress or VirtualService.                    │
+# └──────────────────────────────────────────────────────────────────┘
+
+# -- Doppler config; set by ArgoCD appset. Creates ExternalSecret when present.
+#    Expected keys: OPENAI_API_KEY
+dopplerConfig: ""
+
+# -- Container image (official Headroom from GHCR)
+image:
+  repository: ghcr.io/chopratejas/headroom
+  tag: "v0.27.0-code-slim-nonroot"
+  pullPolicy: IfNotPresent
+
+# -- Service settings (proxy port)
+service:
+  port: 8787
+
+# -- Resource requests/limits
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# -- VPA (Vertical Pod Autoscaler) for single-pod scaling
+vpa:
+  enabled: true
+  minAllowed:
+    cpu: 100m
+    memory: 256Mi
+  maxAllowed:
+    cpu: 2000m
+    memory: 2Gi
+  controlledResources: ["cpu", "memory"]
+  updatePolicy:
+    updateMode: "Auto"
+
+# -- Storage for Headroom SQLite CCR cache
+storage:
+  size: 2Gi
+  storageClass: ""
+  accessMode: ReadWriteOnce

@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha2
+kind: SandboxAgent
+metadata:
+  name: prometheus-fb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kagent.labels" . | nindent 4 }}
+    agent-type: fallback
+    agent-role: planner
+spec:
+  type: Declarative
+  description: "Fallback strategic planner. Serves as backup when prometheus primary model fails."
+  declarative:
+    runtime: go
+    modelConfig: opencode-big-pickle
+    systemMessageFrom:
+      configMapKeyRef:
+        name: kagent-prompts
+        key: prometheus-fb-system.txt
+  platform: substrate
+  substrate:
+    workerPoolRef:
+      name: kagent-default
