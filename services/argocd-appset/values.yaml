@@ -211,7 +211,7 @@ services:
       - group: stackgres.io
         kind: SGPostgresConfig
         jqPathExpressions:
-          - .spec.postgresql.conf
+          - '.spec."postgresql.conf"'
 
   kubePrometheusStack:
     enable: true
