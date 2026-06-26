@@ -10,6 +10,7 @@ spec:
   postgresVersion: {{ .Values.database.pgVersion | quote }}
   postgresql.conf:
     {}
-  # Note: pgvector shared library not available in StackGres Patroni image.
-  # shared_preload_libraries left at default: pg_stat_statements, auto_explain
+  # Note: pgvector is loaded via StackGres dynamic extension mechanism
+  # (spec.postgres.extensions in SGCluster). No shared_preload_libraries needed
+  # for pgvector — it's a simple extension loaded via CREATE EXTENSION.
 {{- end }}
