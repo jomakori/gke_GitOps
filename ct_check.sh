@@ -5,6 +5,7 @@
 
 # Declarations
 changed_files="$1"
+mode="${2:-lint}"
 IFS=' ' read -r -a files_array <<< "$changed_files"
 helm_dirs=()
 GREEN="\033[32m"
@@ -26,7 +27,11 @@ done
 # Run chart testing on each Helm directory
 echo "::notice::Running chart testing on: ${helm_dirs[@]}"
 for dir in "${helm_dirs[@]}"; do
-  ct lint --charts "$dir" --validate-maintainers=false
+  if [ "$mode" == "lint" ]; then
+    ct lint --charts "$dir" --validate-maintainers=false
+  else
+    ct install --charts "$dir"
+  fi
   ## Fail-catch
   if [ $? -ne 0 ]; then
     echo "::ERROR::Chart testing failed on: ${dir}."

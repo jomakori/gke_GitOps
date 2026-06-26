@@ -1,41 +1,41 @@
 # Kagent — Loop Engineering System
 
-Kagent services implement loop-engineered AI execution: tasks decomposed, delegated to specialized agents, reviewed, iterated — not single-pass answers. Cluster's native AI workforce.
+The **kagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized agents, reviewed, and iterated — not answered in a single pass. This is the cluster's native AI workforce.
 
 ## What Loop Engineering Means
 
-**Single-pass AI**: User asks → model answers → done. No verification, iteration, delegation.
+**Single-pass AI**: User asks → model answers → done. No verification, no iteration, no delegation.
 
-**Loop-engineered AI**: User asks → **orchestrator** parses intent → **planner** breaks into steps → **reviewer** catches gaps → **worker** executes → **verifier** checks output → loop repeats until quality gate passes. Each role = distinct agent with specialized model, prompt, execution context.
+**Loop-engineered AI**: User asks → **orchestrator** parses intent → **planner** breaks into steps → **reviewer** catches gaps → **worker** executes → **verifier** checks output → loop repeats until quality gate passes. Each role is a distinct agent with a specialized model, prompt, and execution context.
 
-"Headroom" (LLM proxy) creates *cognitive margin* — safety buffer between normal operation and output ceiling. System explores alternatives, backtracks, improves before committing.
+The name "headroom" (the LLM proxy) reflects this: it creates *cognitive margin* — the safety buffer between normal operation and the output ceiling — so the system can explore alternatives, backtrack, and improve before committing.
 
 ## System Architecture
 
 | Component | Wave | Chart | Purpose |
 |-----------|------|-------|---------|
-| `kagent-substrate` | 3 | `services/helm/kagent-substrate/` | gVisor sandbox runtime. Isolated actors replace per-agent pods. |
+| `kagent-substrate` | 3 | `services/helm/kagent-substrate/` | gVisor sandbox runtime. Replaces per-agent pods with isolated actors. |
 | `kagent-headroom` | 4 | `services/helm/kagent-headroom/` | LLM proxy — OpenRouter backend, SQLite CCR cache, observability. All agent LLM traffic routes through here. |
-| `kagent` | 5 | `services/helm/kagent/` | Control plane — Agent/ModelConfig CRDs, controller, UI (8080), Postgres (StackGres), prompts ConfigMap. |
+| `kagent` | 5 | `services/helm/kagent/` | Main control plane — Agent/ModelConfig CRDs, controller, UI (port 8080), Postgres (StackGres), prompts ConfigMap. |
 | `kagent-discord` | 6 | `services/helm/kagent-discord/` | Discord gateway bot — polls Discord, routes messages to A2A agent. |
 
-**Namespace**: All run in `kagent` except `kagent-substrate` (runs in `ate-system`).
+**Namespace**: All run in `kagent` except `kagent-substrate` which runs in `ate-system`.
 
-**Secrets**: `svc_kagent` Doppler config. Must include `OPENAI_API_KEY` (headroom proxy auth) + provider keys headroom needs.
+**Secrets**: `svc_kagent` Doppler config. Must include `OPENAI_API_KEY` (used by headroom proxy auth) and any provider keys headroom needs.
 
 ## Agent Taxonomy
 
-All agents = `SandboxAgent` CRs (`kagent.dev/v1alpha2`) on substrate. Each has `agent-role` label + dedicated system prompt from ConfigMap.
+All agents are `SandboxAgent` CRs (`kagent.dev/v1alpha2`) running on the substrate. Each has a `agent-role` label and a dedicated system prompt injected via ConfigMap.
 
 | Agent | Role | Model | Purpose |
 |-------|------|-------|---------|
 | **sisyphus** | orchestrator | opencode-big-pickle | Main orchestrator. Parses intake, plans, delegates via A2A. |
 | **atlas** | orchestrator | opencode-big-pickle | Master orchestrator. Coordinates agents, verifies work. |
-| **prometheus** | planner | moonshotai-kimi-k2-6 | Strategic planner. Step-by-step implementation plans. |
+| **prometheus** | planner | moonshotai-kimi-k2-6 | Strategic planner. Builds step-by-step implementation plans. |
 | **metis** | planner | opencode-big-pickle | Pre-planning consultant. Identifies hidden intentions, ambiguities, AI failure points. |
 | **momus** | reviewer | moonshotai-kimi-k2-6 | Ruthless plan reviewer. Identifies gaps, risks, ambiguities. |
 | **oracle** | architect | opencode-big-pickle | Read-only architecture/security consultant. |
-| **hephaestus** | worker | opencode-north-mini-code-free | Deep implementation coder. Production-quality code. |
+| **hephaestus** | worker | opencode-north-mini-code-free | Deep implementation coder. Writes production-quality code. |
 | **librarian** | researcher | opencode-deepseek-v4-flash-free | Docs/RAG searcher. Finds authoritative docs, OSS examples, remote repos. |
 | **explore** | researcher | opencode-deepseek-v4-flash-free | Contextual grep for codebases. |
 | **multimodal-looker** | researcher | opencode-mimo-v2-5-free | Media file analyzer (PDFs, images, diagrams). |
@@ -44,16 +44,15 @@ All agents = `SandboxAgent` CRs (`kagent.dev/v1alpha2`) on substrate. Each has `
 | **writing-agent** | worker | google-gemini-3-5-flash | Documentation, prose, technical writing. |
 | **ultraworker** | worker | opencode-big-pickle | Ultrawork loop executor. |
 | **opencrust** | worker | opencode-big-pickle | Shell/command specialist. |
-
 ## Intent Classification & Routing Gates
 
-Not every request needs full loop. **Sisyphus classifies intent inline** — classification = part of orchestration, not separate step. Same agent that executes decides loop depth.
+Not every request needs the full loop. **Sisyphus classifies intent inline** on every request — classification is part of orchestration, not a separate step. The orchestrator that will execute the plan is the same one that reads between the lines and decides loop depth.
 
 ### Why Inline Classification
 
 - **Lower latency**: No extra model call before routing.
-- **Full context**: Sisyphus has complete conversation history, tool outputs, file contents.
-- **Unified reasoning**: Classifier = executor. No impedance mismatch.
+- **Full context**: Sisyphus has the complete conversation history, tool outputs, and file contents.
+- **Unified reasoning**: The agent that classifies is the same one that executes. No impedance mismatch.
 - **Simpler architecture**: One agent owns intent → routing → execution.
 
 ### Complexity Tiers
@@ -62,7 +61,7 @@ Not every request needs full loop. **Sisyphus classifies intent inline** — cla
 |---|---|---|---|
 | **Trivial** | Single file, <10 lines, typo, rename, obvious syntax error | Direct | sisyphus-junior only |
 | **Quick** | Explicit file/line, clear command, single domain | Shallow | 1 specialist (hephaestus / opencrust / writing-agent) |
-| **Scoped** | Known domain, unclear location | Explore → Execute | 2–4 agents (explore + librarian parallel, then worker) |
+| **Scoped** | Known domain, unclear location | Explore → Execute | 2–4 agents (explore + librarian in parallel, then worker) |
 | **Exploratory** | "how does X work?", multi-module discovery | Research → Synthesize | 2–3 agents (librarian + explore → answer) |
 | **Complex** | Multi-file, cross-cutting, architecture, security | Full loop | 5–8 agents (metis → prometheus → momus → hephaestus → oracle → atlas) |
 | **Ambiguous** | Multiple interpretations with 2x+ effort difference | Ask → Re-classify | 0 agents — ask user ONE precise question |
@@ -80,16 +79,16 @@ Not every request needs full loop. **Sisyphus classifies intent inline** — cla
 
 ### Intent Gates
 
-**ask_gate** — Before routing to implementation:
-1. Action irreversible? (delete, push, publish) → Flag: `require_confirmation`
-2. External side effects? (sending, deleting, publishing, pushing to production) → Flag: `require_confirmation`
-3. Critical info missing that materially changes outcome? → Flag: `ask_user`
+**ask_gate** — Before routing to implementation, check:
+1. Is the action irreversible? (delete, push, publish) → Flag: `require_confirmation`
+2. Does it have external side effects? (sending, deleting, publishing, pushing to production) → Flag: `require_confirmation`
+3. Is critical information missing that would materially change the outcome? → Flag: `ask_user`
 
-**re_entry_rule** — Don't re-classify every turn:
-- **Confirmation turn**: User confirms/refines prior intent → do NOT re-classify. Acknowledge + act.
-- **Explicit decision**: User already chose option ("yes do it", "A로 가자") → do NOT re-litigate. Execute.
-- **Post-decision meta-question**: "what do you think?" after decision = acknowledgment request, NOT new classification.
-- **Already-in-context**: Answer verbatim in context window → RETURN IT. Do not re-derive.
+**re_entry_rule** — Don't re-classify on every turn:
+- **Confirmation turn**: If user confirms/refines prior intent, do NOT re-classify from scratch. Acknowledge and act.
+- **Explicit decision**: If user already chose an option ("yes do it", "A로 가자"), do NOT re-litigate. Execute.
+- **Post-decision meta-question**: "what do you think?" after a decision = acknowledgment request, NOT new classification.
+- **Already-in-context**: If answer is verbatim in context window, RETURN IT. Do not re-derive.
 
 ### Key Triggers (check BEFORE classifying)
 
@@ -102,7 +101,7 @@ Not every request needs full loop. **Sisyphus classifies intent inline** — cla
 
 ### Verification Tiers
 
-Sisyphus enforces verification based on inline classification:
+Sisyphus enforces verification tiers based on its inline classification:
 
 | Tier | When | Required Evidence |
 |---|---|---|
@@ -112,55 +111,55 @@ Sisyphus enforces verification based on inline classification:
 
 ### Why This Matters
 
-Without classification, every request gets full loop — typo fix through metis → prometheus → momus → hephaestus → oracle → atlas. 6 agents, 6 model calls, 30+ seconds, unnecessary cost.
+Without classification, every request gets the full loop — a typo fix goes through metis → prometheus → momus → hephaestus → oracle → atlas. That's 6 agents, 6 model calls, 30+ seconds, and unnecessary cost.
 
 With inline classification:
-- Typo fix → sisyphus-junior → V1 verify → done. **1 agent, 3 seconds.**
+- A typo fix → sisyphus-junior → V1 verify → done. **1 agent, 3 seconds.**
 - "How does X work?" → librarian + explore (parallel) → synthesize → done. **2 agents, 5 seconds.**
-- "Refactor auth layer" → full loop with review. **8 agents, 60 seconds, but correct.**
+- "Refactor the auth layer" → full loop with review. **8 agents, 60 seconds, but correct.**
 
 Sisyphus is the gatekeeper.
 
 ## Feedback Loop Pattern
 
-Every primary agent has `-fb` (feedback) counterpart reviewing output before loop continues:
+Every primary agent has a `-fb` (feedback) counterpart that reviews its output before the loop continues:
 
 ```
 User request
   → Sisyphus (orchestrator) parses intent
     → Metis (pre-planning) probes for ambiguities
       → Prometheus (planner) builds step-by-step plan
-        → Momus (reviewer) catches gaps in plan
-          → Hephaestus (worker) implements step
+        → Momus (reviewer) catches gaps in the plan
+          → Hephaestus (worker) implements the step
             → Oracle (architect) reviews for security/quality
               → Atlas (master orchestrator) verifies completion
                 → Loop repeats for next step or terminates
 ```
 
-`-fb` agents = lightweight reviewers running same model config as primary, but with critique-oriented system prompt. Review happens inline, not as separate round-trip.
+The `-fb` agents are lightweight reviewers that run the same model config as their primary but with a critique-oriented system prompt. This keeps the loop tight — review happens inline rather than as a separate round-trip.
 
 ## LLM Routing (Headroom)
 
 All agents talk to `http://kagent-headroom.kagent.svc.cluster.local:8787` via `ModelConfig` CRs. Headroom:
-- Routes to OpenRouter (200+ providers)
+- Routes to OpenRouter (and thus 200+ providers)
 - Caches responses in SQLite (CCR — cached completion repository)
-- Observability on latency, cost, token usage
-- Swaps backends without touching agent configs
+- Provides observability on latency, cost, token usage
+- Enables swapping backends without touching agent configs
 
-**ModelConfig CRs** define model string (e.g. `opencode/big-pickle`, `moonshotai/kimi-k2.6`) + provider (`OpenAI` — headroom speaks OpenAI-compatible API). Provider selection happens at headroom layer via `--backend openrouter`.
+**ModelConfig CRs** define the model string (e.g. `opencode/big-pickle`, `moonshotai/kimi-k2.6`) and the provider (`OpenAI` — because headroom speaks OpenAI-compatible API). The actual provider selection happens at the headroom layer via `--backend openrouter`.
 
 ## Prompt Injection System
 
-Agent system prompts loaded from ConfigMap (`kagent-prompts`) mounted at runtime. `values.yaml` includes two foundational prompt templates:
+Agent system prompts are loaded from a ConfigMap (`kagent-prompts`) mounted at runtime. The `values.yaml` includes two foundational prompt templates:
 
 - **`caveman`** — Ultra-compressed communication mode. Drops articles, filler, pleasantries. Pattern: `[thing] [action] [reason]. [next step].`
 - **`ponytail`** — YAGNI ladder. Lazy senior dev discipline: check if needed → stdlib → existing dep → one-liner → small function → new module → new abstraction.
 
-Each agent's `systemMessageFrom` references key in this ConfigMap (e.g. `sisyphus-system.txt`, `oracle-system.txt`). `-fb` variants use same base prompt with critique suffixes.
+Each agent's `systemMessageFrom` references a key in this ConfigMap (e.g. `sisyphus-system.txt`, `oracle-system.txt`). The `-fb` variants use the same base prompt with critique suffixes.
 
 ## Skills
 
-Skills = prompt templates injected via `kagent-prompts` ConfigMap. Reusable context + behavior patterns.
+Skills are prompt templates injected via the `kagent-prompts` ConfigMap. They provide reusable context and behavior patterns.
 
 ### Core Skills (all agents)
 
@@ -179,16 +178,16 @@ Skills = prompt templates injected via `kagent-prompts` ConfigMap. Reusable cont
 
 ### Porting Local Skills
 
-Skills from `~/.config/opencode/skills/` ported to ConfigMap:
+Skills from `~/.config/opencode/skills/` are ported to the ConfigMap:
 
-1. Convert SKILL.md content to system prompt
+1. Convert SKILL.md content to a system prompt
 2. Add to `templates/prompts-configmap.yaml`
 3. Reference from agent's `systemMessageFrom` if needed
 4. Remove hardcoded URLs/accounts — use `.Values.*` or env vars
 
 ### Skill Lifecycle
 
-Skills = living documents. Evolve as system changes.
+Skills are living documents. They evolve as the system changes.
 
 **Update triggers**:
 
@@ -206,7 +205,7 @@ Skills = living documents. Evolve as system changes.
 1. Developer edits skill prompt in `prompts-configmap.yaml`
 2. ArgoCD detects drift, syncs new ConfigMap
 3. Agents pick up new prompt on next session start
-4. No agent restart required — prompts read at runtime
+4. No agent restart required — prompts are read at runtime
 
 **Dynamic skills** (generated at runtime):
 
@@ -216,7 +215,7 @@ Skills = living documents. Evolve as system changes.
 
 **Versioning**: Git commit hash = skill version. ArgoCD sync wave = delivery mechanism. Agent session = consumption point.
 
-If agent behaves oddly, check:
+If an agent behaves oddly, check:
 1. `kubectl get cm kagent-prompts -n kagent -o yaml | grep <skill-key>`
 2. `git log --oneline -5 services/helm/kagent/templates/prompts-configmap.yaml`
 3. ArgoCD UI for sync status
@@ -255,5 +254,5 @@ If agent behaves oddly, check:
    ```
 2. **Add feedback agent** `agents/<name>-fb.yaml` with `agent-role: reviewer` and critique prompt.
 3. **Add system prompt** to `templates/prompts-configmap.yaml`.
-4. **Ensure ModelConfig exists** in `templates/modelconfigs/` if using new model.
+4. **Ensure ModelConfig exists** in `templates/modelconfigs/` if using a new model.
 5. **ArgoCD sync** — no Terraform changes needed.

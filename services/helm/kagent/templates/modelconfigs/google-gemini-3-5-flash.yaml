@@ -8,6 +8,6 @@ metadata:
 spec:
   model: google/gemini-3.5-flash
   provider: OpenAI
-  baseUrl: http://kagent-headroom.kagent.svc.cluster.local:8787
+  baseUrl: {{ .Values.headroom.url }}
   apiKeySecret: kagent-secrets
   apiKeySecretKey: OPENAI_API_KEY

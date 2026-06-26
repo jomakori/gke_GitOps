@@ -47,6 +47,12 @@ spec:
               value: {{ .Values.config.kagentA2aUrl | quote }}
             - name: DISCORD_MENTION_ONLY
               value: {{ .Values.config.mentionOnly | quote }}
+            - name: DISCORD_CONVERSATION_MODE
+              value: {{ .Values.config.conversationMode | quote }}
+            - name: DISCORD_PHASE_UPDATES
+              value: {{ .Values.config.phaseUpdates | quote }}
+            - name: DISCORD_POLL_UI
+              value: {{ .Values.config.pollUI | quote }}
             {{- if .Values.config.channelOnly }}
             - name: DISCORD_CHANNEL_ONLY
               value: {{ .Values.config.channelOnly | quote }}

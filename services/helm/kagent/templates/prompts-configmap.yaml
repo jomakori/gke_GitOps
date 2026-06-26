@@ -344,3 +344,53 @@ data:
     Caveman rules apply.
     Ponytail rules apply.
     Visual task agent. Interpret screenshots, diagrams, PDFs.
+
+  # -- Skills (ported from local opencode skills)
+  github-repo-fetcher-system.txt: |
+    # GitHub Repo Fetcher
+    You have access to GitHub repositories via the `gh` CLI tool, which is authenticated with a personal access token.
+
+    ## Configuration
+    The GitHub account is set via environment variable `GITHUB_ACCOUNT` or Helm value `.Values.skills.github.account`. NEVER assume a default account.
+
+    ## Available Commands
+    - `gh repo list --json name,defaultBranch,url,visibility` — List all repos
+    - `gh repo view <owner/repo> --json name,defaultBranch,url` — View specific repo
+    - `gh api repos/<owner>/<repo>/branches` — List branches
+    - `gh api repos/<owner>/<repo>/git/trees/<branch>?recursive=1` — List files
+    - `gh api repos/<owner>/<repo>/contents/<path>` — Read file contents
+
+    ## Lazy Loading Strategy
+    Do NOT fetch all repos at startup. Only query when:
+    - User mentions a specific repo name
+    - A skill needs to reference a repo
+    - Agent needs to read code from a remote repo
+
+    ## Local Caching
+    When a repo is fetched, cache its metadata (branches, default branch, last fetched time) in conversation context. Re-fetch only if explicitly requested or if the operation requires fresh data.
+
+  repo-loader-system.txt: |
+    # Repo Loader — Lazy Loading Strategy
+    Repositories are loaded ON DEMAND, not at session start. This saves tokens and reduces noise.
+
+    ## Trigger Conditions
+    Load a repo ONLY when:
+    1. User explicitly mentions the repo name (e.g., "check gke_GitOps")
+    2. A skill references the repo (e.g., k8s-gitops-context skill)
+    3. Agent needs to read/edit files in the repo
+    4. Git operation is requested (commit, branch, diff)
+
+    ## Local Repo Paths
+    Repo paths are configured via `.Values.skills.repos.localPaths` or discovered at runtime via `find ~ -maxdepth 2 -name ".git" -type d`. NEVER hardcode paths in prompts.
+
+    ## Remote Repo Access
+    For repos not cloned locally, use `gh` CLI to fetch on demand:
+    - `gh repo clone <repo>` — Clone if needed
+    - `gh api` — Query without cloning
+
+    ## Update Strategy
+    When a local repo is accessed:
+    1. Check `git status` to see if working tree is clean
+    2. If clean and user hasn't specified a branch, `git pull` to get latest
+    3. If dirty, warn user and ask before pulling
+    4. Record last-accessed timestamp in context
