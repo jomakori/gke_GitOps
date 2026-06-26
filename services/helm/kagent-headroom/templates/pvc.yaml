@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "headroom.fullname" . }}-data
+  name: {{ include "kagent-headroom.fullname" . }}-data
   labels:
-    {{- include "headroom.labels" . | nindent 4 }}
+    {{- include "kagent-headroom.labels" . | nindent 4 }}
 spec:
   accessModes:
     - {{ .Values.storage.accessMode }}

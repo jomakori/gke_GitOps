@@ -113,7 +113,7 @@ services:
     syncWave: "4"
     dopplerConfig: "svc_cloudflare"
 
-  headroom:
+  kagentHeadroom:
     enable: true
     syncWave: "4"
     destNamespace: kagent
