@@ -89,6 +89,21 @@ kagent:
       type: ClusterIP
       port: 8080
 
+# -- Headroom LLM proxy endpoint
+headroom:
+  # Internal cluster DNS. Override only if headroom runs in different ns/port.
+  url: "http://kagent-headroom.kagent.svc.cluster.local:8787"
+
+# -- Skill configuration (injected into agent prompts)
+skills:
+  github:
+    # Set via env var or ArgoCD parameter. Never hardcode in prompts.
+    account: ""
+  repos:
+    # Lazy-loaded repo paths. Agents discover these at runtime.
+    # Format: name -> absolute path
+    localPaths: {}
+
 # Placeholder subdirs (populated by later tasks)
 modelConfigs: {}
 agents: {}

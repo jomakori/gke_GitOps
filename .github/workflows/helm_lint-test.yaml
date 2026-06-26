@@ -1,4 +1,4 @@
-name: Lint and Test Charts
+name: Helm - Lint/Test - ${{ github.event_name == 'pull_request' && format('PR-#{0}', github.event.number) || 'On-demand' }}
 
 on:
   workflow_dispatch:  # manual run option
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -38,33 +38,37 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@main
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ env.GOOGLE_CI_CREDENTIALS }}
+      # - name: Authenticate to Google Cloud
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: ${{ env.GOOGLE_CI_CREDENTIALS }}
 
-      - name: Authenticate GKE credentials
-        uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: ${{ env.GKE_CLUSTER_NAME }}
-          location: ${{ env.GKE_LOCATION }}
-          project_id: ${{ env.GCP_PROJECT_ID }}
+      # - name: Authenticate GKE credentials
+      #   uses: google-github-actions/get-gke-credentials@v2
+      #   with:
+      #     cluster_name: ${{ env.GKE_CLUSTER_NAME }}
+      #     location: ${{ env.GKE_LOCATION }}
+      #     project_id: ${{ env.GCP_PROJECT_ID }}
 
-      - name: CT - Helm Chart Lint & Test
+      - name: Run Lint
+        env:
+          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          ./ct_check.sh "$changed_files" lint
+
+      - name: Run Dry-Run
         env:
           changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           # Confirm k8s setup and connection
-          cluster_config=$(kubectl config current-context 2>&1)
-          cluster_connection=$(kubectl cluster-info 2>&1)
-
-          # Test Helm charts - if no errors
-          if [ -z "$cluster_config" ]; then
+          if ! cluster_config=$(kubectl config current-context 2>&1); then
               echo "::error::$cluster_config"
               exit 1
-          elif [-z "$cluster_connection" ]; then
+          fi
+
+          if ! cluster_connection=$(kubectl cluster-info 2>&1); then
               echo "::error::$cluster_connection"
               exit 1
-          else
-              echo "Testing out changes on: $cluster_config" && ./ct_check.sh "$changed_files"
           fi
+
+          echo "Testing out changes on: $cluster_config" && ./ct_check.sh "$changed_files" install

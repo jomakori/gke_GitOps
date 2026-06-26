@@ -8,6 +8,6 @@ metadata:
 spec:
   model: opencode/north-mini-code-free
   provider: OpenAI
-  baseUrl: http://kagent-headroom.kagent.svc.cluster.local:8787
+  baseUrl: {{ .Values.headroom.url }}
   apiKeySecret: kagent-secrets
   apiKeySecretKey: OPENAI_API_KEY
