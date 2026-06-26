@@ -10,6 +10,8 @@ spec:
   instances: 1
   postgres:
     version: {{ .Values.database.pgVersion | quote }}
+    extensions:
+      - name: pgvector
   profile: {{ .Values.database.profile | quote }}
   pods:
     persistentVolume:
