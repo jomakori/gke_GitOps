@@ -44,6 +44,23 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 
 Dependency chain: cert-manager + VPA → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs. edgecrab VPA requires VPA CRDs installed at wave 0.
 
+### Kagent Loop Engineering System
+
+The **kagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized agents, reviewed, and iterated — not answered in a single pass. This is the cluster's native AI workforce.
+
+| Component | Wave | Chart | Purpose |
+|-----------|------|-------|---------|
+| `kagent-substrate` | 3 | `services/helm/kagent-substrate/` | gVisor sandbox runtime. Replaces per-agent pods with isolated actors. |
+| `kagent-headroom` | 4 | `services/helm/kagent-headroom/` | LLM proxy — OpenRouter backend, SQLite CCR cache, observability. All agent LLM traffic routes through here. |
+| `kagent` | 5 | `services/helm/kagent/` | Main control plane — Agent/ModelConfig CRDs, controller, UI (port 8080), Postgres (StackGres), prompts ConfigMap. |
+| `kagent-discord` | 6 | `services/helm/kagent-discord/` | Discord gateway bot — polls Discord, routes messages to A2A agent. |
+
+**Namespace**: All run in `kagent` except `kagent-substrate` which runs in `ate-system`.
+
+**Secrets**: `svc_kagent` Doppler config. Must include `OPENAI_API_KEY` (used by headroom proxy auth) and any provider keys headroom needs.
+
+See [services/helm/kagent/README.md](services/helm/kagent/README.md) for the full agent taxonomy, feedback loop pattern, LLM routing details, prompt injection system, and agent creation guide.
+
 ### Apps
 
 Apps at **wave 6+** (depend on all services being ready). Both apps use a [single parameterized chart](apps/helm/) (chart name: `apps`) invoked via `--set appName=<key>`. All manifests (Deployment, Service, HPA, VirtualService, ExternalSecret, PVC) are generated from a single `_helpers.tpl` — no per-app chart directories.

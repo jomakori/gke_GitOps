@@ -1,5 +1,5 @@
 # ┌──────────────────────────────────────────────────────────────────┐
-# │ Headroom — proxy-based multi-LLM provider                       │
+# │ kagent-headroom — proxy-based multi-LLM provider                │
 # │                                                                  │
 # │ Image: ghcr.io/chopratejas/headroom:latest                         │
 # -- Container image (official Headroom from GHCR)
@@ -21,15 +21,15 @@ resources:
     cpu: 2000m
     memory: 2Gi
 
-# -- VPA (Vertical Pod Autoscaler) for single-pod scaling
+# -- VPA scaling
 vpa:
   enabled: true
   minAllowed:
     cpu: 100m
     memory: 256Mi
   maxAllowed:
-    cpu: 2000m
-    memory: 2Gi
+    cpu: 3
+    memory: 6Gi
   controlledResources: ["cpu", "memory"]
   updatePolicy:
     updateMode: "Auto"
