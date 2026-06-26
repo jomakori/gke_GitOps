@@ -1,5 +1,5 @@
 VERSION ?= 0.1.0
-IMAGE ?= ghcr.io/jmakori/kagent-discord-bot
+IMAGE ?= ghcr.io/jomakori/gke_gitops/kagent-discord-bot
 
 .PHONY: build image push all
 
