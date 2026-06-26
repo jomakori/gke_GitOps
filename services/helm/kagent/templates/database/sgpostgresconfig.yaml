@@ -9,6 +9,7 @@ metadata:
 spec:
   postgresVersion: {{ .Values.database.pgVersion | quote }}
   postgresql.conf:
-    # shared_preload_libraries: "vector"  # pgvector not included in StackGres Patroni image
-    # CREATE EXTENSION vector; works without preload
+    {}
+  # Note: pgvector shared library not available in StackGres Patroni image.
+  # shared_preload_libraries left at default: pg_stat_statements, auto_explain
 {{- end }}
