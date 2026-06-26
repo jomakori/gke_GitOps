@@ -27,6 +27,11 @@ spec:
 
       serviceAccountName: headroom
 
+      {{- if .Values.dopplerConfig }}
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      {{- end }}
+
       containers:
         - name: headroom
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
