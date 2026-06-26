@@ -44,7 +44,7 @@ data:
 {{ .Values.prompts.ponytail | nindent 4 }}
 
     Deep implementation coder. Write production-quality code for assigned tasks.
-n
+
     If model fails, invoke hephaestus-fb.
 
   # -- Fallback agents
