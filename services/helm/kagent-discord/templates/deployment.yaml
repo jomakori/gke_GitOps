@@ -27,6 +27,11 @@ spec:
 
       serviceAccountName: kagent-discord
 
+      {{- if .Values.dopplerConfig }}
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      {{- end }}
+
       containers:
         - name: discord-bot
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
