@@ -29,6 +29,9 @@ clusterSecretStores:
   svc_kagent:
     project: devops
     config: svc_kagent
+  svc_stackgres:
+    project: devops
+    config: svc_stackgres
   zurabase-dev:
     project: zurabase
     config: dev
