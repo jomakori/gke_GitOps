@@ -35,7 +35,7 @@ config:
   # -- A2A endpoint for the backing agent. In-cluster only.
   #    The bot runs inside the kagent namespace and connects directly
   #    to the controller service. No CF Access, no public domain.
-  kagentA2aUrl: "http://kagent.kagent.svc.cluster.local:8083/a2a"
+  kagentA2aUrl: "http://kagent-controller.kagent.svc.cluster.local:8083/a2a"
   # -- Only respond to messages mentioning the bot
   mentionOnly: true
   # -- Restrict to a specific Discord channel (empty = all channels)

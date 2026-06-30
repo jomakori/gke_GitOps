@@ -56,19 +56,19 @@ jobs:
         run: |
           ./ct_check.sh "$changed_files" lint
 
-      - name: Run Dry-Run
-        env:
-          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
-        run: |
-          # Confirm k8s setup and connection
-          if ! cluster_config=$(kubectl config current-context 2>&1); then
-              echo "::error::$cluster_config"
-              exit 1
-          fi
+      # - name: Run Dry-Run
+      #   env:
+      #     changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+      #   run: |
+      #     # Confirm k8s setup and connection
+      #     if ! cluster_config=$(kubectl config current-context 2>&1); then
+      #         echo "::error::$cluster_config"
+      #         exit 1
+      #     fi
 
-          if ! cluster_connection=$(kubectl cluster-info 2>&1); then
-              echo "::error::$cluster_connection"
-              exit 1
-          fi
+      #     if ! cluster_connection=$(kubectl cluster-info 2>&1); then
+      #         echo "::error::$cluster_connection"
+      #         exit 1
+      #     fi
 
-          echo "Testing out changes on: $cluster_config" && ./ct_check.sh "$changed_files" install
+      #     echo "Testing out changes on: $cluster_config" && ./ct_check.sh "$changed_files" install

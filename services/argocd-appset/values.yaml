@@ -101,11 +101,12 @@ services:
     enable: true
     syncWave: "3"
     destNamespace: ate-system
+    managedNamespaceMetadata:
+      labels:
+        istio.io/dataplane-mode: ambient
     parameters:
       - name: storageClass
         value: "{{ .Values.storageClass }}"
-    syncOptions:
-      - CreateNamespace=true
 
   # Wave 4 — Operators (no endpoint deps)
   externalDns:
@@ -190,6 +191,9 @@ services:
     syncWave: "5"
     destNamespace: kagent
     dopplerConfig: "svc_kagent"
+    managedNamespaceMetadata:
+      labels:
+        istio.io/dataplane-mode: ambient
     gateways:
       enable_private: true
       subdomain: kagent
@@ -288,8 +292,12 @@ services:
 
   kagentDiscord:
     enable: true
-    syncWave: "6"
+    syncWave: "7"
     destNamespace: kagent
     dopplerConfig: "svc_kagent"
     syncOptions:
       - CreateNamespace=true
+
+# Deploy upstream kagent controller + UI from OCI chart (after local kagent chart creates DB, CRDs, secrets)
+kagentUpstream:
+  enable: true

@@ -1,0 +1,137 @@
+{{- if .Values.kagentUpstream.enable }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kagent-upstream
+  namespace: {{ .Values.argoNamespace | default "argocd" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  project: {{ .Values.argoProject | default "default" }}
+  source:
+    repoURL: ghcr.io/kagent-dev/kagent/helm/kagent
+    targetRevision: 0.9.10
+    helm:
+      values: |
+        fullnameOverride: "kagent"
+        registry: cr.kagent.dev
+        imagePullSecrets: []
+        imagePullPolicy: IfNotPresent
+
+        # Disable file:// subchart dependencies (can't resolve from OCI)
+        grafana-mcp:
+          enabled: false
+        querydoc:
+          enabled: false
+        k8s-agent:
+          enabled: false
+        kgateway-agent:
+          enabled: false
+        istio-agent:
+          enabled: false
+        promql-agent:
+          enabled: false
+        observability-agent:
+          enabled: false
+        argo-rollouts-agent:
+          enabled: false
+        helm-agent:
+          enabled: false
+        cilium-policy-agent:
+          enabled: false
+        cilium-manager-agent:
+          enabled: false
+        cilium-debug-agent:
+          enabled: false
+        oauth2-proxy:
+          enabled: false
+
+        # Enable OCI-dependency subcharts
+        kmcp:
+          enabled: true
+        kagent-tools:
+          enabled: true
+
+        # Disable bundled Postgres — we use StackGres
+        substrate:
+          enabled: false
+
+        database:
+          postgres:
+            bundled:
+              enabled: false
+            url: "postgres://$(KAGENT_SUPERUSER_USERNAME):$(KAGENT_SUPERUSER_PASSWORD)@kagent-pg.kagent.svc.cluster.local:5432/kagent?sslmode=disable"
+            vectorEnabled: true
+
+        controller:
+          replicas: 1
+          loglevel: info
+          auth:
+            mode: unsecure
+          agentDeployment:
+            host: "0.0.0.0"
+          substrate:
+            enabled: true
+            ateApiEndpoint: "dns:///api.ate-system.svc:443"
+            ateApiInsecure: true
+            defaultWorkerPool:
+              namespace: kagent
+              name: kagent-default
+          service:
+            type: ClusterIP
+            ports:
+              port: 8083
+              targetPort: 8083
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 2
+              memory: 512Mi
+          env:
+            - name: KAGENT_SUPERUSER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: kagent-pg
+                  key: superuser-username
+            - name: KAGENT_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kagent-pg
+                  key: superuser-password
+
+        substrateWorkerPool:
+          create: true
+          name: kagent-default
+          replicas: 1
+          ateomImage: "ghcr.io/kagent-dev/substrate/ateom-gvisor:v0.0.6"
+
+        ui:
+          service:
+            type: ClusterIP
+            ports:
+              port: 8080
+              targetPort: 8080
+
+        providers:
+          default: noop
+          noop:
+            provider: "null"
+            model: "null"
+  destination:
+    server: {{ .Values.clusterServer | default "https://kubernetes.default.svc" }}
+    namespace: kagent
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+{{- end }}
