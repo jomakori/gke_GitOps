@@ -50,8 +50,10 @@ spec:
         # Enable OCI-dependency subcharts
         kmcp:
           enabled: true
+        # kagent-tools disabled during initial sync — RemoteMCPServer CRD is registered
+        # by the controller at startup. Enable after controller is running.
         kagent-tools:
-          enabled: true
+          enabled: false
 
         # Disable bundled Postgres — we use StackGres
         substrate:
