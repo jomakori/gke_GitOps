@@ -11,6 +11,7 @@ spec:
   source:
     repoURL: oci://ghcr.io/kagent-dev/kagent/helm/kagent
     targetRevision: 0.9.10
+    path: "."
     helm:
       values: |
         fullnameOverride: "kagent"
