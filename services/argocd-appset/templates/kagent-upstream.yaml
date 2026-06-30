@@ -9,7 +9,8 @@ metadata:
 spec:
   project: {{ .Values.argoProject | default "default" }}
   source:
-    repoURL: oci://ghcr.io/kagent-dev/kagent/helm/kagent
+    repoURL: oci://ghcr.io/kagent-dev
+    chart: kagent/helm/kagent
     targetRevision: 0.9.10
     helm:
       values: |
