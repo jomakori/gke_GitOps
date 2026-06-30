@@ -300,4 +300,7 @@ services:
 
 # Deploy upstream kagent controller + UI from OCI chart (after local kagent chart creates DB, CRDs, secrets)
 kagentUpstream:
-  enable: true
+  # DISABLED: ArgoCD v3.4.4 OCI Helm bug — chart field not appended to URL;
+  # see https://github.com/argoproj/argo-cd/issues
+  # Re-enable when ArgoCD is upgraded to v3.5+ with OCI fix
+  enable: false
