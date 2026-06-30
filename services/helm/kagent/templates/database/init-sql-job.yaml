@@ -22,7 +22,14 @@ spec:
                 sleep 3
               done
               psql -h kagent-pg -U "${PGUSER}" -d "${PGDATABASE}" -c "CREATE EXTENSION IF NOT EXISTS vector;"
-              echo "pgvector extension enabled"
+              echo "pgvector extension enabled on ${PGDATABASE} database"
+              psql -h kagent-pg -U "${PGUSER}" -d "${PGDATABASE}" -tc \
+                "SELECT 1 FROM pg_database WHERE datname = 'kagent'" \
+                | grep -q 1 \
+                || psql -h kagent-pg -U "${PGUSER}" -d "${PGDATABASE}" -c "CREATE DATABASE kagent;"
+              echo "kagent database ensured"
+              psql -h kagent-pg -U "${PGUSER}" -d "kagent" -c "CREATE EXTENSION IF NOT EXISTS vector;"
+              echo "pgvector extension enabled on kagent database"
           env:
             - name: PGUSER
               valueFrom:

@@ -8,7 +8,7 @@ Three clients talk to kagent:
 
 | Client | Route | Auth | Why |
 |---|---|---|---|
-| **Discord bot** | `http://kagent.kagent.svc.cluster.local:8083/a2a` | Istio mTLS (in-cluster) | Same namespace, mesh-encrypted |
+| **Discord bot** | `http://kagent-controller.kagent.svc.cluster.local:8083/a2a` | Istio mTLS (in-cluster) | Same namespace, mesh-encrypted |
 | **Local dev** | `https://kagent.maklab.net/a2a` | CF Access JWT (Google OAuth + OTP) | Human access via browser/CLI |
 | **CI (GitHub Actions)** | `https://kagent.maklab.net/a2a` | CF Access service token | Machine-to-machine, no browser |
 
@@ -19,7 +19,7 @@ Bot runs in `kagent` namespace, connects directly to controller service via inte
 ```yaml
 # services/helm/kagent-discord/values.yaml
 config:
-  kagentA2aUrl: "http://kagent.kagent.svc.cluster.local:8083/a2a"
+  kagentA2aUrl: "http://kagent-controller.kagent.svc.cluster.local:8083/a2a"
 ```
 
 All pod-to-pod traffic in mesh encrypted + authenticated by Istio. Bot trusts kagent because both in same SPIFFE identity domain.
@@ -30,7 +30,7 @@ Kagent private domain configured via Istio umbrella chart:
 
 - **Domain**: `https://kagent.<clusterDomain>` (e.g., `https://kagent.maklab.net`)
 - **Access**: Requires valid Cloudflare Access JWT (Google OAuth + OTP)
-- **Service**: `kagent-ui.kagent.svc.cluster.local:8080`
+- **Service**: `kagent-ui.kagent.svc.cluster.local:8080` (provided by upstream kagent chart)
 
 Registered in `services/argocd-appset/values.yaml`:
 
