@@ -121,7 +121,7 @@ spec:
           default: openAI
           openAI:
             provider: OpenAI
-            model: "gpt-4.1-mini"
+            model: "opencode/big-pickle"
             apiKeySecretRef: kagent-secrets
             apiKeySecretKey: OPENAI_API_KEY
   destination:
