@@ -141,7 +141,7 @@ func main() {
 		handleMessage(s, m, cfg)
 	})
 
-	dg.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent
+	dg.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent
 
 	err = dg.Open()
 	if err != nil {
@@ -149,10 +149,27 @@ func main() {
 	}
 	defer dg.Close()
 
-	sendStartupMessage(dg, cfg)
+	if cfg.StartupChannel != "" {
+		waitForGuilds(dg, 10*time.Second)
+		sendStartupMessage(dg, cfg)
+	}
 
 	log.Println("Kagent Discord bot is running. Press Ctrl+C to exit.")
 	select {}
+}
+
+func waitForGuilds(dg *discordgo.Session, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		dg.State.RLock()
+		count := len(dg.State.Guilds)
+		dg.State.RUnlock()
+		if count > 0 {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	log.Println("Timed out waiting for guild data — channel name lookup may fail")
 }
 
 func sendStartupMessage(dg *discordgo.Session, cfg config) {
