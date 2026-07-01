@@ -43,6 +43,11 @@ spec:
                 secretKeyRef:
                   name: kagent-discord-secrets
                   key: DISCORD_BOT_TOKEN
+            - name: DISCORD_BOT_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: kagent-discord-secrets
+                  key: DISCORD_BOT_CLIENT_ID
             - name: KAGENT_A2A_URL
               value: {{ .Values.config.kagentA2aUrl | quote }}
             - name: DISCORD_MENTION_ONLY
