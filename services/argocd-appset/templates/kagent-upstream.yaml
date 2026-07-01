@@ -76,7 +76,7 @@ spec:
             host: "0.0.0.0"
           substrate:
             enabled: true
-            ateApiEndpoint: "dns:///api.ate-system.svc:443"
+            ateApiEndpoint: "dns:///kagent-substrate-api.ate-system.svc:443"
             ateApiInsecure: true
             defaultWorkerPool:
               namespace: kagent
