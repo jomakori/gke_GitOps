@@ -61,6 +61,10 @@ spec:
             - name: DISCORD_STARTUP_CHANNEL
               value: {{ .Values.config.startupChannel | quote }}
             {{- end }}
+            {{- if .Values.config.clientId }}
+            - name: DISCORD_CLIENT_ID
+              value: {{ .Values.config.clientId | quote }}
+            {{- end }}
 
           securityContext:
             runAsNonRoot: true
