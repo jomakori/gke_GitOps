@@ -52,7 +52,9 @@ The **kagent** services implement a *loop-engineered* AI execution model: tasks 
 |-----------|------|-------|---------|
 | `kagent-substrate` | 3 | `services/helm/kagent-substrate/` | gVisor sandbox runtime. Replaces per-agent pods with isolated actors. |
 | `kagent-headroom` | 4 | `services/helm/kagent-headroom/` | LLM proxy — OpenRouter backend, SQLite CCR cache, observability. All agent LLM traffic routes through here. |
-| `kagent` | 5 | `services/helm/kagent/` | Main control plane — Agent/ModelConfig CRDs, controller, UI (port 8080), Postgres (StackGres), prompts ConfigMap. |
+| `kagent` | 5 | `services/helm/kagent/` | Local chart — SandboxAgents, ModelConfigs, SGCluster (StackGres), ExternalSecrets, prompts ConfigMap. |
+| `kagent-crds` | 5 | `oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds` | All `kagent.dev` CRDs (Agent, SandboxAgent, ModelConfig, RemoteMCPServer, etc.). Prerequisite for kagent-upstream. |
+| `kagent-upstream` | 6 | `oci://ghcr.io/kagent-dev/kagent/helm/kagent` | Upstream controller + UI + KMCP controller + kagent-tools + bundled agent harnesses (k8s, istio, helm, promql, observability, grafana-mcp). |
 | `kagent-discord` | 6 | `services/helm/kagent-discord/` | Discord gateway bot — polls Discord, routes messages to A2A agent. |
 
 **Namespace**: All run in `kagent` except `kagent-substrate` which runs in `ate-system`.
@@ -90,6 +92,8 @@ No secrets in this repo. The chain:
 | `svc_onedev` | onedev | `DB_PASSWORD`, `DB_USER` |
 | `svc_mongodb` | mongodb-operator | `MONGODB_USER`, `MONGODB_PW`, `MONGODB_DB` |
 | `svc_edgecrab` | edgecrab | `ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `WHATSAPP_ALLOW_FROM` |
+| `svc_kagent` | kagent, kagent-discord | `OPENAI_API_KEY` (headroom auth), `GITHUB_TOKEN`, `DISCORD_BOT_TOKEN`, `KAGENT_PG_*` |
+| `svc_stackgres` | kagent (SGCluster DB) | `KAGENT_PG_PASSWORD`, `KAGENT_PG_SUPERUSER=postgres`, `KAGENT_PG_URL` (full DB URL with embedded password) |
 
 New secrets are added in the Doppler dashboard — the ExternalSecret already pulls the entire config.
 
