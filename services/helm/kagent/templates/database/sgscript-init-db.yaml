@@ -1,0 +1,22 @@
+{{- if .Values.database.enabled }}
+apiVersion: stackgres.io/v1
+kind: SGScript
+metadata:
+  name: kagent-pg-init-db
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  continueOnError: false
+  scripts:
+    - name: create-kagent-database
+      database: postgres
+      retryOnError: true
+      script: |
+        SELECT 'CREATE DATABASE kagent' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'kagent')\gexec
+    - name: install-pgvector-extension
+      database: kagent
+      retryOnError: true
+      script: |
+        CREATE EXTENSION IF NOT EXISTS vector;
+{{- end }}

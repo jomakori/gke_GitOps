@@ -13,8 +13,9 @@ spec:
     extensions:
       - name: pgvector
   profile: {{ .Values.database.profile | quote }}
-  managedDatabases:
-    - name: kagent
+  managedSql:
+    scripts:
+      - sgScript: kagent-pg-init-db
   pods:
     persistentVolume:
       size: {{ .Values.database.storage }}
