@@ -83,6 +83,10 @@ func loadConfig() config {
 		ClientID:    os.Getenv("DISCORD_CLIENT_ID"),
 	}
 
+	if cfg.ClientID == "" {
+		cfg.ClientID = os.Getenv("DISCORD_BOT_CLIENT_ID")
+	}
+
 	if cfg.A2AURL == "" {
 		log.Fatal("KAGENT_A2A_URL is required")
 	}
