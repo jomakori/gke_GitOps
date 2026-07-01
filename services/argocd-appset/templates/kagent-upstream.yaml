@@ -63,8 +63,8 @@ spec:
           postgres:
             bundled:
               enabled: false
-            # Overridden by POSTGRES_DATABASE_URL in controller.env (after creds are defined)
-            url: "postgres://postgres@kagent-pg.kagent.svc.cluster.local:5432/kagent?sslmode=disable"
+            url: ""
+            urlFile: "/var/run/secrets/kagent-db/database-url"
             vectorEnabled: true
 
         controller:
@@ -93,21 +93,14 @@ spec:
             limits:
               cpu: 2
               memory: 512Mi
-          env:
-            - name: KAGENT_SUPERUSER_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: kagent-pg
-                  key: superuser-username
-            - name: KAGENT_SUPERUSER_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: kagent-pg
-                  key: superuser-password
-            # POSTGRES_DATABASE_URL must come AFTER superuser creds so
-            # Kubernetes expands $(KAGENT_SUPERUSER_*) references correctly
-            - name: POSTGRES_DATABASE_URL
-              value: "postgres://$(KAGENT_SUPERUSER_USERNAME):$(KAGENT_SUPERUSER_PASSWORD)@kagent-pg.kagent.svc.cluster.local:5432/kagent?sslmode=disable"
+          volumes:
+            - name: kagent-db
+              secret:
+                secretName: kagent-pg
+          volumeMounts:
+            - name: kagent-db
+              mountPath: /var/run/secrets/kagent-db
+              readOnly: true
 
         substrateWorkerPool:
           create: true
