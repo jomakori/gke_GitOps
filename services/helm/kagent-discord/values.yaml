@@ -53,4 +53,4 @@ config:
   pollUI: true
   # -- Discord channel ID to send startup/online announcement
   #    Leave empty to skip the announcement
-  startupChannel: ""
+  startupChannel: "chat"
