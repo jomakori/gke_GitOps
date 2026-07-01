@@ -35,14 +35,13 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 3 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
 | 4 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts | enabled |
 | 4 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) | enabled |
-| 4 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling | **disabled** |
-| 4 | [mongodb-operator](services/helm/mongodb-operator/) | psmdb-operator | MongoDB operator (Percona) | **disabled** |
+| 4 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling | not enabled |
+| 4 | [mongodb-operator](services/helm/mongodb-operator/) | psmdb-operator | MongoDB operator (Percona) | not enabled |
 | 5 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, alerting, Grafana | enabled |
 | 5 | [onedev](services/helm/onedev/) | custom (vendored upstream + SGCluster) | All-in-one DevOps platform (Git, CI/CD, issue tracker) with StackGres PostgreSQL | enabled |
-| 5 | [edgecrab](services/helm/edgecrab/) | custom | EdgeCrab AI orchestrator — WhatsApp gateway, multi-agent routing, z.ai ultrabrain | enabled |
-| 5 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management | **disabled** |
+| 5 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management | not enabled |
 
-Dependency chain: cert-manager + VPA → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs. edgecrab VPA requires VPA CRDs installed at wave 0.
+Dependency chain: cert-manager + VPA → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs.
 
 ### Kagent Loop Engineering System
 
@@ -90,8 +89,6 @@ No secrets in this repo. The chain:
 | `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
 | `svc_postgres_operator` | postgres-operator (StackGres) | `ADMIN_USER`, `ADMIN_PASSWORD` |
 | `svc_onedev` | onedev | `DB_PASSWORD`, `DB_USER` |
-| `svc_mongodb` | mongodb-operator | `MONGODB_USER`, `MONGODB_PW`, `MONGODB_DB` |
-| `svc_edgecrab` | edgecrab | `ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `WHATSAPP_ALLOW_FROM` |
 | `svc_kagent` | kagent, kagent-discord | `OPENAI_API_KEY` (headroom auth), `GITHUB_TOKEN`, `DISCORD_BOT_TOKEN`, `KAGENT_PG_*` |
 | `svc_stackgres` | kagent (SGCluster DB) | `KAGENT_PG_PASSWORD`, `KAGENT_PG_SUPERUSER=postgres`, `KAGENT_PG_URL` (full DB URL with embedded password) |
 
