@@ -101,6 +101,7 @@ services:
     enable: true
     syncWave: "3"
     destNamespace: ate-system
+    selfHeal: false
     managedNamespaceMetadata:
       labels:
         istio.io/dataplane-mode: ambient
@@ -109,14 +110,6 @@ services:
         value: "{{ .Values.storageClass }}"
       - name: auth.jwt.audience
         value: "kagent-substrate-api.ate-system.svc"
-    patches:
-      - patch: |-
-          - op: add
-            path: /spec/template/spec/containers/0/args/-
-            value: "--ateapi-conn-spec=dns:///kagent-substrate-api.ate-system.svc:443"
-        target:
-          kind: Deployment
-          name: kagent-substrate-ate-controller
 
   # Wave 4 — Operators (no endpoint deps)
   externalDns:
