@@ -36,6 +36,10 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   source:
+    {{- with $cfg.patches }}
+    patches:
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
     repoURL: {{ $root.Values.repoUrl | quote }}
     path: {{ $helmPath | quote }}
     targetRevision: {{ $root.Values.targetRevision | quote }}

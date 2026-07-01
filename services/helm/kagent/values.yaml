@@ -64,7 +64,7 @@ kagent:
   controller:
     substrate:
       enabled: true
-      ateApiEndpoint: "dns:///api.ate-system.svc:443"
+      ateApiEndpoint: "dns:///kagent-substrate-api.ate-system.svc:443"
       ateApiInsecure: true
     service:
       type: ClusterIP
