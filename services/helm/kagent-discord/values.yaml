@@ -14,7 +14,7 @@ dopplerConfig: ""
 # -- Container image
 image:
   repository: ghcr.io/jomakori/gke_gitops/kagent-discord-bot
-  tag: "0.1.2"
+  tag: "0.1.3"
   pullPolicy: IfNotPresent
 
 # -- Service settings (ClusterIP for DNS discovery only — bot has no inbound port)
@@ -54,3 +54,5 @@ config:
   # -- Discord channel ID to send startup/online announcement
   #    Leave empty to skip the announcement
   startupChannel: "chat"
+  # -- Discord application client ID (public, used for invite URL diagnostics)
+  clientId: ""

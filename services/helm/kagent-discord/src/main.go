@@ -19,6 +19,7 @@ import (
 type config struct {
 	BotToken         string
 	A2AURL           string
+	ClientID         string
 	MentionOnly      bool
 	ChannelOnly      []string
 	ConversationMode string // "threaded" or "dm"
@@ -79,6 +80,7 @@ func loadConfig() config {
 		BotToken:    os.Getenv("DISCORD_BOT_TOKEN"),
 		A2AURL:      os.Getenv("KAGENT_A2A_URL"),
 		MentionOnly: true,
+		ClientID:    os.Getenv("DISCORD_CLIENT_ID"),
 	}
 
 	if cfg.A2AURL == "" {
@@ -152,6 +154,21 @@ func main() {
 	if cfg.StartupChannel != "" {
 		waitForGuilds(dg, 10*time.Second)
 		sendStartupMessage(dg, cfg)
+	}
+
+	dg.State.RLock()
+	guildCount := len(dg.State.Guilds)
+	var guildNames []string
+	for _, g := range dg.State.Guilds {
+		guildNames = append(guildNames, g.Name)
+	}
+	dg.State.RUnlock()
+
+	if guildCount == 0 {
+		log.Println("WARNING: Bot is not in any Discord server. Invite it:")
+		log.Printf("  https://discord.com/oauth2/authorize?client_id=%s&permissions=309237645920&scope=bot", cfg.ClientID)
+	} else {
+		log.Printf("Connected to %d guild(s): %v", guildCount, guildNames)
 	}
 
 	log.Println("Kagent Discord bot is running. Press Ctrl+C to exit.")
