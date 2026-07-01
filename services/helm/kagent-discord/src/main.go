@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +24,7 @@ type config struct {
 	ConversationMode string // "threaded" or "dm"
 	PhaseUpdates     bool
 	PollUI           bool
+	StartupChannel   string // Discord channel ID to send startup announcement
 }
 
 type a2aRequest struct {
@@ -67,16 +69,16 @@ type Conversation struct {
 }
 
 var (
-	conversations = make(map[string]*Conversation) // key: threadID
-	convMutex     sync.RWMutex
+	conversations  = make(map[string]*Conversation) // key: threadID
+	convMutex      sync.RWMutex
+	discordSession *discordgo.Session
 )
 
 func loadConfig() config {
 	cfg := config{
-		BotToken:      os.Getenv("DISCORD_BOT_TOKEN"),
-		A2AURL:        os.Getenv("KAGENT_A2A_URL"),
-		MentionOnly:   true,
-		ThreadPerConv: true, // Default: new thread per conversation
+		BotToken:    os.Getenv("DISCORD_BOT_TOKEN"),
+		A2AURL:      os.Getenv("KAGENT_A2A_URL"),
+		MentionOnly: true,
 	}
 
 	if cfg.A2AURL == "" {
@@ -111,6 +113,10 @@ func loadConfig() config {
 		cfg.PollUI = strings.EqualFold(v, "true") || v == "1"
 	}
 
+	if v := os.Getenv("DISCORD_STARTUP_CHANNEL"); v != "" {
+		cfg.StartupChannel = strings.TrimSpace(v)
+	}
+
 	return cfg
 }
 
@@ -129,6 +135,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating Discord session: %v", err)
 	}
+	discordSession = dg
 
 	dg.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
 		handleMessage(s, m, cfg)
@@ -142,8 +149,86 @@ func main() {
 	}
 	defer dg.Close()
 
+	sendStartupMessage(dg, cfg)
+
 	log.Println("Kagent Discord bot is running. Press Ctrl+C to exit.")
 	select {}
+}
+
+func sendStartupMessage(dg *discordgo.Session, cfg config) {
+	if cfg.StartupChannel == "" {
+		return
+	}
+
+	channelID := cfg.StartupChannel
+	if _, err := strconv.ParseInt(cfg.StartupChannel, 10, 64); err != nil {
+		found := findChannelByName(dg, cfg.StartupChannel)
+		if found == "" {
+			log.Printf("Channel not found by name: %s", cfg.StartupChannel)
+			return
+		}
+		channelID = found
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       "🟢 Online — Awaiting summons",
+		Description: "Loop-engineered AI workforce standing by.",
+		Color:       0x00FF88,
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: dg.State.User.AvatarURL("128"),
+		},
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "Mention mode",
+				Value:  fmt.Sprintf("`%v`", cfg.MentionOnly),
+				Inline: true,
+			},
+			{
+				Name:   "Conversations",
+				Value:  fmt.Sprintf("`%s`", cfg.ConversationMode),
+				Inline: true,
+			},
+			{
+				Name:   "Phase updates",
+				Value:  fmt.Sprintf("`%v`", cfg.PhaseUpdates),
+				Inline: true,
+			},
+			{
+				Name:   "A2A endpoint",
+				Value:  fmt.Sprintf("`%s`", cfg.A2AURL),
+				Inline: false,
+			},
+		},
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "ready to work",
+		},
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+
+	_, sendErr := dg.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content: fmt.Sprintf("<@%s> is online", dg.State.User.ID),
+		Embed:   embed,
+	})
+	if sendErr != nil {
+		log.Printf("Failed to send startup message to channel %s: %v", channelID, sendErr)
+	} else {
+		log.Printf("Startup announcement sent to channel %s", channelID)
+	}
+}
+
+func findChannelByName(dg *discordgo.Session, name string) string {
+	for _, guild := range dg.State.Guilds {
+		channels, err := dg.GuildChannels(guild.ID)
+		if err != nil {
+			continue
+		}
+		for _, ch := range channels {
+			if ch.Name == name && ch.Type == discordgo.ChannelTypeGuildText {
+				return ch.ID
+			}
+		}
+	}
+	return ""
 }
 
 func startHTTPServer(cfg config) {
@@ -179,11 +264,15 @@ func startHTTPServer(cfg config) {
 			return
 		}
 
-		// Send status update to Discord thread
-		// This requires access to the discordgo session - we'd need to pass it
-		// For now, just log it
-		log.Printf("[NOTIFY] thread=%s agent=%s status=%s: %s",
-			payload.ThreadID, payload.Agent, payload.Status, payload.Message)
+		if discordSession != nil {
+			msg := fmt.Sprintf("🤖 **%s** → `%s`", payload.Agent, payload.Status)
+			if payload.Message != "" {
+				msg += "\n" + payload.Message
+			}
+			if _, err := discordSession.ChannelMessageSend(payload.ThreadID, msg); err != nil {
+				log.Printf("[NOTIFY] failed to send to thread %s: %v", payload.ThreadID, err)
+			}
+		}
 
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")
