@@ -12,7 +12,14 @@ accessAudienceTag: ""
 
 # Service Configurations
 services:
-  # Wave 0 — no deps
+  # Wave 0 — Init services (no deps)
+  longhorn:
+    enable: true
+    syncWave: "0"
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
   certManager:
     enable: true
     syncWave: "0"

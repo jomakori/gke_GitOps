@@ -1,0 +1,11 @@
+apiVersion: v2
+name: longhorn
+description: Longhorn distributed block storage with RWX support
+type: application
+version: 0.1.0
+appVersion: "v1.8.1"
+
+dependencies:
+  - name: longhorn
+    version: 1.8.1
+    repository: https://charts.longhorn.io

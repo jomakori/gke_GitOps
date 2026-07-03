@@ -53,7 +53,7 @@ stackgresOperator:
         size: 1Gi
         accessModes:
         - ReadWriteOnce
-        storageClass: local-path
+        storageClass: longhorn
 
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Backup Storage Configuration                                             │

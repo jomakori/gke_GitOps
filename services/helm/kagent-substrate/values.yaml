@@ -1,14 +1,6 @@
 # Substrate control plane configuration
 # Deploys to ate-system namespace (upstream convention)
 # WorkerPool created by kagent chart (substrateWorkerPool.create=true)
-
-# Disable JWT TLS cert bootstrap — we manage ateapi-tls/ca manually.
-# Helm genCA/genSignedCert certs fail Go x509 RSA verification.
-auth:
-  jwt:
-    bootstrap:
-      enabled: false
-
 substrate:
   redis:
     clusterAddress: kagent-substrate-valkey-cluster.ate-system.svc:6379
