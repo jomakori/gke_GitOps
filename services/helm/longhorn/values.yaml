@@ -1,0 +1,14 @@
+# Longhorn storage configuration for k3d on colima (arm64)
+# Single replica (lab), volume expansion enabled, default StorageClass
+
+longhorn:
+  defaultSettings:
+    defaultReplicaCount: 1
+
+  persistence:
+    defaultClass: true
+    defaultClassReplicaCount: 1
+
+  # k3s uses /var/lib/kubelet (same as standard kubeadm)
+  csi:
+    kubeletRootDir: /var/lib/kubelet
