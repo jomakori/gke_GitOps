@@ -5,7 +5,7 @@ clusterDomain: ""
 clusterName: ""
 clusterServer: ""
 repoUrl: ""
-storageClass:
+storageClass: "longhorn"
 targetRevision: ""
 accessTeamDomain: ""
 accessAudienceTag: ""
@@ -246,10 +246,9 @@ services:
       - group: external-secrets.io
         kind: ExternalSecret
         jqPathExpressions:
-          - .spec.data[].remoteRef.conversionStrategy
-          - .spec.data[].remoteRef.decodingStrategy
-          - .spec.data[].remoteRef.metadataPolicy
-          - .spec.data[].remoteRef.nullBytePolicy
+          - .spec.dataFrom[].find.conversionStrategy
+          - .spec.dataFrom[].find.decodingStrategy
+          - .spec.dataFrom[].find.nullBytePolicy
     gateways:
       enable_public: true
       subdomain: grafana
