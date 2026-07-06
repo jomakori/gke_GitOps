@@ -16,9 +16,10 @@ services:
   longhorn:
     enable: true
     syncWave: "0"
+    retryLimit: 5
+    retryMaxDuration: 5m
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
 
   certManager:
     enable: true
@@ -313,4 +314,4 @@ kagentUpstream:
   # Uses native-OCI shape (path: "." instead of chart field) to work around
   # ArgoCD v3.4.x OCI Helm bug where chart name is not appended to URL.
   # See https://github.com/argoproj/argo-cd/pull/1051 for the fix approach.
-  enable: false
+  enable: true

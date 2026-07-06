@@ -1,0 +1,22 @@
+{{- /*
+Service alias: the upstream substrate ate-controller defaults
+--ateapi-conn-spec to dns:///api.ate-system.svc:443, but our
+release name (kagent-substrate) prefixes the service to
+kagent-substrate-api via the fullname helper. This alias
+resolves api.ate-system.svc → kagent-substrate-api without
+patching the Deployment (which ArgoCD would revert).
+*/ -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: ate-api-server
+  ports:
+  - name: grpc
+    protocol: TCP
+    port: 443
+    targetPort: 443
