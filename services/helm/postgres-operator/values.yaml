@@ -31,6 +31,8 @@ stackgresOperator:
     type: jwt
     # ExternalSecret stackgres-restapi-admin provides ADMIN_USER/ADMIN_PASSWORD from Doppler
     createAdminSecret: false
+    secretRef:
+      name: stackgres-restapi-admin
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Grafana Integration                                                       │
   # └─────────────────────────────────────────────────────────────────────────────┘
