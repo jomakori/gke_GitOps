@@ -16,7 +16,6 @@ services:
   longhorn:
     enable: true
     syncWave: "0"
-    destNamespace: longhorn-system
     retryLimit: 5
     retryMaxDuration: 5m
     syncOptions:
