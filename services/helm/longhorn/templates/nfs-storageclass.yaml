@@ -13,3 +13,4 @@ parameters:
   nfsOptions: "vers=4.1,noresvport,softerr,timeo=600,retrans=5"
   fromBackup: ""
   dataLocality: "disabled"
+  dataEngine: "v2"
