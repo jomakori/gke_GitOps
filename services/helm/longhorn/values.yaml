@@ -1,6 +1,5 @@
-# Longhorn v2 (SPDK/NVMe-oF) test configuration for k3d on OrbStack (arm64)
-# --no-huge mode required because OrbStack kernel lacks CONFIG_HUGETLBFS.
-# AIO-backed disks + single-core CPU mask work around ARM64 I/O stuck bug (#13243).
+# Longhorn storage configuration for k3d on colima (arm64)
+# Single replica (lab), volume expansion enabled, default StorageClass
 
 longhorn:
   preUpgradeChecker:
@@ -8,15 +7,10 @@ longhorn:
 
   defaultSettings:
     defaultReplicaCount: 1
-    v2DataEngine: "true"
-    dataEngineHugepageEnabled: '{"v2":"false"}'
-    dataEngineMemorySize: '{"v2":"2048"}'
-    dataEngineCPUMask: '{"v2":"0x1"}'
 
   persistence:
     defaultClass: true
     defaultClassReplicaCount: 1
-    dataEngine: "v2"
 
   csi:
-    kubeletRootDir: /var/lib/rancher/k3s/agent/kubelet
+    kubeletRootDir: /var/lib/kubelet

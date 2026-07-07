@@ -5,7 +5,7 @@ clusterDomain: ""
 clusterName: ""
 clusterServer: ""
 repoUrl: ""
-storageClass: "longhorn"
+storageClass: "local-path"
 targetRevision: ""
 accessTeamDomain: ""
 accessAudienceTag: ""
@@ -13,8 +13,14 @@ accessAudienceTag: ""
 # Service Configurations
 services:
   # Wave 0 — Init services (no deps)
-  longhorn:
+  localPath:
     enable: true
+    syncWave: "0"
+    syncOptions:
+      - CreateNamespace=true
+
+  longhorn:
+    enable: false
     syncWave: "0"
     retryLimit: 5
     retryMaxDuration: 5m
