@@ -12,6 +12,18 @@ This is a **custom chart** (no upstream dependencies) that declares a single
 k3s already deploys the controller in `kube-system`, so this chart only creates
 the `StorageClass` resource and marks it as the cluster default.
 
+### Sole storage provider
+
+This is the **only** working storage option on this k3d/OrbStack cluster:
+- Longhorn v1 — failed: OrbStack lacks kernel iSCSI support
+- Longhorn v2 — failed: unconditionally mounts HugePages EmptyDir; OrbStack lacks `CONFIG_HUGETLBFS`
+- OpenEBS LVM — failed: k3s v1.35.1 kubelet CSI registration bug (`driver not found in registered CSI drivers`)
+
+### Volume expansion
+
+`rancher.io/local-path` does **not** support volume expansion (`allowVolumeExpansion: false`).
+To resize a PVC, create a new larger PVC and manually copy the data.
+
 ## Values
 
 | Key | Type | Default | Description |
