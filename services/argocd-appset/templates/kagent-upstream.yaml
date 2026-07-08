@@ -15,7 +15,7 @@ spec:
     helm:
       values: |
         fullnameOverride: "kagent"
-        registry: cr.kagent.dev
+        registry: ghcr.io
         imagePullSecrets: []
         imagePullPolicy: IfNotPresent
 
