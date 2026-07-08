@@ -3,7 +3,7 @@
 # └──────────────────────────────────────────────────────────────────┘
 clusterDomain: maklab.net
 registry: 123456.dkr.ecr.us-east-2.amazonaws.com
-storageClass: "longhorn"
+storageClass: "local-path"
 
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ App Specs — each app is a top-level key                          │
