@@ -14,9 +14,4 @@ spec:
       retryOnError: true
       script: |
         CREATE DATABASE kagent;
-    - name: install-pgvector-extension
-      database: kagent
-      retryOnError: true
-      script: |
-        CREATE EXTENSION IF NOT EXISTS vector;
 {{- end }}
