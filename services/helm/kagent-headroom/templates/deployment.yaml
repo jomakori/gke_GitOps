@@ -90,8 +90,12 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /home/nonroot/.headroom
+            - name: tmp
+              mountPath: /tmp
 
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "kagent-headroom.fullname" . }}-data
+        - name: tmp
+          emptyDir: {}
