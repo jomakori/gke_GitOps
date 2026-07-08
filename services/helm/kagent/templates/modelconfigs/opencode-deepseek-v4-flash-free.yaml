@@ -8,6 +8,7 @@ metadata:
 spec:
   model: opencode/deepseek-v4-flash-free
   provider: OpenAI
-  baseUrl: {{ .Values.headroom.url }}
+  openAI:
+    baseUrl: {{ .Values.headroom.url }}
   apiKeySecret: kagent-secrets
   apiKeySecretKey: OPENAI_API_KEY

@@ -8,6 +8,7 @@ metadata:
 spec:
   model: moonshotai/kimi-k2.6
   provider: OpenAI
-  baseUrl: {{ .Values.headroom.url }}
+  openAI:
+    baseUrl: {{ .Values.headroom.url }}
   apiKeySecret: kagent-secrets
   apiKeySecretKey: OPENAI_API_KEY
