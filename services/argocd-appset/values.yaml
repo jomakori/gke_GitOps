@@ -19,14 +19,6 @@ services:
     syncOptions:
       - CreateNamespace=true
 
-  longhorn:
-    enable: false
-    syncWave: "0"
-    retryLimit: 5
-    retryMaxDuration: 5m
-    syncOptions:
-      - CreateNamespace=true
-
   certManager:
     enable: true
     syncWave: "0"
