@@ -206,6 +206,7 @@ services:
     gateways:
       enable_private: true
       subdomain: kagent
+      timeout: 600s
       destination:
         serviceName: kagent-ui
         servicePort: 8080
