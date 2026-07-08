@@ -23,6 +23,9 @@ spec:
             host: {{ required (printf "virtualServices.%s.destination.host is required" $name) $vs.destination.host }}
             port:
               number: {{ $vs.destination.port | default 80 }}
+      {{- if $vs.timeout }}
+      timeout: {{ $vs.timeout }}
+      {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
