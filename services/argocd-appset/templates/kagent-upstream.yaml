@@ -63,7 +63,7 @@ spec:
               enabled: false
             url: ""
             urlFile: "/var/run/secrets/kagent-db/database-url"
-            vectorEnabled: true
+            vectorEnabled: false
 
         controller:
           replicas: 1
