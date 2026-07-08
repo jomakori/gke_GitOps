@@ -94,7 +94,7 @@ spec:
           volumes:
             - name: kagent-db
               secret:
-                secretName: kagent-pg
+                secretName: kagent-pg-app
           volumeMounts:
             - name: kagent-db
               mountPath: /var/run/secrets/kagent-db
