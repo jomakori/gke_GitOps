@@ -218,10 +218,6 @@ services:
     syncOptions:
       - CreateNamespace=true
     ignoreDifferences:
-      - group: kagent.dev
-        kind: ModelConfig
-        jqPathExpressions:
-          - .spec.baseUrl
       - group: stackgres.io
         kind: SGPostgresConfig
         name: kagent-pg-config
