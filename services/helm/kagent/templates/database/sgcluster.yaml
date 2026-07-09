@@ -14,6 +14,7 @@ spec:
   managedSql:
     scripts:
       - sgScript: kagent-pg-init-db
+      - sgScript: kagent-pg-init-litellm
   pods:
     persistentVolume:
       size: {{ .Values.database.storage }}
