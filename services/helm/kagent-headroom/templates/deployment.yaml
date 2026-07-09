@@ -45,7 +45,7 @@ spec:
             - --port
             - "8787"
             - --backend
-            - "openrouter"
+            - anyllm
 
           envFrom:
             - configMapRef:
