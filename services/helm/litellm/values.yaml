@@ -1,0 +1,64 @@
+# -- Doppler config; set by ArgoCD appset. Creates ExternalSecret when present.
+dopplerConfig: ""
+
+# -- LiteLLM image
+image:
+  repository: ghcr.io/berriai/litellm
+  tag: "main-stable"
+  pullPolicy: IfNotPresent
+
+# -- Resource requests/limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# -- Service port
+service:
+  port: 4000
+
+# -- LiteLLM proxy config (no database — file-based routing)
+config:
+  general_settings:
+    master_key: ""  # set via env LITELLM_MASTER_KEY from Doppler
+  model_list:
+    # OpenCode models (OpenAI-compatible API)
+    - model_name: opencode/big-pickle
+      litellm_params:
+        model: openai/opencode/big-pickle
+        api_key: os.environ/OPENCODE_API_KEY
+        api_base: os.environ/OPENCODE_API_BASE
+    - model_name: opencode/north-mini-code-free
+      litellm_params:
+        model: openai/opencode/north-mini-code-free
+        api_key: os.environ/OPENCODE_API_KEY
+        api_base: os.environ/OPENCODE_API_BASE
+    - model_name: opencode/deepseek-v4-flash-free
+      litellm_params:
+        model: openai/opencode/deepseek-v4-flash-free
+        api_key: os.environ/OPENCODE_API_KEY
+        api_base: os.environ/OPENCODE_API_BASE
+    - model_name: opencode/mimo-v2.5-free
+      litellm_params:
+        model: openai/opencode/mimo-v2.5-free
+        api_key: os.environ/OPENCODE_API_KEY
+        api_base: os.environ/OPENCODE_API_BASE
+    # Anthropic models (native LiteLLM support)
+    - model_name: anthropic/claude-opus-4-7
+      litellm_params:
+        model: anthropic/claude-opus-4-7
+        api_key: os.environ/ANTHROPIC_API_KEY
+    # Moonshot models (OpenAI-compatible API)
+    - model_name: moonshotai/kimi-k2.6
+      litellm_params:
+        model: openai/moonshotai/kimi-k2.6
+        api_key: os.environ/MOONSHOT_API_KEY
+        api_base: os.environ/MOONSHOT_API_BASE
+    # Google Gemini models (native LiteLLM support)
+    - model_name: google/gemini-3.5-flash
+      litellm_params:
+        model: gemini/gemini-3.5-flash
+        api_key: os.environ/GEMINI_API_KEY
