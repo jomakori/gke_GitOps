@@ -14,7 +14,7 @@ dopplerConfig: ""
 # -- Container image
 image:
   repository: ghcr.io/jomakori/gke_gitops/kagent-discord-bot
-  tag: "0.1.6"
+  tag: "0.1.7"
   pullPolicy: IfNotPresent
 
 # -- Service settings (ClusterIP for DNS discovery only — bot has no inbound port)

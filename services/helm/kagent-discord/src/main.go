@@ -42,8 +42,9 @@ type a2aMessageSendParams struct {
 }
 
 type a2aMessagePart struct {
-	Role  string    `json:"role"`
-	Parts []a2aPart `json:"parts"`
+	Role      string    `json:"role"`
+	Parts     []a2aPart `json:"parts"`
+	ContextID string    `json:"contextId,omitempty"`
 }
 
 type a2aPart struct {
@@ -451,7 +452,8 @@ func callA2A(url, message, threadID string) (string, error) {
 		Method:  "message/stream",
 		Params: a2aMessageSendParams{
 			Message: a2aMessagePart{
-				Role: "user",
+				Role:      "user",
+				ContextID: threadID,
 				Parts: []a2aPart{
 					{Kind: "text", Text: message},
 				},
