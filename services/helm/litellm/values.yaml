@@ -22,6 +22,10 @@ service:
 
 # -- LiteLLM proxy config (no database — file-based routing)
 config:
+  general_settings:
+    disable_spend_logs: true
+    disable_error_logs: true
+    store_model_in_db: false
   model_list:
     # OpenCode models (OpenAI-compatible API)
     - model_name: opencode/big-pickle

@@ -32,7 +32,10 @@ spec:
 
           env:
             - name: DATABASE_URL
-              value: ""
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-pg
+                  key: database-url
           envFrom:
             - secretRef:
                 name: litellm-secrets
