@@ -30,6 +30,9 @@ spec:
             - --num_workers
             - "1"
 
+          env:
+            - name: DATABASE_URL
+              value: ""
           envFrom:
             - secretRef:
                 name: litellm-secrets
