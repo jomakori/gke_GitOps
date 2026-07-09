@@ -112,6 +112,9 @@ spec:
             ports:
               port: 8080
               targetPort: 8080
+          nginx:
+            proxyReadTimeout: 600s
+            proxySendTimeout: 600s
 
         providers:
           default: openAI
