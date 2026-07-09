@@ -53,17 +53,12 @@ config:
       litellm_params:
         model: anthropic/claude-opus-4-7
         api_key: os.environ/ANTHROPIC_API_KEY
-    # Moonshot models (OpenAI-compatible API)
+    # Moonshot models (native LiteLLM support)
     - model_name: moonshotai/kimi-k2.6
       litellm_params:
-        model: openai/kimi-k2.6
+        model: moonshot/kimi-k2.6
         api_key: os.environ/MOONSHOT_API_KEY
-        api_base: os.environ/MOONSHOT_API_BASE
     # DeepSeek models (native LiteLLM support)
-    - model_name: deepseek-chat
-      litellm_params:
-        model: deepseek/deepseek-chat
-        api_key: os.environ/DEEPSEEK_API_KEY
     - model_name: deepseek-v4-flash
       litellm_params:
         model: deepseek/deepseek-v4-flash
@@ -72,12 +67,11 @@ config:
       litellm_params:
         model: deepseek/deepseek-v4-pro
         api_key: os.environ/DEEPSEEK_API_KEY
-    # z.ai models (OpenAI-compatible API)
-    - model_name: zai-chat
+    # z.ai models (native LiteLLM support)
+    - model_name: zai/glm-4.7
       litellm_params:
-        model: openai/zai-chat
+        model: zai/glm-4.7
         api_key: os.environ/ZAI_API_KEY
-        api_base: os.environ/ZAI_API_BASE
     # Google Gemini models (native LiteLLM support)
     - model_name: google/gemini-3.5-flash
       litellm_params:
