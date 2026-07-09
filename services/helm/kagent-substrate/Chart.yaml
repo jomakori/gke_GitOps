@@ -3,13 +3,13 @@ name: kagent-substrate
 description: Agent Substrate control plane — runs SandboxAgents as gVisor actors (replaces per-agent pods)
 type: application
 version: 0.1.0
-appVersion: "0.0.6"
+appVersion: "0.0.8"
 maintainers:
   - name: local
 dependencies:
   - name: substrate-crds
     repository: oci://ghcr.io/kagent-dev/substrate/helm
-    version: 0.0.6
+    version: 0.0.8
   - name: substrate
     repository: oci://ghcr.io/kagent-dev/substrate/helm
-    version: 0.0.6
+    version: 0.0.8
