@@ -30,22 +30,22 @@ config:
     # OpenCode models (OpenAI-compatible API)
     - model_name: opencode/big-pickle
       litellm_params:
-        model: openai/opencode/big-pickle
+        model: openai/big-pickle
         api_key: os.environ/OPENCODE_API_KEY
         api_base: os.environ/OPENCODE_API_BASE
     - model_name: opencode/north-mini-code-free
       litellm_params:
-        model: openai/opencode/north-mini-code-free
+        model: openai/north-mini-code-free
         api_key: os.environ/OPENCODE_API_KEY
         api_base: os.environ/OPENCODE_API_BASE
     - model_name: opencode/deepseek-v4-flash-free
       litellm_params:
-        model: openai/opencode/deepseek-v4-flash-free
+        model: openai/deepseek-v4-flash-free
         api_key: os.environ/OPENCODE_API_KEY
         api_base: os.environ/OPENCODE_API_BASE
     - model_name: opencode/mimo-v2.5-free
       litellm_params:
-        model: openai/opencode/mimo-v2.5-free
+        model: openai/mimo-v2.5-free
         api_key: os.environ/OPENCODE_API_KEY
         api_base: os.environ/OPENCODE_API_BASE
     # Anthropic models (native LiteLLM support)
@@ -56,13 +56,21 @@ config:
     # Moonshot models (OpenAI-compatible API)
     - model_name: moonshotai/kimi-k2.6
       litellm_params:
-        model: openai/moonshotai/kimi-k2.6
+        model: openai/kimi-k2.6
         api_key: os.environ/MOONSHOT_API_KEY
         api_base: os.environ/MOONSHOT_API_BASE
     # DeepSeek models (native LiteLLM support)
     - model_name: deepseek-chat
       litellm_params:
         model: deepseek/deepseek-chat
+        api_key: os.environ/DEEPSEEK_API_KEY
+    - model_name: deepseek-v4-flash
+      litellm_params:
+        model: deepseek/deepseek-v4-flash
+        api_key: os.environ/DEEPSEEK_API_KEY
+    - model_name: deepseek-v4-pro
+      litellm_params:
+        model: deepseek/deepseek-v4-pro
         api_key: os.environ/DEEPSEEK_API_KEY
     # z.ai models (OpenAI-compatible API)
     - model_name: zai-chat
