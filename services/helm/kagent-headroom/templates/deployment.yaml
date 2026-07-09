@@ -45,7 +45,9 @@ spec:
             - --port
             - "8787"
             - --backend
-            - "openrouter"
+            - "openai"
+            - --openai-api-url
+            - "http://litellm-litellm.kagent.svc.cluster.local:4000/v1"
 
           envFrom:
             - configMapRef:
