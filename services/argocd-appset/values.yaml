@@ -134,6 +134,14 @@ services:
     syncOptions:
       - CreateNamespace=true
 
+  litellm:
+    enable: true
+    syncWave: "4"
+    destNamespace: kagent
+    dopplerConfig: "svc_kagent"
+    syncOptions:
+      - CreateNamespace=true
+
   keda:
     enable: false
     syncWave: "4"
