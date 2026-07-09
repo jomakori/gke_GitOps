@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -31,28 +33,45 @@ type config struct {
 type a2aRequest struct {
 	JSONRPC string      `json:"jsonrpc"`
 	Method  string      `json:"method"`
-	Params  a2aParams   `json:"params"`
+	Params  interface{} `json:"params"`
 	ID      json.Number `json:"id"`
 }
 
-type a2aParams struct {
-	Messages []a2aMessage `json:"messages"`
+type a2aMessageSendParams struct {
+	Message a2aMessagePart `json:"message"`
 }
 
-type a2aMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+type a2aMessagePart struct {
+	Role  string    `json:"role"`
+	Parts []a2aPart `json:"parts"`
+}
+
+type a2aPart struct {
+	Kind string `json:"kind"`
+	Text string `json:"text"`
 }
 
 type a2aResponse struct {
 	JSONRPC string      `json:"jsonrpc"`
-	Result  *a2aResult  `json:"result,omitempty"`
+	Result  interface{} `json:"result,omitempty"`
 	Error   *a2aError   `json:"error,omitempty"`
 	ID      json.Number `json:"id"`
 }
 
-type a2aResult struct {
-	Messages []a2aMessage `json:"messages"`
+type a2aResultTask struct {
+	Kind    string           `json:"kind"`
+	Status  a2aResultStatus  `json:"status"`
+	ContextID string         `json:"contextId,omitempty"`
+}
+
+type a2aResultStatus struct {
+	State   string        `json:"state"`
+	Message *a2aSSEMessage `json:"message,omitempty"`
+}
+
+type a2aSSEMessage struct {
+	Parts []a2aPart `json:"parts"`
+	Role  string    `json:"role"`
 }
 
 type a2aError struct {
@@ -429,10 +448,13 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 func callA2A(url, message, threadID string) (string, error) {
 	req := a2aRequest{
 		JSONRPC: "2.0",
-		Method:  "tasks/send",
-		Params: a2aParams{
-			Messages: []a2aMessage{
-				{Role: "user", Content: message},
+		Method:  "message/stream",
+		Params: a2aMessageSendParams{
+			Message: a2aMessagePart{
+				Role: "user",
+				Parts: []a2aPart{
+					{Kind: "text", Text: message},
+				},
 			},
 		},
 		ID: json.Number("1"),
@@ -451,8 +473,10 @@ func callA2A(url, message, threadID string) (string, error) {
 		return "", fmt.Errorf("create request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	// Pass thread ID as metadata for the agent
+	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("X-Conversation-ID", threadID)
+
+	log.Printf("[A2A] Sending to %s: %s", url, truncate(message, 50))
 
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
@@ -460,26 +484,58 @@ func callA2A(url, message, threadID string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	var a2aResp a2aResponse
-	if err := json.NewDecoder(resp.Body).Decode(&a2aResp); err != nil {
-		return "", fmt.Errorf("decode response: %w", err)
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return "", fmt.Errorf("A2A HTTP %d: %s", resp.StatusCode, string(body))
 	}
 
-	if a2aResp.Error != nil {
-		return "", fmt.Errorf("A2A error: %s (code %d)", a2aResp.Error.Message, a2aResp.Error.Code)
-	}
+	var fullText strings.Builder
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "[DONE]" {
+			break
+		}
 
-	if a2aResp.Result == nil || len(a2aResp.Result.Messages) == 0 {
-		return "", fmt.Errorf("empty A2A response")
-	}
+		var sseResp a2aResponse
+		if err := json.Unmarshal([]byte(data), &sseResp); err != nil {
+			log.Printf("[A2A] parse error: %v", err)
+			continue
+		}
 
-	for i := len(a2aResp.Result.Messages) - 1; i >= 0; i-- {
-		if a2aResp.Result.Messages[i].Role == "assistant" {
-			return a2aResp.Result.Messages[i].Content, nil
+		if sseResp.Error != nil {
+			return "", fmt.Errorf("A2A error: %s (code %d)", sseResp.Error.Message, sseResp.Error.Code)
+		}
+
+		if resultBytes, err := json.Marshal(sseResp.Result); err == nil {
+			var task a2aResultTask
+			if json.Unmarshal(resultBytes, &task) == nil && task.Status.Message != nil {
+				if task.Status.Message.Role == "agent" {
+					for _, part := range task.Status.Message.Parts {
+						if part.Kind == "text" && part.Text != "" {
+							fullText.WriteString(part.Text)
+						}
+					}
+				}
+			}
 		}
 	}
 
-	return "", fmt.Errorf("no assistant message in A2A response")
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("SSE read error: %w", err)
+	}
+
+	result := fullText.String()
+	if result == "" {
+		return "", fmt.Errorf("no agent response received")
+	}
+
+	log.Printf("[A2A] Response (%d chars): %s", len(result), truncate(result, 100))
+	return result, nil
 }
 
 func stripMention(content, userID string) string {
