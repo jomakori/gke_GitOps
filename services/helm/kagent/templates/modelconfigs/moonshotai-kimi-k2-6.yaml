@@ -11,4 +11,4 @@ spec:
   openAI:
     baseUrl: {{ .Values.headroom.url }}
   apiKeySecret: kagent-secrets
-  apiKeySecretKey: OPENAI_API_KEY
+  apiKeySecretKey: MOONSHOT_API_KEY
