@@ -35,7 +35,6 @@ spec:
                 name: litellm-secrets
 
           securityContext:
-            runAsNonRoot: true
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
