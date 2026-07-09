@@ -59,6 +59,17 @@ config:
         model: openai/moonshotai/kimi-k2.6
         api_key: os.environ/MOONSHOT_API_KEY
         api_base: os.environ/MOONSHOT_API_BASE
+    # DeepSeek models (native LiteLLM support)
+    - model_name: deepseek-chat
+      litellm_params:
+        model: deepseek/deepseek-chat
+        api_key: os.environ/DEEPSEEK_API_KEY
+    # z.ai models (OpenAI-compatible API)
+    - model_name: zai-chat
+      litellm_params:
+        model: openai/zai-chat
+        api_key: os.environ/ZAI_API_KEY
+        api_base: os.environ/ZAI_API_BASE
     # Google Gemini models (native LiteLLM support)
     - model_name: google/gemini-3.5-flash
       litellm_params:
