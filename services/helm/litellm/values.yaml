@@ -22,8 +22,6 @@ service:
 
 # -- LiteLLM proxy config (no database — file-based routing)
 config:
-  general_settings:
-    master_key: ""  # set via env LITELLM_MASTER_KEY from Doppler
   model_list:
     # OpenCode models (OpenAI-compatible API)
     - model_name: opencode/big-pickle
