@@ -116,6 +116,8 @@ services:
         value: "{{ .Values.storageClass }}"
       - name: auth.jwt.audience
         value: "kagent-substrate-api.ate-system.svc"
+      - name: bootstrap.enabled
+        value: "true"
 
   # Wave 4 — Operators (no endpoint deps)
   externalDns:
