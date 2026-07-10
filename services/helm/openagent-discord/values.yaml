@@ -13,8 +13,8 @@ dopplerConfig: ""
 
 # -- Container image
 image:
-  repository: ghcr.io/jomakori/gke_gitops/kagent-discord-bot
-  tag: "0.1.8"
+  repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
+  tag: "0.2.0"
   pullPolicy: IfNotPresent
 
 # -- Service settings
@@ -32,27 +32,31 @@ resources:
 
 # -- Discord bot configuration
 config:
-  # -- A2A endpoint for the backing agent. In-cluster only.
-  #    The bot runs inside the openagent namespace and connects directly
-  #    to the openagent API service. No CF Access, no public domain.
-  kagentA2aUrl: "http://sympozium-apiserver.sympozium-system.svc.cluster.local:8080"
+  # -- A2A endpoint URL (A2A protocol mode). Leave empty to use K8s API mode.
+  agentA2aUrl: ""
+  # -- Agent ref (K8s API mode). Instance name for CRD-based orchestrators.
+  agentRef: ""
+  # -- Agent ID (K8s API mode).
+  agentId: ""
+  # -- Model name for agent runs (K8s API mode).
+  agentModel: ""
+  # -- Model provider (K8s API mode, e.g. "openai", "deepseek").
+  agentModelProvider: ""
+  # -- Agent namespace for CRD creation (K8s API mode, default: default).
+  agentNamespace: ""
+  # -- Comma-separated skill pack refs (K8s API mode).
+  agentSkills: ""
   # -- Only respond to messages mentioning the bot
   mentionOnly: true
   # -- Restrict to a specific Discord channel (empty = all channels)
   channelOnly: ""
-  # -- Conversation mode: "threaded" (guild threads) or "dm" (direct messages)
-  #    "threaded" = new thread per conversation in guild channels
-  #    "dm" = replies in DM channel, thread-like isolation via user ID
+  # -- Conversation mode: "threaded" or "dm"
   conversationMode: "threaded"
-  # -- Phase transition updates in thread/DM
-  #    When true, bot posts status updates at phase transitions
-  #    (classifying → planning → executing → verifying → done)
+  # -- Phase transition updates
   phaseUpdates: true
   # -- Poll-based UI for direct questions
-  #    When true, ambiguous questions render as Discord polls/buttons
   pollUI: true
   # -- Discord channel ID to send startup/online announcement
-  #    Leave empty to skip the announcement
   startupChannel: "chat"
-  # -- Discord application client ID (public, used for invite URL diagnostics)
+  # -- Discord application client ID (public, for invite URL diagnostics)
   clientId: ""
