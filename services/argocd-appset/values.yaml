@@ -88,6 +88,7 @@ services:
     enable: true
     syncWave: "1"
     destNamespace: openagent
+    helmPath: services/helm/openagent-litellm
     dopplerConfig: "svc_openagent"
     syncOptions:
       - CreateNamespace=true
