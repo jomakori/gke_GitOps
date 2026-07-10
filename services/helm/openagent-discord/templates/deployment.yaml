@@ -48,8 +48,8 @@ spec:
                 secretKeyRef:
                   name: openagent-discord-secrets
                   key: DISCORD_BOT_CLIENT_ID
-            - name: OPENAGENT_API_URL
-              value: {{ .Values.config.openagentApiUrl | quote }}
+            - name: KAGENT_A2A_URL
+              value: {{ .Values.config.kagentA2aUrl | quote }}
             - name: DISCORD_MENTION_ONLY
               value: {{ .Values.config.mentionOnly | quote }}
             - name: DISCORD_CONVERSATION_MODE
