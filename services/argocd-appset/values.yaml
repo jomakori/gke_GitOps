@@ -43,6 +43,15 @@ services:
       - CreateNamespace=true
       - ServerSideApply=true
 
+  openagentCrds:
+    enable: true
+    syncWave: "0"
+    destNamespace: openagent
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+      - ServerSideApply=true
+
   # Wave 1 — Secret engine
   externalSecrets:
     enable: true
@@ -62,6 +71,26 @@ services:
         jsonPointers:
           - /data
           - /type
+
+  # Wave 1 — OpenAgent services (after external-secrets ClusterSecretStores are ready)
+  openagentHeadroom:
+    enable: true
+    syncWave: "1"
+    destNamespace: openagent
+    dopplerConfig: "svc_openagent"
+    parameters:
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
+    syncOptions:
+      - CreateNamespace=true
+
+  litellmOpenagent:
+    enable: true
+    syncWave: "1"
+    destNamespace: openagent
+    dopplerConfig: "svc_openagent"
+    syncOptions:
+      - CreateNamespace=true
 
   # Wave 2 — Istio umbrella (after external-secrets ClusterSecretStores are ready)
   istio:
@@ -97,6 +126,29 @@ services:
       - name: virtualServices.argocd.destination.port
         value: "80"
 
+  openagent:
+    enable: true
+    syncWave: "2"
+    destNamespace: openagent
+    dopplerConfig: "svc_openagent"
+    managedNamespaceMetadata:
+      labels:
+        istio.io/dataplane-mode: ambient
+    gateways:
+      enable_private: true
+      subdomain: openagent
+      timeout: 600s
+      destination:
+        serviceName: openagent-api
+        servicePort: 8080
+    parameters:
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
+      - name: clusterDomain
+        value: "{{ .Values.clusterDomain }}"
+    syncOptions:
+      - CreateNamespace=true
+
   # Wave 3 — Edge infrastructure (after istio for backend routing)
   cloudflareTunnel:
     enable: true
@@ -104,7 +156,7 @@ services:
     dopplerConfig: "svc_cloudflare"
 
   kagentSubstrate:
-    enable: true
+    enable: false
     syncWave: "3"
     destNamespace: ate-system
     selfHeal: false
@@ -126,7 +178,7 @@ services:
     dopplerConfig: "svc_cloudflare"
 
   kagentHeadroom:
-    enable: true
+    enable: false
     syncWave: "4"
     destNamespace: kagent
     dopplerConfig: "svc_kagent"
@@ -137,7 +189,7 @@ services:
       - CreateNamespace=true
 
   litellm:
-    enable: true
+    enable: false
     syncWave: "4"
     destNamespace: kagent
     dopplerConfig: "svc_kagent"
@@ -206,7 +258,7 @@ services:
 
   # Wave 5 — General services
   kagent:
-    enable: true
+    enable: false
     syncWave: "5"
     destNamespace: kagent
     dopplerConfig: "svc_kagent"
@@ -307,10 +359,18 @@ services:
         value: "{{ .Values.storageClass }}"
 
   kagentDiscord:
-    enable: true
+    enable: false
     syncWave: "7"
     destNamespace: kagent
     dopplerConfig: "svc_kagent"
+    syncOptions:
+      - CreateNamespace=true
+
+  openagentDiscord:
+    enable: true
+    syncWave: "3"
+    destNamespace: openagent
+    dopplerConfig: "svc_openagent"
     syncOptions:
       - CreateNamespace=true
 
@@ -319,4 +379,4 @@ kagentUpstream:
   # Uses native-OCI shape (path: "." instead of chart field) to work around
   # ArgoCD v3.4.x OCI Helm bug where chart name is not appended to URL.
   # See https://github.com/argoproj/argo-cd/pull/1051 for the fix approach.
-  enable: true
+  enable: false

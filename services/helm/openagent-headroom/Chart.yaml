@@ -1,0 +1,8 @@
+apiVersion: v2
+name: openagent-headroom
+description: openagent-headroom — proxy-based multi-LLM provider with OpenRouter backend, built-in caching and observability
+type: application
+version: 0.1.0
+appVersion: "0.27.0"
+maintainers:
+  - name: local

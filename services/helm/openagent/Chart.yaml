@@ -1,0 +1,12 @@
+apiVersion: v2
+name: openagent
+description: Sympozium control plane for openagent namespace — controller, NATS, webhook, API server
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: local
+dependencies:
+  - name: sympozium
+    version: "0.1.0"
+    repository: oci://ghcr.io/sympozium/sympozium/helm/sympozium

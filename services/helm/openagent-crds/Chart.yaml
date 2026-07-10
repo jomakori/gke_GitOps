@@ -1,0 +1,10 @@
+apiVersion: v2
+name: openagent-crds
+description: Sympozium CRDs for openagent namespace
+type: application
+version: 0.1.0
+appVersion: "latest"
+dependencies:
+  - name: sympozium-crds
+    version: "0.1.0"
+    repository: oci://ghcr.io/sympozium/sympozium/helm
