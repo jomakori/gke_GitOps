@@ -48,11 +48,6 @@ spec:
                 secretKeyRef:
                   name: openagent-discord-secrets
                   key: DISCORD_BOT_CLIENT_ID
-          envFrom:
-            - secretRef:
-                name: openagent-discord-secrets
-            - secretRef:
-                name: openagent-discord-secrets-override
             - name: DISCORD_MENTION_ONLY
               value: {{ .Values.config.mentionOnly | quote }}
             - name: DISCORD_CONVERSATION_MODE
@@ -73,6 +68,11 @@ spec:
             - name: DISCORD_CLIENT_ID
               value: {{ .Values.config.clientId | quote }}
             {{- end }}
+          envFrom:
+            - secretRef:
+                name: openagent-discord-secrets
+            - secretRef:
+                name: openagent-discord-secrets-override
 
           securityContext:
             runAsNonRoot: true
