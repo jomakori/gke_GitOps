@@ -1,0 +1,18 @@
+apiVersion: sympozium.io/v1
+kind: SkillPack
+metadata:
+  name: hashline-editor
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  skills:
+    - name: hashline
+      description: "Hashline MCP sidecar for precise file editing — exact string replacement, AST-aware transformations, and structured code modifications."
+      type: mcp
+      mcpConfig:
+        serverName: hashline-mcp
+        config:
+          transport: stdio
+          command: hashline-mcp
+          args: []

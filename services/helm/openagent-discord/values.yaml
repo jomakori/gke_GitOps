@@ -1,0 +1,58 @@
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ OpenAgent Discord bot                                            │
+# │                                                                  │
+# │ Image: ghcr.io/jomakori/gke_gitops/openagent-discord-bot         │
+# │                                                                  │
+# │ Go-based bot that listens to Discord and forwards messages       │
+# │ to an A2A agent via HTTP. Exposes /healthz on port 8080.         │
+# └──────────────────────────────────────────────────────────────────┘
+
+# -- Doppler config; set by ArgoCD appset. Creates ExternalSecret when present.
+#    Expected keys: DISCORD_BOT_TOKEN, DISCORD_BOT_CLIENT_ID
+dopplerConfig: ""
+
+# -- Container image
+image:
+  repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# -- Service settings (ClusterIP for DNS discovery only — bot has no inbound port)
+service:
+  port: 8080
+
+# -- Resource requests/limits
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# -- Discord bot configuration
+config:
+  # -- A2A endpoint for the backing agent. In-cluster only.
+  #    The bot runs inside the openagent namespace and connects directly
+  #    to the openagent API service. No CF Access, no public domain.
+  openagentApiUrl: "http://openagent-api.openagent.svc.cluster.local:8080"
+  # -- Only respond to messages mentioning the bot
+  mentionOnly: true
+  # -- Restrict to a specific Discord channel (empty = all channels)
+  channelOnly: ""
+  # -- Conversation mode: "threaded" (guild threads) or "dm" (direct messages)
+  #    "threaded" = new thread per conversation in guild channels
+  #    "dm" = replies in DM channel, thread-like isolation via user ID
+  conversationMode: "threaded"
+  # -- Phase transition updates in thread/DM
+  #    When true, bot posts status updates at phase transitions
+  #    (classifying → planning → executing → verifying → done)
+  phaseUpdates: true
+  # -- Poll-based UI for direct questions
+  #    When true, ambiguous questions render as Discord polls/buttons
+  pollUI: true
+  # -- Discord channel ID to send startup/online announcement
+  #    Leave empty to skip the announcement
+  startupChannel: "chat"
+  # -- Discord application client ID (public, used for invite URL diagnostics)
+  clientId: ""

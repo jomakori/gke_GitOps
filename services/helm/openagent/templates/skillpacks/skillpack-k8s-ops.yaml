@@ -1,0 +1,19 @@
+apiVersion: sympozium.io/v1
+kind: SkillPack
+metadata:
+  name: k8s-ops
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  skills:
+    - name: kubectl
+      description: "Kubernetes CLI operations — apply, delete, get, logs, exec, port-forward, describe resources."
+      type: builtin
+      config:
+        binary: kubectl
+    - name: helm
+      description: "Helm chart operations — install, upgrade, rollback, template, list, diff, dependency management."
+      type: builtin
+      config:
+        binary: helm

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: openagent-discord
+description: Discord gateway bot for openagent — polls Discord and routes messages to A2A agent
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: local

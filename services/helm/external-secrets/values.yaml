@@ -29,6 +29,9 @@ clusterSecretStores:
   svc_kagent:
     project: devops
     config: svc_kagent
+  svc_openagent:
+    project: devops
+    config: svc_openagent
   svc_stackgres:
     project: devops
     config: svc_stackgres

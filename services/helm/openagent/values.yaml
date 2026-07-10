@@ -1,0 +1,27 @@
+# -- Doppler config; set by ArgoCD appset. Creates ExternalSecret when present.
+dopplerConfig: ""
+
+# -- Storage class for PVCs
+storageClass: "local-path"
+
+# -- Cluster domain for ingress
+clusterDomain: "maklab.net"
+
+# === Sympozium upstream chart config ===
+sympozium:
+  namespace: openagent
+  controller:
+    replicas: 1
+  nats:
+    enabled: true
+  webhook:
+    enabled: true
+  api:
+    enabled: true
+  database:
+    postgres:
+      enabled: true
+      bundled:
+        enabled: false
+      url: ""
+      vectorEnabled: true
