@@ -46,6 +46,9 @@ spec:
             - "8787"
             - --no-optimize
 
+          env:
+            - name: OPENAI_TARGET_API_URL
+              value: {{ .Values.litellmUrl | quote }}
           envFrom:
             - configMapRef:
                 name: {{ include "openagent-headroom.fullname" . }}-config
