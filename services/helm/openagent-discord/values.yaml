@@ -1,7 +1,7 @@
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ OpenAgent Discord bot                                            │
 # │                                                                  │
-# │ Image: ghcr.io/jomakori/gke_gitops/openagent-discord-bot         │
+# │ Image: ghcr.io/jomakori/gke_gitops/kagent-discord-bot            │
 # │                                                                  │
 # │ Go-based bot that listens to Discord and forwards messages       │
 # │ to an A2A agent via HTTP. Exposes /healthz on port 8080.         │
@@ -13,8 +13,8 @@ dopplerConfig: ""
 
 # -- Container image
 image:
-  repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
-  tag: "0.1.0"
+  repository: ghcr.io/jomakori/gke_gitops/kagent-discord-bot
+  tag: "0.1.8"
   pullPolicy: IfNotPresent
 
 # -- Service settings (ClusterIP for DNS discovery only — bot has no inbound port)
