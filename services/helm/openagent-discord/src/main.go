@@ -354,7 +354,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	reply, err := callAgent(cfg, content)
 	if err != nil {
 		log.Printf("Agent call failed: %v", err)
-		s.ChannelMessageSend(replyTargetID, "Sorry, I encountered an error processing your request.")
+		s.ChannelMessageSend(replyTargetID, fmt.Sprintf("Error: %s", truncate(err.Error(), 500)))
 		return
 	}
 
