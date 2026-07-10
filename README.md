@@ -80,7 +80,7 @@ No secrets in this repo. The chain:
 1. **Doppler** stores actual values in project+config pairs.
 2. **Terraform** stores a personal token as a K8s Secret in `external-secrets`.
 3. **ClusterSecretStore** resources (one per config) reference that token with their `project` + `config`.
-4. **ExternalSecrets** use `dataFrom.extract` (zero rewrite rules) — K8s Secret keys match Doppler key names. `refreshInterval: 1m`.
+4. **ExternalSecrets** use `dataFrom.extract` (zero rewrite rules) — K8s Secret keys match Doppler key names. `refreshInterval: 24h`.
 5. **Pods** consume via standard `secretKeyRef`.
 
 | Doppler Config | Used By | Secrets |
