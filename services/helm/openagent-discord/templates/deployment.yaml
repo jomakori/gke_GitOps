@@ -71,8 +71,6 @@ spec:
           envFrom:
             - secretRef:
                 name: openagent-discord-secrets
-            - secretRef:
-                name: openagent-discord-secrets-override
 
           securityContext:
             runAsNonRoot: true
