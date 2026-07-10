@@ -48,28 +48,11 @@ spec:
                 secretKeyRef:
                   name: openagent-discord-secrets
                   key: DISCORD_BOT_CLIENT_ID
-            # Agent backend — set AGENT_A2A_URL for A2A protocol, or
-            # AGENT_REF + AGENT_ID for direct Kubernetes API (CRD-based).
-            {{- if .Values.config.agentA2aUrl }}
-            - name: AGENT_A2A_URL
-              value: {{ .Values.config.agentA2aUrl | quote }}
-            {{- end }}
-            {{- if .Values.config.agentRef }}
-            - name: AGENT_REF
-              value: {{ .Values.config.agentRef | quote }}
-            - name: AGENT_ID
-              value: {{ .Values.config.agentId | quote }}
-            - name: AGENT_MODEL
-              value: {{ .Values.config.agentModel | quote }}
-            - name: AGENT_MODEL_PROVIDER
-              value: {{ .Values.config.agentModelProvider | quote }}
-            - name: AGENT_NAMESPACE
-              value: {{ .Values.config.agentNamespace | quote }}
-            {{- if .Values.config.agentSkills }}
-            - name: AGENT_SKILLS
-              value: {{ .Values.config.agentSkills | quote }}
-            {{- end }}
-            {{- end }}
+          envFrom:
+            - secretRef:
+                name: openagent-discord-secrets
+            - secretRef:
+                name: openagent-discord-secrets-override
             - name: DISCORD_MENTION_ONLY
               value: {{ .Values.config.mentionOnly | quote }}
             - name: DISCORD_CONVERSATION_MODE
@@ -119,3 +102,4 @@ spec:
 
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+

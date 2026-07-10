@@ -114,6 +114,7 @@ spec:
         - k8s-ops
         - omo-core-skills
         - hashline-editor
+        - web-endpoint
 
     - name: atlas
       displayName: "Atlas"

@@ -373,18 +373,10 @@ services:
     destNamespace: openagent
     dopplerConfig: "svc_openagent"
     parameters:
-      - name: config.agentRef
-        value: "omo-loop-engineering-sisyphus"
-      - name: config.agentId
-        value: "stimulus-omo-loop-engineering"
-      - name: config.agentModel
-        value: "deepseek-v4-flash"
-      - name: config.agentModelProvider
-        value: "deepseek"
-      - name: config.agentNamespace
-        value: "sympozium-system"
-      - name: config.agentSkills
-        value: "k8s-ops,omo-core-skills,hashline-editor,memory"
+      - name: config.agentApiUrl
+        value: "http://omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc.cluster.local:8080/v1/chat/completions"
+      - name: config.agentApiKey
+        value: "sk-a6ae41fd0b092c2dcb4aa8baa146722c66c1f268d5746a58"
     syncOptions:
       - CreateNamespace=true
 

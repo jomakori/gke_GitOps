@@ -1,10 +1,10 @@
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ OpenAgent Discord bot                                            │
 # │                                                                  │
-# │ Image: ghcr.io/jomakori/gke_gitops/kagent-discord-bot            │
+# │ Image: ghcr.io/jomakori/gke_gitops/openagent-discord-bot         │
 # │                                                                  │
 # │ Go-based bot that listens to Discord and forwards messages       │
-# │ to an A2A agent via HTTP. Exposes /healthz on port 8080.         │
+# │ to an OpenAI-compatible agent API. Exposes /healthz on :8080.    │
 # └──────────────────────────────────────────────────────────────────┘
 
 # -- Doppler config; set by ArgoCD appset. Creates ExternalSecret when present.
@@ -14,7 +14,7 @@ dopplerConfig: ""
 # -- Container image
 image:
   repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
-  tag: "0.2.0"
+  tag: "0.3.0"
   pullPolicy: IfNotPresent
 
 # -- Service settings
@@ -32,20 +32,10 @@ resources:
 
 # -- Discord bot configuration
 config:
-  # -- A2A endpoint URL (A2A protocol mode). Leave empty to use K8s API mode.
-  agentA2aUrl: ""
-  # -- Agent ref (K8s API mode). Instance name for CRD-based orchestrators.
-  agentRef: ""
-  # -- Agent ID (K8s API mode).
-  agentId: ""
-  # -- Model name for agent runs (K8s API mode).
-  agentModel: ""
-  # -- Model provider (K8s API mode, e.g. "openai", "deepseek").
-  agentModelProvider: ""
-  # -- Agent namespace for CRD creation (K8s API mode, default: default).
-  agentNamespace: ""
-  # -- Comma-separated skill pack refs (K8s API mode).
-  agentSkills: ""
+  # -- OpenAI-compatible agent API URL (required, e.g. web-endpoint, headroom)
+  agentApiUrl: ""
+  # -- API key for agent endpoint (optional)
+  agentApiKey: ""
   # -- Only respond to messages mentioning the bot
   mentionOnly: true
   # -- Restrict to a specific Discord channel (empty = all channels)
