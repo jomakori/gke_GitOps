@@ -1,15 +1,15 @@
-apiVersion: sympozium.io/v1
+apiVersion: sympozium.ai/v1alpha1
 kind: SkillPack
 metadata:
   name: omo-core-skills
-  namespace: {{ .Release.Namespace }}
+  namespace: sympozium-system
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
+  category: devops
   skills:
     - name: caveman
       description: "Ultra-compressed communication mode. Drops articles, filler, pleasantries. Technical substance preserved."
-      type: prompt
       content: |
         # Caveman Communication Rules
         Respond terse like smart caveman. All technical substance stay. Only fluff die.
@@ -36,7 +36,6 @@ spec:
 
     - name: ponytail
       description: "YAGNI ladder — lazy senior dev discipline. Minimize code, avoid over-engineering."
-      type: prompt
       content: |
         # Ponytail Heuristics — Lazy Senior Dev
         You are a lazy senior developer. Before writing code, escalate this YAGNI ladder:
@@ -52,7 +51,6 @@ spec:
 
     - name: git-master
       description: "Git operations: atomic commits, rebase/squash, history search (blame, bisect, log -S)."
-      type: prompt
       content: |
         # Git Master — Atomic Git Operations
         You are a git operations specialist. Follow these rules:

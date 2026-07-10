@@ -1,17 +1,19 @@
-apiVersion: sympozium.io/v1
+apiVersion: sympozium.ai/v1alpha1
 kind: Ensemble
 metadata:
   name: omo-loop-engineering
-  namespace: {{ .Release.Namespace }}
+  namespace: sympozium-system
   labels:
     app.kubernetes.io/part-of: openagent
 spec:
   description: "OhMyOpenCode loop engineering ensemble — 10 specialized personas with delegation and supervision"
+  enabled: true
+  workflowType: delegation
 
-  personas:
+  agentConfigs:
     # ── Orchestrators ──────────────────────────────────────────────
     - name: sisyphus
-      role: orchestrator
+      displayName: "Sisyphus"
       model: opencode-big-pickle
       systemPrompt: |
         # Sisyphus — Main Orchestrator
@@ -108,8 +110,13 @@ spec:
         - V3 (complex): lsp_diagnostics (zero errors) + all tests pass + build passes + manual QA.
         Never skip verification. Never trust subagent self-reports. Re-verify yourself.
 
+      skills:
+        - k8s-ops
+        - omo-core-skills
+        - hashline-editor
+
     - name: atlas
-      role: orchestrator
+      displayName: "Atlas"
       model: opencode-big-pickle
       systemPrompt: |
         # Atlas — Master Orchestrator
@@ -134,7 +141,7 @@ spec:
 
     # ── Planners ────────────────────────────────────────────────────
     - name: prometheus
-      role: planner
+      displayName: "Prometheus"
       model: moonshotai-kimi-k2-6
       systemPrompt: |
         # Prometheus — Strategic Planner
@@ -156,7 +163,7 @@ spec:
         Each step must have clear success criteria.
 
     - name: metis
-      role: planner
+      displayName: "Metis"
       model: opencode-big-pickle
       systemPrompt: |
         # Metis — Pre-planning Consultant
@@ -181,7 +188,7 @@ spec:
 
     # ── Reviewers ───────────────────────────────────────────────────
     - name: momus
-      role: reviewer
+      displayName: "Momus"
       model: moonshotai-kimi-k2-6
       systemPrompt: |
         # Momus — Ruthless Plan Reviewer
@@ -204,7 +211,7 @@ spec:
 
     # ── Architects ──────────────────────────────────────────────────
     - name: oracle
-      role: architect
+      displayName: "Oracle"
       model: opencode-big-pickle
       systemPrompt: |
         # Oracle — Architecture/Security Consultant
@@ -229,7 +236,7 @@ spec:
 
     # ── Workers ─────────────────────────────────────────────────────
     - name: hephaestus
-      role: worker
+      displayName: "Hephaestus"
       model: opencode-north-mini-code-free
       systemPrompt: |
         # Hephaestus — Deep Implementation Coder
@@ -251,7 +258,7 @@ spec:
         Ship working, tested code. Verify before completing.
 
     - name: sisyphus-junior
-      role: worker
+      displayName: "Sisyphus Junior"
       model: opencode-big-pickle
       systemPrompt: |
         # Sisyphus-Junior — Focused Task Executor
@@ -274,7 +281,7 @@ spec:
 
     # ── Researchers ─────────────────────────────────────────────────
     - name: librarian
-      role: researcher
+      displayName: "Librarian"
       model: opencode-deepseek-v4-flash-free
       systemPrompt: |
         # Librarian — Docs/RAG Searcher
@@ -296,7 +303,7 @@ spec:
         Return findings with sources. Do not fabricate APIs or library behavior.
 
     - name: explore
-      role: researcher
+      displayName: "Explore"
       model: opencode-deepseek-v4-flash-free
       systemPrompt: |
         # Explore — Codebase Pattern Discovery
@@ -317,26 +324,56 @@ spec:
         Use grep, glob, and file reading tools to explore the codebase.
         Report findings concisely with file paths and line numbers.
 
-  # ── Delegation Rules ──────────────────────────────────────────────
-  delegation:
-    - from: sisyphus
-      to: [prometheus, metis, hephaestus, oracle, atlas]
-    - from: atlas
-      to: [librarian, explore, sisyphus-junior]
-    - from: prometheus
-      to: [momus]
-
-  # ── Supervision Rules ─────────────────────────────────────────────
-  supervision:
-    - supervisor: atlas
-      supervisees: [sisyphus, prometheus, hephaestus]
+  # ── Relationships (Delegation + Supervision) ──────────────────────
+  relationships:
+    # Delegation edges
+    - source: sisyphus
+      target: prometheus
+      type: delegation
+    - source: sisyphus
+      target: metis
+      type: delegation
+    - source: sisyphus
+      target: hephaestus
+      type: delegation
+    - source: sisyphus
+      target: oracle
+      type: delegation
+    - source: sisyphus
+      target: atlas
+      type: delegation
+    - source: atlas
+      target: librarian
+      type: delegation
+    - source: atlas
+      target: explore
+      type: delegation
+    - source: atlas
+      target: sisyphus-junior
+      type: delegation
+    - source: prometheus
+      target: momus
+      type: delegation
+    # Supervision edges
+    - source: atlas
+      target: sisyphus
+      type: supervision
+    - source: atlas
+      target: prometheus
+      type: supervision
+    - source: atlas
+      target: hephaestus
+      type: supervision
+    # Stimulus edge — stimulus prompt delivered to sisyphus
+    - source: omo-loop-engineering
+      target: sisyphus
+      type: stimulus
 
   # ── Shared Memory ─────────────────────────────────────────────────
   sharedMemory:
     enabled: true
-    # Personas share conversation context and findings across delegation chains
 
   # ── Stimulus ──────────────────────────────────────────────────────
   stimulus:
-    enabled: true
-    # External events can trigger persona activation (e.g., new task intake)
+    name: omo-loop-engineering
+    prompt: "Process incoming task requests using the loop engineering workflow. Classify intent, delegate to specialists, review output, and report results."
