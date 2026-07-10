@@ -99,7 +99,7 @@ spec:
   secretStoreRef:
     kind: ClusterSecretStore
     name: doppler-{{ $env.dopplerConfig | replace "_" "-" }}
-  refreshInterval: 10s
+  refreshInterval: 24h
   target:
     name: {{ $namespace }}-vars
   dataFrom:
