@@ -26,14 +26,20 @@ var (
 
 type config struct {
 	BotToken         string
-	A2AURL           string
 	ClientID         string
+	A2AURL           string
 	MentionOnly      bool
 	ChannelOnly      []string
-	ConversationMode string // "threaded" or "dm"
+	ConversationMode string
 	PhaseUpdates     bool
 	PollUI           bool
-	StartupChannel   string // Discord channel ID to send startup announcement
+	StartupChannel   string
+	AgentID          string
+	AgentRef         string
+	ModelName        string
+	ModelProvider    string
+	AgentSkills      string
+	AgentNamespace   string
 }
 
 type a2aRequest struct {
@@ -66,13 +72,13 @@ type a2aResponse struct {
 }
 
 type a2aResultTask struct {
-	Kind    string           `json:"kind"`
-	Status  a2aResultStatus  `json:"status"`
-	ContextID string         `json:"contextId,omitempty"`
+	Kind      string          `json:"kind"`
+	Status    a2aResultStatus `json:"status"`
+	ContextID string          `json:"contextId,omitempty"`
 }
 
 type a2aResultStatus struct {
-	State   string        `json:"state"`
+	State   string         `json:"state"`
 	Message *a2aSSEMessage `json:"message,omitempty"`
 }
 
@@ -86,7 +92,6 @@ type a2aError struct {
 	Message string `json:"message"`
 }
 
-// Conversation tracks a single conversation thread
 type Conversation struct {
 	ThreadID     string
 	UserID       string
@@ -104,17 +109,13 @@ var (
 func loadConfig() config {
 	cfg := config{
 		BotToken:    os.Getenv("DISCORD_BOT_TOKEN"),
-		A2AURL:      os.Getenv("KAGENT_A2A_URL"),
+		A2AURL:      os.Getenv("AGENT_A2A_URL"),
 		MentionOnly: true,
 		ClientID:    os.Getenv("DISCORD_CLIENT_ID"),
 	}
 
 	if cfg.ClientID == "" {
 		cfg.ClientID = os.Getenv("DISCORD_BOT_CLIENT_ID")
-	}
-
-	if cfg.A2AURL == "" {
-		log.Fatal("KAGENT_A2A_URL is required")
 	}
 
 	if v := os.Getenv("DISCORD_MENTION_ONLY"); v != "" {
@@ -147,6 +148,23 @@ func loadConfig() config {
 
 	if v := os.Getenv("DISCORD_STARTUP_CHANNEL"); v != "" {
 		cfg.StartupChannel = strings.TrimSpace(v)
+	}
+
+	cfg.AgentID = os.Getenv("AGENT_ID")
+	cfg.AgentRef = os.Getenv("AGENT_REF")
+	cfg.ModelName = os.Getenv("AGENT_MODEL")
+	cfg.ModelProvider = os.Getenv("AGENT_MODEL_PROVIDER")
+	cfg.AgentSkills = os.Getenv("AGENT_SKILLS")
+	cfg.AgentNamespace = os.Getenv("AGENT_NAMESPACE")
+	if cfg.AgentNamespace == "" {
+		cfg.AgentNamespace = "default"
+	}
+
+	if cfg.BotToken == "" {
+		log.Fatal("DISCORD_BOT_TOKEN is required")
+	}
+	if cfg.A2AURL == "" && cfg.AgentRef == "" {
+		log.Fatal("AGENT_A2A_URL or AGENT_REF is required")
 	}
 
 	return cfg
@@ -258,8 +276,8 @@ func sendStartupMessage(dg *discordgo.Session, cfg config) {
 				Inline: true,
 			},
 			{
-				Name:   "A2A endpoint",
-				Value:  fmt.Sprintf("`%s`", cfg.A2AURL),
+				Name:   "Agent ref",
+				Value:  fmt.Sprintf("`%s`", cfg.AgentRef),
 				Inline: false,
 			},
 		},
@@ -437,10 +455,15 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	// Show typing indicator in target
 	s.ChannelTyping(replyTargetID)
 
-	// Call Sympozium agent via Kubernetes API
-	reply, err := callSympoziumAPI(cfg, content, replyTargetID)
+	var reply string
+	var err error
+	if cfg.A2AURL != "" {
+		reply, err = callA2A(cfg.A2AURL, content, replyTargetID)
+	} else {
+		reply, err = callAgentRun(cfg, content, replyTargetID)
+	}
 	if err != nil {
-		log.Printf("Sympozium call failed: %v", err)
+		log.Printf("Agent call failed: %v", err)
 		s.ChannelMessageSend(replyTargetID, "Sorry, I encountered an error processing your request.")
 		return
 	}
@@ -452,7 +475,8 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	}
 }
 
-func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
+func callAgentRun(cfg config, message, threadID string) (string, error) {
+	ns := cfg.AgentNamespace
 	runID := fmt.Sprintf("discord-%s-%d", sanitizeName(threadID), time.Now().Unix())
 
 	agentRun := map[string]interface{}{
@@ -460,7 +484,7 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 		"kind":       "AgentRun",
 		"metadata": map[string]interface{}{
 			"name":      runID,
-			"namespace": "sympozium-system",
+			"namespace": ns,
 		},
 		"spec": map[string]interface{}{
 			"agentId":    cfg.AgentID,
@@ -492,16 +516,15 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 		return "", fmt.Errorf("marshal run: %w", err)
 	}
 
-	log.Printf("[Sympozium] Creating AgentRun %s: %s", runID, truncate(message, 80))
+	log.Printf("[agent] Creating AgentRun %s/%s: %s", ns, runID, truncate(message, 80))
 
-	createURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns", k8sAPIBaseURL)
-	resp, err := k8sAPIRequest(http.MethodPost, createURL, body)
+	createURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/%s/agentruns", k8sAPIBaseURL, ns)
+	_, err = k8sAPIRequest(http.MethodPost, createURL, body)
 	if err != nil {
 		return "", fmt.Errorf("create AgentRun: %w", err)
 	}
 
-	// Poll for completion (max 5 minutes)
-	statusURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns/%s", k8sAPIBaseURL, runID)
+	statusURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/%s/agentruns/%s", k8sAPIBaseURL, ns, runID)
 	var result string
 
 	for i := 0; i < 60; i++ {
@@ -509,7 +532,7 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 
 		statusResp, err := k8sAPIRequest(http.MethodGet, statusURL, nil)
 		if err != nil {
-			log.Printf("[Sympozium] Poll error: %v", err)
+			log.Printf("[agent] Poll error: %v", err)
 			continue
 		}
 
@@ -524,18 +547,18 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 		}
 
 		phase, _ := status["phase"].(string)
-		log.Printf("[Sympozium] %s phase: %s", runID, phase)
+		log.Printf("[agent] %s phase: %s", runID, phase)
 
 		switch phase {
 		case "Succeeded":
 			podName, _ := status["podName"].(string)
 			if podName != "" {
-				result, err = getPodLogs(podName)
+				result, err = getPodLogs(ns, podName)
 				if err != nil {
 					return "", fmt.Errorf("get logs: %w", err)
 				}
 			}
-			log.Printf("[Sympozium] Response (%d chars): %s", len(result), truncate(result, 100))
+			log.Printf("[agent] Response (%d chars): %s", len(result), truncate(result, 100))
 			return result, nil
 
 		case "Failed":
@@ -547,13 +570,101 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 	return "", fmt.Errorf("timed out waiting for AgentRun completion")
 }
 
-func getPodLogs(podName string) (string, error) {
-	logsURL := fmt.Sprintf("%s/api/v1/namespaces/sympozium-system/pods/%s/log", k8sAPIBaseURL, podName)
+func getPodLogs(namespace, podName string) (string, error) {
+	logsURL := fmt.Sprintf("%s/api/v1/namespaces/%s/pods/%s/log", k8sAPIBaseURL, namespace, podName)
 	data, err := k8sAPIRequest(http.MethodGet, logsURL, nil)
 	if err != nil {
 		return "", err
 	}
 	return string(data), nil
+}
+
+func callA2A(url, message, threadID string) (string, error) {
+	req := a2aRequest{
+		JSONRPC: "2.0",
+		Method:  "message/stream",
+		Params: a2aMessageSendParams{
+			Message: a2aMessagePart{
+				Role:      "user",
+				ContextID: threadID,
+				Parts: []a2aPart{
+					{Kind: "text", Text: message},
+				},
+			},
+		},
+		ID: json.Number("1"),
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("marshal request: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "text/event-stream")
+
+	log.Printf("[a2a] Sending to %s: %s", url, truncate(message, 50))
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("http request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return "", fmt.Errorf("A2A HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	var fullText strings.Builder
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "[DONE]" {
+			break
+		}
+
+		var sseResp a2aResponse
+		if err := json.Unmarshal([]byte(data), &sseResp); err != nil {
+			continue
+		}
+
+		if sseResp.Error != nil {
+			return "", fmt.Errorf("A2A error: %s (code %d)", sseResp.Error.Message, sseResp.Error.Code)
+		}
+
+		if resultBytes, err := json.Marshal(sseResp.Result); err == nil {
+			var task a2aResultTask
+			if json.Unmarshal(resultBytes, &task) == nil && task.Status.Message != nil {
+				if task.Status.Message.Role == "agent" {
+					for _, part := range task.Status.Message.Parts {
+						if part.Kind == "text" && part.Text != "" {
+							fullText.WriteString(part.Text)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	result := fullText.String()
+	if result == "" {
+		return "", fmt.Errorf("no agent response received")
+	}
+
+	log.Printf("[a2a] Response (%d chars): %s", len(result), truncate(result, 100))
+	return result, nil
 }
 
 func k8sAPIRequest(method, url string, body []byte) ([]byte, error) {

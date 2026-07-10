@@ -1,3 +1,7 @@
+{{- define "openagent-discord.fullname" -}}
+openagent-discord
+{{- end }}
+
 {{- define "openagent-discord.labels" -}}
 app.kubernetes.io/name: openagent-discord
 app.kubernetes.io/instance: {{ .Release.Name }}
