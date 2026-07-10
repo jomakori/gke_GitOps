@@ -7,4 +7,4 @@ appVersion: "latest"
 dependencies:
   - name: sympozium-crds
     version: "0.1.0"
-    repository: oci://ghcr.io/sympozium/sympozium/helm
+    repository: oci://ghcr.io/sympozium-ai/sympozium/charts/sympozium-crds

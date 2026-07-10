@@ -9,4 +9,4 @@ maintainers:
 dependencies:
   - name: sympozium
     version: "0.1.0"
-    repository: oci://ghcr.io/sympozium/sympozium/helm/sympozium
+    repository: oci://ghcr.io/sympozium-ai/sympozium/charts/sympozium
