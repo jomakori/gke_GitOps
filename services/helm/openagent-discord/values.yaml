@@ -14,7 +14,7 @@ dopplerConfig: ""
 # -- Container image
 image:
   repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
-  tag: "0.3.0"
+  tag: "0.3.1"
   pullPolicy: IfNotPresent
 
 # -- Service settings

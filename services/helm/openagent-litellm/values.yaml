@@ -72,8 +72,3 @@ config:
       litellm_params:
         model: zai/glm-4.7
         api_key: os.environ/ZAI_API_KEY
-    # Google Gemini models (native LiteLLM support)
-    - model_name: google/gemini-3.5-flash
-      litellm_params:
-        model: gemini/gemini-3.5-flash
-        api_key: os.environ/GEMINI_API_KEY
