@@ -35,7 +35,7 @@ config:
   # -- A2A endpoint for the backing agent. In-cluster only.
   #    The bot runs inside the openagent namespace and connects directly
   #    to the openagent API service. No CF Access, no public domain.
-  openagentApiUrl: "http://openagent-api.openagent.svc.cluster.local:8080"
+  kagentA2aUrl: "http://openagent-api.openagent.svc.cluster.local:8080"
   # -- Only respond to messages mentioning the bot
   mentionOnly: true
   # -- Restrict to a specific Discord channel (empty = all channels)
