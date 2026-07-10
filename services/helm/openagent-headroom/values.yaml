@@ -34,6 +34,9 @@ vpa:
   updatePolicy:
     updateMode: "Auto"
 
+# -- LiteLLM proxy endpoint (overrides Doppler OPENAI_TARGET_API_URL)
+litellmUrl: "http://litellm-openagent-litellm.openagent.svc.cluster.local:4000/v1"
+
 # -- Storage for Headroom SQLite CCR cache
 storage:
   size: 2Gi
