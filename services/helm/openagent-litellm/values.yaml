@@ -26,6 +26,15 @@ config:
     disable_spend_logs: true
     disable_error_logs: true
     store_model_in_db: false
+  router_settings:
+    cooldown_time: 30
+    num_retries: 2
+    allowed_fails: 3
+    enable_pre_call_checks: true
+    fallbacks:
+      - opencode/big-pickle: ["deepseek-v4-flash"]
+      - opencode/north-mini-code-free: ["deepseek-v4-flash"]
+      - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
   model_list:
     # OpenCode models (OpenAI-compatible API)
     - model_name: opencode/big-pickle
@@ -71,4 +80,8 @@ config:
     - model_name: zai/glm-4.7
       litellm_params:
         model: zai/glm-4.7
+        api_key: os.environ/ZAI_API_KEY
+    - model_name: zai/glm-4.7-flash
+      litellm_params:
+        model: zai/glm-4.7-flash
         api_key: os.environ/ZAI_API_KEY
