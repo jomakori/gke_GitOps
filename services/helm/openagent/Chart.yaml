@@ -1,11 +1,33 @@
 apiVersion: v2
 name: openagent
-description: OpenAgent resources — Ensemble, ExternalSecrets, VPA, SkillPacks (sympozium control plane deployed separately)
+description: |
+  Umbrella chart for the entire openagent stack — Sympozium orchestrator, LiteLLM gateway,
+  Headroom proxy, Discord bot, shared PostgreSQL, and the Sympozium web dashboard.
+  All subcharts and local templates are spec-driven from a single values.yaml.
 type: application
-version: 0.1.0
-appVersion: "latest"
+version: 1.0.0
+appVersion: "1.0.0"
 maintainers:
   - name: local
-# sympozium OCI dependency removed — GHCR packages are private-by-default for org repos.
-# Control plane is deployed independently in sympozium-system namespace.
-dependencies: []
+
+dependencies:
+  - name: openagent-crds
+    version: "0.1.0"
+    repository: "file://charts/openagent-crds"
+    condition: crds.enabled
+  - name: openagent-pg
+    version: "0.1.0"
+    repository: "file://charts/openagent-pg"
+    condition: postgres.enabled
+  - name: openagent-headroom
+    version: "0.1.0"
+    repository: "file://charts/openagent-headroom"
+    condition: headroom.enabled
+  - name: openagent-litellm
+    version: "0.1.0"
+    repository: "file://charts/openagent-litellm"
+    condition: litellm.enabled
+  - name: openagent-discord
+    version: "0.6.0"
+    repository: "file://charts/openagent-discord"
+    condition: discord.enabled

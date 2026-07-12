@@ -1,8 +1,210 @@
-# -- Doppler config; set by ArgoCD appset. Creates ExternalSecret when present.
-dopplerConfig: ""
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │  OpenAgent Umbrella Values                                                   │
+# │                                                                              │
+# │  Single source of truth for the entire openagent stack.                     │
+# │  Subchart values are namespaced under the dependency name.                  │
+# └──────────────────────────────────────────────────────────────────────────────┘
 
-# -- Storage class for PVCs
-storageClass: "local-path"
-
-# -- Cluster domain for ingress
+# Global config (injected by Terraform → ArgoCD)
 clusterDomain: "maklab.net"
+storageClass: "local-path"
+dopplerConfig: "svc_openagent"
+namespace: "openagent"
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │  Umbrella-level config (driven by subchart toggles + local templates)        │
+# └──────────────────────────────────────────────────────────────────────────────┘
+crds:
+  enabled: true
+
+postgres:
+  enabled: true
+  storage: 5Gi
+
+headroom:
+  enabled: true
+  litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
+
+litellm:
+  enabled: true
+  databaseUrl: "postgresql://openagent:CHANGE_ME@openagent-pg.openagent.svc.cluster.local:5432/litellm"
+
+discord:
+  enabled: true
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │  Local templates (umbrella-owned)                                            │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+ensemble:
+  name: "omo-loop-engineering"
+  namespace: "sympozium-system"
+  workflowType: "delegation"
+
+dashboard:
+  subdomain: "openagent"
+  destination:
+    host: "sympozium-apiserver.sympozium-system.svc.cluster.local"
+    port: 8080
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │  Subchart values (mapped to dependencies via Helm's name-keyed lookup)      │
+# │                                                                              │
+# │  Helm merges these into the dependency's values. The subchart templates     │
+# │  use `.Values.<key>` (relative to the subchart), so we namespace under the  │
+# │  dependency's chart name.                                                   │
+# └──────────────────────────────────────────────────────────────────────────────┘
+
+openagent-litellm:
+  image:
+    repository: ghcr.io/berriai/litellm
+    tag: "main-stable"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  service:
+    port: 4000
+  databaseUrl: "postgresql://openagent:CHANGE_ME@openagent-pg.openagent.svc.cluster.local:5432/litellm"
+  config:
+    general_settings:
+      disable_spend_logs: false
+      disable_error_logs: false
+      store_model_in_db: true
+    router_settings:
+      cooldown_time: 30
+      num_retries: 2
+      allowed_fails: 3
+      enable_pre_call_checks: true
+      fallbacks:
+        - opencode/big-pickle: ["deepseek-v4-flash"]
+        - opencode/north-mini-code-free: ["deepseek-v4-flash"]
+        - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
+    model_list:
+      - model_name: opencode/big-pickle
+        litellm_params:
+          model: openai/big-pickle
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+      - model_name: opencode/north-mini-code-free
+        litellm_params:
+          model: openai/north-mini-code-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+      - model_name: opencode/deepseek-v4-flash-free
+        litellm_params:
+          model: openai/deepseek-v4-flash-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+      - model_name: opencode/mimo-v2.5-free
+        litellm_params:
+          model: openai/mimo-v2.5-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+      - model_name: anthropic/claude-opus-4-7
+        litellm_params:
+          model: anthropic/claude-opus-4-7
+          api_key: os.environ/ANTHROPIC_API_KEY
+      - model_name: moonshotai/kimi-k2.6
+        litellm_params:
+          model: moonshot/kimi-k2.6
+          api_key: os.environ/MOONSHOT_API_KEY
+      - model_name: deepseek-v4-flash
+        litellm_params:
+          model: deepseek/deepseek-v4-flash
+          api_key: os.environ/DEEPSEEK_API_KEY
+      - model_name: deepseek-v4-pro
+        litellm_params:
+          model: deepseek/deepseek-v4-pro
+          api_key: os.environ/DEEPSEEK_API_KEY
+      - model_name: zai/glm-4.7
+        litellm_params:
+          model: zai/glm-4.7
+          api_key: os.environ/ZAI_API_KEY
+      - model_name: zai/glm-4.7-flash
+        litellm_params:
+          model: zai/glm-4.7-flash
+          api_key: os.environ/ZAI_API_KEY
+      - model_name: minimax/M3
+        litellm_params:
+          model: openai/MiniMax-M3
+          api_key: os.environ/MINIMAX_API_KEY
+          api_base: os.environ/MINIMAX_API_BASE
+      - model_name: minimax/M2.7
+        litellm_params:
+          model: openai/MiniMax-M2.7
+          api_key: os.environ/MINIMAX_API_KEY
+          api_base: os.environ/MINIMAX_API_BASE
+
+openagent-headroom:
+  image:
+    repository: ghcr.io/chopratejas/headroom
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    port: 8787
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  vpa:
+    enabled: true
+    minAllowed:
+      cpu: 100m
+      memory: 256Mi
+    maxAllowed:
+      cpu: 3
+      memory: 6Gi
+    controlledResources: ["cpu", "memory"]
+    updatePolicy:
+      updateMode: "Auto"
+  litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
+  storage:
+    size: 2Gi
+    storageClass: ""
+    accessMode: ReadWriteOnce
+
+openagent-discord:
+  image:
+    repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
+    tag: "0.6.0"
+    pullPolicy: IfNotPresent
+  service:
+    port: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    config:
+      mentionOnly: false
+      channelOnly: ""
+      conversationMode: "threaded"
+      phaseUpdates: true
+      pollUI: true
+      startupChannel: "chat"
+      clientId: ""
+      dashboardUrl: "https://openagent.maklab.net"
+  version:
+    configMapName: "openagent-discord-version"
+
+openagent-pg:
+  storageClass: "local-path"
+  postgresql:
+    clusterName: "openagent-pg"
+    instances: 1
+    storage: 5Gi
+    sgInstanceProfile: ""
+    profile: "development"
+    postgresVersion: "18"
+    sgPostgresConfig: "openagent-pg-config"
+    sgPoolingConfig: "openagent-pg-pooling"

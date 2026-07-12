@@ -1,8 +1,0 @@
-apiVersion: v2
-name: openagent-discord
-description: Framework-agnostic Discord bot — A2A or K8s CRD agent backend
-type: application
-version: 0.2.0
-appVersion: "0.2.0"
-maintainers:
-  - name: local
