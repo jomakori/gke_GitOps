@@ -35,7 +35,6 @@ spec:
     spec:
       serviceAccountName: openagent-headroom
       securityContext:
-        runAsNonRoot: true
         runAsUser: 65532
         runAsGroup: 65532
         fsGroup: 65532
@@ -65,13 +64,6 @@ spec:
                 name: openagent-headroom-config
             - secretRef:
                 name: openagent-headroom-secrets
-          securityContext:
-            runAsNonRoot: true
-            readOnlyRootFilesystem: true
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
           ports:
             - name: http
               containerPort: {{ .Values.headroom.service.port }}
