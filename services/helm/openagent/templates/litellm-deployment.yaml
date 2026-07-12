@@ -50,10 +50,11 @@ spec:
             - --num_workers
             - "1"
           env:
-            {{- if .Values.litellm.databaseUrl }}
             - name: DATABASE_URL
-              value: {{ .Values.litellm.databaseUrl | quote }}
-            {{- end }}
+              valueFrom:
+                secretKeyRef:
+                  name: openagent-litellm-secrets
+                  key: DATABASE_URL
           envFrom:
             - secretRef:
                 name: openagent-litellm-secrets

@@ -47,7 +47,6 @@ litellm:
   resources:
     requests: { cpu: 100m, memory: 256Mi }
     limits:   { cpu: 2000m, memory: 2Gi }
-  databaseUrl: "postgresql://openagent:CHANGE_ME@openagent-pg.openagent.svc.cluster.local:5432/litellm"  # pragma: allowlist secret
   fallbacks:
     - opencode/big-pickle: ["deepseek-v4-flash"]
     - opencode/north-mini-code-free: ["deepseek-v4-flash"]
