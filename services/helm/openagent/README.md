@@ -53,7 +53,6 @@ duplicated source code. The umbrella is the source of truth.
 | headroom.service.port | int | `8787` |  |
 | headroom.storage.accessMode | string | `"ReadWriteOnce"` |  |
 | headroom.storage.size | string | `"2Gi"` |  |
-| litellm.databaseUrl | string | `"postgresql://openagent:CHANGE_ME@openagent-pg.openagent.svc.cluster.local:5432/litellm"` |  |
 | litellm.enabled | bool | `true` |  |
 | litellm.fallbacks[0].opencode/big-pickle[0] | string | `"deepseek-v4-flash"` |  |
 | litellm.fallbacks[1].opencode/north-mini-code-free[0] | string | `"deepseek-v4-flash"` |  |
