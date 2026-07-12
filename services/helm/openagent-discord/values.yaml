@@ -32,10 +32,6 @@ resources:
 
 # -- Discord bot configuration
 config:
-  # -- OpenAI-compatible agent API URL (required, e.g. web-endpoint, headroom)
-  agentApiUrl: ""
-  # -- API key for agent endpoint (optional)
-  agentApiKey: ""
   # -- Only respond to messages mentioning the bot
   mentionOnly: false
   # -- Restrict to a specific Discord channel (empty = all channels)

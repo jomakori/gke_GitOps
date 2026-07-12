@@ -7,7 +7,7 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 ```
 .
 ├── services/          ← 3rd-party infrastructure
-│   ├── helm/          ← Helm charts (15 services)
+│   ├── helm/          ← Helm charts (26 services incl. openagent stack)
 │   └── argocd-appset/ ← App-of-Apps manifests (single applications.yaml template)
 ├── apps/              ← Application workloads
 │   ├── helm/          ← Single parameterized Helm chart (chart name: apps)
@@ -27,12 +27,18 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 
 | Wave | Service | Chart | Purpose | Status |
 |------|---------|-------|---------|--------|
-| 0 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA | enabled |
+| 0 | [local-path](services/helm/local-path/) | rancher/local-path-provisioner | Default k3s storage class — single working provisioner | enabled |
 | 0 | [cert-manager](services/helm/cert-manager/) | jetstack/cert-manager | Automated TLS via Let's Encrypt + Cloudflare DNS-01 | enabled |
+| 0 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA | enabled |
 | 0 | [vpa](services/helm/vpa/) | fairwinds/vpa | Vertical Pod Autoscaler — auto-adjust CPU/memory requests | enabled |
+| 0 | [openagent-crds](services/helm/openagent-crds/) | empty wrapper | `sympozium.ai` CRDs — installed out-of-band by sympozium CLI | enabled |
 | 1 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO | enabled |
+| 1 | [openagent-headroom](services/helm/openagent-headroom/) | chopratejas/headroom | LLM proxy — routes to LiteLLM, SQLite CCR cache | enabled |
+| 1 | [litellm (openagent)](services/helm/openagent-litellm/) | berriai/litellm | Multi-provider LLM gateway (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode) | enabled |
 | 2 | [istio](services/helm/istio/) | custom umbrella | base + istiod + ingress gateway (single chart, 3 upstream deps) | enabled |
+| 2 | [openagent](services/helm/openagent/) | custom | Sympozium Ensemble, SkillPacks, VPA, ExternalSecret — 10-persona loop engineering system | enabled |
 | 3 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
+| 3 | [openagent-discord](services/helm/openagent-discord/) | custom (Go binary) | Discord gateway bot — polls Discord, routes to Sympozium Sisyphus web endpoint | enabled |
 | 4 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts | enabled |
 | 4 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) | enabled |
 | 4 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling | not enabled |
@@ -40,27 +46,66 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 5 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, alerting, Grafana | enabled |
 | 5 | [onedev](services/helm/onedev/) | custom (vendored upstream + SGCluster) | All-in-one DevOps platform (Git, CI/CD, issue tracker) with StackGres PostgreSQL | enabled |
 | 5 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management | not enabled |
+| 5 | [headlamp](services/helm/headlamp/) | headlamp | Kubernetes dashboard UI | enabled |
+| 5 | [opencost](services/helm/opencost/) | opencost | Cost allocation and monitoring | enabled |
 
-Dependency chain: cert-manager + VPA → external-secrets → istio umbrella (CRDs → control plane → ingress gateway → config, reconciled by Kubernetes) → wave 3/4 services. kube-prometheus-stack at wave 4 ensures external-secrets ClusterSecretStores exist before its Grafana ExternalSecret syncs.
+Dependency chain: local-path + cert-manager + VPA + openagent-crds → external-secrets (ClusterSecretStores) → openagent-headroom + litellm (openagent) → istio umbrella (CRDs → control plane → ingress gateway → config) → openagent Ensemble → wave 3+ services. The openagent stack is bootstrapped early so it is ready to serve before wave 4 operators arrive.
 
-### Kagent Loop Engineering System
+### OpenAgent Loop Engineering System
 
-The **kagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized agents, reviewed, and iterated — not answered in a single pass. This is the cluster's native AI workforce.
+The **openagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized personas, reviewed, and iterated — not answered in a single pass. This is the cluster's native AI workforce, built on the **Sympozium** orchestrator.
+
+#### Components
 
 | Component | Wave | Chart | Purpose |
 |-----------|------|-------|---------|
-| `kagent-substrate` | 3 | `services/helm/kagent-substrate/` | gVisor sandbox runtime. Replaces per-agent pods with isolated actors. |
-| `kagent-headroom` | 4 | `services/helm/kagent-headroom/` | LLM proxy — OpenRouter backend, SQLite CCR cache, observability. All agent LLM traffic routes through here. |
-| `kagent` | 5 | `services/helm/kagent/` | Local chart — SandboxAgents, ModelConfigs, SGCluster (StackGres), ExternalSecrets, prompts ConfigMap. |
-| `kagent-crds` | 5 | `oci://ghcr.io/kagent-dev/kagent/helm/kagent-crds` | All `kagent.dev` CRDs (Agent, SandboxAgent, ModelConfig, RemoteMCPServer, etc.). Prerequisite for kagent-upstream. |
-| `kagent-upstream` | 6 | `oci://ghcr.io/kagent-dev/kagent/helm/kagent` | Upstream controller + UI + KMCP controller + kagent-tools + bundled agent harnesses (k8s, istio, helm, promql, observability, grafana-mcp). |
-| `kagent-discord` | 6 | `services/helm/kagent-discord/` | Discord gateway bot — polls Discord, routes messages to A2A agent. |
+| `openagent-crds` | 0 | `services/helm/openagent-crds/` | `sympozium.ai/v1alpha1` CRDs (Ensemble, SkillPack). Installed out-of-band by the sympozium CLI. |
+| `openagent-headroom` | 1 | `services/helm/openagent-headroom/` | LLM proxy (`chopratejas/headroom`) — routes to LiteLLM, SQLite CCR cache, observability. All persona LLM traffic flows through here. |
+| `litellm (openagent)` | 1 | `services/helm/openagent-litellm/` | Multi-provider LLM gateway (`berriai/litellm`) — DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode, plus fallbacks. |
+| `openagent` | 2 | `services/helm/openagent/` | Ensemble + SkillPacks + VPA + ExternalSecret. The single 10-persona `omo-loop-engineering` Ensemble is the orchestrator's brain. |
+| `openagent-discord` | 3 | `services/helm/openagent-discord/` | Discord gateway bot (Go binary) — polls Discord, calls the Sisyphus web endpoint over OpenAI-compatible chat completions. |
 
-**Namespace**: All run in `kagent` except `kagent-substrate` which runs in `ate-system`.
+**Namespaces**: Application resources live in `openagent`. The Sympozium control plane runs separately in `sympozium-system` (out of band — installed by the sympozium CLI). The Discord bot calls `http://omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc.cluster.local:8080/v1/chat/completions`.
 
-**Secrets**: `svc_kagent` Doppler config. Must include `OPENAI_API_KEY` (used by headroom proxy auth) and any provider keys headroom needs.
+**Secrets**: `svc_openagent` Doppler config. Must include provider keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode), `AGENT_API_URL` (Sympozium Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth token), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls). All flow via `envFrom: secretRef` in deployment templates — no Helm `--set` parameters for secrets.
 
-See [services/helm/kagent/README.md](services/helm/kagent/README.md) for the full agent taxonomy, feedback loop pattern, LLM routing details, prompt injection system, and agent creation guide.
+#### The 10 Personas (Ensemble `omo-loop-engineering`)
+
+| Persona | Role | Model | Purpose |
+|---------|------|-------|---------|
+| **sisyphus** | orchestrator | deepseek-v4-pro | Main entry point — intent classification, delegation, verification enforcement. |
+| **atlas** | orchestrator | deepseek-v4-pro | Cross-persona coordination, quality verification, supervision. |
+| **prometheus** | planner | deepseek-v4-pro | Strategic planner — builds step-by-step plans from objectives. |
+| **metis** | planner | deepseek-v4-pro | Pre-planning consultant — hidden intentions, ambiguity, AI failure points. |
+| **momus** | reviewer | deepseek-v4-pro | Ruthless plan reviewer — gaps, risks, missing context. |
+| **oracle** | architect | deepseek-v4-pro | Read-only architecture/security consultant. |
+| **hephaestus** | worker | minimax/M3 | Deep implementation coder — production-quality code. |
+| **sisyphus-junior** | worker | deepseek-v4-flash | Focused task executor — no re-delegation. |
+| **librarian** | researcher | zai/glm-4.7-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
+| **explore** | researcher | zai/glm-4.7-flash | Codebase pattern discovery — grep, glob, file reading. |
+
+**Delegation graph** (spec.relationships): sisyphus → {prometheus, metis, hephaestus, oracle, atlas}; atlas → {librarian, explore, sisyphus-junior}; prometheus → momus. Supervision: atlas → {sisyphus, prometheus, hephaestus}. Stimulus: `omo-loop-engineering` → sisyphus.
+
+**Skills attached**: sisyphus loads `k8s-ops`, `omo-core-skills`, `hashline-editor`, `web-endpoint`. Other personas inherit ensemble defaults.
+
+#### LLM Routing
+
+```
+openagent-discord (Go bot)
+  → POST /v1/chat/completions
+  → omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc:8080
+    → openagent-headroom.openagent.svc:8787   (headroom proxy, CCR cache)
+      → litellm-openagent-litellm.openagent.svc:4000/v1   (LiteLLM gateway)
+        → provider APIs (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode)
+```
+
+The headroom proxy is configured with `OPENAI_TARGET_API_URL=http://litellm-openagent-litellm.openagent.svc.cluster.local:4000/v1` — all upstream LLM calls route through LiteLLM, never directly to OpenRouter.
+
+#### Migration Status
+
+The previous `kagent*` charts (`kagent`, `kagent-substrate`, `kagent-headroom`, `kagent-discord`, `kagent-upstream`, `litellm`) are present on disk and registered in `services/argocd-appset/values.yaml` but **all disabled** (`enable: false`). The legacy `svc_kagent` and `svc_stackgres` ClusterSecretStores remain in `services/helm/external-secrets/values.yaml` for backward compatibility — they are unused by the active openagent stack.
+
+See `services/helm/openagent/templates/ensemble-omo-loop-engineering.yaml` for the full system prompts, delegation rules, and verification tiers.
 
 ### Apps
 
@@ -89,8 +134,9 @@ No secrets in this repo. The chain:
 | `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
 | `svc_postgres_operator` | postgres-operator (StackGres) | `ADMIN_USER`, `ADMIN_PASSWORD` |
 | `svc_onedev` | onedev | `DB_PASSWORD`, `DB_USER` |
-| `svc_kagent` | kagent, kagent-discord | `OPENAI_API_KEY` (headroom auth), `GITHUB_TOKEN`, `DISCORD_BOT_TOKEN`, `KAGENT_PG_*` |
-| `svc_stackgres` | kagent (SGCluster DB) | `KAGENT_PG_PASSWORD`, `KAGENT_PG_SUPERUSER=postgres`, `KAGENT_PG_URL` (full DB URL with embedded password) |
+| `svc_openagent` | openagent, openagent-headroom, litellm (openagent), openagent-discord | Provider keys: `DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `MINIMAX_API_BASE`, `ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `OPENCODE_API_BASE`. Discord: `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, `AGENT_API_URL` (Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth). GHCR: `GITHUB_TOKEN`. |
+| `svc_kagent` | legacy kagent stack (disabled) | unused — kept for backward compatibility |
+| `svc_stackgres` | legacy kagent SGCluster (disabled) | unused — kept for backward compatibility |
 
 New secrets are added in the Doppler dashboard — the ExternalSecret already pulls the entire config.
 
