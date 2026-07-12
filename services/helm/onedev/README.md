@@ -84,9 +84,6 @@ OneDev runs on dedicated app infrastructure:
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | dopplerConfig | string | `"svc_onedev"` |  |
-| onedev.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key | string | `"class"` |  |
-| onedev.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].operator | string | `"In"` |  |
-| onedev.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0] | string | `"guaranteed"` |  |
 | onedev.database.external | bool | `true` |  |
 | onedev.database.host | string | `"onedev-pg.onedev.svc.cluster.local"` |  |
 | onedev.database.maximumPoolSize | string | `"25"` |  |

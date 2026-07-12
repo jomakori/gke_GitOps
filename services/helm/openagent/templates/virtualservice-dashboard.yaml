@@ -4,7 +4,12 @@ metadata:
   name: {{ include "openagent.fullname" . }}-dashboard
   namespace: istio-system
   labels:
-    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "openagent.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: openagent
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/component: dashboard
 spec:
   hosts:
     - {{ include "openagent.dashboardURL" . | quote }}

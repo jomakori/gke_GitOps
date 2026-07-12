@@ -24,7 +24,7 @@ The ExternalSecret (`stackgres-restapi-admin`) pulls two keys from the `svc_post
 
 ### CRD handling
 
-CRDs are installed via the operator's `INSTALL_CRDS=true` env var, not Helm — the chart sets `skipCrds: true` to prevent ArgoCD normalization errors on CRD resources. The pre-install hook creates the `SGConfig` CRD using `kubectl apply` (idempotent) so a fresh install succeeds. This is reflected in the ArgoCD Application configuration with `ignoreDifferences` for the `apiextensions.k8s.io/CustomResourceDefinition` group.
+CRDs are installed via the operator's `INSTALL_CRDS=true` env var, not Helm — the chart sets `skipCrds: true` to prevent ArgoCD normalization errors on CRD resources. This is reflected in the ArgoCD Application configuration with `ignoreDifferences` for the `apiextensions.k8s.io/CustomResourceDefinition` group.
 
 ### How apps consume this operator
 

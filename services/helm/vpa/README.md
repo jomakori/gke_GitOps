@@ -1,14 +1,19 @@
 # vpa
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0](https://img.shields.io/badge/AppVersion-1.2.0-informational?style=flat-square)
-
-Vertical Pod Autoscaler - automatically adjusts CPU and memory requests for pods based on actual usage.
+Vertical Pod Autoscaler - automatically adjusts CPU and memory requests for pods
 
 ## Maintainers
 
 | Name | Email | Url |
 | ---- | ------ | --- |
 | local |  |  |
+
+## Requirements
+
+| Repository | Name | Version |
+|------------|------|---------|
+| https://charts.fairwinds.com/stable | vpa | 4.6.0 |
 
 ## Overview
 
@@ -55,15 +60,15 @@ spec:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| vpa.admissionController.enabled | bool | `true` | Enable admission controller |
-| vpa.admissionController.extraArgs.v | string | `"2"` | Log level |
-| vpa.image.tag | string | `"1.2.0"` | VPA image tag |
-| vpa.recommender.enabled | bool | `true` | Enable recommender |
-| vpa.recommender.extraArgs.v | string | `"2"` | Log level |
-| vpa.replicaCount | int | `1` | Replica count |
-| vpa.resources.limits.cpu | string | `"200m"` | CPU limit |
-| vpa.resources.limits.memory | string | `"512Mi"` | Memory limit |
-| vpa.resources.requests.cpu | string | `"50m"` | CPU request |
-| vpa.resources.requests.memory | string | `"128Mi"` | Memory request |
-| vpa.updater.enabled | bool | `true` | Enable updater |
-| vpa.updater.extraArgs.v | string | `"2"` | Log level |
+| vpa.admissionController.enabled | bool | `true` |  |
+| vpa.admissionController.extraArgs.v | string | `"2"` |  |
+| vpa.image.tag | string | `"1.2.0"` |  |
+| vpa.recommender.enabled | bool | `true` |  |
+| vpa.recommender.extraArgs.v | string | `"2"` |  |
+| vpa.replicaCount | int | `1` |  |
+| vpa.resources.limits.cpu | string | `"200m"` |  |
+| vpa.resources.limits.memory | string | `"512Mi"` |  |
+| vpa.resources.requests.cpu | string | `"50m"` |  |
+| vpa.resources.requests.memory | string | `"128Mi"` |  |
+| vpa.updater.enabled | bool | `true` |  |
+| vpa.updater.extraArgs.v | string | `"2"` |  |

@@ -1,259 +1,52 @@
-# Kagent — Loop Engineering System
-
-Kagent services implement loop-engineered AI execution: tasks decomposed, delegated to specialized agents, reviewed, iterated — not single-pass answers. Cluster's native AI workforce.
-
-## What Loop Engineering Means
-
-**Single-pass AI**: User asks → model answers → done. No verification, iteration, delegation.
-
-**Loop-engineered AI**: User asks → **orchestrator** parses intent → **planner** breaks into steps → **reviewer** catches gaps → **worker** executes → **verifier** checks output → loop repeats until quality gate passes. Each role = distinct agent with specialized model, prompt, execution context.
-
-"Headroom" (LLM proxy) creates *cognitive margin* — safety buffer between normal operation and output ceiling. System explores alternatives, backtracks, improves before committing.
-
-## System Architecture
-
-| Component | Wave | Chart | Purpose |
-|-----------|------|-------|---------|
-| `kagent-substrate` | 3 | `services/helm/kagent-substrate/` | gVisor sandbox runtime. Isolated actors replace per-agent pods. |
-| `kagent-headroom` | 4 | `services/helm/kagent-headroom/` | LLM proxy — OpenRouter backend, SQLite CCR cache, observability. All agent LLM traffic routes through here. |
-| `kagent` | 5 | `services/helm/kagent/` | Control plane — Agent/ModelConfig CRDs, controller, UI (8080), Postgres (StackGres), prompts ConfigMap. |
-| `kagent-discord` | 6 | `services/helm/kagent-discord/` | Discord gateway bot — polls Discord, routes messages to A2A agent. |
-
-**Namespace**: All run in `kagent` except `kagent-substrate` (runs in `ate-system`).
-
-**Secrets**: `svc_kagent` Doppler config. Must include `OPENAI_API_KEY` (headroom proxy auth) + provider keys headroom needs.
-
-## Agent Taxonomy
-
-All agents = `SandboxAgent` CRs (`kagent.dev/v1alpha2`) on substrate. Each has `agent-role` label + dedicated system prompt from ConfigMap.
-
-| Agent | Role | Model | Purpose |
-|-------|------|-------|---------|
-| **sisyphus** | orchestrator | opencode-big-pickle | Main orchestrator. Parses intake, plans, delegates via A2A. |
-| **atlas** | orchestrator | opencode-big-pickle | Master orchestrator. Coordinates agents, verifies work. |
-| **prometheus** | planner | moonshotai-kimi-k2-6 | Strategic planner. Step-by-step implementation plans. |
-| **metis** | planner | opencode-big-pickle | Pre-planning consultant. Identifies hidden intentions, ambiguities, AI failure points. |
-| **momus** | reviewer | moonshotai-kimi-k2-6 | Ruthless plan reviewer. Identifies gaps, risks, ambiguities. |
-| **oracle** | architect | opencode-big-pickle | Read-only architecture/security consultant. |
-| **hephaestus** | worker | opencode-north-mini-code-free | Deep implementation coder. Production-quality code. |
-| **librarian** | researcher | opencode-deepseek-v4-flash-free | Docs/RAG searcher. Finds authoritative docs, OSS examples, remote repos. |
-| **explore** | researcher | opencode-deepseek-v4-flash-free | Contextual grep for codebases. |
-| **multimodal-looker** | researcher | opencode-mimo-v2-5-free | Media file analyzer (PDFs, images, diagrams). |
-| **ultrabrain-agent** | worker | anthropic-claude-opus-4-7 | Hard logic, architecture decisions, algorithms. |
-| **sisyphus-junior** | worker | opencode-big-pickle | Focused task executor. Same discipline, no delegation. |
-| **writing-agent** | worker | google-gemini-3-5-flash | Documentation, prose, technical writing. |
-| **ultraworker** | worker | opencode-big-pickle | Ultrawork loop executor. |
-| **opencrust** | worker | opencode-big-pickle | Shell/command specialist. |
-
-## Intent Classification & Routing Gates
-
-Not every request needs full loop. **Sisyphus classifies intent inline** — classification = part of orchestration, not separate step. Same agent that executes decides loop depth.
-
-### Why Inline Classification
-
-- **Lower latency**: No extra model call before routing.
-- **Full context**: Sisyphus has complete conversation history, tool outputs, file contents.
-- **Unified reasoning**: Classifier = executor. No impedance mismatch.
-- **Simpler architecture**: One agent owns intent → routing → execution.
-
-### Complexity Tiers
-
-| Tier | Criteria | Loop Depth | Agents |
-|---|---|---|---|
-| **Trivial** | Single file, <10 lines, typo, rename, obvious syntax error | Direct | sisyphus-junior only |
-| **Quick** | Explicit file/line, clear command, single domain | Shallow | 1 specialist (hephaestus / opencrust / writing-agent) |
-| **Scoped** | Known domain, unclear location | Explore → Execute | 2–4 agents (explore + librarian parallel, then worker) |
-| **Exploratory** | "how does X work?", multi-module discovery | Research → Synthesize | 2–3 agents (librarian + explore → answer) |
-| **Complex** | Multi-file, cross-cutting, architecture, security | Full loop | 5–8 agents (metis → prometheus → momus → hephaestus → oracle → atlas) |
-| **Ambiguous** | Multiple interpretations with 2x+ effort difference | Ask → Re-classify | 0 agents — ask user ONE precise question |
-
-### Domain Routing
-
-| Domain | Primary Agent | Fallback | When to use |
-|---|---|---|---|
-| **Visual** (UI, CSS, styling, layout, design, animation) | hephaestus | opencrust | Always visual-engineering category |
-| **Logic** (algorithms, architecture, complex business logic) | ultrabrain-agent | oracle | Use oracle for review after |
-| **Writing** (docs, prose, technical writing) | writing-agent | sisyphus-junior | Caveman mode for terse output |
-| **Research** (docs lookup, OSS examples, remote repos) | librarian | explore | librarian for docs, explore for codebase |
-| **Git** (commits, branches, rebases, history) | opencrust | sisyphus-junior | Shell/command specialist |
-| **General** | sisyphus-junior | hephaestus | Determine after exploration |
-
-### Intent Gates
-
-**ask_gate** — Before routing to implementation:
-1. Action irreversible? (delete, push, publish) → Flag: `require_confirmation`
-2. External side effects? (sending, deleting, publishing, pushing to production) → Flag: `require_confirmation`
-3. Critical info missing that materially changes outcome? → Flag: `ask_user`
-
-**re_entry_rule** — Don't re-classify every turn:
-- **Confirmation turn**: User confirms/refines prior intent → do NOT re-classify. Acknowledge + act.
-- **Explicit decision**: User already chose option ("yes do it", "A로 가자") → do NOT re-litigate. Execute.
-- **Post-decision meta-question**: "what do you think?" after decision = acknowledgment request, NOT new classification.
-- **Already-in-context**: Answer verbatim in context window → RETURN IT. Do not re-derive.
-
-### Key Triggers (check BEFORE classifying)
-
-- External library/source mentioned → include **librarian**
-- 2+ modules involved → include **explore**
-- Ambiguous or complex request → include **metis** before planner
-- Work plan saved to `.sisyphus/plans/*.md` → include **momus** for review
-- Security/performance concerns → include **oracle**
-- "Look into" + "create PR" → Full implementation cycle, not just research
-
-### Verification Tiers
-
-Sisyphus enforces verification based on inline classification:
-
-| Tier | When | Required Evidence |
-|---|---|---|
-| **V1** | Trivial fixes (typo, rename, comment) | `lsp_diagnostics` clean on changed file |
-| **V2** | Quick/scoped changes (≤3 files, single domain) | `lsp_diagnostics` + related tests pass + run entry point once |
-| **V3** | Complex/cross-cutting changes or any delegated work | `lsp_diagnostics` (zero errors) + all tests pass + build passes + manual QA |
-
-### Why This Matters
-
-Without classification, every request gets full loop — typo fix through metis → prometheus → momus → hephaestus → oracle → atlas. 6 agents, 6 model calls, 30+ seconds, unnecessary cost.
-
-With inline classification:
-- Typo fix → sisyphus-junior → V1 verify → done. **1 agent, 3 seconds.**
-- "How does X work?" → librarian + explore (parallel) → synthesize → done. **2 agents, 5 seconds.**
-- "Refactor auth layer" → full loop with review. **8 agents, 60 seconds, but correct.**
-
-Sisyphus is the gatekeeper.
-
-## Feedback Loop Pattern
-
-Every primary agent has `-fb` (feedback) counterpart reviewing output before loop continues:
-
-```
-User request
-  → Sisyphus (orchestrator) parses intent
-    → Metis (pre-planning) probes for ambiguities
-      → Prometheus (planner) builds step-by-step plan
-        → Momus (reviewer) catches gaps in plan
-          → Hephaestus (worker) implements step
-            → Oracle (architect) reviews for security/quality
-              → Atlas (master orchestrator) verifies completion
-                → Loop repeats for next step or terminates
-```
-
-`-fb` agents = lightweight reviewers running same model config as primary, but with critique-oriented system prompt. Review happens inline, not as separate round-trip.
-
-## LLM Routing (Headroom)
-
-All agents talk to `http://kagent-headroom.kagent.svc.cluster.local:8787` via `ModelConfig` CRs. Headroom:
-- Routes to OpenRouter (200+ providers)
-- Caches responses in SQLite (CCR — cached completion repository)
-- Observability on latency, cost, token usage
-- Swaps backends without touching agent configs
-
-**ModelConfig CRs** define model string (e.g. `opencode/big-pickle`, `moonshotai/kimi-k2.6`) + provider (`OpenAI` — headroom speaks OpenAI-compatible API). Provider selection happens at headroom layer via `--backend openrouter`.
-
-## Prompt Injection System
-
-Agent system prompts loaded from ConfigMap (`kagent-prompts`) mounted at runtime. `values.yaml` includes two foundational prompt templates:
-
-- **`caveman`** — Ultra-compressed communication mode. Drops articles, filler, pleasantries. Pattern: `[thing] [action] [reason]. [next step].`
-- **`ponytail`** — YAGNI ladder. Lazy senior dev discipline: check if needed → stdlib → existing dep → one-liner → small function → new module → new abstraction.
-
-Each agent's `systemMessageFrom` references key in this ConfigMap (e.g. `sisyphus-system.txt`, `oracle-system.txt`). `-fb` variants use same base prompt with critique suffixes.
-
-## Skills
-
-Skills = prompt templates injected via `kagent-prompts` ConfigMap. Reusable context + behavior patterns.
-
-### Core Skills (all agents)
-
-| Skill | Prompt Key | Purpose |
-|---|---|---|
-| **caveman** | `caveman.txt` | Ultra-compressed communication mode. Drops filler, keeps substance. |
-| **ponytail** | `ponytail.txt` | YAGNI ladder. Lazy senior dev discipline. |
-
-### Agent-Specific Skills
-
-| Skill | Prompt Key | Used By |
-|---|---|---|
-| **cavecrew** | `cavecrew-system.txt` | Sisyphus — when to delegate to compressed subagents |
-| **github-repo-fetcher** | `github-repo-fetcher-system.txt` | Librarian, Explore — fetch repos on demand |
-| **repo-loader** | `repo-loader-system.txt` | Sisyphus — lazy repo loading strategy |
-
-### Porting Local Skills
-
-Skills from `~/.config/opencode/skills/` ported to ConfigMap:
-
-1. Convert SKILL.md content to system prompt
-2. Add to `templates/prompts-configmap.yaml`
-3. Reference from agent's `systemMessageFrom` if needed
-4. Remove hardcoded URLs/accounts — use `.Values.*` or env vars
-
-### Skill Lifecycle
-
-Skills = living documents. Evolve as system changes.
-
-**Update triggers**:
-
-| Trigger | Action | Owner |
-|---|---|---|
-| Fresh session start | Load latest skill content from ConfigMap | Sisyphus |
-| ArgoCD sync | Helm renders latest prompts into ConfigMap | ArgoCD |
-| Repo change | Update repo-loader skill | Developer |
-| New CLI installed | Update tool-references in relevant skills | Developer |
-| New agent added | Update agent taxonomy in all relevant skills | Developer |
-| Prompt tuning | After test failures, refine classification prompts | Developer |
-
-**Update flow**:
-
-1. Developer edits skill prompt in `prompts-configmap.yaml`
-2. ArgoCD detects drift, syncs new ConfigMap
-3. Agents pick up new prompt on next session start
-4. No agent restart required — prompts read at runtime
-
-**Dynamic skills** (generated at runtime):
-
-- GitHub repo list — fetched via `gh repo list` when needed
-- Local repo paths — discovered via `find ~ -name .git` when needed
-- Installed CLI inventory — built from `which` checks when needed
-
-**Versioning**: Git commit hash = skill version. ArgoCD sync wave = delivery mechanism. Agent session = consumption point.
-
-If agent behaves oddly, check:
-1. `kubectl get cm kagent-prompts -n kagent -o yaml | grep <skill-key>`
-2. `git log --oneline -5 services/helm/kagent/templates/prompts-configmap.yaml`
-3. ArgoCD UI for sync status
-
-**Testing skill changes**:
-
-1. `helm template kagent services/helm/kagent/` — verify renders
-2. Check specific prompt: `helm template ... | grep -A 20 <skill-key>`
-3. Run intent classification tests against new prompt
-
-## Adding a New Agent
-
-1. **Create agent CR** in `services/helm/kagent/templates/agents/<name>.yaml`:
-   ```yaml
-   apiVersion: kagent.dev/v1alpha2
-   kind: SandboxAgent
-   metadata:
-     name: my-agent
-     labels:
-       agent-type: primary
-       agent-role: worker   # or planner, reviewer, orchestrator, researcher, architect
-   spec:
-     type: Declarative
-     description: "What this agent does."
-     declarative:
-       runtime: go
-       modelConfig: opencode-big-pickle
-       systemMessageFrom:
-         name: kagent-prompts
-         key: my-agent-system.txt
-         type: ConfigMap
-     platform: substrate
-     substrate:
-       workerPoolRef:
-         name: kagent-default
-   ```
-2. **Add feedback agent** `agents/<name>-fb.yaml` with `agent-role: reviewer` and critique prompt.
-3. **Add system prompt** to `templates/prompts-configmap.yaml`.
-4. **Ensure ModelConfig exists** in `templates/modelconfigs/` if using new model.
-5. **ArgoCD sync** — no Terraform changes needed.
+# kagent
+
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.9.9](https://img.shields.io/badge/AppVersion-0.9.9-informational?style=flat-square)
+
+Kagent native K8s orchestration — Agent/ModelConfig CRDs, ExternalSecret, Database, Prompts (upstream kagent-crds + kagent installed separately via ArgoCD)
+
+## Maintainers
+
+| Name | Email | Url |
+| ---- | ------ | --- |
+| local |  |  |
+
+## Values
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| agents | object | `{}` |  |
+| database.enabled | bool | `true` |  |
+| database.pgClientImage | string | `"postgres:18-alpine"` |  |
+| database.pgVersion | string | `"18"` |  |
+| database.profile | string | `"development"` |  |
+| database.storage | string | `"5Gi"` |  |
+| dopplerConfig | string | `""` | Doppler config; set by ArgoCD appset. Creates ExternalSecret when present. |
+| headroom | object | `{"url":"http://kagent-headroom.kagent.svc.cluster.local:8787"}` | Headroom LLM proxy endpoint |
+| kagent.agents.argo-rollouts-agent.enabled | bool | `false` |  |
+| kagent.agents.cilium-debug-agent.enabled | bool | `false` |  |
+| kagent.agents.helm-agent.enabled | bool | `false` |  |
+| kagent.agents.istio-agent.enabled | bool | `false` |  |
+| kagent.agents.observability-agent.enabled | bool | `false` |  |
+| kagent.controller.service.port | int | `8083` |  |
+| kagent.controller.service.type | string | `"ClusterIP"` |  |
+| kagent.controller.substrate.ateApiEndpoint | string | `"dns:///kagent-substrate-api.ate-system.svc:443"` |  |
+| kagent.controller.substrate.ateApiInsecure | bool | `true` |  |
+| kagent.controller.substrate.enabled | bool | `true` |  |
+| kagent.database.postgres.bundled.enabled | bool | `false` |  |
+| kagent.database.postgres.enabled | bool | `true` |  |
+| kagent.database.postgres.url | string | `""` |  |
+| kagent.database.postgres.vectorEnabled | bool | `true` |  |
+| kagent.providers.default | string | `"openAI"` |  |
+| kagent.providers.openAI.apiKey | string | `""` |  |
+| kagent.substrateWorkerPool.ateomImage | string | `"ghcr.io/kagent-dev/substrate/ateom-gvisor:v0.0.6"` |  |
+| kagent.substrateWorkerPool.create | bool | `true` |  |
+| kagent.substrateWorkerPool.replicas | int | `1` |  |
+| kagent.ui.service.port | int | `8080` |  |
+| kagent.ui.service.type | string | `"ClusterIP"` |  |
+| modelConfigs | object | `{}` |  |
+| prompts.caveman | string | `"# Caveman Communication Rules\nRespond terse like smart caveman. All technical substance stay. Only fluff die.\n\nRules:\n- Drop: articles (a/an/the), filler (just/really/basically/actually/simply), pleasantries (sure/certainly/of course/happy to), hedging\n- Fragments OK. Short synonyms (big not extensive, fix not \"implement a solution for\"). Technical terms exact. Code blocks unchanged. Errors quoted exact.\n- Pattern: [thing] [action] [reason]. [next step].\n- Not: \"Sure! I'd be happy to help you with that.\"\n- Yes: \"Bug in auth middleware. Fix:\"\n\nAuto-Clarity — drop caveman for:\n- Security warnings\n- Irreversible action confirmations\n- Multi-step sequences where fragment ambiguity risks misread\n- When compression creates technical ambiguity\n- When user asks to clarify or repeats question\nResume caveman after clear part done.\n\nBoundaries:\n- Code/commits/PRs: write normal\n- \"stop caveman\" or \"normal mode\": revert\n- Level persist until changed or session end\n"` | Caveman communication rules. Loaded as caveman.txt.    Injected into agent system prompt for ultra-compressed output. |
+| prompts.ponytail | string | `"# Ponytail Heuristics — Lazy Senior Dev\nYou are a lazy senior developer. Before writing code, escalate this YAGNI ladder:\n1. CHECK IF NEEDED: Does this feature need to exist? Can it be deleted?\n2. USE STDLIB: Does the standard library already provide this?\n3. USE EXISTING DEP: Does an installed dependency provide this?\n4. ONE-LINER: Can this be a single expression? Write it inline.\n5. SMALL FUNCTION: Only if all above fail, write a minimal function.\n6. NEW MODULE/FILE: Only if function doesn't fit, extract to module.\n7. NEW ABSTRACTION: Only if pattern repeats 3+ times.\nNEVER: Add feature \"for later\", interface with one impl, config option for hardcoded value, helper for single use, layer of indirection without clear benefit.\nWhen in doubt: delete code. Less is more.\n"` | Ponytail YAGNI ladder. Loaded as ponytail.txt.    Guides agent to minimize code — lazy senior dev discipline. |
+| skills | object | `{"github":{"account":""},"repos":{"localPaths":{}}}` | Skill configuration (injected into agent prompts) |
+
+----------------------------------------------
+Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

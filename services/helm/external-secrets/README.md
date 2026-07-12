@@ -49,6 +49,7 @@ The store references `doppler-machine-token` in the `external-secrets` namespace
 | `doppler-svc-postgres-operator` | devops | svc_postgres_operator | postgres-operator |
 | `doppler-svc-onedev` | devops | svc_onedev | onedev |
 | `doppler-svc-mongodb` | devops | svc_mongodb | mongodb-operator, app PerconaServerMongoDB CRs |
+| `doppler-svc-openclaw` | devops | svc_openclaw | openclaw |
 | `doppler-zurabase-dev` | zurabase | dev | future zurabase service |
 | `doppler-zurabase-stg` | zurabase | stg | future zurabase service |
 | `doppler-zurabase-prd` | zurabase | prd | future zurabase service |
@@ -76,14 +77,18 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | clusterSecretStores.svc_cloudflare.project | string | `"devops"` |  |
 | clusterSecretStores.svc_grafana.config | string | `"svc_grafana"` |  |
 | clusterSecretStores.svc_grafana.project | string | `"devops"` |  |
+| clusterSecretStores.svc_kagent.config | string | `"svc_kagent"` |  |
+| clusterSecretStores.svc_kagent.project | string | `"devops"` |  |
 | clusterSecretStores.svc_mongodb.config | string | `"svc_mongodb"` |  |
 | clusterSecretStores.svc_mongodb.project | string | `"devops"` |  |
 | clusterSecretStores.svc_onedev.config | string | `"svc_onedev"` |  |
 | clusterSecretStores.svc_onedev.project | string | `"devops"` |  |
-| clusterSecretStores.svc_edgecrab.config | string | `"svc_edgecrab"` |  |
-| clusterSecretStores.svc_edgecrab.project | string | `"devops"` |  |
+| clusterSecretStores.svc_openagent.config | string | `"svc_openagent"` |  |
+| clusterSecretStores.svc_openagent.project | string | `"devops"` |  |
 | clusterSecretStores.svc_postgres_operator.config | string | `"svc_postgres_operator"` |  |
 | clusterSecretStores.svc_postgres_operator.project | string | `"devops"` |  |
+| clusterSecretStores.svc_stackgres.config | string | `"svc_stackgres"` |  |
+| clusterSecretStores.svc_stackgres.project | string | `"devops"` |  |
 | clusterSecretStores.zurabase-dev.config | string | `"dev"` |  |
 | clusterSecretStores.zurabase-dev.project | string | `"zurabase"` |  |
 | clusterSecretStores.zurabase-prd.config | string | `"prd"` |  |
