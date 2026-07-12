@@ -373,10 +373,8 @@ services:
     destNamespace: openagent
     dopplerConfig: "svc_openagent"
     parameters:
-      - name: config.agentApiUrl
-        value: "http://omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc.cluster.local:8080/v1/chat/completions"
-      - name: config.agentApiKey
-        value: "sk-a6ae41fd0b092c2dcb4aa8baa146722c66c1f268d5746a58"
+      - name: config.mentionOnly
+        value: "false"
     syncOptions:
       - CreateNamespace=true
 
