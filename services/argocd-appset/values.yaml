@@ -12,7 +12,7 @@ accessAudienceTag: ""
 
 # Service Configurations
 services:
-  # Wave 0 — Init services (no deps)
+# Wave 0 — Init services (no deps)
   localPath:
     enable: true
     syncWave: "0"
@@ -43,15 +43,6 @@ services:
       - CreateNamespace=true
       - ServerSideApply=true
 
-  openagentCrds:
-    enable: true
-    syncWave: "0"
-    destNamespace: openagent
-    syncOptions:
-      - CreateNamespace=true
-      - Replace=true
-      - ServerSideApply=true
-
   # Wave 1 — Secret engine
   externalSecrets:
     enable: true
@@ -71,27 +62,6 @@ services:
         jsonPointers:
           - /data
           - /type
-
-  # Wave 1 — OpenAgent services (after external-secrets ClusterSecretStores are ready)
-  openagentHeadroom:
-    enable: true
-    syncWave: "1"
-    destNamespace: openagent
-    dopplerConfig: "svc_openagent"
-    parameters:
-      - name: storageClass
-        value: "{{ .Values.storageClass }}"
-    syncOptions:
-      - CreateNamespace=true
-
-  litellmOpenagent:
-    enable: true
-    syncWave: "1"
-    destNamespace: openagent
-    helmPath: services/helm/openagent-litellm
-    dopplerConfig: "svc_openagent"
-    syncOptions:
-      - CreateNamespace=true
 
   # Wave 2 — Istio umbrella (after external-secrets ClusterSecretStores are ready)
   istio:
@@ -115,7 +85,6 @@ services:
           - .webhooks[].namespaceSelector
           - .webhooks[].objectSelector
           - .webhooks[].timeoutSeconds
-          - .webhooks[].clientConfig.service.port
           - .webhooks[].rules[].scope
     parameters:
       - name: virtualServices.argocd.enabled
@@ -129,24 +98,18 @@ services:
 
   openagent:
     enable: true
-    syncWave: "2"
+    syncWave: "0"
     destNamespace: openagent
-    dopplerConfig: "svc_openagent"
     managedNamespaceMetadata:
       labels:
         istio.io/dataplane-mode: ambient
-    gateways:
-      enable_private: true
-      subdomain: openagent
-      timeout: 600s
-      destination:
-        serviceName: openagent-api
-        servicePort: 8080
     parameters:
-      - name: storageClass
-        value: "{{ .Values.storageClass }}"
       - name: clusterDomain
         value: "{{ .Values.clusterDomain }}"
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
+      - name: dopplerConfig
+        value: "svc_openagent"
     syncOptions:
       - CreateNamespace=true
 
@@ -368,7 +331,7 @@ services:
       - CreateNamespace=true
 
   openagentDiscord:
-    enable: true
+    enable: false
     syncWave: "3"
     destNamespace: openagent
     dopplerConfig: "svc_openagent"

@@ -65,7 +65,7 @@ The **openagent** services implement a *loop-engineered* AI execution model: tas
 | `openagent` | 2 | `services/helm/openagent/` | Ensemble + SkillPacks + VPA + ExternalSecret. The single 10-persona `omo-loop-engineering` Ensemble is the orchestrator's brain. |
 | `openagent-discord` | 3 | `services/helm/openagent-discord/` | Discord gateway bot (Go binary) — polls Discord, calls the Sisyphus web endpoint over OpenAI-compatible chat completions. |
 
-**Namespaces**: Application resources live in `openagent`. The Sympozium control plane runs separately in `sympozium-system` (out of band — installed by the sympozium CLI). The Discord bot calls `http://omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc.cluster.local:8080/v1/chat/completions`.
+**Namespaces**: Application resources live in `openagent`. The c control plane runs separately in `sympozium-system` (out of band — installed by the sympozium CLI). The Discord bot calls `http://omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc.cluster.local:8080/v1/chat/completions`.
 
 **Secrets**: `svc_openagent` Doppler config. Must include provider keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode), `AGENT_API_URL` (Sympozium Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth token), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls). All flow via `envFrom: secretRef` in deployment templates — no Helm `--set` parameters for secrets.
 
