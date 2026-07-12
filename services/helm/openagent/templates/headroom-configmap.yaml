@@ -1,0 +1,19 @@
+{{- if .Values.headroom.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-headroom-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "openagent.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: openagent
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/component: headroom
+data:
+  HEADROOM_HOST: "0.0.0.0"
+  HEADROOM_PORT: "{{ .Values.headroom.service.port }}"
+  HEADROOM_MODE: "optimize"
+  HEADROOM_TELEMETRY: "off"
+{{- end }}
