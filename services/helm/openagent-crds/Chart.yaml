@@ -1,10 +1,9 @@
 apiVersion: v2
 name: openagent-crds
-description: Sympozium CRDs for openagent namespace
+description: Sympozium CRDs (deployed independently — OCI dep removed due to GHCR org-private default visibility)
 type: application
 version: 0.1.0
 appVersion: "latest"
-dependencies:
-  - name: sympozium-crds
-    version: "0.1.0"
-    repository: oci://ghcr.io/sympozium-ai/sympozium/charts/sympozium-crds
+# sympozium-crds OCI dependency removed — GHCR packages are private-by-default for org repos.
+# CRDs are installed directly via sympozium CLI or helm upgrade in sympozium-system.
+dependencies: []
