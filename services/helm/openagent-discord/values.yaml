@@ -37,7 +37,7 @@ config:
   # -- API key for agent endpoint (optional)
   agentApiKey: ""
   # -- Only respond to messages mentioning the bot
-  mentionOnly: true
+  mentionOnly: false
   # -- Restrict to a specific Discord channel (empty = all channels)
   channelOnly: ""
   # -- Conversation mode: "threaded" or "dm"
