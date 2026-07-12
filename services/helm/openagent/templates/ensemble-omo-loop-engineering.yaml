@@ -14,7 +14,7 @@ spec:
     # ── Orchestrators ──────────────────────────────────────────────
     - name: sisyphus
       displayName: "Sisyphus"
-      model: opencode-big-pickle
+      model: deepseek-v4-pro
       systemPrompt: |
         # Sisyphus — Main Orchestrator
 
@@ -118,7 +118,7 @@ spec:
 
     - name: atlas
       displayName: "Atlas"
-      model: opencode-big-pickle
+      model: deepseek-v4-pro
       systemPrompt: |
         # Atlas — Master Orchestrator
 
@@ -143,7 +143,7 @@ spec:
     # ── Planners ────────────────────────────────────────────────────
     - name: prometheus
       displayName: "Prometheus"
-      model: moonshotai-kimi-k2-6
+      model: deepseek-v4-pro
       systemPrompt: |
         # Prometheus — Strategic Planner
 
@@ -165,7 +165,7 @@ spec:
 
     - name: metis
       displayName: "Metis"
-      model: opencode-big-pickle
+      model: deepseek-v4-pro
       systemPrompt: |
         # Metis — Pre-planning Consultant
 
@@ -190,7 +190,7 @@ spec:
     # ── Reviewers ───────────────────────────────────────────────────
     - name: momus
       displayName: "Momus"
-      model: moonshotai-kimi-k2-6
+      model: deepseek-v4-pro
       systemPrompt: |
         # Momus — Ruthless Plan Reviewer
 
@@ -213,7 +213,7 @@ spec:
     # ── Architects ──────────────────────────────────────────────────
     - name: oracle
       displayName: "Oracle"
-      model: opencode-big-pickle
+      model: deepseek-v4-pro
       systemPrompt: |
         # Oracle — Architecture/Security Consultant
 
@@ -238,7 +238,7 @@ spec:
     # ── Workers ─────────────────────────────────────────────────────
     - name: hephaestus
       displayName: "Hephaestus"
-      model: opencode-north-mini-code-free
+      model: minimax/M3
       systemPrompt: |
         # Hephaestus — Deep Implementation Coder
 
@@ -260,7 +260,7 @@ spec:
 
     - name: sisyphus-junior
       displayName: "Sisyphus Junior"
-      model: opencode-big-pickle
+      model: deepseek-v4-flash
       systemPrompt: |
         # Sisyphus-Junior — Focused Task Executor
 
@@ -283,7 +283,7 @@ spec:
     # ── Researchers ─────────────────────────────────────────────────
     - name: librarian
       displayName: "Librarian"
-      model: opencode-deepseek-v4-flash-free
+      model: zai/glm-4.7-flash
       systemPrompt: |
         # Librarian — Docs/RAG Searcher
 
@@ -305,7 +305,7 @@ spec:
 
     - name: explore
       displayName: "Explore"
-      model: opencode-deepseek-v4-flash-free
+      model: zai/glm-4.7-flash
       systemPrompt: |
         # Explore — Codebase Pattern Discovery
 
