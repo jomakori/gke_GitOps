@@ -30,7 +30,6 @@ duplicated source code. The umbrella is the source of truth.
 | discord.config.pollUI | bool | `true` |  |
 | discord.config.startupChannel | string | `"chat"` |  |
 | discord.enabled | bool | `true` |  |
-| discord.ghcrPullSecret | string | `""` |  |
 | discord.image.pullPolicy | string | `"IfNotPresent"` |  |
 | discord.image.repository | string | `"ghcr.io/jomakori/gke_gitops/openagent-discord-bot"` |  |
 | discord.image.tag | string | `"0.6.0"` |  |
@@ -41,8 +40,8 @@ duplicated source code. The umbrella is the source of truth.
 | discord.service.port | int | `8080` |  |
 | discord.version.configMapName | string | `"openagent-discord-version"` |  |
 | dopplerConfig | string | `"svc_openagent"` |  |
+| ghcrPullSecret | string | `""` |  |
 | headroom.enabled | bool | `true` |  |
-| headroom.ghcrPullSecret | string | `""` |  |
 | headroom.image.pullPolicy | string | `"IfNotPresent"` |  |
 | headroom.image.repository | string | `"ghcr.io/chopratejas/headroom"` |  |
 | headroom.image.tag | string | `"latest"` |  |
@@ -59,7 +58,6 @@ duplicated source code. The umbrella is the source of truth.
 | litellm.fallbacks[0].opencode/big-pickle[0] | string | `"deepseek-v4-flash"` |  |
 | litellm.fallbacks[1].opencode/north-mini-code-free[0] | string | `"deepseek-v4-flash"` |  |
 | litellm.fallbacks[2].opencode/deepseek-v4-flash-free[0] | string | `"deepseek-v4-flash"` |  |
-| litellm.ghcrPullSecret | string | `""` |  |
 | litellm.image.pullPolicy | string | `"IfNotPresent"` |  |
 | litellm.image.repository | string | `"ghcr.io/berriai/litellm"` |  |
 | litellm.image.tag | string | `"main-stable"` |  |

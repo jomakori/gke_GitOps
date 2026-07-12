@@ -11,6 +11,11 @@ storageClass: "local-path"
 dopplerConfig: "svc_openagent"
 namespace: "openagent"
 
+# Shared GHCR pull secret (base64-encoded dockerconfigjson for ghcr.io).
+# Leave empty to skip creating the Secret + imagePullSecrets.
+# When non-empty, this single Secret is created once and referenced by all components.
+ghcrPullSecret: ""
+
 # ┌──────────────────────────────────────────────────────────────────────────────┐
 # │  Component config                                                           │
 # └──────────────────────────────────────────────────────────────────────────────┘
@@ -30,7 +35,6 @@ headroom:
     size: 2Gi
     accessMode: ReadWriteOnce
   litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
-  ghcrPullSecret: ""
 
 litellm:
   enabled: true
@@ -44,7 +48,6 @@ litellm:
     requests: { cpu: 100m, memory: 256Mi }
     limits:   { cpu: 2000m, memory: 2Gi }
   databaseUrl: "postgresql://openagent:CHANGE_ME@openagent-pg.openagent.svc.cluster.local:5432/litellm"  # pragma: allowlist secret
-  ghcrPullSecret: ""
   fallbacks:
     - opencode/big-pickle: ["deepseek-v4-flash"]
     - opencode/north-mini-code-free: ["deepseek-v4-flash"]
@@ -127,7 +130,6 @@ discord:
     dashboardUrl: "https://openagent.maklab.net"
   version:
     configMapName: "openagent-discord-version"
-  ghcrPullSecret: ""
 
 postgres:
   enabled: true
