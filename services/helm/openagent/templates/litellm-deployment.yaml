@@ -57,13 +57,6 @@ spec:
           envFrom:
             - secretRef:
                 name: openagent-litellm-secrets
-          securityContext:
-            runAsNonRoot: true
-            readOnlyRootFilesystem: true
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
           ports:
             - name: proxy
               containerPort: {{ .Values.litellm.service.port }}
