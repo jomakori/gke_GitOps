@@ -10,7 +10,7 @@ ghcrPullSecret: ""
 # ── LiteLLM upstream chart values ──────────────────────────────────
 litellm:
   enabled: true
-  nameOverride: "openagent-litellm"
+  fullnameOverride: "openagent-litellm"
   image:
     repository: ghcr.io/berriai/litellm
     tag: "main-stable"
