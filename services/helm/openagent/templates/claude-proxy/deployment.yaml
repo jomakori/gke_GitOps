@@ -67,7 +67,4 @@ spec:
         - name: claude-credentials
           secret:
             secretName: claude-credentials
-            items:
-              - key: credentials.json
-                path: .credentials.json
 {{- end }}
