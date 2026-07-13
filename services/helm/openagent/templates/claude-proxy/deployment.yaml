@@ -1,0 +1,46 @@
+{{- if .Values.claudeProxy.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claude-proxy
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: claude-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "openagent.labels" . | nindent 6 }}
+      app.kubernetes.io/component: claude-proxy
+  template:
+    metadata:
+      labels:
+        {{- include "openagent.labels" . | nindent 8 }}
+        app.kubernetes.io/component: claude-proxy
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: claude-proxy
+          image: "{{ .Values.claudeProxy.image.repository }}:{{ .Values.claudeProxy.image.tag }}"
+          imagePullPolicy: {{ .Values.claudeProxy.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.claudeProxy.service.port }}
+              name: http
+          env:
+            - name: CLAUDE_PROXY_API_KEY
+              value: "claude-proxy-local"
+          resources:
+            {{- toYaml .Values.claudeProxy.resources | nindent 12 }}
+          volumeMounts:
+            - name: claude-credentials
+              mountPath: /root/.claude
+              readOnly: true
+      volumes:
+        - name: claude-credentials
+          secret:
+            secretName: claude-credentials
+{{- end }}
