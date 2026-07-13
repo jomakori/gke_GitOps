@@ -31,14 +31,10 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 0 | [cert-manager](services/helm/cert-manager/) | jetstack/cert-manager | Automated TLS via Let's Encrypt + Cloudflare DNS-01 | enabled |
 | 0 | [metrics-server](services/helm/metrics-server/) | metrics-server/metrics-server | Resource usage aggregation for HPA | enabled |
 | 0 | [vpa](services/helm/vpa/) | fairwinds/vpa | Vertical Pod Autoscaler — auto-adjust CPU/memory requests | enabled |
-| 0 | [openagent-crds](services/helm/openagent-crds/) | empty wrapper | `sympozium.ai` CRDs — installed out-of-band by sympozium CLI | enabled |
 | 1 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO | enabled |
-| 1 | [openagent-headroom](services/helm/openagent-headroom/) | chopratejas/headroom | LLM proxy — routes to LiteLLM, SQLite CCR cache | enabled |
-| 1 | [litellm (openagent)](services/helm/openagent-litellm/) | berriai/litellm | Multi-provider LLM gateway (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode) | enabled |
 | 2 | [istio](services/helm/istio/) | custom umbrella | base + istiod + ingress gateway (single chart, 3 upstream deps) | enabled |
-| 2 | [openagent](services/helm/openagent/) | custom | Sympozium Ensemble, SkillPacks, VPA, ExternalSecret — 10-persona loop engineering system | enabled |
+| 2 | [openagent](services/helm/openagent/) | custom umbrella | LiteLLM + headroom + discord bot + CRDs — 10-persona loop engineering in single umbrella chart | enabled |
 | 3 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | custom | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
-| 3 | [openagent-discord](services/helm/openagent-discord/) | custom (Go binary) | Discord gateway bot — polls Discord, routes to Sympozium Sisyphus web endpoint | enabled |
 | 4 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts | enabled |
 | 4 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) | enabled |
 | 4 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling | not enabled |
@@ -49,7 +45,7 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 5 | [headlamp](services/helm/headlamp/) | headlamp | Kubernetes dashboard UI | enabled |
 | 5 | [opencost](services/helm/opencost/) | opencost | Cost allocation and monitoring | enabled |
 
-Dependency chain: local-path + cert-manager + VPA + openagent-crds → external-secrets (ClusterSecretStores) → openagent-headroom + litellm (openagent) → istio umbrella (CRDs → control plane → ingress gateway → config) → openagent Ensemble → wave 3+ services. The openagent stack is bootstrapped early so it is ready to serve before wave 4 operators arrive.
+Dependency chain: local-path + cert-manager + VPA → external-secrets (ClusterSecretStores) → openagent umbrella (LiteLLM + headroom + discord bot + CRDs) → istio umbrella (CRDs → control plane → ingress gateway → config) → wave 3+ services. The openagent stack is bootstrapped early so it is ready to serve before wave 4 operators arrive.
 
 ### OpenAgent Loop Engineering System
 
@@ -57,13 +53,32 @@ The **openagent** services implement a *loop-engineered* AI execution model: tas
 
 #### Components
 
-| Component | Wave | Chart | Purpose |
-|-----------|------|-------|---------|
-| `openagent-crds` | 0 | `services/helm/openagent-crds/` | `sympozium.ai/v1alpha1` CRDs (Ensemble, SkillPack). Installed out-of-band by the sympozium CLI. |
-| `openagent-headroom` | 1 | `services/helm/openagent-headroom/` | LLM proxy (`chopratejas/headroom`) — routes to LiteLLM, SQLite CCR cache, observability. All persona LLM traffic flows through here. |
-| `litellm (openagent)` | 1 | `services/helm/openagent-litellm/` | Multi-provider LLM gateway (`berriai/litellm`) — DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode, plus fallbacks. |
-| `openagent` | 2 | `services/helm/openagent/` | Ensemble + SkillPacks + VPA + ExternalSecret. The single 10-persona `omo-loop-engineering` Ensemble is the orchestrator's brain. |
-| `openagent-discord` | 3 | `services/helm/openagent-discord/` | Discord gateway bot (Go binary) — polls Discord, calls the Sisyphus web endpoint over OpenAI-compatible chat completions. |
+The openagent umbrella chart (`services/helm/openagent/`) bundles all components:
+
+| Component | Deployed Via | Purpose |
+|-----------|-------------|---------|
+| `openagent-crds` | sympozium CLI (out-of-band) | `sympozium.ai/v1alpha1` CRDs (Ensemble, SkillPack). Not a Helm chart — installed directly by CLI. |
+| `openagent-headroom` | umbrella subchart (`charts/openagent-component`) | LLM proxy (`chopratejas/headroom`) — routes to LiteLLM, SQLite CCR cache. |
+| `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`) | Multi-provider LLM gateway v1.92.0 — 12 models, fallback chains. |
+| `openagent-discord` | umbrella subchart (`charts/openagent-component`) | Discord gateway bot (Go binary) — OpenAI-compatible chat completions. |
+| `openagent` templates | umbrella locals (`templates/`) | Ensemble + SkillPacks + StackGres + istio gateway. 10-persona loop engineering. |
+
+**Chart structure** (`services/helm/openagent/`):
+```
+openagent/                       ← umbrella (v2.0.0)
+├── charts/
+│   ├── litellm-helm/            ← upstream dep (vendored, OCI fallback)
+│   └── openagent-component/      ← custom subchart (headroom + bot, 15 files)
+├── templates/                    ← CRDs only
+│   ├── ensemble/                 ← omo-loop-engineering (10 personas)
+│   ├── skillpacks/               ← 3 SkillPack CRDs
+│   ├── db/                       ← StackGres CRDs (SGCluster, config)
+│   ├── shared/                   ← ExternalSecret, GHCR, VPA
+│   └── gateway/                  ← Istio VirtualService + AuthPolicy
+├── src/                          ← Bot Go source code
+├── values.yaml                   ← 177 lines, full config surface
+└── Chart.yaml                    ← 2 deps + conditions
+```
 
 **Namespaces**: Application resources live in `openagent`. The c control plane runs separately in `sympozium-system` (out of band — installed by the sympozium CLI). The Discord bot calls `http://omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc.cluster.local:8080/v1/chat/completions`.
 
