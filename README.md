@@ -59,7 +59,8 @@ The openagent umbrella chart (`services/helm/openagent/`) bundles all components
 |-----------|-------------|---------|
 | `openagent-crds` | sympozium CLI (out-of-band) | `sympozium.ai/v1alpha1` CRDs (Ensemble, SkillPack). Not a Helm chart — installed directly by CLI. |
 | `openagent-headroom` | umbrella subchart (`charts/openagent-component`) | LLM proxy (`chopratejas/headroom`) — routes to LiteLLM, SQLite CCR cache. |
-| `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`) | Multi-provider LLM gateway v1.92.0 — 12 models, fallback chains. |
+| `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`) | Multi-provider LLM gateway v1.92.0 — 14 models (12 direct + 2 via claude-proxy), fallback chains. |
+| `claude-proxy` | umbrella locals (`templates/claude-proxy/`) | Claude Pro subscription proxy — `claude-pipe` wraps `claude` CLI as OpenAI-compatible API, creds from K8s Secret, ClusterIP :4523. |
 | `openagent-discord` | umbrella subchart (`charts/openagent-component`) | Discord gateway bot (Go binary) — OpenAI-compatible chat completions. |
 | `openagent` templates | umbrella locals (`templates/`) | Ensemble + SkillPacks + StackGres + istio gateway. 10-persona loop engineering. |
 
@@ -70,6 +71,7 @@ openagent/                       ← umbrella (v2.0.0)
 │   ├── litellm-helm/            ← upstream dep (vendored, OCI fallback)
 │   └── openagent-component/      ← custom subchart (headroom + bot, 15 files)
 ├── templates/                    ← CRDs only
+│   ├── claude-proxy/            ← claude-proxy Deployment + Service
 │   ├── ensemble/                 ← omo-loop-engineering (10 personas)
 │   ├── skillpacks/               ← 3 SkillPack CRDs
 │   ├── db/                       ← StackGres CRDs (SGCluster, config)
@@ -82,18 +84,18 @@ openagent/                       ← umbrella (v2.0.0)
 
 **Namespaces**: Application resources live in `openagent`. The c control plane runs separately in `sympozium-system` (out of band — installed by the sympozium CLI). The Discord bot calls `http://omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc.cluster.local:8080/v1/chat/completions`.
 
-**Secrets**: `svc_openagent` Doppler config. Must include provider keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode), `AGENT_API_URL` (Sympozium Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth token), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls). All flow via `envFrom: secretRef` in deployment templates — no Helm `--set` parameters for secrets.
+**Secrets**: `svc_openagent` Doppler config. Must include provider keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode), `AGENT_API_URL` (Sympozium Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth token), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls), `CLAUDE_PROXY_API_KEY` (dummy, proxy uses OAuth credential file). All flow via `envFrom: secretRef` in deployment templates — no Helm `--set` parameters for secrets.
 
 #### The 10 Personas (Ensemble `omo-loop-engineering`)
 
 | Persona | Role | Model | Purpose |
 |---------|------|-------|---------|
-| **sisyphus** | orchestrator | deepseek-v4-pro | Main entry point — intent classification, delegation, verification enforcement. |
-| **atlas** | orchestrator | deepseek-v4-pro | Cross-persona coordination, quality verification, supervision. |
-| **prometheus** | planner | deepseek-v4-pro | Strategic planner — builds step-by-step plans from objectives. |
+| **sisyphus** | orchestrator | claude/sonnet-4 | Main entry point — intent classification, delegation, verification enforcement. |
+| **atlas** | orchestrator | claude/sonnet-4 | Cross-persona coordination, quality verification, supervision. |
+| **prometheus** | planner | claude/sonnet-4 | Strategic planner — builds step-by-step plans from objectives. |
 | **metis** | planner | deepseek-v4-pro | Pre-planning consultant — hidden intentions, ambiguity, AI failure points. |
 | **momus** | reviewer | deepseek-v4-pro | Ruthless plan reviewer — gaps, risks, missing context. |
-| **oracle** | architect | deepseek-v4-pro | Read-only architecture/security consultant. |
+| **oracle** | architect | claude/opus-4 | Read-only architecture/security consultant. |
 | **hephaestus** | worker | minimax/M3 | Deep implementation coder — production-quality code. |
 | **sisyphus-junior** | worker | deepseek-v4-flash | Focused task executor — no re-delegation. |
 | **librarian** | researcher | zai/glm-4.7-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
@@ -111,7 +113,9 @@ openagent-discord (Go bot)
   → omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc:8080
     → openagent-headroom.openagent.svc:8787   (headroom proxy, CCR cache)
       → litellm-openagent-litellm.openagent.svc:4000/v1   (LiteLLM gateway)
-        → provider APIs (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode)
+                 → provider APIs (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode)
+         → claude-proxy.openagent.svc:4523/v1   (Claude Pro subscription proxy, 3 models)
+               → Anthropic API (claude CLI OAuth, ~45 req/5h rate limit)
 ```
 
 The headroom proxy is configured with `OPENAI_TARGET_API_URL=http://litellm-openagent-litellm.openagent.svc.cluster.local:4000/v1` — all upstream LLM calls route through LiteLLM, never directly to OpenRouter.
@@ -219,4 +223,7 @@ Port-forward for local access:
 
 ```bash
 kubectl port-forward -n <namespace> svc/<service-name> 8080:80
+
+# Claude proxy local access (for OpenCode provider)
+kubectl port-forward svc/claude-proxy -n openagent 4523:4523
 ```
