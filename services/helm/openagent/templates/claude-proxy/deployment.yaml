@@ -27,10 +27,34 @@ spec:
         - name: claude-proxy
           image: "{{ .Values.claudeProxy.image.repository }}:{{ .Values.claudeProxy.image.tag }}"
           imagePullPolicy: {{ .Values.claudeProxy.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              sed -i '/^const MODEL_ALIASES/,/^};/c\
+              const MODEL_ALIASES: Record<string, string> = {\
+                sonnet: "claude-sonnet-4-6",\
+                opus: "claude-opus-4-6",\
+                haiku: "claude-haiku-4-5",\
+                "sonnet-4.6": "claude-sonnet-4-6",\
+                "sonnet-4.5": "claude-sonnet-4-5",\
+                "opus-4.6": "claude-opus-4-6",\
+                "opus-4.5": "claude-opus-4-5",\
+                "opus-4.1": "claude-opus-4-1",\
+                "claude-sonnet-4": "claude-sonnet-4-6",\
+                "claude-opus-4": "claude-opus-4-6",\
+                "claude-haiku-4": "claude-haiku-4-5",\
+                "gpt-4": "claude-sonnet-4-6",\
+                "gpt-4o": "claude-sonnet-4-6",\
+                "gpt-4o-mini": "claude-haiku-4-5",\
+              };' /root/.bun/install/global/node_modules/claude-pipe/src/claude.ts && \
+              exec /usr/local/bin/bun /usr/local/bin/claude-pipe
           ports:
             - containerPort: {{ .Values.claudeProxy.service.port }}
               name: http
           env:
+            - name: HOST
+              value: "0.0.0.0"
             - name: CLAUDE_PROXY_API_KEY
               value: "claude-proxy-local"
           resources:
@@ -43,4 +67,7 @@ spec:
         - name: claude-credentials
           secret:
             secretName: claude-credentials
+            items:
+              - key: credentials.json
+                path: .credentials.json
 {{- end }}
