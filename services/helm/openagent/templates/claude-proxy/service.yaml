@@ -1,0 +1,21 @@
+{{- if .Values.claudeProxy.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: claude-proxy
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: claude-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: claude-proxy
+  ports:
+    - port: {{ .Values.claudeProxy.service.port }}
+      targetPort: http
+      name: http
+{{- end }}
