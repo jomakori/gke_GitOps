@@ -1,6 +1,0 @@
-# Substrate control plane configuration
-# Deploys to ate-system namespace (upstream convention)
-# WorkerPool created by kagent chart (substrateWorkerPool.create=true)
-substrate:
-  redis:
-    clusterAddress: kagent-substrate-valkey-cluster.ate-system.svc:6379

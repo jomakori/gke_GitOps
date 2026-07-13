@@ -119,46 +119,11 @@ services:
     syncWave: "3"
     dopplerConfig: "svc_cloudflare"
 
-  kagentSubstrate:
-    enable: false
-    syncWave: "3"
-    destNamespace: ate-system
-    selfHeal: false
-    managedNamespaceMetadata:
-      labels:
-        istio.io/dataplane-mode: ambient
-    parameters:
-      - name: storageClass
-        value: "{{ .Values.storageClass }}"
-      - name: auth.jwt.audience
-        value: "kagent-substrate-api.ate-system.svc"
-      - name: bootstrap.enabled
-        value: "true"
-
   # Wave 4 — Operators (no endpoint deps)
   externalDns:
     enable: true
     syncWave: "4"
     dopplerConfig: "svc_cloudflare"
-
-  kagentHeadroom:
-    enable: false
-    syncWave: "4"
-    destNamespace: kagent
-    dopplerConfig: "svc_kagent"
-    parameters:
-      - name: storageClass
-        value: "{{ .Values.storageClass }}"
-    syncOptions:
-      - CreateNamespace=true
-
-  litellm:
-    enable: false
-    syncWave: "4"
-    destNamespace: kagent
-    dopplerConfig: "svc_kagent"
-    syncOptions:
-      - CreateNamespace=true
 
   keda:
     enable: false
@@ -221,35 +186,6 @@ services:
     dopplerConfig: "svc_postgres_operator"
 
   # Wave 5 — General services
-  kagent:
-    enable: false
-    syncWave: "5"
-    destNamespace: kagent
-    dopplerConfig: "svc_kagent"
-    managedNamespaceMetadata:
-      labels:
-        istio.io/dataplane-mode: ambient
-    gateways:
-      enable_private: true
-      subdomain: kagent
-      timeout: 600s
-      destination:
-        serviceName: kagent-ui
-        servicePort: 8080
-    parameters:
-      - name: storageClass
-        value: "{{ .Values.storageClass }}"
-      - name: clusterDomain
-        value: "{{ .Values.clusterDomain }}"
-    syncOptions:
-      - CreateNamespace=true
-    ignoreDifferences:
-      - group: stackgres.io
-        kind: SGPostgresConfig
-        name: kagent-pg-config
-        jqPathExpressions:
-          - '.spec."postgresql.conf"'
-
   kubePrometheusStack:
     enable: true
     dopplerConfig: "svc_grafana"
@@ -322,14 +258,6 @@ services:
       - name: redis-cluster.persistence.storageClass
         value: "{{ .Values.storageClass }}"
 
-  kagentDiscord:
-    enable: false
-    syncWave: "7"
-    destNamespace: kagent
-    dopplerConfig: "svc_kagent"
-    syncOptions:
-      - CreateNamespace=true
-
   openagentDiscord:
     enable: false
     syncWave: "3"
@@ -341,9 +269,4 @@ services:
     syncOptions:
       - CreateNamespace=true
 
-# Deploy upstream kagent controller + UI from OCI chart (after local kagent chart creates DB, CRDs, secrets)
-kagentUpstream:
-  # Uses native-OCI shape (path: "." instead of chart field) to work around
-  # ArgoCD v3.4.x OCI Helm bug where chart name is not appended to URL.
-  # See https://github.com/argoproj/argo-cd/pull/1051 for the fix approach.
-  enable: false
+
