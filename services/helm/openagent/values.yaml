@@ -27,11 +27,14 @@ litellm:
   db:
     deployStandalone: false
     useExisting: true
-    endpoint: "openagent-pg-openagent-pg.openagent.svc.cluster.local"
+    endpoint: "openagent-pg.openagent.svc.cluster.local"
     database: "litellm"
     secret:
       name: "openagent-litellm-secrets"
-  masterkeySecretName: "openagent-litellm-secrets"
+      usernameKey: "OPENAGENT_PG_USER"
+      passwordKey: "OPENAGENT_PG_PASSWORD"
+  masterkeySecretName: "openagent-litellm-masterkey"
+  masterkeySecretKey: "masterkey"
   environmentSecrets:
     - "openagent-secrets"
   proxy_config:
