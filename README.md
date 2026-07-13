@@ -101,10 +101,6 @@ openagent-discord (Go bot)
 
 The headroom proxy is configured with `OPENAI_TARGET_API_URL=http://litellm-openagent-litellm.openagent.svc.cluster.local:4000/v1` — all upstream LLM calls route through LiteLLM, never directly to OpenRouter.
 
-#### Migration Status
-
-The previous `kagent*` charts (`kagent`, `kagent-substrate`, `kagent-headroom`, `kagent-discord`, `kagent-upstream`, `litellm`) are present on disk and registered in `services/argocd-appset/values.yaml` but **all disabled** (`enable: false`). The legacy `svc_kagent` and `svc_stackgres` ClusterSecretStores remain in `services/helm/external-secrets/values.yaml` for backward compatibility — they are unused by the active openagent stack.
-
 See `services/helm/openagent/templates/ensemble-omo-loop-engineering.yaml` for the full system prompts, delegation rules, and verification tiers.
 
 ### Apps
@@ -135,8 +131,7 @@ No secrets in this repo. The chain:
 | `svc_postgres_operator` | postgres-operator (StackGres) | `ADMIN_USER`, `ADMIN_PASSWORD` |
 | `svc_onedev` | onedev | `DB_PASSWORD`, `DB_USER` |
 | `svc_openagent` | openagent, openagent-headroom, litellm (openagent), openagent-discord | Provider keys: `DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `MINIMAX_API_BASE`, `ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `OPENCODE_API_BASE`. Discord: `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, `AGENT_API_URL` (Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth). GHCR: `GITHUB_TOKEN`. |
-| `svc_kagent` | legacy kagent stack (disabled) | unused — kept for backward compatibility |
-| `svc_stackgres` | legacy kagent SGCluster (disabled) | unused — kept for backward compatibility |
+
 
 New secrets are added in the Doppler dashboard — the ExternalSecret already pulls the entire config.
 

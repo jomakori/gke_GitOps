@@ -14,20 +14,15 @@ services/
 │   │   ├── _helpers.tpl     ← Template helpers (service registration logic)
 │   │   └── applications.yaml ← Single template auto-generates all Applications
 │   └── values.yaml           ← Service registry (enable/disable, sync waves, parameters)
-└── helm/                   ← Helm chart source for each service (26 charts)
+└── helm/                   ← Helm chart source for each service (21 charts)
     ├── cert-manager/        ← Thin wrapper
     ├── cloudflare-tunnel/   ← Custom
     ├── external-dns/        ← Hybrid
     ├── external-secrets/    ← Hybrid
     ├── headlamp/            ← Hybrid (upstream + user SA templates)
     ├── istio/               ← Hybrid
-    ├── kagent/              ← Disabled (legacy kagent stack, replaced by openagent)
-    ├── kagent-discord/      ← Disabled (legacy)
-    ├── kagent-headroom/     ← Disabled (legacy)
-    ├── kagent-substrate/    ← Disabled (legacy)
     ├── keda/                ← Thin wrapper (disabled)
     ├── kube-prometheus-stack/ ← Hybrid
-    ├── litellm/             ← Disabled (legacy kagent LiteLLM, replaced by openagent-litellm)
     ├── local-path/          ← Thin wrapper
     ├── metrics-server/      ← Thin wrapper
     ├── mongodb-operator/    ← Thin wrapper (disabled)
@@ -54,7 +49,7 @@ Charts fall into three patterns:
 | Pattern | Count | Description |
 |---------|-------|-------------|
 | **Thin Wrapper** | 8 | `Chart.yaml` with upstream `dependencies` only, no local templates |
-| **Custom** | 12 | Full local templates, no upstream dependency (includes openagent stack + disabled legacy kagent charts) |
+| **Custom** | 7 | Full local templates, no upstream dependency (includes openagent stack) |
 | **Hybrid** | 6 | Upstream dependency + local templates for extra resources (ExternalSecrets, ClusterSecretStores, SGCluster, etc.) |
 
 ## Adding a Service

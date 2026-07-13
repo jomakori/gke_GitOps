@@ -77,8 +77,6 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | clusterSecretStores.svc_cloudflare.project | string | `"devops"` |  |
 | clusterSecretStores.svc_grafana.config | string | `"svc_grafana"` |  |
 | clusterSecretStores.svc_grafana.project | string | `"devops"` |  |
-| clusterSecretStores.svc_kagent.config | string | `"svc_kagent"` |  |
-| clusterSecretStores.svc_kagent.project | string | `"devops"` |  |
 | clusterSecretStores.svc_mongodb.config | string | `"svc_mongodb"` |  |
 | clusterSecretStores.svc_mongodb.project | string | `"devops"` |  |
 | clusterSecretStores.svc_onedev.config | string | `"svc_onedev"` |  |
@@ -87,8 +85,6 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | clusterSecretStores.svc_openagent.project | string | `"devops"` |  |
 | clusterSecretStores.svc_postgres_operator.config | string | `"svc_postgres_operator"` |  |
 | clusterSecretStores.svc_postgres_operator.project | string | `"devops"` |  |
-| clusterSecretStores.svc_stackgres.config | string | `"svc_stackgres"` |  |
-| clusterSecretStores.svc_stackgres.project | string | `"devops"` |  |
 | clusterSecretStores.zurabase-dev.config | string | `"dev"` |  |
 | clusterSecretStores.zurabase-dev.project | string | `"zurabase"` |  |
 | clusterSecretStores.zurabase-prd.config | string | `"prd"` |  |
