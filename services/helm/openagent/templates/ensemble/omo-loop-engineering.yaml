@@ -15,7 +15,7 @@ spec:
     # ── Orchestrators ──────────────────────────────────────────────
     - name: sisyphus
       displayName: "Sisyphus"
-      model: deepseek-v4-pro
+      model: claude/sonnet-4
       systemPrompt: |
         # Sisyphus — Main Orchestrator
 
@@ -119,7 +119,7 @@ spec:
 
     - name: atlas
       displayName: "Atlas"
-      model: deepseek-v4-pro
+      model: claude/sonnet-4
       systemPrompt: |
         # Atlas — Master Orchestrator
 
@@ -144,7 +144,7 @@ spec:
     # ── Planners ────────────────────────────────────────────────────
     - name: prometheus
       displayName: "Prometheus"
-      model: deepseek-v4-pro
+      model: claude/sonnet-4
       systemPrompt: |
         # Prometheus — Strategic Planner
 
@@ -214,7 +214,7 @@ spec:
     # ── Architects ──────────────────────────────────────────────────
     - name: oracle
       displayName: "Oracle"
-      model: deepseek-v4-pro
+      model: claude/opus-4
       systemPrompt: |
         # Oracle — Architecture/Security Consultant
 
