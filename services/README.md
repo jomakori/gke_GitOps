@@ -14,7 +14,7 @@ services/
 │   │   ├── _helpers.tpl     ← Template helpers (service registration logic)
 │   │   └── applications.yaml ← Single template auto-generates all Applications
 │   └── values.yaml           ← Service registry (enable/disable, sync waves, parameters)
-└── helm/                   ← Helm chart source for each service (21 charts)
+└── helm/                   ← Helm chart source for each service (17 charts)
     ├── cert-manager/        ← Thin wrapper
     ├── cloudflare-tunnel/   ← Custom
     ├── external-dns/        ← Hybrid
@@ -27,11 +27,7 @@ services/
     ├── metrics-server/      ← Thin wrapper
     ├── mongodb-operator/    ← Thin wrapper (disabled)
     ├── onedev/              ← Custom
-    ├── openagent/           ← Custom (Sympozium Ensemble, SkillPacks, VPA, ExternalSecret)
-    ├── openagent-crds/      ← Empty wrapper (CRDs installed out-of-band by sympozium CLI)
-    ├── openagent-discord/   ← Custom (Go bot, OpenAI-compatible chat completions)
-    ├── openagent-headroom/  ← Custom (LLM proxy, routes to LiteLLM)
-    ├── openagent-litellm/   ← Custom (Multi-provider LLM gateway, 12 models)
+    ├── openagent/           ← Custom umbrella (LiteLLM + headroom + discord bot + Sympozium CRDs in single chart)
     ├── opencost/            ← Thin wrapper
     ├── postgres-operator/   ← Hybrid
     ├── redis-operator/      ← Thin wrapper (disabled)
@@ -49,7 +45,7 @@ Charts fall into three patterns:
 | Pattern | Count | Description |
 |---------|-------|-------------|
 | **Thin Wrapper** | 8 | `Chart.yaml` with upstream `dependencies` only, no local templates |
-| **Custom** | 7 | Full local templates, no upstream dependency (includes openagent stack) |
+| **Custom** | 3 | Full local templates, no upstream dependency |
 | **Hybrid** | 6 | Upstream dependency + local templates for extra resources (ExternalSecrets, ClusterSecretStores, SGCluster, etc.) |
 
 ## Adding a Service
