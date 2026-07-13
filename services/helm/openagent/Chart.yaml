@@ -12,6 +12,7 @@ maintainers:
   - name: local
 dependencies:
   - name: litellm-helm
+    alias: litellm
     version: 1.92.0
     repository: file://charts/litellm-helm
     condition: litellm.enabled
