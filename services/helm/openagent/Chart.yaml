@@ -1,12 +1,21 @@
 apiVersion: v2
 name: openagent
 description: |
-  Single umbrella chart for the entire openagent stack — Sympozium orchestrator, LiteLLM
-  gateway, Headroom proxy, Discord bot, shared PostgreSQL, and the Sympozium web dashboard.
-  Everything is inlined in the umbrella's templates/ — no subchart dependencies, no
-  duplicated source code. The umbrella is the source of truth.
+  Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy,
+  Discord bot, and Sympozium CRDs (Ensemble, SkillPacks). All components
+  deployed via upstream deps and subcharts. Only CRDs + shared resources
+  remain as local templates.
 type: application
-version: 1.2.0
+version: 2.0.0
 appVersion: "1.0.0"
 maintainers:
   - name: local
+dependencies:
+  - name: litellm-helm
+    version: 1.92.0
+    repository: file://charts/litellm-helm
+    condition: litellm.enabled
+  - name: openagent-component
+    version: 0.1.0
+    repository: file://charts/openagent-component
+    condition: component.enabled

@@ -1,0 +1,17 @@
+{{- if .Values.headroom.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagent-component.headroomName" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagent-component.labels" . | nindent 4 }}
+    app.kubernetes.io/component: headroom
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  HEADROOM_HOST: "0.0.0.0"
+  PORT: {{ .Values.headroom.service.port | quote }}
+  MODE: "litellm"
+  TELEMETRY: "false"
+{{- end }}

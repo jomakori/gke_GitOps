@@ -5,6 +5,7 @@
 *.log
 test-gpu.yaml
 **charts/
+!services/helm/openagent/charts/openagent-component/**
 **Chart.lock
 .devbox/
 **sisyphus

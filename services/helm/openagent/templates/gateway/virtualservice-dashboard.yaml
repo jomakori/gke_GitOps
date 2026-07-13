@@ -1,0 +1,31 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "openagent.fullname" . }}-dashboard
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: {{ include "openagent.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: openagent
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/component: dashboard
+spec:
+  hosts:
+    - {{ include "openagent.dashboardURL" . | quote }}
+  gateways:
+    - istio-system/maklab-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: {{ .Values.dashboard.destination.host | quote }}
+            port:
+              number: {{ .Values.dashboard.destination.port }}
+      timeout: 600s
+      retries:
+        attempts: 2
+        perTryTimeout: 300s
+        retryOn: gateway-error,connect-failure,refused-stream

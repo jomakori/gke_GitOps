@@ -1,0 +1,19 @@
+{{- if .Values.headroom.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "openagent-component.headroomName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagent-component.labels" . | nindent 4 }}
+    app.kubernetes.io/component: headroom
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  accessModes:
+    - {{ .Values.headroom.storage.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.headroom.storage.size }}
+  storageClassName: {{ .Values.storageClass }}
+{{- end }}
