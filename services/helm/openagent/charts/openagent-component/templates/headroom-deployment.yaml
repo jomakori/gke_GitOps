@@ -1,0 +1,48 @@
+{{- if .Values.headroom.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagent-component.headroomName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagent-component.labels" . | nindent 4 }}
+    app.kubernetes.io/component: headroom
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "openagent-component.labels" . | nindent 6 }}
+      app.kubernetes.io/component: headroom
+  template:
+    metadata:
+      labels:
+        {{- include "openagent-component.labels" . | nindent 8 }}
+        app.kubernetes.io/component: headroom
+    spec:
+      serviceAccountName: {{ include "openagent-component.headroomName" . }}
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: headroom
+          image: "{{ .Values.headroom.image.repository }}:{{ .Values.headroom.image.tag }}"
+          imagePullPolicy: {{ .Values.headroom.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.headroom.service.port }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: {{ include "openagent-component.headroomName" . }}-config
+            - secretRef:
+                name: openagent-secrets
+          resources:
+            {{- toYaml .Values.headroom.resources | nindent 12 }}
+          volumeMounts:
+            - name: headroom-storage
+              mountPath: /app/ccr-cache
+      volumes:
+        - name: headroom-storage
+          persistentVolumeClaim:
+            claimName: {{ include "openagent-component.headroomName" . }}
+{{- end }}

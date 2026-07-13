@@ -1,43 +1,16 @@
-# ┌──────────────────────────────────────────────────────────────────────────────┐
-# │  OpenAgent Umbrella Values                                                   │
-# │                                                                              │
-# │  Single source of truth for the entire openagent stack.                     │
-# │  Everything is inlined in the umbrella's templates/ — KISS, no subcharts.   │
-# └──────────────────────────────────────────────────────────────────────────────┘
-
 # Global config (injected by Terraform → ArgoCD)
 clusterDomain: "maklab.net"
 storageClass: "local-path"
 dopplerConfig: "svc_openagent"
 namespace: "openagent"
 
-# Shared GHCR pull secret (base64-encoded dockerconfigjson for ghcr.io).
-# Leave empty to skip creating the Secret + imagePullSecrets.
-# When non-empty, this single Secret is created once and referenced by all components.
+# Shared GHCR pull secret
 ghcrPullSecret: ""
 
-# ┌──────────────────────────────────────────────────────────────────────────────┐
-# │  Component config                                                           │
-# └──────────────────────────────────────────────────────────────────────────────┘
-
-headroom:
-  enabled: true
-  image:
-    repository: ghcr.io/chopratejas/headroom
-    tag: "latest"
-    pullPolicy: IfNotPresent
-  service:
-    port: 8787
-  resources:
-    requests: { cpu: 200m, memory: 512Mi }
-    limits:   { cpu: 2000m, memory: 2Gi }
-  storage:
-    size: 2Gi
-    accessMode: ReadWriteOnce
-  litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
-
+# ── LiteLLM upstream chart values ──────────────────────────────────
 litellm:
   enabled: true
+  nameOverride: "openagent-litellm"
   image:
     repository: ghcr.io/berriai/litellm
     tag: "main-stable"
@@ -45,91 +18,139 @@ litellm:
   service:
     port: 4000
   resources:
-    requests: { cpu: 100m, memory: 256Mi }
-    limits:   { cpu: 2000m, memory: 2Gi }
-  fallbacks:
-    - opencode/big-pickle: ["deepseek-v4-flash"]
-    - opencode/north-mini-code-free: ["deepseek-v4-flash"]
-    - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
-  model_list:
-    - model_name: opencode/big-pickle
-      litellm_params:
-        model: openai/big-pickle
-        api_key: os.environ/OPENCODE_API_KEY  # pragma: allowlist secret
-        api_base: os.environ/OPENCODE_API_BASE  # pragma: allowlist secret
-    - model_name: opencode/north-mini-code-free
-      litellm_params:
-        model: openai/north-mini-code-free
-        api_key: os.environ/OPENCODE_API_KEY  # pragma: allowlist secret
-        api_base: os.environ/OPENCODE_API_BASE  # pragma: allowlist secret
-    - model_name: opencode/deepseek-v4-flash-free
-      litellm_params:
-        model: openai/deepseek-v4-flash-free
-        api_key: os.environ/OPENCODE_API_KEY  # pragma: allowlist secret
-        api_base: os.environ/OPENCODE_API_BASE  # pragma: allowlist secret
-    - model_name: opencode/mimo-v2.5-free
-      litellm_params:
-        model: openai/mimo-v2.5-free
-        api_key: os.environ/OPENCODE_API_KEY  # pragma: allowlist secret
-        api_base: os.environ/OPENCODE_API_BASE  # pragma: allowlist secret
-    - model_name: anthropic/claude-opus-4-7
-      litellm_params:
-        model: anthropic/claude-opus-4-7
-        api_key: os.environ/ANTHROPIC_API_KEY  # pragma: allowlist secret
-    - model_name: moonshotai/kimi-k2.6
-      litellm_params:
-        model: moonshot/kimi-k2.6
-        api_key: os.environ/MOONSHOT_API_KEY  # pragma: allowlist secret
-    - model_name: deepseek-v4-flash
-      litellm_params:
-        model: deepseek/deepseek-v4-flash
-        api_key: os.environ/DEEPSEEK_API_KEY  # pragma: allowlist secret
-    - model_name: deepseek-v4-pro
-      litellm_params:
-        model: deepseek/deepseek-v4-pro
-        api_key: os.environ/DEEPSEEK_API_KEY  # pragma: allowlist secret
-    - model_name: zai/glm-4.7
-      litellm_params:
-        model: zai/glm-4.7
-        api_key: os.environ/ZAI_API_KEY  # pragma: allowlist secret
-    - model_name: zai/glm-4.7-flash
-      litellm_params:
-        model: zai/glm-4.7-flash
-        api_key: os.environ/ZAI_API_KEY  # pragma: allowlist secret
-    - model_name: minimax/M3
-      litellm_params:
-        model: openai/MiniMax-M3
-        api_key: os.environ/MINIMAX_API_KEY  # pragma: allowlist secret
-        api_base: os.environ/MINIMAX_API_BASE  # pragma: allowlist secret
-    - model_name: minimax/M2.7
-      litellm_params:
-        model: openai/MiniMax-M2.7
-        api_key: os.environ/MINIMAX_API_KEY  # pragma: allowlist secret
-        api_base: os.environ/MINIMAX_API_BASE  # pragma: allowlist secret
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  db:
+    deployStandalone: false
+    useExisting: true
+    endpoint: "openagent-pg-openagent-pg.openagent.svc.cluster.local"
+    database: "litellm"
+    secret:
+      name: "openagent-litellm-secrets"
+  masterkeySecretName: "openagent-litellm-secrets"
+  environmentSecrets:
+    - "openagent-secrets"
+  proxy_config:
+    general_settings:
+      master_key: os.environ/LITELLM_MASTER_KEY
+    model_list:
+      - model_name: opencode/big-pickle
+        litellm_params:
+          model: openai/big-pickle
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+      - model_name: opencode/north-mini-code-free
+        litellm_params:
+          model: openai/north-mini-code-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+      - model_name: opencode/deepseek-v4-flash-free
+        litellm_params:
+          model: openai/deepseek-v4-flash-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+      - model_name: opencode/mimo-v2.5-free
+        litellm_params:
+          model: openai/mimo-v2.5-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+      - model_name: anthropic/claude-opus-4-7
+        litellm_params:
+          model: anthropic/claude-opus-4-7
+          api_key: os.environ/ANTHROPIC_API_KEY
+      - model_name: moonshotai/kimi-k2.6
+        litellm_params:
+          model: moonshot/kimi-k2.6
+          api_key: os.environ/MOONSHOT_API_KEY
+      - model_name: deepseek-v4-flash
+        litellm_params:
+          model: deepseek/deepseek-v4-flash
+          api_key: os.environ/DEEPSEEK_API_KEY
+      - model_name: deepseek-v4-pro
+        litellm_params:
+          model: deepseek/deepseek-v4-pro
+          api_key: os.environ/DEEPSEEK_API_KEY
+      - model_name: zai/glm-4.7
+        litellm_params:
+          model: zai/glm-4.7
+          api_key: os.environ/ZAI_API_KEY
+      - model_name: zai/glm-4.7-flash
+        litellm_params:
+          model: zai/glm-4.7-flash
+          api_key: os.environ/ZAI_API_KEY
+      - model_name: minimax/M3
+        litellm_params:
+          model: openai/MiniMax-M3
+          api_key: os.environ/MINIMAX_API_KEY
+          api_base: os.environ/MINIMAX_API_BASE
+      - model_name: minimax/M2.7
+        litellm_params:
+          model: openai/MiniMax-M2.7
+          api_key: os.environ/MINIMAX_API_KEY
+          api_base: os.environ/MINIMAX_API_BASE
+    fallbacks:
+      - opencode/big-pickle: ["deepseek-v4-flash"]
+      - opencode/north-mini-code-free: ["deepseek-v4-flash"]
+      - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
 
-discord:
+# ── Component subchart values ──────────────────────────────────────
+# These are passed to the openagent-component subchart.
+# The subchart name (openagent-component) is the key Helm uses to pass values.
+# component.enabled is the Chart.yaml condition key for the subchart dependency.
+component:
   enabled: true
-  image:
-    repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
-    tag: "0.6.0"
-    pullPolicy: IfNotPresent
-  service:
-    port: 8080
-  resources:
-    requests: { cpu: 50m, memory: 128Mi }
-    limits:   { cpu: 500m, memory: 512Mi }
-  config:
-    mentionOnly: false
-    conversationMode: "threaded"
-    phaseUpdates: true
-    pollUI: true
-    startupChannel: "chat"
-    channelOnly: ""
-    clientId: ""
-    dashboardUrl: "https://openagent.maklab.net"
-  version:
-    configMapName: "openagent-discord-version"
+openagent-component:
+  headroom:
+    enabled: true
+    image:
+      repository: ghcr.io/chopratejas/headroom
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    service:
+      port: 8787
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+    storage:
+      size: 2Gi
+      accessMode: ReadWriteOnce
+    litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
+  bot:
+    enabled: true
+    image:
+      repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
+      tag: "0.6.0"
+      pullPolicy: IfNotPresent
+    service:
+      port: 8080
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    config:
+      mentionOnly: false
+      conversationMode: "threaded"
+      phaseUpdates: true
+      pollUI: true
+      startupChannel: "chat"
+      channelOnly: ""
+      clientId: ""
+      dashboardUrl: "https://openagent.maklab.net"
+    version:
+      configMapName: "openagent-discord-version"
 
+# ── Shared DB ───────────────────────────────────────────
 postgres:
   enabled: true
   clusterName: "openagent-pg"
@@ -140,8 +161,17 @@ postgres:
   version: "18"
   profile: "development"
 
+# ── Dashboard (VirtualService) ─────────────────────────────────────
 dashboard:
   subdomain: "openagent"
   destination:
     host: "sympozium-apiserver.sympozium-system.svc.cluster.local"
     port: 8080
+
+# ── OpenAgent CRD ───────────────────────────────────────────────────
+ensemble:
+  enabled: true
+
+# ── VPA ────────────────────────────────────────────────────────────
+vpa:
+  enabled: true

@@ -1,0 +1,39 @@
+{{- if .Values.bot.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openagent-component.botName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagent-component.labels" . | nindent 4 }}
+    app.kubernetes.io/component: discord-bot
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "openagent-component.labels" . | nindent 6 }}
+      app.kubernetes.io/component: discord-bot
+  template:
+    metadata:
+      labels:
+        {{- include "openagent-component.labels" . | nindent 8 }}
+        app.kubernetes.io/component: discord-bot
+    spec:
+      serviceAccountName: {{ include "openagent-component.botName" . }}
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: discord-bot
+          image: "{{ .Values.bot.image.repository }}:{{ .Values.bot.image.tag }}"
+          imagePullPolicy: {{ .Values.bot.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.bot.service.port }}
+              name: http
+          envFrom:
+            - secretRef:
+                name: openagent-secrets
+          resources:
+            {{- toYaml .Values.bot.resources | nindent 12 }}
+{{- end }}
