@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -30,10 +29,15 @@ type config struct {
 	ClientID         string
 	MentionOnly      bool
 	ChannelOnly      []string
-	ConversationMode string // "threaded" or "dm"
+	ConversationMode string
 	PhaseUpdates     bool
 	PollUI           bool
-	StartupChannel   string // Discord channel ID to send startup announcement
+	StartupChannel   string
+	AgentID          string
+	AgentRef         string
+	ModelName        string
+	ModelProvider    string
+	AgentSkills      string
 }
 
 type a2aRequest struct {
@@ -103,10 +107,15 @@ var (
 
 func loadConfig() config {
 	cfg := config{
-		BotToken:    os.Getenv("DISCORD_BOT_TOKEN"),
-		A2AURL:      os.Getenv("KAGENT_A2A_URL"),
-		MentionOnly: true,
-		ClientID:    os.Getenv("DISCORD_CLIENT_ID"),
+		BotToken:      os.Getenv("DISCORD_BOT_TOKEN"),
+		A2AURL:        os.Getenv("AGENT_API_URL"),
+		MentionOnly:   true,
+		ClientID:      os.Getenv("DISCORD_CLIENT_ID"),
+		AgentID:       getEnvDefault("AGENT_ID", "primary"),
+		AgentRef:      getEnvDefault("AGENT_REF", "omo-loop-engineering-sisyphus"),
+		ModelName:     getEnvDefault("MODEL_NAME", "claude/sonnet-4"),
+		ModelProvider: getEnvDefault("MODEL_PROVIDER", "openai"),
+		AgentSkills:   getEnvDefault("AGENT_SKILLS", "k8s-ops,omo-core-skills,hashline-editor,web-endpoint"),
 	}
 
 	if cfg.ClientID == "" {
@@ -114,7 +123,7 @@ func loadConfig() config {
 	}
 
 	if cfg.A2AURL == "" {
-		log.Fatal("KAGENT_A2A_URL is required")
+		log.Fatal("AGENT_API_URL is required")
 	}
 
 	if v := os.Getenv("DISCORD_MENTION_ONLY"); v != "" {
@@ -150,6 +159,13 @@ func loadConfig() config {
 	}
 
 	return cfg
+}
+
+func getEnvDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 func main() {
@@ -495,7 +511,7 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 	log.Printf("[Sympozium] Creating AgentRun %s: %s", runID, truncate(message, 80))
 
 	createURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns", k8sAPIBaseURL)
-	resp, err := k8sAPIRequest(http.MethodPost, createURL, body)
+	_, err = k8sAPIRequest(http.MethodPost, createURL, body)
 	if err != nil {
 		return "", fmt.Errorf("create AgentRun: %w", err)
 	}
@@ -528,11 +544,15 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 
 		switch phase {
 		case "Succeeded":
-			podName, _ := status["podName"].(string)
-			if podName != "" {
-				result, err = getPodLogs(podName)
-				if err != nil {
-					return "", fmt.Errorf("get logs: %w", err)
+			result, _ = status["result"].(string)
+			if result == "" {
+				// Fallback: try pod logs if result field is empty
+				podName, _ := status["podName"].(string)
+				if podName != "" {
+					result, err = getPodLogs(podName)
+					if err != nil {
+						return "", fmt.Errorf("get logs: %w", err)
+					}
 				}
 			}
 			log.Printf("[Sympozium] Response (%d chars): %s", len(result), truncate(result, 100))
