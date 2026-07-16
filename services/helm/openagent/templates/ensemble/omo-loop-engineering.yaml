@@ -10,6 +10,7 @@ spec:
   description: "OhMyOpenCode loop engineering ensemble — 10 specialized personas with delegation and supervision"
   enabled: true
   workflowType: delegation
+  baseURL: "http://openagent-headroom.{{ .Release.Namespace }}.svc.cluster.local:8787/v1"
 
   agentConfigs:
     # ── Orchestrators ──────────────────────────────────────────────

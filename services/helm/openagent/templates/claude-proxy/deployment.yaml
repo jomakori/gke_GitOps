@@ -31,6 +31,72 @@ spec:
             - /bin/sh
             - -c
             - |
+              # Refresh OAuth token if expiring within 1h
+              python3 -c "
+              import json, time, urllib.request, os
+
+              CREDS_FILE = '/root/.claude/.credentials.json'
+              TOKEN_URL = 'https://platform.claude.com/v1/oauth/token'
+              CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
+              REFRESH_WINDOW = 3600  # 1 hour
+
+              if not os.path.exists(CREDS_FILE):
+                  print('No credentials file, skipping refresh')
+                  exit(0)
+
+              with open(CREDS_FILE) as f:
+                  creds = json.load(f)
+              oauth = creds.get('claudeAiOauth', {})
+              refresh_token = oauth.get('refreshToken', '')
+              expires_at = oauth.get('expiresAt', 0)
+              now_ms = int(time.time() * 1000)
+
+              if not refresh_token:
+                  print('No refresh token, skipping')
+                  exit(0)
+
+              ttl_h = (expires_at - now_ms) / 1000 / 3600
+              print(f'Token TTL: {ttl_h:.1f}h')
+
+              if ttl_h > 1:
+                  print('Token fresh, skipping refresh')
+                  exit(0)
+
+              print('Refreshing OAuth token...')
+              body = json.dumps({
+                  'grant_type': 'refresh_token',
+                  'refresh_token': refresh_token,
+                  'client_id': CLIENT_ID,
+              }).encode()
+
+              req = urllib.request.Request(TOKEN_URL, data=body, method='POST')
+              req.add_header('Content-Type', 'application/json')
+              req.add_header('Accept', 'application/json')
+              req.add_header('User-Agent', 'claude-cli/2.1.207 (external, cli)')
+
+              try:
+                  resp = urllib.request.urlopen(req, timeout=15)
+                  data = json.loads(resp.read())
+                  new_access = data.get('access_token', '')
+                  new_refresh = data.get('refresh_token', refresh_token)
+                  expires_in = data.get('expires_in', 3600)
+
+                  if new_access:
+                      new_expires = int(time.time() * 1000) + (expires_in * 1000)
+                      oauth['accessToken'] = new_access
+                      oauth['refreshToken'] = new_refresh
+                      oauth['expiresAt'] = new_expires
+                      creds['claudeAiOauth'] = oauth
+                      with open(CREDS_FILE, 'w') as f:
+                          json.dump(creds, f)
+                      print(f'Token refreshed. New TTL: {expires_in/3600:.1f}h')
+                  else:
+                      print('Refresh response missing access_token')
+              except Exception as e:
+                  print(f'Refresh failed: {e}')
+                  # Continue anyway — existing token might still work
+              " && \
+              export ANTHROPIC_AUTH_TOKEN=$(python3 -c "import json; print(json.load(open('/root/.claude/.credentials.json'))['claudeAiOauth']['accessToken'])") && \
               sed -i '/^const MODEL_ALIASES/,/^};/c\
               const MODEL_ALIASES: Record<string, string> = {\
                 sonnet: "claude-sonnet-4-6",\
