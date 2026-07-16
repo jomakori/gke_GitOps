@@ -1,6 +1,7 @@
 # openagent-component values
 # These are accessed from the parent chart as openagent-component.headroom.* and openagent-component.bot.*
 dopplerConfig: "svc_openagent"
+storageClass: "local-path"
 
 headroom:
   enabled: false
