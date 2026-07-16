@@ -114,6 +114,7 @@ spec:
 
       skills:
         - k8s-ops
+        - k8s-gitops-context
         - omo-core-skills
         - hashline-editor
         - web-endpoint
