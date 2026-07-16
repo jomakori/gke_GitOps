@@ -486,8 +486,10 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 			"cleanup":    "delete",
 			"sessionKey": threadID,
 			"model": map[string]interface{}{
-				"model":    cfg.ModelName,
-				"provider": cfg.ModelProvider,
+				"model":          cfg.ModelName,
+				"provider":       cfg.ModelProvider,
+				"authSecretRef":  "",
+				"baseURL":        "http://openagent-headroom.openagent.svc.cluster.local:8787/v1",
 			},
 		},
 	}
