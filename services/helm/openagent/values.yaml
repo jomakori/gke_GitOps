@@ -117,6 +117,7 @@ litellm:
 component:
   enabled: true
 openagent-component:
+  storageClass: "local-path"
   headroom:
     enabled: true
     image:
