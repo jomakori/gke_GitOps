@@ -1,0 +1,30 @@
+{{- if .Values.claudeProxy.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: claude-proxy-restart
+  labels:
+    app.kubernetes.io/component: claude-proxy
+spec:
+  schedule: "0 2 * * 0"  # Every Sunday at 2am UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 60
+      template:
+        spec:
+          serviceAccountName: claude-proxy-restarter
+          restartPolicy: Never
+          containers:
+            - name: kubectl
+              image: bitnami/kubectl:latest
+              command:
+                - sh
+                - -c
+                - |
+                  kubectl rollout restart deployment/claude-proxy -n $(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+{{- end }}
