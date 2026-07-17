@@ -7,8 +7,14 @@ COPY . .
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /openagent-discord-bot .
 
 ARG RG_VERSION=15.1.0
-RUN curl -fsSL https://github.com/BurntSushi/ripgrep/releases/download/${RG_VERSION}/ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl.tar.gz \
-    | tar xz -C /tmp && cp /tmp/ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl/rg /rg
+ARG TARGETARCH
+RUN if [ "${TARGETARCH}" = "arm64" ]; then \
+      RG_ARCH="aarch64-unknown-linux-gnu"; \
+    else \
+      RG_ARCH="x86_64-unknown-linux-musl"; \
+    fi && \
+    curl -fsSL https://github.com/BurntSushi/ripgrep/releases/download/${RG_VERSION}/ripgrep-${RG_VERSION}-${RG_ARCH}.tar.gz \
+    | tar xz -C /tmp && cp /tmp/ripgrep-${RG_VERSION}-${RG_ARCH}/rg /rg
 
 FROM scratch
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
