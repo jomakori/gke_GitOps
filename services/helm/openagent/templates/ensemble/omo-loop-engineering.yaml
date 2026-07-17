@@ -126,7 +126,7 @@ spec:
 
     - name: atlas
       displayName: "Atlas"
-      model: deepseek-v4-pro
+      model: claude/sonnet-4
       systemPrompt: |
         # Atlas — Master Orchestrator
 
