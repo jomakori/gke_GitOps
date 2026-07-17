@@ -21,6 +21,13 @@ spec:
     - "mcp-ripgrep"
     - "--allow-dir"
     - "/data"
+    volumes:
+    - name: repos
+      persistentVolumeClaim:
+        claimName: search-repos
+    volumeMounts:
+    - name: repos
+      mountPath: /data
     resources:
       requests:
         cpu: 50m
