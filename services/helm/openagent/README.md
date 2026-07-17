@@ -113,6 +113,7 @@ Bot source code is available at `src/` (sibling to chart root). This Go binary i
 | openagent-component.bot.resources.requests.memory | string | `"128Mi"` | Bot memory request |
 | openagent-component.bot.config.conversationMode | string | `"threaded"` | Bot conversation mode |
 | openagent-component.bot.config.dashboardUrl | string | `"https://openagent.maklab.net"` | Dashboard URL |
+| openagent-component.bot.config.thinkMode | string | `"full"` | Think mode: `full` (log streaming), `simple` (phase transitions), `off` (silent) |
 | postgres.enabled | bool | `true` | Enable StackGres cluster |
 | postgres.clusterName | string | `"openagent-pg"` | StackGres cluster name |
 | postgres.instances | int | `1` | PostgreSQL instances |
@@ -145,6 +146,26 @@ The chart configures 12 models via LiteLLM proxy_config:
 | minimax/M2.7 | MiniMax | MINIMAX_API_KEY |
 
 Fallback chain: opencode models fall back to deepseek-v4-flash.
+
+## Conversation Persistence
+
+The bot persists conversation metadata to `/state/conversations.json` on a 10Mi PVC (`openagent-discord-state`).
+- **Startup**: Loads existing conversations on boot — threads survive pod restarts
+- **Saves**: After every conversation state change (thread creation, registration, updates)
+- **Atomic writes**: Uses temp file + rename to prevent corruption
+- **Leader election**: Only the leader pod writes state (ConfigMap lock `openagent-discord-leader` in `openagent` namespace)
+
+## Think Mode
+
+Configured via `openagent-component.bot.config.thinkMode`:
+
+| Mode | Value | Behavior |
+|------|-------|----------|
+| Full | `"full"` | Streams pod logs during AgentRun, posts event labels to Discord (capped at 10) |
+| Simple | `"simple"` | Posts phase transitions (Pending → Running → Succeeded/Failed) |
+| Off | `"off"` | No thinking updates posted |
+
+Default: `"full"`.
 
 ## Verification
 
