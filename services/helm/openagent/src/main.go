@@ -487,7 +487,7 @@ func buildSessionEmbed(dg *discordgo.Session, conv *Conversation, usage *tokenUs
 	if usage != nil {
 		tokens := "—"
 		if usage.totalTokens > 0 {
-			tokens = fmt.Sprintf("%d in · %d out · **%d** total", usage.inputTokens, usage.outputTokens, usage.totalTokens)
+			tokens = fmt.Sprintf("%d total", usage.totalTokens)
 		}
 		cost := "—"
 		if usage.cost > 0 {
