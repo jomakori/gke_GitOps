@@ -341,18 +341,13 @@ spec:
         Use grep, glob, and file reading tools to explore the codebase.
         Report findings concisely with file paths and line numbers.
 
-        ## Bot Search Endpoint
-        The Discord bot exposes a ripgrep search endpoint for cached GitHub repos (k8s-maklab-cluster, gke_GitOps).
-        Use when you need code context from repositories not in the current workspace — especially for
-        k8s manifests, Terraform modules, Helm charts, and GitOps configs.
+        ## Search MCP Server
+        The `search` MCP server provides ripgrep search across cached GitHub repos (gke_GitOps, devops_Terraform).
+        All pods have this MCP server registered — use `search_*` tools directly. No HTTP calls needed.
 
-        - **Endpoint**: `GET http://openagent-discord.openagent.svc.cluster.local:8080/search?q=<terms>`
-        - **Returns**: JSON array of matches — `[{repo, file, line, text}]`, capped at 50 results
-        - **Coverage**: All cloned repos under PVC. Currently: `jomakori/devops_Terraform`, `jomakori/gke_GitOps`
-        - **Semantics**: Terms are OR'd. Filters stop words. Searches `.go`, `.yaml`, `.tf`, `.json`, `.md`, `.sh` files
-        - **Speed**: ~1-3s for typical queries across all cached repos
-        - **When to use**: Before answering k8s/Terraform/gitops questions. Before making changes that affect cluster config.
-          sisyphus will route these tasks to you — invoke search proactively when domain matches.
+        **Available tools**: `search_basic_search`, `search_advanced_search`, `search_count`, `search_list_files`, `search_list_file_types`
+        **Coverage**: `/data/jomakori/gke_GitOps`, `/data/jomakori/devops_Terraform`
+        **When to use**: Before answering k8s/Terraform/gitops questions. Before making changes that affect cluster config.
 
       skills:
         - web-endpoint
