@@ -262,6 +262,7 @@ func getEnvDefault(key, fallback string) string {
 
 func main() {
 	cfg := loadConfig()
+	log.Printf("think mode: %s", cfg.ThinkMode.String())
 
 	if cfg.BotToken == "" {
 		log.Fatal("DISCORD_BOT_TOKEN is required")
@@ -471,23 +472,15 @@ func findChannelByName(dg *discordgo.Session, name string) string {
 }
 
 func buildSessionEmbed(dg *discordgo.Session, conv *Conversation, usage *tokenUsage) *discordgo.MessageEmbed {
-	tokenStr := "waiting for first turn..."
-	costStr := "$0.0000"
+	desc := fmt.Sprintf("[Dashboard](%s)", conv.DashboardURL)
 	if usage != nil {
-		tokenStr = fmt.Sprintf("**%d** in / **%d** out / **%d** total", usage.inputTokens, usage.outputTokens, usage.totalTokens)
-		costStr = fmt.Sprintf("$%.4f", usage.cost)
+		desc += fmt.Sprintf(" · **%d** tokens · $%.4f", usage.totalTokens, usage.cost)
 	}
-
 	return &discordgo.MessageEmbed{
-		Title:       "Active Session",
-		Description: fmt.Sprintf("[Dashboard](%s)", conv.DashboardURL),
+		Title:       "Session",
+		Description: desc,
 		Color:       0x5865F2,
 		Fields: []*discordgo.MessageEmbedField{
-			{
-				Name:   "User",
-				Value:  fmt.Sprintf("<@%s>", conv.UserID),
-				Inline: true,
-			},
 			{
 				Name:   "Started",
 				Value:  fmt.Sprintf("<t:%d:R>", conv.StartedAt.Unix()),
@@ -496,26 +489,11 @@ func buildSessionEmbed(dg *discordgo.Session, conv *Conversation, usage *tokenUs
 			{
 				Name:   "Run",
 				Value:  fmt.Sprintf("`%s`", conv.SessionRunID),
-				Inline: false,
-			},
-			{
-				Name:   "\U0001F4AC Tokens",
-				Value:  tokenStr,
-				Inline: true,
-			},
-			{
-				Name:   "\U0001F4B0 Cost",
-				Value:  costStr,
-				Inline: true,
-			},
-			{
-				Name:   "\U0001F504 Subagents",
-				Value:  "`sisyphus`",
 				Inline: true,
 			},
 		},
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Updates after each turn",
+			Text: conv.ThreadID,
 		},
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
@@ -910,8 +888,11 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 		// Simple think mode: phase transitions
 		if cfg.ThinkMode == ThinkSimple && phase != prevPhase && prevPhase != "" {
 			msg := formatPhaseMessage(phase)
+			log.Printf("[ThinkMode] simple: posting phase change %q -> %q", prevPhase, phase)
 			if discordSession != nil {
 				discordSession.ChannelMessageSend(threadID, msg)
+			} else {
+				log.Printf("[ThinkMode] simple: discordSession is nil, cannot post")
 			}
 		}
 		prevPhase = phase
@@ -920,6 +901,7 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 		if cfg.ThinkMode == ThinkFull && phase == "Running" && !logStreamStarted {
 			logStreamStarted = true
 			if podName, ok := status["podName"].(string); ok && podName != "" {
+				log.Printf("[ThinkMode] full: starting log stream for pod %s", podName)
 				go func(pod string) {
 					msgCount := 0
 					ticker := time.NewTicker(3 * time.Second)
@@ -940,6 +922,7 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 								return
 							}
 							if label := parseLogEvent(line); label != "" {
+								log.Printf("[ThinkMode] full: posting event %q", label)
 								if discordSession != nil {
 									discordSession.ChannelMessageSend(threadID, label)
 								}
