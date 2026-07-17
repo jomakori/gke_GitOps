@@ -47,5 +47,6 @@ bot:
     channelOnly: ""
     clientId: ""
     dashboardUrl: "https://openagent.maklab.net"
+    thinkMode: "full"
   version:
     configMapName: "openagent-discord-version"
