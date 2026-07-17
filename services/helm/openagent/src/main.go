@@ -461,6 +461,16 @@ func startHTTPServer(cfg config) {
 	}
 }
 
+func isThreadChannel(s *discordgo.Session, channelID string) bool {
+	ch, err := s.State.Channel(channelID)
+	if err != nil {
+		return false
+	}
+	return ch.Type == discordgo.ChannelTypeGuildPublicThread ||
+		ch.Type == discordgo.ChannelTypeGuildPrivateThread ||
+		ch.Type == discordgo.ChannelTypeGuildNewsThread
+}
+
 func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config) {
 	// Ignore own messages
 	if m.Author.ID == s.State.User.ID {
@@ -530,6 +540,21 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 				existingConv.LastActivity = time.Now()
 				convMutex.Unlock()
 				replyTargetID = existingConv.ThreadID
+			} else if isThreadChannel(s, m.ChannelID) {
+				// Message in existing thread after bot restart — register it
+				replyTargetID = m.ChannelID
+				conv := &Conversation{
+					ThreadID:     m.ChannelID,
+					UserID:       m.Author.ID,
+					ChannelID:    m.ChannelID,
+					StartedAt:    time.Now(),
+					LastActivity: time.Now(),
+				}
+				convMutex.Lock()
+				conversations[m.ChannelID] = conv
+				convMutex.Unlock()
+				log.Printf("Registered existing thread %s for user %s", m.ChannelID, m.Author.Username)
+				createSessionEmbed(s, conv)
 			} else {
 				thread, err := s.MessageThreadStartComplex(m.ChannelID, m.ID, &discordgo.ThreadStart{
 					Name:                fmt.Sprintf("kagent-%s", truncate(content, 30)),
