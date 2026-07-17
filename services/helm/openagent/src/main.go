@@ -834,8 +834,8 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 			"cleanup":    "delete",
 			"sessionKey": threadID,
 			"model": map[string]interface{}{
-				"model":          "",
-				"provider":       "",
+				"model":          "deepseek-v4-pro",
+				"provider":       "deepseek",
 				"authSecretRef":  "",
 				"baseURL":        "http://openagent-headroom.openagent.svc.cluster.local:8787/v1",
 			},
