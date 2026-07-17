@@ -61,8 +61,6 @@ type config struct {
 	StartupChannel   string
 	AgentID          string
 	AgentRef         string
-	ModelName        string
-	ModelProvider    string
 	AgentSkills      string
 	DashboardBase    string
 	ThinkMode        ThinkMode
@@ -193,8 +191,6 @@ func loadConfig() config {
 		ClientID:      os.Getenv("DISCORD_CLIENT_ID"),
 		AgentID:       getEnvDefault("AGENT_ID", "primary"),
 		AgentRef:      getEnvDefault("AGENT_REF", "omo-loop-engineering-sisyphus"),
-		ModelName:     getEnvDefault("MODEL_NAME", "deepseek-v4-pro"),
-		ModelProvider: getEnvDefault("MODEL_PROVIDER", "deepseek"),
 		AgentSkills:   getEnvDefault("AGENT_SKILLS", "k8s-ops,omo-core-skills,hashline-editor,web-endpoint"),
 		DashboardBase: getEnvDefault("DASHBOARD_BASE_URL", "https://openagent.maklab.net/runs"),
 	}
@@ -826,12 +822,6 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 			"mode":       "task",
 			"cleanup":    "delete",
 			"sessionKey": threadID,
-			"model": map[string]interface{}{
-				"model":          cfg.ModelName,
-				"provider":       cfg.ModelProvider,
-				"authSecretRef":  "",
-				"baseURL":        "http://openagent-headroom.openagent.svc.cluster.local:8787/v1",
-			},
 		},
 	}
 
