@@ -29,4 +29,31 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: claude-proxy-restarter
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: claude-proxy-refresher
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: claude-proxy-refresher
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["claude-credentials"]
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: claude-proxy-refresher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: claude-proxy-refresher
+subjects:
+  - kind: ServiceAccount
+    name: claude-proxy-refresher
 {{- end }}
