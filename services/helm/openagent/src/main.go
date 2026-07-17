@@ -869,6 +869,8 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 func pollAgentRun(arName string, cfg config, threadID string) (string, *tokenUsage, error) {
 	statusURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns/%s", k8sAPIBaseURL, arName)
 	var prevPhase string
+	var thinkMsgCount int
+	var lastLogLine string
 
 	done := make(chan struct{})
 	defer close(done)
@@ -892,6 +894,27 @@ func pollAgentRun(arName string, cfg config, threadID string) (string, *tokenUsa
 
 		phase, _ := status["phase"].(string)
 		log.Printf("[Sympozium] %s phase: %s", arName, phase)
+
+		if cfg.ThinkMode == ThinkFull && phase == "Running" && thinkMsgCount < 10 {
+			podName, _ := status["podName"].(string)
+			if podName == "" {
+				podName = arName
+			}
+			if logs, err := getPodLogs(podName); err == nil {
+				for _, line := range strings.Split(logs, "\n") {
+					if line == "" || line == lastLogLine {
+						continue
+					}
+					msg := parseLogEvent(line)
+					if msg != "" && thinkMsgCount < 10 && discordSession != nil {
+						discordSession.ChannelMessageSend(threadID, msg)
+						thinkMsgCount++
+						time.Sleep(500 * time.Millisecond)
+					}
+					lastLogLine = line
+				}
+			}
+		}
 
 		if usage := parseTokenUsage(status); usage != nil {
 			convMutex.RLock()
