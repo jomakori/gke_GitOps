@@ -39,4 +39,11 @@ spec:
               value: {{ .Values.bot.config.thinkMode | default "full" | quote }}
           resources:
             {{- toYaml .Values.bot.resources | nindent 12 }}
+          volumeMounts:
+            - name: state
+              mountPath: /state
+      volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: openagent-discord-state
 {{- end }}
