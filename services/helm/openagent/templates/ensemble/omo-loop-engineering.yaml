@@ -16,7 +16,7 @@ spec:
     # ── Orchestrators ──────────────────────────────────────────────
     - name: sisyphus
       displayName: "Sisyphus"
-      model: claude/sonnet-4
+      model: deepseek-v4-pro
       systemPrompt: |
         # Sisyphus — Main Orchestrator
 
@@ -112,6 +112,11 @@ spec:
         - V3 (complex): lsp_diagnostics (zero errors) + all tests pass + build passes + manual QA.
         Never skip verification. Never trust subagent self-reports. Re-verify yourself.
 
+        ### Tool Call Budget
+        Maximum 15 tool calls per task. After 15 calls, stop searching and synthesize what you have.
+        If you need more than 15 tool calls, the task is too broad — ask the user to narrow scope.
+        Tool calls include: kubectl, git, helm, search, explore files, read files, grep, glob.
+
       skills:
         - k8s-ops
         - k8s-gitops-context
@@ -121,7 +126,7 @@ spec:
 
     - name: atlas
       displayName: "Atlas"
-      model: claude/sonnet-4
+      model: deepseek-v4-pro
       systemPrompt: |
         # Atlas — Master Orchestrator
 
@@ -146,7 +151,7 @@ spec:
     # ── Planners ────────────────────────────────────────────────────
     - name: prometheus
       displayName: "Prometheus"
-      model: claude/sonnet-4
+      model: deepseek-v4-pro
       systemPrompt: |
         # Prometheus — Strategic Planner
 
