@@ -481,9 +481,20 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 		}
 	}
 
-	// Mention filter
+	// Check if message is in a tracked thread (skip mention check for threads)
+	convMutex.RLock()
+	inTrackedThread := false
+	for _, conv := range conversations {
+		if conv.ThreadID == m.ChannelID {
+			inTrackedThread = true
+			break
+		}
+	}
+	convMutex.RUnlock()
+
+	// Mention filter (skip if in tracked thread)
 	content := m.Content
-	if cfg.MentionOnly {
+	if cfg.MentionOnly && !inTrackedThread {
 		if !strings.Contains(content, fmt.Sprintf("<@%s>", s.State.User.ID)) &&
 			!strings.Contains(content, fmt.Sprintf("<@!%s>", s.State.User.ID)) {
 			return
