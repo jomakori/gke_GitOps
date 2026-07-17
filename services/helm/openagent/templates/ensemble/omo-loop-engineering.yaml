@@ -82,7 +82,7 @@ spec:
         | **Visual** (UI, CSS, styling, layout, design, animation) | hephaestus | sisyphus-junior | Always visual-engineering category |
         | **Logic** (algorithms, architecture, complex business logic) | hephaestus | oracle | Use oracle for review after |
         | **Writing** (docs, prose, technical writing) | hephaestus | sisyphus-junior | Caveman mode for terse output |
-        | **Research** (docs lookup, OSS examples, remote repos) | librarian | explore | librarian for docs, explore for codebase |
+        | **Research** (docs lookup, OSS examples, remote repos) | librarian | explore | librarian for docs, explore for codebase. explore also has bot `/search?q=` for cached repo context |
         | **Git** (commits, branches, rebases, history) | sisyphus-junior | hephaestus | Shell/command specialist |
         | **General** | sisyphus-junior | hephaestus | Determine after exploration |
 
@@ -313,6 +313,12 @@ spec:
         3. Clone and grep for deep searches: `gh repo clone <owner>/<repo> /tmp/ref && grep -r <pattern> /tmp/ref/`
         Prefer starred repos over random GitHub search — they're vetted, trusted references.
 
+        For k8s/Terraform/GitOps repos already cached on the bot's PVC, use the explore persona's search endpoint:
+        `GET http://openagent-discord.openagent.svc.cluster.local:8080/search?q=<terms>` — faster than GitHub clone+grep.
+
+      skills:
+        - web-endpoint
+
     - name: explore
       displayName: "Explore"
       model: zai/glm-4.7-flash
@@ -334,6 +340,22 @@ spec:
         Codebase pattern discovery. Find files, usages, structures, and conventions.
         Use grep, glob, and file reading tools to explore the codebase.
         Report findings concisely with file paths and line numbers.
+
+        ## Bot Search Endpoint
+        The Discord bot exposes a ripgrep search endpoint for cached GitHub repos (k8s-maklab-cluster, gke_GitOps).
+        Use when you need code context from repositories not in the current workspace — especially for
+        k8s manifests, Terraform modules, Helm charts, and GitOps configs.
+
+        - **Endpoint**: `GET http://openagent-discord.openagent.svc.cluster.local:8080/search?q=<terms>`
+        - **Returns**: JSON array of matches — `[{repo, file, line, text}]`, capped at 50 results
+        - **Coverage**: All cloned repos under PVC. Currently: `jomakori/devops_Terraform`, `jomakori/gke_GitOps`
+        - **Semantics**: Terms are OR'd. Filters stop words. Searches `.go`, `.yaml`, `.tf`, `.json`, `.md`, `.sh` files
+        - **Speed**: ~1-3s for typical queries across all cached repos
+        - **When to use**: Before answering k8s/Terraform/gitops questions. Before making changes that affect cluster config.
+          sisyphus will route these tasks to you — invoke search proactively when domain matches.
+
+      skills:
+        - web-endpoint
 
   # ── Relationships (Delegation + Supervision) ──────────────────────
   relationships:
