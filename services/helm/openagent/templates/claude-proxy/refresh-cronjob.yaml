@@ -1,0 +1,118 @@
+{{- if .Values.claudeProxy.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: claude-proxy-refresh
+  labels:
+    app.kubernetes.io/component: claude-proxy
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      template:
+        spec:
+          serviceAccountName: claude-proxy-refresher
+          restartPolicy: Never
+          initContainers:
+            - name: refresh
+              image: "{{ .Values.claudeProxy.image.repository }}:{{ .Values.claudeProxy.image.tag }}"
+              imagePullPolicy: {{ .Values.claudeProxy.image.pullPolicy }}
+              command:
+                - python3
+                - -c
+                - |
+                  import json, time, urllib.request, os
+
+                  CREDS_FILE = '/writable/.credentials.json'
+                  TOKEN_URL = 'https://platform.claude.com/v1/oauth/token'
+                  CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
+
+                  os.makedirs('/writable', exist_ok=True)
+
+                  with open('/secrets/.credentials.json') as f:
+                      creds = json.load(f)
+                  oauth = creds.get('claudeAiOauth', {})
+                  refresh_token = oauth.get('refreshToken', '')
+                  expires_at = oauth.get('expiresAt', 0)
+                  now_ms = int(time.time() * 1000)
+
+                  if not refresh_token:
+                      print('No refresh token, skipping')
+                      exit(0)
+
+                  ttl_h = (expires_at - now_ms) / 1000 / 3600
+                  print(f'Token TTL: {ttl_h:.1f}h')
+
+                  if ttl_h > 6:
+                      print('Token fresh, skipping refresh')
+                      exit(0)
+
+                  print('Refreshing OAuth token...')
+                  body = json.dumps({
+                      'grant_type': 'refresh_token',
+                      'refresh_token': refresh_token,
+                      'client_id': CLIENT_ID,
+                  }).encode()
+
+                  req = urllib.request.Request(TOKEN_URL, data=body, method='POST')
+                  req.add_header('Content-Type', 'application/json')
+                  req.add_header('Accept', 'application/json')
+                  req.add_header('User-Agent', 'claude-cli/2.1.207 (external, cli)')
+
+                  try:
+                      resp = urllib.request.urlopen(req, timeout=15)
+                      data = json.loads(resp.read())
+                      new_access = data.get('access_token', '')
+                      new_refresh = data.get('refresh_token', refresh_token)
+                      expires_in = data.get('expires_in', 3600)
+
+                      if new_access:
+                          new_expires = int(time.time() * 1000) + (expires_in * 1000)
+                          oauth['accessToken'] = new_access
+                          oauth['refreshToken'] = new_refresh
+                          oauth['expiresAt'] = new_expires
+                          creds['claudeAiOauth'] = oauth
+                          with open(CREDS_FILE, 'w') as f:
+                              json.dump(creds, f)
+                          print(f'Token refreshed. New TTL: {expires_in/3600:.1f}h')
+                      else:
+                          print('Refresh response missing access_token, exiting')
+                          exit(1)
+                  except Exception as e:
+                      print(f'Refresh failed: {e}')
+                      exit(1)
+              volumeMounts:
+                - name: credentials
+                  mountPath: /secrets
+                  readOnly: true
+                - name: writable
+                  mountPath: /writable
+          containers:
+            - name: update-secret
+              image: bitnami/kubectl:latest
+              command:
+                - sh
+                - -c
+                - |
+                  NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+                  kubectl create secret generic claude-credentials \
+                    --from-file=.credentials.json=/writable/.credentials.json \
+                    -n "$NAMESPACE" \
+                    --dry-run=client -o yaml | kubectl apply -f -
+                  echo "Secret updated"
+              volumeMounts:
+                - name: writable
+                  mountPath: /writable
+          volumes:
+            - name: credentials
+              secret:
+                secretName: claude-credentials
+            - name: writable
+              emptyDir: {}
+{{- end }}
