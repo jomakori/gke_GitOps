@@ -77,6 +77,7 @@ litellm:
         litellm_params:
           model: deepseek/deepseek-v4-pro
           api_key: os.environ/DEEPSEEK_API_KEY
+          cache: true
       - model_name: zai/glm-4.7
         litellm_params:
           model: zai/glm-4.7
