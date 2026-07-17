@@ -114,6 +114,8 @@ litellm:
       - opencode/big-pickle: ["deepseek-v4-flash"]
       - opencode/north-mini-code-free: ["deepseek-v4-flash"]
       - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
+      - claude/sonnet-5: ["deepseek-v4-pro"]
+      - claude/opus-4: ["claude/sonnet-5", "deepseek-v4-pro"]
 
 # ── Component subchart values ──────────────────────────────────────
 # These are passed to the openagent-component subchart.
