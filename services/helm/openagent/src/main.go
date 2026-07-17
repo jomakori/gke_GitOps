@@ -467,23 +467,14 @@ func findChannelByName(dg *discordgo.Session, name string) string {
 }
 
 func buildSessionEmbed(dg *discordgo.Session, conv *Conversation, usage *tokenUsage) *discordgo.MessageEmbed {
-	desc := fmt.Sprintf("[Dashboard](%s)", conv.DashboardURL)
-	if usage != nil {
-		desc += fmt.Sprintf(" · **%d** tokens · $%.4f", usage.totalTokens, usage.cost)
-	}
-	return &discordgo.MessageEmbed{
+	embed := &discordgo.MessageEmbed{
 		Title:       "Session",
-		Description: desc,
+		Description: fmt.Sprintf("[Dashboard](%s)", conv.DashboardURL),
 		Color:       0x5865F2,
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "Started",
 				Value:  fmt.Sprintf("<t:%d:R>", conv.StartedAt.Unix()),
-				Inline: true,
-			},
-			{
-				Name:   "Run",
-				Value:  fmt.Sprintf("`%s`", conv.SessionRunID),
 				Inline: true,
 			},
 		},
@@ -492,6 +483,30 @@ func buildSessionEmbed(dg *discordgo.Session, conv *Conversation, usage *tokenUs
 		},
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
+
+	if usage != nil {
+		tokens := "—"
+		if usage.totalTokens > 0 {
+			tokens = fmt.Sprintf("%d in · %d out · **%d** total", usage.inputTokens, usage.outputTokens, usage.totalTokens)
+		}
+		cost := "—"
+		if usage.cost > 0 {
+			cost = fmt.Sprintf("$%.4f", usage.cost)
+		}
+		embed.Fields = append(embed.Fields,
+			&discordgo.MessageEmbedField{Name: "Tokens", Value: tokens, Inline: true},
+			&discordgo.MessageEmbedField{Name: "Cost", Value: cost, Inline: true},
+		)
+		embed.Fields = append(embed.Fields,
+			&discordgo.MessageEmbedField{Name: "Run", Value: fmt.Sprintf("`%s`", conv.SessionRunID), Inline: false},
+		)
+	} else {
+		embed.Fields = append(embed.Fields,
+			&discordgo.MessageEmbedField{Name: "Run", Value: fmt.Sprintf("`%s`", conv.SessionRunID), Inline: true},
+		)
+	}
+
+	return embed
 }
 
 func createSessionEmbed(dg *discordgo.Session, conv *Conversation) {
@@ -867,6 +882,15 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 
 		phase, _ := status["phase"].(string)
 		log.Printf("[Sympozium] %s phase: %s", runID, phase)
+
+		if usage := parseTokenUsage(status); usage != nil {
+			convMutex.RLock()
+			conv := conversations[threadID]
+			convMutex.RUnlock()
+			if conv != nil && discordSession != nil && (usage.totalTokens > 0 || usage.cost > 0) {
+				updateSessionEmbed(discordSession, conv, usage)
+			}
+		}
 
 		// Simple think mode: phase transitions
 		if cfg.ThinkMode == ThinkSimple && phase != prevPhase && prevPhase != "" {
