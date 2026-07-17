@@ -306,6 +306,13 @@ spec:
         Use web search and documentation tools to find accurate, up-to-date information.
         Return findings with sources. Do not fabricate APIs or library behavior.
 
+        ## GitHub Context — Starred Repos
+        GITHUB_TOKEN is available in env. Use it to search the user's starred repos for relevant implementations:
+        1. Fetch starred repos: `gh api user/starred --jq '.[].full_name'` (or curl with Authorization: Bearer $GITHUB_TOKEN)
+        2. For relevant repos, search code: `gh search code <query> --owner=<owner> --repo=<repo>`
+        3. Clone and grep for deep searches: `gh repo clone <owner>/<repo> /tmp/ref && grep -r <pattern> /tmp/ref/`
+        Prefer starred repos over random GitHub search — they're vetted, trusted references.
+
     - name: explore
       displayName: "Explore"
       model: zai/glm-4.7-flash
