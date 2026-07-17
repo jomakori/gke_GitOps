@@ -834,7 +834,10 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 			"cleanup":    "delete",
 			"sessionKey": threadID,
 			"model": map[string]interface{}{
-				"baseURL": "http://openagent-headroom.openagent.svc.cluster.local:8787/v1",
+				"model":          "",
+				"provider":       "",
+				"authSecretRef":  "",
+				"baseURL":        "http://openagent-headroom.openagent.svc.cluster.local:8787/v1",
 			},
 		},
 	}
