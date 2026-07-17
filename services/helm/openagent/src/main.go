@@ -286,12 +286,12 @@ func main() {
 		log.Fatalf("failed to create clientset: %v", err)
 	}
 
-	lock := &resourcelock.LeaseLock{
-		LeaseMeta: metav1.ObjectMeta{
+	lock := &ConfigMapLock{
+		ConfigMapMeta: metav1.ObjectMeta{
 			Name:      "openagent-discord-leader",
 			Namespace: getEnvDefault("POD_NAMESPACE", "openagent"),
 		},
-		Client: clientset.CoordinationV1(),
+		Client: clientset.CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity: podName,
 		},
