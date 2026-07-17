@@ -66,6 +66,7 @@ type config struct {
 	AgentSkills      string
 	DashboardBase    string
 	ThinkMode        ThinkMode
+	RepoCachePath    string
 }
 
 type tokenUsage struct {
@@ -249,6 +250,8 @@ func loadConfig() config {
 		log.Printf("WARNING: unknown THINK_MODE %q, defaulting to full", v)
 		cfg.ThinkMode = ThinkFull
 	}
+
+	cfg.RepoCachePath = os.Getenv("REPO_CACHE_PATH")
 
 	return cfg
 }
@@ -582,6 +585,8 @@ func startHTTPServer(cfg config) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")
 	})
+
+	mux.HandleFunc("/search", handleSearch(cfg.RepoCachePath))
 
 	log.Printf("Starting HTTP server on :8080")
 	if err := http.ListenAndServe(":8080", mux); err != nil {
