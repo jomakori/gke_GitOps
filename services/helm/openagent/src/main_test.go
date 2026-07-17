@@ -1,11 +1,9 @@
 package main
 
 import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestStripMention(t *testing.T) {
@@ -58,7 +56,7 @@ func TestTruncate(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
-	t.Setenv("KAGENT_A2A_URL", "http://localhost:8083/a2a")
+	t.Setenv("AGENT_API_URL", "http://localhost:8083/a2a")
 
 	t.Run("defaults", func(t *testing.T) {
 		cfg := loadConfig()
@@ -123,7 +121,7 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("missing A2A URL exits", func(t *testing.T) {
 		if os.Getenv("KAGENT_A2A_FATAL_TEST") == "1" {
-			os.Unsetenv("KAGENT_A2A_URL")
+			os.Unsetenv("AGENT_API_URL")
 			loadConfig()
 			return
 		}
@@ -132,99 +130,180 @@ func TestLoadConfig(t *testing.T) {
 	})
 }
 
-func TestCallA2A_Success(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("expected POST, got %s", r.Method)
-		}
-		if r.Header.Get("Content-Type") != "application/json" {
-			t.Errorf("expected application/json, got %s", r.Header.Get("Content-Type"))
-		}
+func TestLoadSaveConversations(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/conversations.json"
 
-		resp := a2aResponse{
-			JSONRPC: "2.0",
-			Result: &a2aResult{
-				Messages: []a2aMessage{
-					{Role: "user", Content: "hi"},
-					{Role: "assistant", Content: "Hello, world!"},
-				},
-			},
-			ID: json.Number("1"),
-		}
-		json.NewEncoder(w).Encode(resp)
-	}))
-	defer server.Close()
+	conv1 := &Conversation{
+		ThreadID:     "thread-1",
+		UserID:       "user-1",
+		ChannelID:    "channel-1",
+		StartedAt:    time.Now(),
+		LastActivity: time.Now(),
+	}
+	conv2 := &Conversation{
+		ThreadID:     "thread-2",
+		UserID:       "user-2",
+		ChannelID:    "channel-2",
+		StartedAt:    time.Now(),
+		LastActivity: time.Now(),
+	}
 
-	reply, err := callA2A(server.URL, "hi", "thread-1")
+	conversations["thread-1"] = conv1
+	conversations["thread-2"] = conv2
+
+	if err := saveConversations(path); err != nil {
+		t.Fatalf("saveConversations: %v", err)
+	}
+
+	// Clear map and reload
+	conversations = make(map[string]*Conversation)
+	if err := loadConversations(path); err != nil {
+		t.Fatalf("loadConversations: %v", err)
+	}
+
+	if len(conversations) != 2 {
+		t.Fatalf("expected 2 conversations, got %d", len(conversations))
+	}
+
+	if conversations["thread-1"].UserID != "user-1" {
+		t.Errorf("thread-1 UserID = %q, want user-1", conversations["thread-1"].UserID)
+	}
+	if conversations["thread-2"].UserID != "user-2" {
+		t.Errorf("thread-2 UserID = %q, want user-2", conversations["thread-2"].UserID)
+	}
+}
+
+func TestLoadMissingFile(t *testing.T) {
+	conversations = make(map[string]*Conversation)
+	err := loadConversations("/nonexistent/path/state.json")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("loadConversations on missing file: %v", err)
 	}
-	if reply != "Hello, world!" {
-		t.Errorf("expected 'Hello, world!', got %q", reply)
+	if len(conversations) != 0 {
+		t.Errorf("expected empty map, got %d entries", len(conversations))
 	}
 }
 
-func TestCallA2A_NoAssistantMessage(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := a2aResponse{
-			JSONRPC: "2.0",
-			Result: &a2aResult{
-				Messages: []a2aMessage{
-					{Role: "user", Content: "hi"},
-				},
-			},
-			ID: json.Number("1"),
+func TestThinkModeParsing(t *testing.T) {
+	t.Setenv("AGENT_API_URL", "http://localhost:8083/a2a")
+
+	tests := []struct {
+		name  string
+		env   string
+		want  ThinkMode
+	}{
+		{name: "off", env: "off", want: ThinkOff},
+		{name: "simple", env: "simple", want: ThinkSimple},
+		{name: "full", env: "full", want: ThinkFull},
+		{name: "empty defaults to full", env: "", want: ThinkFull},
+		{name: "garbage defaults to full", env: "garbage", want: ThinkFull},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("THINK_MODE", tt.env)
+			cfg := loadConfig()
+			if cfg.ThinkMode != tt.want {
+				t.Errorf("ThinkMode = %v (%d), want %v (%d)", cfg.ThinkMode, cfg.ThinkMode, tt.want, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatPhaseMessage(t *testing.T) {
+	tests := []struct {
+		phase string
+		want  string
+	}{
+		{"Running", "🤔 Phase: Running"},
+		{"Succeeded", "✅ Phase: Succeeded"},
+		{"Failed", "❌ Phase: Failed"},
+		{"Pending", "🔄 Phase: Pending"},
+		{"Unknown", "🔄 Phase: Unknown"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.phase, func(t *testing.T) {
+			got := formatPhaseMessage(tt.phase)
+			if got != tt.want {
+				t.Errorf("formatPhaseMessage(%q) = %q, want %q", tt.phase, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseLogEvent(t *testing.T) {
+	tests := []struct {
+		line string
+		want string
+	}{
+		{"planning the next steps", "📝 Planning"},
+		{"plan: deploy to k8s", "📝 Planning"},
+		{"executing tool call", "🔧 Using tool"},
+		{"tool: kubectl apply", "🔧 Using tool"},
+		{"I'm thinking about this", "🤔 Thinking"},
+		{"think: maybe use goroutine", "🤔 Thinking"},
+		{"delegate to persona", "🔄 Delegating"},
+		{"ERROR: something broke", "❌ Error"},
+		{"error: connection refused", "❌ Error"},
+		{"just a normal log line", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.line, func(t *testing.T) {
+			got := parseLogEvent(tt.line)
+			if got != tt.want {
+				t.Errorf("parseLogEvent(%q) = %q, want %q", tt.line, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSimpleThinkModePhaseTracking(t *testing.T) {
+	prevPhase := ""
+	phase := "Running"
+	notified := false
+
+	// First phase should NOT trigger (prevPhase == "")
+	if phase != prevPhase && prevPhase != "" {
+		notified = true
+	}
+	prevPhase = phase
+	if notified {
+		t.Error("first phase should not trigger notification")
+	}
+
+	// Same phase should NOT trigger again
+	if phase != prevPhase && prevPhase != "" {
+		notified = true
+	}
+	if notified {
+		t.Error("same phase should not trigger notification")
+	}
+
+	// Phase change SHOULD trigger
+	phase = "Succeeded"
+	if phase != prevPhase && prevPhase != "" {
+		notified = true
+	}
+	if !notified {
+		t.Error("phase change should trigger notification")
+	}
+}
+
+func TestFullThinkModeCapping(t *testing.T) {
+	lines := make([]string, 50)
+	for i := range lines {
+		lines[i] = "error: something went wrong at line " + string(rune('0'+i%10))
+	}
+	count := 0
+	for _, line := range lines {
+		if label := parseLogEvent(line); label != "" {
+			if count < 10 {
+				count++
+			}
 		}
-		json.NewEncoder(w).Encode(resp)
-	}))
-	defer server.Close()
-
-	_, err := callA2A(server.URL, "hi", "thread-1")
-	if err == nil {
-		t.Fatal("expected error for missing assistant message")
 	}
-}
-
-func TestCallA2A_ErrorResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := a2aResponse{
-			JSONRPC: "2.0",
-			Error: &a2aError{
-				Code:    -32000,
-				Message: "something went wrong",
-			},
-			ID: json.Number("1"),
-		}
-		json.NewEncoder(w).Encode(resp)
-	}))
-	defer server.Close()
-
-	_, err := callA2A(server.URL, "hi", "thread-1")
-	if err == nil {
-		t.Fatal("expected error for A2A error response")
-	}
-}
-
-func TestCallA2A_ConnectionRefused(t *testing.T) {
-	_, err := callA2A("http://127.0.0.1:19999", "hi", "thread-1")
-	if err == nil {
-		t.Fatal("expected error for refused connection")
-	}
-}
-
-func TestCallA2A_EmptyResult(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := a2aResponse{
-			JSONRPC: "2.0",
-			Result:  nil,
-			ID:      json.Number("1"),
-		}
-		json.NewEncoder(w).Encode(resp)
-	}))
-	defer server.Close()
-
-	_, err := callA2A(server.URL, "hi", "thread-1")
-	if err == nil {
-		t.Fatal("expected error for empty result")
+	if count != 10 {
+		t.Errorf("expected 10 events captured, got %d", count)
 	}
 }

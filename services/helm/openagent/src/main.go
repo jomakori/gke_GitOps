@@ -16,12 +16,38 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
 var (
 	k8sAPIToken   string
 	k8sAPIBaseURL = "https://kubernetes.default.svc"
 )
+
+type ThinkMode int
+
+const (
+	ThinkOff ThinkMode = iota
+	ThinkSimple
+	ThinkFull
+)
+
+func (t ThinkMode) String() string {
+	switch t {
+	case ThinkOff:
+		return "off"
+	case ThinkSimple:
+		return "simple"
+	case ThinkFull:
+		return "full"
+	default:
+		return "unknown"
+	}
+}
 
 type config struct {
 	BotToken         string
@@ -39,6 +65,7 @@ type config struct {
 	ModelProvider    string
 	AgentSkills      string
 	DashboardBase    string
+	ThinkMode        ThinkMode
 }
 
 type tokenUsage struct {
@@ -118,6 +145,45 @@ var (
 	discordSession *discordgo.Session
 )
 
+func loadConversations(path string) error {
+	convMutex.Lock()
+	defer convMutex.Unlock()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Printf("no state file at %s, starting fresh", path)
+			return nil
+		}
+		return fmt.Errorf("read state file: %w", err)
+	}
+
+	if err := json.Unmarshal(data, &conversations); err != nil {
+		return fmt.Errorf("unmarshal state: %w", err)
+	}
+
+	log.Printf("loaded %d conversations from %s", len(conversations), path)
+	return nil
+}
+
+func saveConversations(path string) error {
+	convMutex.RLock()
+	data, err := json.Marshal(conversations)
+	convMutex.RUnlock()
+	if err != nil {
+		return fmt.Errorf("marshal state: %w", err)
+	}
+
+	tmpPath := path + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+		return fmt.Errorf("write tmp state: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("rename state: %w", err)
+	}
+	return nil
+}
+
 func loadConfig() config {
 	cfg := config{
 		BotToken:      os.Getenv("DISCORD_BOT_TOKEN"),
@@ -172,6 +238,18 @@ func loadConfig() config {
 		cfg.StartupChannel = strings.TrimSpace(v)
 	}
 
+	switch v := os.Getenv("THINK_MODE"); v {
+	case "off":
+		cfg.ThinkMode = ThinkOff
+	case "simple":
+		cfg.ThinkMode = ThinkSimple
+	case "full", "":
+		cfg.ThinkMode = ThinkFull
+	default:
+		log.Printf("WARNING: unknown THINK_MODE %q, defaulting to full", v)
+		cfg.ThinkMode = ThinkFull
+	}
+
 	return cfg
 }
 
@@ -192,6 +270,69 @@ func main() {
 	// Start healthz server + outbound API for agents
 	go startHTTPServer(cfg)
 
+	// K8s leader election for multi-replica state safety
+	podName := os.Getenv("HOSTNAME")
+	if podName == "" {
+		podName = fmt.Sprintf("openagent-discord-%d", time.Now().UnixNano())
+	}
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Fatalf("failed to get in-cluster config: %v", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("failed to create clientset: %v", err)
+	}
+
+	lock := &resourcelock.LeaseLock{
+		LeaseMeta: metav1.ObjectMeta{
+			Name:      "openagent-discord-leader",
+			Namespace: getEnvDefault("POD_NAMESPACE", "openagent"),
+		},
+		Client: clientset.CoordinationV1(),
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity: podName,
+		},
+	}
+
+	leaderCtx, leaderCancel := context.WithCancel(context.Background())
+	defer leaderCancel()
+
+	leaderCh := make(chan struct{})
+	go func() {
+		leaderelection.RunOrDie(leaderCtx, leaderelection.LeaderElectionConfig{
+			Lock:            lock,
+			LeaseDuration:   15 * time.Second,
+			RenewDeadline:   10 * time.Second,
+			RetryPeriod:     2 * time.Second,
+			Callbacks: leaderelection.LeaderCallbacks{
+				OnStartedLeading: func(ctx context.Context) {
+					log.Printf("acquired leadership as %s", podName)
+					close(leaderCh)
+				},
+				OnStoppedLeading: func() {
+					log.Printf("lost leadership, exiting")
+					os.Exit(0)
+				},
+				OnNewLeader: func(identity string) {
+					if identity != podName {
+						log.Printf("new leader elected: %s (we are %s)", identity, podName)
+					}
+				},
+			},
+		})
+	}()
+
+	log.Printf("waiting for leader election (pod: %s)...", podName)
+	select {
+	case <-leaderCh:
+		log.Printf("we are the leader! starting bot...")
+	case <-time.After(60 * time.Second):
+		log.Fatalf("timed out waiting for leader election after 60s")
+	}
+
 	// Create Discord session
 	dg, err := discordgo.New("Bot " + cfg.BotToken)
 	if err != nil {
@@ -204,6 +345,10 @@ func main() {
 	})
 
 	dg.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent
+
+	if err := loadConversations("/state/conversations.json"); err != nil {
+		log.Printf("WARNING: failed to load state: %v", err)
+	}
 
 	err = dg.Open()
 	if err != nil {
@@ -393,6 +538,11 @@ func createSessionEmbed(dg *discordgo.Session, conv *Conversation) {
 	convMutex.Lock()
 	conv.SessionEmbedMsgID = msg.ID
 	convMutex.Unlock()
+	go func() {
+		if err := saveConversations("/state/conversations.json"); err != nil {
+			log.Printf("ERROR: failed to save state: %v", err)
+		}
+	}()
 	log.Printf("[Session] Created pinned embed %s in thread %s", msg.ID, conv.ThreadID)
 }
 
@@ -539,6 +689,11 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 				convMutex.Lock()
 				existingConv.LastActivity = time.Now()
 				convMutex.Unlock()
+				go func() {
+					if err := saveConversations("/state/conversations.json"); err != nil {
+						log.Printf("ERROR: failed to save state: %v", err)
+					}
+				}()
 				replyTargetID = existingConv.ThreadID
 			} else if isThreadChannel(s, m.ChannelID) {
 				// Message in existing thread after bot restart — register it
@@ -553,6 +708,11 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 				convMutex.Lock()
 				conversations[m.ChannelID] = conv
 				convMutex.Unlock()
+				go func() {
+					if err := saveConversations("/state/conversations.json"); err != nil {
+						log.Printf("ERROR: failed to save state: %v", err)
+					}
+				}()
 				log.Printf("Registered existing thread %s for user %s", m.ChannelID, m.Author.Username)
 				createSessionEmbed(s, conv)
 			} else {
@@ -574,6 +734,11 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 					convMutex.Lock()
 					conversations[thread.ID] = conv
 					convMutex.Unlock()
+					go func() {
+						if err := saveConversations("/state/conversations.json"); err != nil {
+							log.Printf("ERROR: failed to save state: %v", err)
+						}
+					}()
 					log.Printf("Created thread %s for user %s", thread.ID, m.Author.Username)
 					createSessionEmbed(s, conv)
 				}
@@ -600,6 +765,11 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 		conv.DashboardURL = fmt.Sprintf("%s/%s", cfg.DashboardBase, runID)
 		conv.LastActivity = time.Now()
 		convMutex.Unlock()
+		go func() {
+			if err := saveConversations("/state/conversations.json"); err != nil {
+				log.Printf("ERROR: failed to save state: %v", err)
+			}
+		}()
 
 		if conv.SessionEmbedMsgID == "" {
 			createSessionEmbed(s, conv)
@@ -624,6 +794,37 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	_, err = s.ChannelMessageSend(replyTargetID, reply)
 	if err != nil {
 		log.Printf("Failed to send reply: %v", err)
+	}
+}
+
+func formatPhaseMessage(phase string) string {
+	switch phase {
+	case "Running":
+		return "🤔 Phase: Running"
+	case "Succeeded":
+		return "✅ Phase: Succeeded"
+	case "Failed":
+		return "❌ Phase: Failed"
+	default:
+		return fmt.Sprintf("🔄 Phase: %s", phase)
+	}
+}
+
+func parseLogEvent(line string) string {
+	lower := strings.ToLower(line)
+	switch {
+	case strings.Contains(lower, "planning"), strings.Contains(lower, "plan:"):
+		return "📝 Planning"
+	case strings.Contains(lower, "executing"), strings.Contains(lower, "tool:"):
+		return "🔧 Using tool"
+	case strings.Contains(lower, "thinking"), strings.Contains(lower, "think:"):
+		return "🤔 Thinking"
+	case strings.Contains(lower, "delegate"):
+		return "🔄 Delegating"
+	case strings.Contains(lower, "error"), strings.Contains(lower, "error:"):
+		return "❌ Error"
+	default:
+		return ""
 	}
 }
 
@@ -678,6 +879,8 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 	// Poll for completion (max 5 minutes)
 	statusURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns/%s", k8sAPIBaseURL, runID)
 	var result string
+	var prevPhase string
+	var logStreamStarted bool
 
 	for i := 0; i < 60; i++ {
 		time.Sleep(5 * time.Second)
@@ -700,6 +903,61 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 
 		phase, _ := status["phase"].(string)
 		log.Printf("[Sympozium] %s phase: %s", runID, phase)
+
+		// Simple think mode: phase transitions
+		if cfg.ThinkMode == ThinkSimple && phase != prevPhase && prevPhase != "" {
+			msg := formatPhaseMessage(phase)
+			if discordSession != nil {
+				discordSession.ChannelMessageSend(threadID, msg)
+			}
+		}
+		prevPhase = phase
+
+		// Full think mode: pod log streaming
+		if cfg.ThinkMode == ThinkFull && phase == "Running" && !logStreamStarted {
+			logStreamStarted = true
+			if podName, ok := status["podName"].(string); ok && podName != "" {
+				go func(pod string) {
+					msgCount := 0
+					ticker := time.NewTicker(3 * time.Second)
+					defer ticker.Stop()
+					for range ticker.C {
+						logs, err := getPodLogs(pod)
+						if err != nil {
+							log.Printf("[ThinkMode] log stream error: %v", err)
+							continue
+						}
+						for _, line := range strings.Split(logs, "\n") {
+							if msgCount >= 10 {
+								return
+							}
+							if label := parseLogEvent(line); label != "" {
+								if discordSession != nil {
+									discordSession.ChannelMessageSend(threadID, label)
+								}
+								msgCount++
+								if msgCount >= 10 {
+									return
+								}
+							}
+						}
+						// Check if run finished
+						checkResp, checkErr := k8sAPIRequest("GET",
+							fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns/%s", k8sAPIBaseURL, runID), nil)
+						if checkErr == nil {
+							var checkStatus map[string]interface{}
+							if json.Unmarshal(checkResp, &checkStatus) == nil {
+								if s, ok := checkStatus["status"].(map[string]interface{}); ok {
+									if p, _ := s["phase"].(string); p == "Succeeded" || p == "Failed" {
+										return
+									}
+								}
+							}
+						}
+					}
+				}(podName)
+			}
+		}
 
 		switch phase {
 		case "Succeeded":

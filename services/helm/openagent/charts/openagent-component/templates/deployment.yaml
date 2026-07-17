@@ -34,6 +34,9 @@ spec:
           envFrom:
             - secretRef:
                 name: openagent-secrets
+          env:
+            - name: THINK_MODE
+              value: {{ .Values.bot.config.thinkMode | default "full" | quote }}
           resources:
             {{- toYaml .Values.bot.resources | nindent 12 }}
 {{- end }}
