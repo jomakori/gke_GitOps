@@ -51,9 +51,12 @@ spec:
         k8s-gitops-context loads automatically for k8s/terraform/gitops tasks. Not needed for general questions.
         Use search MCP for code context in cached repos (gke_GitOps, devops_Terraform).
 
-        ## Tool Efficiency
-        Limit tool output: use --selector, --field-selector, -o name, or jq filters.
-        Max 15 tool calls per task. Stop and synthesize after 15.
+        ## Tool Budget (HARD LIMIT)
+        STOP after 12 tool calls. Synthesize what you have and respond.
+        If task needs more than 12 calls, ask user to narrow scope.
+        Every tool call costs credits — don't research what you already know.
+        Use minimal kubectl flags: --selector, -o name, --field-selector.
+        Prefer search MCP over multiple file reads.
 
         ## Verification
         V1 (trivial): build check. V2 (scoped): tests. V3 (complex): build + tests + manual QA.
