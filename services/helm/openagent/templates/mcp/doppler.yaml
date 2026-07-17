@@ -1,0 +1,32 @@
+apiVersion: sympozium.ai/v1alpha1
+kind: MCPServer
+metadata:
+  name: doppler
+  namespace: sympozium-system
+  labels:
+    app.kubernetes.io/part-of: openagent
+    sympozium.ai/catalog: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  transportType: stdio
+  toolsPrefix: doppler
+  timeout: 30
+  replicas: 1
+  deployment:
+    image: node:lts-alpine
+    cmd: npx
+    args:
+    - "-y"
+    - "@dopplerhq/mcp-server"
+    - "--project"
+    - "devops"
+    secretRefs:
+    - name: mcp-doppler-token
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
