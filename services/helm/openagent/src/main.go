@@ -59,9 +59,7 @@ type config struct {
 	PhaseUpdates     bool
 	PollUI           bool
 	StartupChannel   string
-	AgentID          string
 	AgentRef         string
-	AgentSkills      string
 	DashboardBase    string
 	ThinkMode        ThinkMode
 	RepoCachePath    string
@@ -189,9 +187,7 @@ func loadConfig() config {
 		A2AURL:        os.Getenv("AGENT_API_URL"),
 		MentionOnly:   true,
 		ClientID:      os.Getenv("DISCORD_CLIENT_ID"),
-		AgentID:       getEnvDefault("AGENT_ID", "primary"),
 		AgentRef:      getEnvDefault("AGENT_REF", "omo-loop-engineering-sisyphus"),
-		AgentSkills:   getEnvDefault("AGENT_SKILLS", "k8s-ops,omo-core-skills,hashline-editor,web-endpoint"),
 		DashboardBase: getEnvDefault("DASHBOARD_BASE_URL", "https://openagent.maklab.net/runs"),
 	}
 
@@ -816,24 +812,16 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 			"namespace": "sympozium-system",
 		},
 		"spec": map[string]interface{}{
-			"agentId":    cfg.AgentID,
+			"agentId":    "primary",
 			"agentRef":   cfg.AgentRef,
 			"task":       message,
 			"mode":       "task",
 			"cleanup":    "delete",
 			"sessionKey": threadID,
+			"model": map[string]interface{}{
+				"baseURL": "http://openagent-headroom.openagent.svc.cluster.local:8787/v1",
+			},
 		},
-	}
-
-	if cfg.AgentSkills != "" {
-		skills := []map[string]string{}
-		for _, name := range strings.Split(cfg.AgentSkills, ",") {
-			name = strings.TrimSpace(name)
-			if name != "" {
-				skills = append(skills, map[string]string{"skillPackRef": name})
-			}
-		}
-		agentRun["spec"].(map[string]interface{})["skills"] = skills
 	}
 
 	body, err := json.Marshal(agentRun)
