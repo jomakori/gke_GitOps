@@ -350,14 +350,8 @@ func TestBuildSessionEmbed(t *testing.T) {
 		if embed.Fields[1].Name != "Tokens" {
 			t.Errorf("field[1] = %q, want Tokens", embed.Fields[1].Name)
 		}
-		if !strings.Contains(embed.Fields[1].Value, "847") {
+		if !strings.Contains(embed.Fields[1].Value, "847 total") {
 			t.Errorf("tokens field missing total: %q", embed.Fields[1].Value)
-		}
-		if !strings.Contains(embed.Fields[1].Value, "500 in") {
-			t.Errorf("tokens field missing input: %q", embed.Fields[1].Value)
-		}
-		if !strings.Contains(embed.Fields[1].Value, "347 out") {
-			t.Errorf("tokens field missing output: %q", embed.Fields[1].Value)
 		}
 		if embed.Fields[2].Name != "Cost" {
 			t.Errorf("field[2] = %q, want Cost", embed.Fields[2].Name)
@@ -380,12 +374,11 @@ func TestBuildSessionEmbed(t *testing.T) {
 
 	t.Run("partial usage (only input tokens)", func(t *testing.T) {
 		usage := &tokenUsage{
-			inputTokens: 200,
 			totalTokens: 200,
 		}
 		embed := buildSessionEmbed(nil, conv, usage)
-		if !strings.Contains(embed.Fields[1].Value, "200") {
-			t.Errorf("tokens missing count: %q", embed.Fields[1].Value)
+		if embed.Fields[1].Value != "200 total" {
+			t.Errorf("tokens = %q, want '200 total'", embed.Fields[1].Value)
 		}
 		if embed.Fields[2].Value != "—" {
 			t.Errorf("cost = %q, want — when zero", embed.Fields[2].Value)
