@@ -26,18 +26,18 @@ spec:
               image: "{{ .Values.claudeProxy.image.repository }}:{{ .Values.claudeProxy.image.tag }}"
               imagePullPolicy: {{ .Values.claudeProxy.image.pullPolicy }}
               command:
-                - python3
+                - /bin/sh
                 - -c
                 - |
+                  cp /secrets/.credentials.json /writable/.credentials.json
+                  python3 << 'PYEOF'
                   import json, time, urllib.request, os
 
                   CREDS_FILE = '/writable/.credentials.json'
                   TOKEN_URL = 'https://platform.claude.com/v1/oauth/token'
                   CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
 
-                  os.makedirs('/writable', exist_ok=True)
-
-                  with open('/secrets/.credentials.json') as f:
+                  with open(CREDS_FILE) as f:
                       creds = json.load(f)
                   oauth = creds.get('claudeAiOauth', {})
                   refresh_token = oauth.get('refreshToken', '')
@@ -84,11 +84,12 @@ spec:
                               json.dump(creds, f)
                           print(f'Token refreshed. New TTL: {expires_in/3600:.1f}h')
                       else:
-                          print('Refresh response missing access_token, exiting')
+                          print('Refresh response missing access_token')
                           exit(1)
                   except Exception as e:
                       print(f'Refresh failed: {e}')
                       exit(1)
+                  PYEOF
               volumeMounts:
                 - name: credentials
                   mountPath: /secrets
