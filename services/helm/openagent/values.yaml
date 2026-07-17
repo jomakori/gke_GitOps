@@ -95,6 +95,11 @@ litellm:
           model: openai/MiniMax-M2.7
           api_key: os.environ/MINIMAX_API_KEY
           api_base: os.environ/MINIMAX_API_BASE
+      - model_name: claude/sonnet-5
+        litellm_params:
+          model: openai/claude-sonnet-5
+          api_key: os.environ/CLAUDE_PROXY_API_KEY
+          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
       - model_name: claude/sonnet-4
         litellm_params:
           model: openai/claude-sonnet-4

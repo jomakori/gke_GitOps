@@ -126,7 +126,7 @@ spec:
 
     - name: atlas
       displayName: "Atlas"
-      model: claude/sonnet-4
+      model: claude/sonnet-5
       systemPrompt: |
         # Atlas — Master Orchestrator
 
