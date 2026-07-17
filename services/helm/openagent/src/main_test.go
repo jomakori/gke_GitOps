@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -305,5 +306,138 @@ func TestFullThinkModeCapping(t *testing.T) {
 	}
 	if count != 10 {
 		t.Errorf("expected 10 events captured, got %d", count)
+	}
+}
+
+func TestBuildSessionEmbed(t *testing.T) {
+	conv := &Conversation{
+		ThreadID:     "thread-123",
+		UserID:       "user-1",
+		ChannelID:    "channel-1",
+		StartedAt:    time.Now(),
+		LastActivity: time.Now(),
+		SessionRunID: "discord-123-456",
+		DashboardURL: "https://openagent.maklab.net/runs/discord-123-456",
+	}
+
+	t.Run("initial state (no usage)", func(t *testing.T) {
+		embed := buildSessionEmbed(nil, conv, nil)
+		if embed.Title != "Session" {
+			t.Errorf("title = %q, want Session", embed.Title)
+		}
+		if len(embed.Fields) != 2 {
+			t.Errorf("fields = %d, want 2 (Started + Run)", len(embed.Fields))
+		}
+		if embed.Fields[0].Name != "Started" {
+			t.Errorf("field[0] = %q, want Started", embed.Fields[0].Name)
+		}
+		if embed.Fields[1].Name != "Run" {
+			t.Errorf("field[1] = %q, want Run", embed.Fields[1].Name)
+		}
+	})
+
+	t.Run("with usage", func(t *testing.T) {
+		usage := &tokenUsage{
+			inputTokens:  500,
+			outputTokens: 347,
+			totalTokens:  847,
+			cost:         0.0123,
+		}
+		embed := buildSessionEmbed(nil, conv, usage)
+		if len(embed.Fields) != 4 {
+			t.Errorf("fields = %d, want 4 (Started + Tokens + Cost + Run)", len(embed.Fields))
+		}
+		if embed.Fields[1].Name != "Tokens" {
+			t.Errorf("field[1] = %q, want Tokens", embed.Fields[1].Name)
+		}
+		if !strings.Contains(embed.Fields[1].Value, "847") {
+			t.Errorf("tokens field missing total: %q", embed.Fields[1].Value)
+		}
+		if !strings.Contains(embed.Fields[1].Value, "500 in") {
+			t.Errorf("tokens field missing input: %q", embed.Fields[1].Value)
+		}
+		if !strings.Contains(embed.Fields[1].Value, "347 out") {
+			t.Errorf("tokens field missing output: %q", embed.Fields[1].Value)
+		}
+		if embed.Fields[2].Name != "Cost" {
+			t.Errorf("field[2] = %q, want Cost", embed.Fields[2].Name)
+		}
+		if embed.Fields[2].Value != "$0.0123" {
+			t.Errorf("cost = %q, want $0.0123", embed.Fields[2].Value)
+		}
+	})
+
+	t.Run("zero usage shows dash", func(t *testing.T) {
+		usage := &tokenUsage{}
+		embed := buildSessionEmbed(nil, conv, usage)
+		if embed.Fields[1].Value != "—" {
+			t.Errorf("tokens = %q, want —", embed.Fields[1].Value)
+		}
+		if embed.Fields[2].Value != "—" {
+			t.Errorf("cost = %q, want —", embed.Fields[2].Value)
+		}
+	})
+
+	t.Run("partial usage (only input tokens)", func(t *testing.T) {
+		usage := &tokenUsage{
+			inputTokens: 200,
+			totalTokens: 200,
+		}
+		embed := buildSessionEmbed(nil, conv, usage)
+		if !strings.Contains(embed.Fields[1].Value, "200") {
+			t.Errorf("tokens missing count: %q", embed.Fields[1].Value)
+		}
+		if embed.Fields[2].Value != "—" {
+			t.Errorf("cost = %q, want — when zero", embed.Fields[2].Value)
+		}
+	})
+}
+
+func TestParseTokenUsage(t *testing.T) {
+	tests := []struct {
+		name   string
+		status map[string]interface{}
+		want   *tokenUsage
+	}{
+		{
+			name:   "nil status",
+			status: nil,
+			want:   nil,
+		},
+		{
+			name:   "no tokenUsage key",
+			status: map[string]interface{}{"phase": "Running"},
+			want:   nil,
+		},
+		{
+			name: "full usage",
+			status: map[string]interface{}{
+				"tokenUsage": map[string]interface{}{
+					"inputTokens":  float64(500),
+					"outputTokens": float64(347),
+					"totalTokens":  float64(847),
+					"durationMs":   float64(1234),
+				},
+			},
+			want: &tokenUsage{inputTokens: 500, outputTokens: 347, totalTokens: 847, durationMs: 1234},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseTokenUsage(tt.status)
+			if tt.want == nil {
+				if got != nil {
+					t.Errorf("expected nil, got %+v", got)
+				}
+				return
+			}
+			if got.totalTokens != tt.want.totalTokens {
+				t.Errorf("totalTokens = %d, want %d", got.totalTokens, tt.want.totalTokens)
+			}
+			if got.inputTokens != tt.want.inputTokens {
+				t.Errorf("inputTokens = %d, want %d", got.inputTokens, tt.want.inputTokens)
+			}
+		})
 	}
 }
