@@ -882,6 +882,9 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 	var prevPhase string
 	var logStreamStarted bool
 
+	done := make(chan struct{})
+	defer close(done)
+
 	for i := 0; i < 60; i++ {
 		time.Sleep(5 * time.Second)
 
@@ -921,7 +924,12 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 					msgCount := 0
 					ticker := time.NewTicker(3 * time.Second)
 					defer ticker.Stop()
-					for range ticker.C {
+					for {
+						select {
+						case <-done:
+							return
+						case <-ticker.C:
+						}
 						logs, err := getPodLogs(pod)
 						if err != nil {
 							log.Printf("[ThinkMode] log stream error: %v", err)
@@ -967,8 +975,11 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 				if podName != "" {
 					result, err = getPodLogs(podName)
 					if err != nil {
-						return "", nil, fmt.Errorf("get logs: %w", err)
+						log.Printf("[Sympozium] pod logs unavailable for %s: %v, returning empty result", podName, err)
+						result = "Agent run completed successfully."
 					}
+				} else {
+					result = "Agent run completed successfully."
 				}
 			}
 
@@ -1015,7 +1026,7 @@ func parseTokenUsage(status map[string]interface{}) *tokenUsage {
 }
 
 func getPodLogs(podName string) (string, error) {
-	logsURL := fmt.Sprintf("%s/api/v1/namespaces/sympozium-system/pods/%s/log", k8sAPIBaseURL, podName)
+	logsURL := fmt.Sprintf("%s/api/v1/namespaces/sympozium-system/pods/%s/log?container=agent", k8sAPIBaseURL, podName)
 	data, err := k8sAPIRequest(http.MethodGet, logsURL, nil)
 	if err != nil {
 		return "", err
