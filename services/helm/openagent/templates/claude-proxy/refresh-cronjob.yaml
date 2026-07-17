@@ -19,6 +19,8 @@ spec:
         spec:
           serviceAccountName: claude-proxy-refresher
           restartPolicy: Never
+          imagePullSecrets:
+            - name: ghcr-pull-secret
           initContainers:
             - name: refresh
               image: "{{ .Values.claudeProxy.image.repository }}:{{ .Values.claudeProxy.image.tag }}"
