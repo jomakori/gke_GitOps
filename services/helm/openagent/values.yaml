@@ -152,6 +152,8 @@ openagent-component:
       limits:
         cpu: 500m
         memory: 512Mi
+    storage:
+      reposSize: 1Gi
     config:
       mentionOnly: false
       conversationMode: "threaded"

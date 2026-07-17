@@ -37,13 +37,20 @@ spec:
           env:
             - name: THINK_MODE
               value: {{ .Values.bot.config.thinkMode | default "full" | quote }}
+            - name: REPO_CACHE_PATH
+              value: /repos
           resources:
             {{- toYaml .Values.bot.resources | nindent 12 }}
           volumeMounts:
             - name: state
               mountPath: /state
+            - name: repos
+              mountPath: /repos
       volumes:
         - name: state
           persistentVolumeClaim:
             claimName: openagent-discord-state
+        - name: repos
+          persistentVolumeClaim:
+            claimName: openagent-discord-repos
 {{- end }}
