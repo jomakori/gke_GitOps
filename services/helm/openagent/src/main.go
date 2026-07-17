@@ -193,8 +193,8 @@ func loadConfig() config {
 		ClientID:      os.Getenv("DISCORD_CLIENT_ID"),
 		AgentID:       getEnvDefault("AGENT_ID", "primary"),
 		AgentRef:      getEnvDefault("AGENT_REF", "omo-loop-engineering-sisyphus"),
-		ModelName:     getEnvDefault("MODEL_NAME", "claude/sonnet-4"),
-		ModelProvider: getEnvDefault("MODEL_PROVIDER", "openai"),
+		ModelName:     getEnvDefault("MODEL_NAME", "deepseek-v4-pro"),
+		ModelProvider: getEnvDefault("MODEL_PROVIDER", "deepseek"),
 		AgentSkills:   getEnvDefault("AGENT_SKILLS", "k8s-ops,omo-core-skills,hashline-editor,web-endpoint"),
 		DashboardBase: getEnvDefault("DASHBOARD_BASE_URL", "https://openagent.maklab.net/runs"),
 	}
