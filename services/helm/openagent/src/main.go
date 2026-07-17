@@ -52,6 +52,7 @@ func (t ThinkMode) String() string {
 type config struct {
 	BotToken         string
 	A2AURL           string
+	A2AKey           string
 	ClientID         string
 	MentionOnly      bool
 	ChannelOnly      []string
@@ -59,7 +60,6 @@ type config struct {
 	PhaseUpdates     bool
 	PollUI           bool
 	StartupChannel   string
-	AgentRef         string
 	DashboardBase    string
 	ThinkMode        ThinkMode
 	RepoCachePath    string
@@ -185,9 +185,9 @@ func loadConfig() config {
 	cfg := config{
 		BotToken:      os.Getenv("DISCORD_BOT_TOKEN"),
 		A2AURL:        os.Getenv("AGENT_API_URL"),
+		A2AKey:        os.Getenv("AGENT_API_KEY"),
 		MentionOnly:   true,
 		ClientID:      os.Getenv("DISCORD_CLIENT_ID"),
-		AgentRef:      getEnvDefault("AGENT_REF", "omo-loop-engineering-sisyphus"),
 		DashboardBase: getEnvDefault("DASHBOARD_BASE_URL", "https://openagent.maklab.net/runs"),
 	}
 
@@ -819,174 +819,102 @@ func parseLogEvent(line string) string {
 }
 
 func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tokenUsage, error) {
-	agentRun := map[string]interface{}{
-		"apiVersion": "sympozium.ai/v1alpha1",
-		"kind":       "AgentRun",
-		"metadata": map[string]interface{}{
-			"name":      runID,
-			"namespace": "sympozium-system",
-		},
-		"spec": map[string]interface{}{
-			"agentId":    "primary",
-			"agentRef":   cfg.AgentRef,
-			"task":       message,
-			"mode":       "task",
-			"cleanup":    "delete",
-			"sessionKey": threadID,
-			"model": map[string]interface{}{
-				"model":          "deepseek-v4-pro",
-				"provider":       "deepseek",
-				"authSecretRef":  "",
-				"baseURL":        "http://openagent-headroom.openagent.svc.cluster.local:8787/v1",
-			},
-		},
+	// POST to web-endpoint server — harness handles AgentRun creation, model routing, skills
+	reqBody := map[string]interface{}{
+		"model":    "sisyphus",
+		"messages": []map[string]string{{"role": "user", "content": message}},
+		"stream":   false,
 	}
-
-	body, err := json.Marshal(agentRun)
+	body, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", nil, fmt.Errorf("marshal run: %w", err)
+		return "", nil, fmt.Errorf("marshal request: %w", err)
 	}
 
-	log.Printf("[Sympozium] Creating AgentRun %s: %s", runID, truncate(message, 80))
+	log.Printf("[Sympozium] Calling %s: %s", cfg.A2AURL, truncate(message, 80))
 
-	createURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns", k8sAPIBaseURL)
-	_, err = k8sAPIRequest(http.MethodPost, createURL, body)
+	httpReq, err := http.NewRequest(http.MethodPost, cfg.A2AURL, bytes.NewReader(body))
 	if err != nil {
-		return "", nil, fmt.Errorf("create AgentRun: %w", err)
+		return "", nil, fmt.Errorf("create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	if cfg.A2AKey != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+cfg.A2AKey)
 	}
 
-	// Poll for completion (max 5 minutes)
-	statusURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns/%s", k8sAPIBaseURL, runID)
-	var result string
-	var prevPhase string
-	var logStreamStarted bool
+	client := &http.Client{Timeout: 5 * time.Minute}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return "", nil, fmt.Errorf("call endpoint: %w", err)
+	}
+	defer resp.Body.Close()
 
-	done := make(chan struct{})
-	defer close(done)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", nil, fmt.Errorf("read response: %w", err)
+	}
 
-	for i := 0; i < 60; i++ {
+	if resp.StatusCode != 200 {
+		return "", nil, fmt.Errorf("endpoint returned %d: %s", resp.StatusCode, truncate(string(respBody), 200))
+	}
+
+	var chatResp struct {
+		ID      string `json:"id"`
+		Model   string `json:"model"`
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.Unmarshal(respBody, &chatResp); err != nil {
+		return "", nil, fmt.Errorf("parse response: %w", err)
+	}
+	if len(chatResp.Choices) == 0 {
+		return "", nil, fmt.Errorf("no choices in response")
+	}
+
+	result := chatResp.Choices[0].Message.Content
+	log.Printf("[Sympozium] Response (%d chars): %s", len(result), truncate(result, 100))
+
+	// Extract AgentRun name from response id for token polling
+	// Response id format: "chatcmpl-omo-loop-engineering-sisyphus-web-59trz"
+	// AgentRun name: "omo-loop-engineering-sisyphus-web-59trz"
+	arName := strings.TrimPrefix(chatResp.ID, "chatcmpl-")
+	if arName != "" && arName != chatResp.ID {
+		usage := pollAgentRunTokens(arName)
+		return result, usage, nil
+	}
+
+	return result, nil, nil
+}
+
+func pollAgentRunTokens(arName string) *tokenUsage {
+	statusURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns/%s", k8sAPIBaseURL, arName)
+
+	for i := 0; i < 12; i++ {
 		time.Sleep(5 * time.Second)
-
 		statusResp, err := k8sAPIRequest(http.MethodGet, statusURL, nil)
 		if err != nil {
-			log.Printf("[Sympozium] Poll error: %v", err)
 			continue
 		}
-
 		var runStatus map[string]interface{}
 		if err := json.Unmarshal(statusResp, &runStatus); err != nil {
 			continue
 		}
-
 		status, _ := runStatus["status"].(map[string]interface{})
 		if status == nil {
 			continue
 		}
-
-		phase, _ := status["phase"].(string)
-		log.Printf("[Sympozium] %s phase: %s", runID, phase)
-
 		if usage := parseTokenUsage(status); usage != nil {
-			convMutex.RLock()
-			conv := conversations[threadID]
-			convMutex.RUnlock()
-			if conv != nil && discordSession != nil && (usage.totalTokens > 0 || usage.cost > 0) {
-				updateSessionEmbed(discordSession, conv, usage)
-			}
+			return usage
 		}
-
-		// Simple think mode: phase transitions
-		if cfg.ThinkMode == ThinkSimple && phase != prevPhase && prevPhase != "" {
-			msg := formatPhaseMessage(phase)
-			log.Printf("[ThinkMode] simple: posting phase change %q -> %q", prevPhase, phase)
-			if discordSession != nil {
-				discordSession.ChannelMessageSend(threadID, msg)
-			} else {
-				log.Printf("[ThinkMode] simple: discordSession is nil, cannot post")
-			}
-		}
-		prevPhase = phase
-
-		// Full think mode: pod log streaming
-		if cfg.ThinkMode == ThinkFull && phase == "Running" && !logStreamStarted {
-			logStreamStarted = true
-			if podName, ok := status["podName"].(string); ok && podName != "" {
-				log.Printf("[ThinkMode] full: starting log stream for pod %s", podName)
-				go func(pod string) {
-					msgCount := 0
-					ticker := time.NewTicker(3 * time.Second)
-					defer ticker.Stop()
-					for {
-						select {
-						case <-done:
-							return
-						case <-ticker.C:
-						}
-						logs, err := getPodLogs(pod)
-						if err != nil {
-							log.Printf("[ThinkMode] log stream error: %v", err)
-							continue
-						}
-						for _, line := range strings.Split(logs, "\n") {
-							if msgCount >= 10 {
-								return
-							}
-							if label := parseLogEvent(line); label != "" {
-								log.Printf("[ThinkMode] full: posting event %q", label)
-								if discordSession != nil {
-									discordSession.ChannelMessageSend(threadID, label)
-								}
-								msgCount++
-								if msgCount >= 10 {
-									return
-								}
-							}
-						}
-						// Check if run finished
-						checkResp, checkErr := k8sAPIRequest("GET",
-							fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns/%s", k8sAPIBaseURL, runID), nil)
-						if checkErr == nil {
-							var checkStatus map[string]interface{}
-							if json.Unmarshal(checkResp, &checkStatus) == nil {
-								if s, ok := checkStatus["status"].(map[string]interface{}); ok {
-									if p, _ := s["phase"].(string); p == "Succeeded" || p == "Failed" {
-										return
-									}
-								}
-							}
-						}
-					}
-				}(podName)
-			}
-		}
-
-		switch phase {
-		case "Succeeded":
-			result, _ = status["result"].(string)
-			if result == "" {
-				podName, _ := status["podName"].(string)
-				if podName != "" {
-					result, err = getPodLogs(podName)
-					if err != nil {
-						log.Printf("[Sympozium] pod logs unavailable for %s: %v, returning empty result", podName, err)
-						result = "Agent run completed successfully."
-					}
-				} else {
-					result = "Agent run completed successfully."
-				}
-			}
-
-			usage := parseTokenUsage(status)
-			log.Printf("[Sympozium] Response (%d chars): %s", len(result), truncate(result, 100))
-			return result, usage, nil
-
-		case "Failed":
-			errMsg, _ := status["error"].(string)
-			return "", nil, fmt.Errorf("AgentRun failed: %s", errMsg)
+		phase, _ := status["phase"].(string)
+		if phase == "Succeeded" || phase == "Failed" {
+			return parseTokenUsage(status)
 		}
 	}
 
-	return "", nil, fmt.Errorf("timed out waiting for AgentRun completion")
+	return nil
 }
 
 func parseTokenUsage(status map[string]interface{}) *tokenUsage {
