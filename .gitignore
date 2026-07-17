@@ -10,3 +10,4 @@ test-gpu.yaml
 **Chart.lock
 .devbox/
 **sisyphus
+services/helm/openagent/src/openagent-discord-bot

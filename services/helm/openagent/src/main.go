@@ -38,6 +38,16 @@ type config struct {
 	ModelName        string
 	ModelProvider    string
 	AgentSkills      string
+	DashboardBase    string
+}
+
+type tokenUsage struct {
+	inputTokens  int
+	outputTokens int
+	totalTokens  int
+	durationMs   int
+	toolCalls    int
+	cost         float64
 }
 
 type a2aRequest struct {
@@ -92,11 +102,14 @@ type a2aError struct {
 
 // Conversation tracks a single conversation thread
 type Conversation struct {
-	ThreadID     string
-	UserID       string
-	ChannelID    string
-	StartedAt    time.Time
-	LastActivity time.Time
+	ThreadID          string
+	UserID            string
+	ChannelID         string
+	StartedAt         time.Time
+	LastActivity      time.Time
+	SessionEmbedMsgID string
+	DashboardURL      string
+	SessionRunID      string
 }
 
 var (
@@ -116,6 +129,7 @@ func loadConfig() config {
 		ModelName:     getEnvDefault("MODEL_NAME", "claude/sonnet-4"),
 		ModelProvider: getEnvDefault("MODEL_PROVIDER", "openai"),
 		AgentSkills:   getEnvDefault("AGENT_SKILLS", "k8s-ops,omo-core-skills,hashline-editor,web-endpoint"),
+		DashboardBase: getEnvDefault("DASHBOARD_BASE_URL", "https://openagent.maklab.net/runs"),
 	}
 
 	if cfg.ClientID == "" {
@@ -311,6 +325,89 @@ func findChannelByName(dg *discordgo.Session, name string) string {
 	return ""
 }
 
+func buildSessionEmbed(dg *discordgo.Session, conv *Conversation, usage *tokenUsage) *discordgo.MessageEmbed {
+	tokenStr := "waiting for first turn..."
+	costStr := "$0.0000"
+	if usage != nil {
+		tokenStr = fmt.Sprintf("**%d** in / **%d** out / **%d** total", usage.inputTokens, usage.outputTokens, usage.totalTokens)
+		costStr = fmt.Sprintf("$%.4f", usage.cost)
+	}
+
+	return &discordgo.MessageEmbed{
+		Title:       "Active Session",
+		Description: fmt.Sprintf("[Dashboard](%s)", conv.DashboardURL),
+		Color:       0x5865F2,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "User",
+				Value:  fmt.Sprintf("<@%s>", conv.UserID),
+				Inline: true,
+			},
+			{
+				Name:   "Started",
+				Value:  fmt.Sprintf("<t:%d:R>", conv.StartedAt.Unix()),
+				Inline: true,
+			},
+			{
+				Name:   "Run",
+				Value:  fmt.Sprintf("`%s`", conv.SessionRunID),
+				Inline: false,
+			},
+			{
+				Name:   "\U0001F4AC Tokens",
+				Value:  tokenStr,
+				Inline: true,
+			},
+			{
+				Name:   "\U0001F4B0 Cost",
+				Value:  costStr,
+				Inline: true,
+			},
+			{
+				Name:   "\U0001F504 Subagents",
+				Value:  "`sisyphus`",
+				Inline: true,
+			},
+		},
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "Updates after each turn",
+		},
+		Timestamp: time.Now().Format(time.RFC3339),
+	}
+}
+
+func createSessionEmbed(dg *discordgo.Session, conv *Conversation) {
+	embed := buildSessionEmbed(dg, conv, nil)
+	msg, err := dg.ChannelMessageSendComplex(conv.ThreadID, &discordgo.MessageSend{
+		Embed: embed,
+	})
+	if err != nil {
+		log.Printf("[Session] Failed to create embed in thread %s: %v", conv.ThreadID, err)
+		return
+	}
+
+	if err := dg.ChannelMessagePin(conv.ThreadID, msg.ID); err != nil {
+		log.Printf("[Session] Failed to pin embed in thread %s: %v", conv.ThreadID, err)
+	}
+
+	convMutex.Lock()
+	conv.SessionEmbedMsgID = msg.ID
+	convMutex.Unlock()
+	log.Printf("[Session] Created pinned embed %s in thread %s", msg.ID, conv.ThreadID)
+}
+
+func updateSessionEmbed(dg *discordgo.Session, conv *Conversation, usage *tokenUsage) {
+	if conv.SessionEmbedMsgID == "" {
+		return
+	}
+
+	embed := buildSessionEmbed(dg, conv, usage)
+	_, err := dg.ChannelMessageEditEmbed(conv.ThreadID, conv.SessionEmbedMsgID, embed)
+	if err != nil {
+		log.Printf("[Session] Failed to update embed %s: %v", conv.SessionEmbedMsgID, err)
+	}
+}
+
 func startHTTPServer(cfg config) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -431,16 +528,18 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 					log.Printf("Failed to create thread: %v", err)
 				} else {
 					replyTargetID = thread.ID
-					convMutex.Lock()
-					conversations[thread.ID] = &Conversation{
+					conv := &Conversation{
 						ThreadID:     thread.ID,
 						UserID:       m.Author.ID,
 						ChannelID:    m.ChannelID,
 						StartedAt:    time.Now(),
 						LastActivity: time.Now(),
 					}
+					convMutex.Lock()
+					conversations[thread.ID] = conv
 					convMutex.Unlock()
 					log.Printf("Created thread %s for user %s", thread.ID, m.Author.Username)
+					createSessionEmbed(s, conv)
 				}
 			}
 		}
@@ -453,12 +552,36 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	// Show typing indicator in target
 	s.ChannelTyping(replyTargetID)
 
+	runID := fmt.Sprintf("discord-%s-%d", sanitizeName(replyTargetID), time.Now().Unix())
+
+	convMutex.RLock()
+	conv := conversations[replyTargetID]
+	convMutex.RUnlock()
+
+	if conv != nil {
+		convMutex.Lock()
+		conv.SessionRunID = runID
+		conv.DashboardURL = fmt.Sprintf("%s/%s", cfg.DashboardBase, runID)
+		conv.LastActivity = time.Now()
+		convMutex.Unlock()
+
+		if conv.SessionEmbedMsgID == "" {
+			createSessionEmbed(s, conv)
+		} else {
+			updateSessionEmbed(s, conv, nil)
+		}
+	}
+
 	// Call Sympozium agent via Kubernetes API
-	reply, err := callSympoziumAPI(cfg, content, replyTargetID)
+	reply, usage, err := callSympoziumAPI(cfg, content, replyTargetID, runID)
 	if err != nil {
 		log.Printf("Sympozium call failed: %v", err)
 		s.ChannelMessageSend(replyTargetID, "Sorry, I encountered an error processing your request.")
 		return
+	}
+
+	if conv != nil && usage != nil {
+		updateSessionEmbed(s, conv, usage)
 	}
 
 	// Reply in thread/channel
@@ -468,9 +591,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	}
 }
 
-func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
-	runID := fmt.Sprintf("discord-%s-%d", sanitizeName(threadID), time.Now().Unix())
-
+func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tokenUsage, error) {
 	agentRun := map[string]interface{}{
 		"apiVersion": "sympozium.ai/v1alpha1",
 		"kind":       "AgentRun",
@@ -507,7 +628,7 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 
 	body, err := json.Marshal(agentRun)
 	if err != nil {
-		return "", fmt.Errorf("marshal run: %w", err)
+		return "", nil, fmt.Errorf("marshal run: %w", err)
 	}
 
 	log.Printf("[Sympozium] Creating AgentRun %s: %s", runID, truncate(message, 80))
@@ -515,7 +636,7 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 	createURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns", k8sAPIBaseURL)
 	_, err = k8sAPIRequest(http.MethodPost, createURL, body)
 	if err != nil {
-		return "", fmt.Errorf("create AgentRun: %w", err)
+		return "", nil, fmt.Errorf("create AgentRun: %w", err)
 	}
 
 	// Poll for completion (max 5 minutes)
@@ -548,25 +669,55 @@ func callSympoziumAPI(cfg config, message, threadID string) (string, error) {
 		case "Succeeded":
 			result, _ = status["result"].(string)
 			if result == "" {
-				// Fallback: try pod logs if result field is empty
 				podName, _ := status["podName"].(string)
 				if podName != "" {
 					result, err = getPodLogs(podName)
 					if err != nil {
-						return "", fmt.Errorf("get logs: %w", err)
+						return "", nil, fmt.Errorf("get logs: %w", err)
 					}
 				}
 			}
+
+			usage := parseTokenUsage(status)
 			log.Printf("[Sympozium] Response (%d chars): %s", len(result), truncate(result, 100))
-			return result, nil
+			return result, usage, nil
 
 		case "Failed":
 			errMsg, _ := status["error"].(string)
-			return "", fmt.Errorf("AgentRun failed: %s", errMsg)
+			return "", nil, fmt.Errorf("AgentRun failed: %s", errMsg)
 		}
 	}
 
-	return "", fmt.Errorf("timed out waiting for AgentRun completion")
+	return "", nil, fmt.Errorf("timed out waiting for AgentRun completion")
+}
+
+func parseTokenUsage(status map[string]interface{}) *tokenUsage {
+	tu, ok := status["tokenUsage"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	u := &tokenUsage{}
+	if v, ok := tu["inputTokens"].(float64); ok {
+		u.inputTokens = int(v)
+	}
+	if v, ok := tu["outputTokens"].(float64); ok {
+		u.outputTokens = int(v)
+	}
+	if v, ok := tu["totalTokens"].(float64); ok {
+		u.totalTokens = int(v)
+	}
+	if v, ok := tu["durationMs"].(float64); ok {
+		u.durationMs = int(v)
+	}
+	if v, ok := tu["toolCalls"].(float64); ok {
+		u.toolCalls = int(v)
+	}
+
+	// Approximate cost: Claude Sonnet 4 pricing ($3/1M input, $15/1M output)
+	u.cost = float64(u.inputTokens)*3.0/1_000_000 + float64(u.outputTokens)*15.0/1_000_000
+
+	return u
 }
 
 func getPodLogs(podName string) (string, error) {
