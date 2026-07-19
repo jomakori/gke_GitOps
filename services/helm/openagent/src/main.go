@@ -519,9 +519,7 @@ func createSessionEmbed(dg *discordgo.Session, conv *Conversation) {
 		return
 	}
 
-	if err := dg.ChannelMessagePin(conv.ThreadID, msg.ID); err != nil {
-		log.Printf("[Session] Failed to pin embed in thread %s: %v", conv.ThreadID, err)
-	}
+	_ = dg.ChannelMessagePin(conv.ThreadID, msg.ID)
 
 	convMutex.Lock()
 	conv.SessionEmbedMsgID = msg.ID
