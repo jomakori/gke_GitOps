@@ -739,6 +739,8 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	// Show typing indicator in target
 	s.ChannelTyping(replyTargetID)
 
+	// Build task with conversation history from Discord thread
+	task := buildTaskWithHistory(s, replyTargetID, content)
 	runID := fmt.Sprintf("discord-%s-%d", sanitizeName(replyTargetID), time.Now().Unix())
 
 	convMutex.RLock()
@@ -765,7 +767,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	}
 
 	// Call Sympozium agent via Kubernetes API
-	reply, usage, err := callSympoziumAPI(cfg, content, replyTargetID, runID)
+	reply, usage, err := callSympoziumAPI(cfg, task, replyTargetID, runID)
 	if err != nil {
 		log.Printf("Sympozium call failed: %v", err)
 		s.ChannelMessageSend(replyTargetID, "Sorry, I encountered an error processing your request.")
@@ -799,6 +801,37 @@ func formatPhaseMessage(phase string) string {
 	default:
 		return fmt.Sprintf("🔄 Phase: %s", phase)
 	}
+}
+
+func buildTaskWithHistory(s *discordgo.Session, channelID, currentMsg string) string {
+	msgs, err := s.ChannelMessages(channelID, 20, "", "", "")
+	if err != nil || len(msgs) < 2 {
+		return currentMsg
+	}
+
+	var history []string
+	for i := len(msgs) - 1; i >= 0; i-- {
+		m := msgs[i]
+		if m.Author.Bot && m.Content == "" {
+			continue
+		}
+		role := "User"
+		if m.Author.Bot {
+			role = "Assistant"
+		}
+		history = append(history, fmt.Sprintf("%s: %s", role, m.Content))
+	}
+
+	if len(history) > 20 {
+		history = history[len(history)-20:]
+	}
+
+	if len(history) > 20 {
+		history = history[len(history)-20:]
+	}
+	history = append(history, fmt.Sprintf("User: %s", currentMsg))
+
+	return "Conversation history:\n" + strings.Join(history, "\n") + "\n\nRespond to the latest user message above."
 }
 
 func formatDiscordReply(raw string, usage *tokenUsage, dashboardURL string) string {
