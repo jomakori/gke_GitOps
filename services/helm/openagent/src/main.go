@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -804,15 +803,31 @@ func formatPhaseMessage(phase string) string {
 	}
 }
 
-var mdTableRe = regexp.MustCompile(`(?m)^\|[^\n]*\|\s*\n\|[-:| ]+\|\s*\n(?:\|[^\n]*\|\s*\n)+`)
-
 func formatDiscordReply(raw string, usage *tokenUsage, dashboardURL string) string {
-	converted := mdTableRe.ReplaceAllStringFunc(raw, func(table string) string {
-		return "\n```\n" + strings.TrimRight(table, "\n") + "\n```\n"
-	})
-	if converted == "" {
-		converted = raw
+	lines := strings.Split(raw, "\n")
+	var result []string
+	i := 0
+	for i < len(lines) {
+		line := lines[i]
+		if strings.HasPrefix(line, "|") && strings.Contains(line, " | ") {
+			start := i
+			for i < len(lines) && strings.HasPrefix(lines[i], "|") && strings.Contains(lines[i], " | ") {
+				i++
+			}
+			block := strings.Join(lines[start:i], "\n")
+			if strings.Contains(block, "|---") || strings.Contains(block, "|--") || strings.Contains(block, "| :") {
+				result = append(result, "```")
+				result = append(result, block)
+				result = append(result, "```")
+			} else {
+				result = append(result, strings.Split(block, "\n")...)
+			}
+		} else {
+			result = append(result, line)
+			i++
+		}
 	}
+	converted := strings.Join(result, "\n")
 
 	var footer string
 	if usage != nil && usage.totalTokens > 0 {
@@ -841,7 +856,9 @@ func parseLogEvent(line string) string {
 		return "🤔 Thinking"
 	case strings.Contains(lower, "delegate"):
 		return "🔄 Delegating"
-	case strings.Contains(lower, "error"), strings.Contains(lower, "error:"):
+	case strings.HasPrefix(lower, "error:"), strings.HasPrefix(lower, "error "),
+		strings.Contains(lower, "level=error"), strings.Contains(lower, "\"level\":\"error\""),
+		strings.Contains(lower, "panic:"), strings.Contains(lower, "fatal:"):
 		return "❌ Error"
 	default:
 		return ""
