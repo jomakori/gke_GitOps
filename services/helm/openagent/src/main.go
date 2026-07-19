@@ -847,7 +847,7 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 	if err != nil {
 		return "", nil, fmt.Errorf("read trigger response: %w", err)
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		return "", nil, fmt.Errorf("trigger returned %d: %s", resp.StatusCode, truncate(string(respBody), 200))
 	}
 
