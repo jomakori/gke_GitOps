@@ -864,72 +864,57 @@ func parseLogEvent(line string) string {
 }
 
 func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tokenUsage, error) {
-	chatURL := cfg.SisyphusEndpoint
-	reqBody := map[string]interface{}{
-		"model": "deepseek-v4-pro",
-		"messages": []map[string]string{
-			{"role": "user", "content": message},
+	// Create AgentRun CRD directly — stimulus trigger ignores request body
+	ar := map[string]interface{}{
+		"apiVersion": "sympozium.ai/v1alpha1",
+		"kind":       "AgentRun",
+		"metadata": map[string]interface{}{
+			"generateName": "discord-",
+			"namespace":    "sympozium-system",
+		},
+		"spec": map[string]interface{}{
+			"agentId":    runID,
+			"agentRef":   "omo-loop-engineering-sisyphus",
+			"cleanup":    "delete",
+			"mode":       "task",
+			"model": map[string]interface{}{
+				"authSecretRef": "",
+				"baseURL":       "http://openagent-headroom.openagent.svc.cluster.local:8787/v1",
+				"model":         "deepseek-v4-pro",
+				"provider":      "openai",
+			},
+			"sessionKey": "",
+			"task":       message,
+			"skills": []map[string]string{
+				{"skillPackRef": "omo-core-skills"},
+			},
 		},
 	}
-	body, err := json.Marshal(reqBody)
+	body, err := json.Marshal(ar)
 	if err != nil {
-		return "", nil, fmt.Errorf("marshal request: %w", err)
+		return "", nil, fmt.Errorf("marshal agentrun: %w", err)
 	}
 
-	log.Printf("[Sympozium] Sending to agent: %s", truncate(message, 80))
+	createURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns", k8sAPIBaseURL)
+	log.Printf("[Sympozium] Creating AgentRun: %s", truncate(message, 80))
 
-	httpReq, err := http.NewRequest(http.MethodPost, chatURL, bytes.NewReader(body))
+	respBody, err := k8sAPIRequest(http.MethodPost, createURL, body)
 	if err != nil {
-		return "", nil, fmt.Errorf("create request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	if cfg.A2AKey != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+cfg.A2AKey)
+		return "", nil, fmt.Errorf("create agentrun: %w", err)
 	}
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return "", nil, fmt.Errorf("chat completions: %w", err)
+	var created struct {
+		Metadata struct {
+			Name string `json:"name"`
+		} `json:"metadata"`
 	}
-	defer resp.Body.Close()
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return "", nil, fmt.Errorf("parse create response: %w", err)
+	}
+	arName := created.Metadata.Name
+	log.Printf("[Sympozium] AgentRun created: %s", arName)
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", nil, fmt.Errorf("read response: %w", err)
-	}
-	if resp.StatusCode != 200 {
-		return "", nil, fmt.Errorf("chat returned %d: %s", resp.StatusCode, truncate(string(respBody), 200))
-	}
-
-	var chatResp struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-		Usage struct {
-			TotalTokens  int `json:"total_tokens"`
-			PromptTokens int `json:"prompt_tokens"`
-		} `json:"usage"`
-	}
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return "", nil, fmt.Errorf("parse chat response: %w", err)
-	}
-	if len(chatResp.Choices) == 0 {
-		return "", nil, fmt.Errorf("no choices in response")
-	}
-
-	content := chatResp.Choices[0].Message.Content
-	usage := &tokenUsage{
-		totalTokens:  chatResp.Usage.TotalTokens,
-		inputTokens:  chatResp.Usage.PromptTokens,
-		outputTokens: chatResp.Usage.TotalTokens - chatResp.Usage.PromptTokens,
-		cost:         float64(chatResp.Usage.TotalTokens) * 15.0 / 1_000_000,
-	}
-
-	log.Printf("[Sympozium] Response (%d chars): %s", len(content), truncate(content, 100))
-	return content, usage, nil
+	return pollAgentRun(arName, cfg, threadID)
 }
 
 func pollAgentRun(arName string, cfg config, threadID string) (string, *tokenUsage, error) {
