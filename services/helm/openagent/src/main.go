@@ -50,19 +50,20 @@ func (t ThinkMode) String() string {
 }
 
 type config struct {
-	BotToken         string
-	A2AURL           string
-	A2AKey           string
-	ClientID         string
-	MentionOnly      bool
-	ChannelOnly      []string
-	ConversationMode string
-	PhaseUpdates     bool
-	PollUI           bool
-	StartupChannel   string
-	DashboardBase    string
-	ThinkMode        ThinkMode
-	RepoCachePath    string
+	BotToken          string
+	A2AURL            string
+	A2AKey            string
+	ClientID          string
+	MentionOnly       bool
+	ChannelOnly       []string
+	ConversationMode  string
+	PhaseUpdates      bool
+	PollUI            bool
+	StartupChannel    string
+	DashboardBase     string
+	ThinkMode         ThinkMode
+	RepoCachePath     string
+	SisyphusEndpoint  string
 }
 
 type tokenUsage struct {
@@ -183,20 +184,17 @@ func saveConversations(path string) error {
 
 func loadConfig() config {
 	cfg := config{
-		BotToken:      os.Getenv("DISCORD_BOT_TOKEN"),
-		A2AURL:        os.Getenv("AGENT_API_URL"),
-		A2AKey:        os.Getenv("AGENT_API_KEY"),
-		MentionOnly:   true,
-		ClientID:      os.Getenv("DISCORD_CLIENT_ID"),
-		DashboardBase: getEnvDefault("DASHBOARD_BASE_URL", "https://openagent.maklab.net/runs"),
+		BotToken:         os.Getenv("DISCORD_BOT_TOKEN"),
+		A2AURL:           os.Getenv("AGENT_API_URL"),
+		A2AKey:           os.Getenv("AGENT_API_KEY"),
+		MentionOnly:      true,
+		ClientID:         os.Getenv("DISCORD_CLIENT_ID"),
+		DashboardBase:    getEnvDefault("DASHBOARD_BASE_URL", "https://openagent.maklab.net/runs"),
+		SisyphusEndpoint: getEnvDefault("SISYPHUS_ENDPOINT", "http://omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc.cluster.local:8080/v1/chat/completions"),
 	}
 
 	if cfg.ClientID == "" {
 		cfg.ClientID = os.Getenv("DISCORD_BOT_CLIENT_ID")
-	}
-
-	if cfg.A2AURL == "" {
-		log.Fatal("AGENT_API_URL is required")
 	}
 
 	if v := os.Getenv("DISCORD_MENTION_ONLY"); v != "" {
@@ -866,17 +864,21 @@ func parseLogEvent(line string) string {
 }
 
 func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tokenUsage, error) {
-	// POST to stimulus trigger — returns run name immediately, we poll for completion
-	triggerURL := fmt.Sprintf("%s/api/v1/ensembles/omo-loop-engineering/stimulus/trigger?namespace=sympozium-system", strings.TrimSuffix(cfg.A2AURL, "/v1/chat/completions"))
-	reqBody := map[string]string{"task": message}
+	chatURL := cfg.SisyphusEndpoint
+	reqBody := map[string]interface{}{
+		"model": "deepseek-v4-pro",
+		"messages": []map[string]string{
+			{"role": "user", "content": message},
+		},
+	}
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return "", nil, fmt.Errorf("marshal request: %w", err)
 	}
 
-	log.Printf("[Sympozium] Triggering stimulus: %s", truncate(message, 80))
+	log.Printf("[Sympozium] Sending to agent: %s", truncate(message, 80))
 
-	httpReq, err := http.NewRequest(http.MethodPost, triggerURL, bytes.NewReader(body))
+	httpReq, err := http.NewRequest(http.MethodPost, chatURL, bytes.NewReader(body))
 	if err != nil {
 		return "", nil, fmt.Errorf("create request: %w", err)
 	}
@@ -885,32 +887,49 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 		httpReq.Header.Set("Authorization", "Bearer "+cfg.A2AKey)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		return "", nil, fmt.Errorf("trigger stimulus: %w", err)
+		return "", nil, fmt.Errorf("chat completions: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", nil, fmt.Errorf("read trigger response: %w", err)
+		return "", nil, fmt.Errorf("read response: %w", err)
 	}
-	if resp.StatusCode != 200 && resp.StatusCode != 201 {
-		return "", nil, fmt.Errorf("trigger returned %d: %s", resp.StatusCode, truncate(string(respBody), 200))
-	}
-
-	var triggerResp struct {
-		RunName string `json:"runName"`
-	}
-	if err := json.Unmarshal(respBody, &triggerResp); err != nil {
-		return "", nil, fmt.Errorf("parse trigger response: %w", err)
+	if resp.StatusCode != 200 {
+		return "", nil, fmt.Errorf("chat returned %d: %s", resp.StatusCode, truncate(string(respBody), 200))
 	}
 
-	arName := triggerResp.RunName
-	log.Printf("[Sympozium] AgentRun created: %s", arName)
+	var chatResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+		Usage struct {
+			TotalTokens  int `json:"total_tokens"`
+			PromptTokens int `json:"prompt_tokens"`
+		} `json:"usage"`
+	}
+	if err := json.Unmarshal(respBody, &chatResp); err != nil {
+		return "", nil, fmt.Errorf("parse chat response: %w", err)
+	}
+	if len(chatResp.Choices) == 0 {
+		return "", nil, fmt.Errorf("no choices in response")
+	}
 
-	return pollAgentRun(arName, cfg, threadID)
+	content := chatResp.Choices[0].Message.Content
+	usage := &tokenUsage{
+		totalTokens:  chatResp.Usage.TotalTokens,
+		inputTokens:  chatResp.Usage.PromptTokens,
+		outputTokens: chatResp.Usage.TotalTokens - chatResp.Usage.PromptTokens,
+		cost:         float64(chatResp.Usage.TotalTokens) * 15.0 / 1_000_000,
+	}
+
+	log.Printf("[Sympozium] Response (%d chars): %s", len(content), truncate(content, 100))
+	return content, usage, nil
 }
 
 func pollAgentRun(arName string, cfg config, threadID string) (string, *tokenUsage, error) {
