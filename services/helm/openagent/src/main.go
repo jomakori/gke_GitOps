@@ -883,7 +883,7 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 				"model":         "deepseek-v4-pro",
 				"provider":      "openai",
 			},
-			"sessionKey": "",
+			"sessionKey": threadID,
 			"task":       message,
 			"skills": []map[string]string{
 				{"skillPackRef": "omo-core-skills"},
