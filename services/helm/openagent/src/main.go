@@ -882,6 +882,27 @@ func formatDiscordReply(raw string, usage *tokenUsage, dashboardURL string) stri
 }
 
 func parseLogEvent(line string) string {
+	// Try structured JSON agent log
+	var entry struct {
+		Msg string `json:"msg"`
+	}
+	if json.Unmarshal([]byte(line), &entry) == nil && entry.Msg != "" {
+		switch {
+		case strings.Contains(entry.Msg, "tool call:"):
+			return "🔧 " + entry.Msg
+		case strings.Contains(entry.Msg, "Thinking"), strings.Contains(entry.Msg, "thinking"):
+			return "🤔 " + entry.Msg
+		case strings.Contains(entry.Msg, "Planning"), strings.Contains(entry.Msg, "plan:"):
+			return "📝 " + entry.Msg
+		case strings.Contains(entry.Msg, "delegate"):
+			return "🔄 " + entry.Msg
+		case strings.Contains(entry.Msg, "Error"), strings.Contains(entry.Msg, "error:"), strings.Contains(entry.Msg, "panic"):
+			return "❌ " + entry.Msg
+		}
+		return ""
+	}
+
+	// Fallback: simple keyword matching for non-JSON logs
 	lower := strings.ToLower(line)
 	switch {
 	case strings.Contains(lower, "planning"), strings.Contains(lower, "plan:"):
@@ -986,6 +1007,10 @@ func pollAgentRun(arName string, cfg config, threadID string) (string, *tokenUsa
 		log.Printf("[Sympozium] %s phase: %s", arName, phase)
 
 		if cfg.ThinkMode == ThinkFull && phase == "Running" && thinkMsgCount < 10 {
+			if prevPhase == "AwaitingDelegate" {
+				thinkMsgCount = 0
+				lastLogLine = ""
+			}
 			podName, _ := status["podName"].(string)
 			if podName == "" {
 				podName = arName
@@ -1015,7 +1040,7 @@ func pollAgentRun(arName string, cfg config, threadID string) (string, *tokenUsa
 			}
 		}
 
-		if cfg.ThinkMode == ThinkSimple && phase != prevPhase && prevPhase != "" {
+		if cfg.ThinkMode >= ThinkSimple && phase != prevPhase && prevPhase != "" {
 			msg := formatPhaseMessage(phase)
 			if discordSession != nil {
 				discordSession.ChannelMessageSend(threadID, msg)
