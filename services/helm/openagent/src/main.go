@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -779,7 +780,12 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	}
 
 	// Reply in thread/channel
-	_, err = s.ChannelMessageSend(replyTargetID, reply)
+	dashURL := ""
+	if conv != nil {
+		dashURL = conv.DashboardURL
+	}
+	formatted := formatDiscordReply(reply, usage, dashURL)
+	_, err = s.ChannelMessageSend(replyTargetID, formatted)
 	if err != nil {
 		log.Printf("Failed to send reply: %v", err)
 	}
@@ -796,6 +802,32 @@ func formatPhaseMessage(phase string) string {
 	default:
 		return fmt.Sprintf("🔄 Phase: %s", phase)
 	}
+}
+
+var mdTableRe = regexp.MustCompile(`(?m)^\|[^\n]*\|\s*\n\|[-:| ]+\|\s*\n(?:\|[^\n]*\|\s*\n)+`)
+
+func formatDiscordReply(raw string, usage *tokenUsage, dashboardURL string) string {
+	converted := mdTableRe.ReplaceAllStringFunc(raw, func(table string) string {
+		return "\n```\n" + strings.TrimRight(table, "\n") + "\n```\n"
+	})
+	if converted == "" {
+		converted = raw
+	}
+
+	var footer string
+	if usage != nil && usage.totalTokens > 0 {
+		footer = fmt.Sprintf("\n-# %d tokens · $%.4f · [dashboard](%s)", usage.totalTokens, usage.cost, dashboardURL)
+	}
+
+	if len(converted)+len(footer) > 2000 {
+		if footer != "" {
+			converted = converted[:2000-len(footer)-3] + "..."
+			converted += footer
+		} else {
+			converted = converted[:1997] + "..."
+		}
+	}
+	return converted + footer
 }
 
 func parseLogEvent(line string) string {
