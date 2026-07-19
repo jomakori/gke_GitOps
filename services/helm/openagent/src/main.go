@@ -767,7 +767,12 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 	}
 
 	// Call Sympozium agent via Kubernetes API
-	reply, usage, err := callSympoziumAPI(cfg, task, replyTargetID, runID)
+	reply, usage, arName, err := callSympoziumAPI(cfg, task, replyTargetID, runID)
+	if conv != nil && arName != "" {
+		convMutex.Lock()
+		conv.DashboardURL = fmt.Sprintf("%s/%s", cfg.DashboardBase, arName)
+		convMutex.Unlock()
+	}
 	if err != nil {
 		log.Printf("Sympozium call failed: %v", err)
 		s.ChannelMessageSend(replyTargetID, "Sorry, I encountered an error processing your request.")
@@ -896,7 +901,7 @@ func parseLogEvent(line string) string {
 	}
 }
 
-func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tokenUsage, error) {
+func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tokenUsage, string, error) {
 	// Create AgentRun CRD directly — stimulus trigger ignores request body
 	ar := map[string]interface{}{
 		"apiVersion": "sympozium.ai/v1alpha1",
@@ -925,7 +930,7 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 	}
 	body, err := json.Marshal(ar)
 	if err != nil {
-		return "", nil, fmt.Errorf("marshal agentrun: %w", err)
+		return "", nil, "", fmt.Errorf("marshal agentrun: %w", err)
 	}
 
 	createURL := fmt.Sprintf("%s/apis/sympozium.ai/v1alpha1/namespaces/sympozium-system/agentruns", k8sAPIBaseURL)
@@ -933,7 +938,7 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 
 	respBody, err := k8sAPIRequest(http.MethodPost, createURL, body)
 	if err != nil {
-		return "", nil, fmt.Errorf("create agentrun: %w", err)
+		return "", nil, "", fmt.Errorf("create agentrun: %w", err)
 	}
 
 	var created struct {
@@ -942,12 +947,13 @@ func callSympoziumAPI(cfg config, message, threadID, runID string) (string, *tok
 		} `json:"metadata"`
 	}
 	if err := json.Unmarshal(respBody, &created); err != nil {
-		return "", nil, fmt.Errorf("parse create response: %w", err)
+		return "", nil, "", fmt.Errorf("parse create response: %w", err)
 	}
 	arName := created.Metadata.Name
 	log.Printf("[Sympozium] AgentRun created: %s", arName)
 
-	return pollAgentRun(arName, cfg, threadID)
+	result, usage, err := pollAgentRun(arName, cfg, threadID)
+	return result, usage, arName, err
 }
 
 func pollAgentRun(arName string, cfg config, threadID string) (string, *tokenUsage, error) {
