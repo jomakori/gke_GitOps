@@ -150,7 +150,7 @@ openagent-component:
     image:
       repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
       tag: "0.8.3"
-      pullPolicy: IfNotPresent
+      pullPolicy: Always
     service:
       port: 8080
     resources:
