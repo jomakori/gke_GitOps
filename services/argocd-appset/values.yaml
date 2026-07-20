@@ -96,7 +96,7 @@ services:
       - name: virtualServices.argocd.destination.port
         value: "80"
 
-  openagent:
+   openagent:
     enable: true
     syncWave: "0"
     destNamespace: openagent
@@ -112,6 +112,9 @@ services:
         value: "svc_openagent"
     gateways:
       enable_private: true
+      destination:
+        serviceName: openagent-hermes-workspace
+        servicePort: 3000
     syncOptions:
       - CreateNamespace=true
       - SkipSchemaValidation=true
