@@ -39,4 +39,10 @@ spec:
       port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.port }}
       protocol: TCP
+    {{- range .Values.service.extraPorts }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .port }}
+      protocol: TCP
+    {{- end }}
 {{- end }}
