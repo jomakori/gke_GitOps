@@ -29,11 +29,8 @@ spec:
             items:
               - key: swarm.yaml
                 path: swarm.yaml
-      initContainers:
-        - name: init-runtime
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["sh", "-c", "mkdir -p /app/.runtime && chown 1000:1000 /app/.runtime && chmod 755 /app/.runtime"]
+        - name: runtime-data
+          emptyDir: {}
       containers:
         - name: hermes-workspace
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -62,5 +59,7 @@ spec:
               mountPath: /app/swarm.yaml
               subPath: swarm.yaml
               readOnly: true
+            - name: runtime-data
+              mountPath: /app/.runtime
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
