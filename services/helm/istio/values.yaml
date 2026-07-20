@@ -78,7 +78,7 @@ cloudflare:
   apiTokenSecretKey: CF_API_TOKEN
   access:
     teamDomain: ""
-    audienceTag: ""
+    audienceTag: ""  # Comma-separated AUDs from CF Access Applications (e.g. "aud1,aud2"). Set by argocd-appset from Doppler CF_ACCESS_AUDS.
 
 gateway:
   name: maklab-gateway

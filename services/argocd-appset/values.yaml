@@ -208,7 +208,7 @@ services:
           - .spec.dataFrom[].find.decodingStrategy
           - .spec.dataFrom[].find.nullBytePolicy
     gateways:
-      enable_public: true
+      enable_private: true
       subdomain: grafana
       destination:
         serviceName: kube-prometheus-stack-grafana
@@ -218,7 +218,7 @@ services:
     enable: true
     syncWave: "5"
     gateways:
-      enable_public: true
+      enable_private: true
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true

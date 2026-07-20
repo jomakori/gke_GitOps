@@ -95,7 +95,10 @@ spec:
               except Exception as e:
                   print(f'Refresh failed: {e}')
               " && \
-              echo "Token refresh init complete"
+               echo "Token refresh init complete"
+               echo "Pre-warming claude CLI..."
+               claude -p "ping" 2>&1 || true
+               echo "Pre-warm complete"
           volumeMounts:
             - name: claude-credentials-secret
               mountPath: /secrets
@@ -136,6 +139,28 @@ spec:
               value: "claude-proxy-local"
           resources:
             {{- toYaml .Values.claudeProxy.resources | nindent 12 }}
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - claude -p "ping" 2>&1 | grep -q .
+            initialDelaySeconds: 2
+            periodSeconds: 10
+            failureThreshold: 6
+            timeoutSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
           volumeMounts:
             - name: claude-credentials-writable
               mountPath: /root/.claude

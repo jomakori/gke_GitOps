@@ -14,7 +14,9 @@ spec:
     - issuer: https://{{ .Values.cloudflare.access.teamDomain }}.cloudflareaccess.com
       jwksUri: https://{{ .Values.cloudflare.access.teamDomain }}.cloudflareaccess.com/cdn-cgi/access/certs
       audiences:
-        - {{ .Values.cloudflare.access.audienceTag }}
+        {{- range $aud := splitList "," .Values.cloudflare.access.audienceTag }}
+        - {{ $aud }}
+        {{- end }}
       fromHeaders:
         - name: Cf-Access-Jwt-Assertion
       forwardOriginalToken: true
