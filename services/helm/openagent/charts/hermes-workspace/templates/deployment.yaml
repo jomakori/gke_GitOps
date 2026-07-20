@@ -41,6 +41,8 @@ spec:
             items:
               - key: config.yaml
                 path: config.yaml
+        - name: local-bin
+          emptyDir: {}
       initContainers:
         - name: install-hermes-tmux
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -49,14 +51,31 @@ spec:
             - sh
             - -c
             - |
+              set -e
               apt-get update && apt-get install -y tmux python3-venv && \
               python3 -m venv /shared/bin/venv && \
               /shared/bin/venv/bin/pip install hermes-agent && \
               cp /usr/bin/tmux /shared/bin/tmux && \
               ldd /usr/bin/tmux | grep -o '/[^ ]*' | while read lib; do cp "$lib" /shared/bin/ 2>/dev/null; done
+
+              # Create symlinks in ~/.local/bin/ for workspace binary resolution
+              HERMES_BIN=/shared/bin/venv/bin/hermes
+              chmod 755 "$HERMES_BIN"
+              ln -sf "$HERMES_BIN" /shared/.local/bin/hermes
+              ln -sf /shared/bin/tmux /shared/.local/bin/tmux
+
+              # Create wrapper scripts for each worker (required by swarm-tmux-start API)
+              mkdir -p /shared/.local/bin
+              for worker in orchestrator supervisor strategist reviewer architect builder junior-builder researcher explorer; do
+                echo '#!/bin/sh' > /shared/.local/bin/$worker
+                echo 'exec /shared/bin/venv/bin/hermes "$@"' >> /shared/.local/bin/$worker
+                chmod 755 /shared/.local/bin/$worker
+              done
           volumeMounts:
             - name: shared-bin
               mountPath: /shared/bin
+            - name: local-bin
+              mountPath: /shared/.local/bin
       containers:
         - name: hermes-workspace
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -66,9 +85,13 @@ spec:
               name: http
           env:
             - name: PATH
-              value: "/shared/bin/venv/bin:/shared/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+              value: "/shared/bin/venv/bin:/shared/bin:/home/workspace/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
             - name: LD_LIBRARY_PATH
               value: "/shared/bin"
+            - name: HERMES_CLI_BIN
+              value: /shared/bin/venv/bin/hermes
+            - name: TMUX_BIN
+              value: /shared/bin/tmux
             - name: HOST
               value: "0.0.0.0"
             - name: HERMES_ALLOW_INSECURE_REMOTE
@@ -99,6 +122,9 @@ spec:
               readOnly: true
             - name: shared-bin
               mountPath: /shared/bin
+              readOnly: true
+            - name: local-bin
+              mountPath: /home/workspace/.local/bin
               readOnly: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

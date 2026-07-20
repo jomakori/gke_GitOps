@@ -1,11 +1,11 @@
-{{- if .Values.hermes-workspace.enabled }}
+{{ if index .Values "hermes-workspace" "enabled" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: openagent-swarm-hermes-config
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "openagent.labels" . | nindent 4 }}
+    {{ include "openagent.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 data:
@@ -20,4 +20,4 @@ data:
         discover_models: true
     terminal:
       backend: local
-{{- end }}
+{{ end }}
