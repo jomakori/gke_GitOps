@@ -43,10 +43,10 @@ spec:
             - sh
             - -c
             - |
-              apt-get update && apt-get install -y tmux python3-pip && \
-              pip3 install --break-system-packages hermes-agent && \
-              cp /usr/bin/tmux /shared/bin/tmux && \
-              cp $(which hermes) /shared/bin/hermes
+              apt-get update && apt-get install -y tmux python3-venv && \
+              python3 -m venv /shared/venv && \
+              /shared/venv/bin/pip install hermes-agent && \
+              cp /usr/bin/tmux /shared/bin/tmux
           volumeMounts:
             - name: shared-bin
               mountPath: /shared/bin
@@ -59,7 +59,7 @@ spec:
               name: http
           env:
             - name: PATH
-              value: "/shared/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+              value: "/shared/venv/bin:/shared/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
             - name: HOST
               value: "0.0.0.0"
             - name: HERMES_ALLOW_INSECURE_REMOTE
