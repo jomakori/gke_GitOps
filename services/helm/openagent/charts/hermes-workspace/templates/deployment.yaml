@@ -22,6 +22,13 @@ spec:
     spec:
       imagePullSecrets:
         - name: ghcr-pull-secret
+      volumes:
+        - name: swarm-config
+          configMap:
+            name: openagent-swarm
+            items:
+              - key: swarm.yaml
+                path: swarm.yaml
       containers:
         - name: hermes-workspace
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -45,5 +52,10 @@ spec:
           envFrom:
             - secretRef:
                 name: openagent-secrets
+          volumeMounts:
+            - name: swarm-config
+              mountPath: /app/swarm.yaml
+              subPath: swarm.yaml
+              readOnly: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
