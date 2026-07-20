@@ -146,6 +146,14 @@ hermes:
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
+  command:
+    - hermes
+  args:
+    - serve
+    - --host
+    - 0.0.0.0
+    - --port
+    - "8642"
   service:
     enabled: true
     port: 9119
