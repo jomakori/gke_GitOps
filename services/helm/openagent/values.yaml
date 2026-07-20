@@ -143,6 +143,16 @@ hermes:
         secretKeyRef:
           name: openagent-secrets
           key: DISCORD_BOT_CLIENT_ID
+    - name: HERMES_DASHBOARD
+      value: "1"
+    - name: HERMES_DASHBOARD_HOST
+      value: "0.0.0.0"
+    - name: HERMES_DASHBOARD_PORT
+      value: "9119"
+    - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
+      value: "admin"
+    - name: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
+      value: "openagent2026"
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
