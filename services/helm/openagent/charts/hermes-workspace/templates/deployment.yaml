@@ -40,6 +40,10 @@ spec:
               value: {{ .Values.hermes.apiUrl | quote }}
             - name: HERMES_DASHBOARD_URL
               value: {{ .Values.hermes.dashboardUrl | quote }}
+            - name: HERMES_DASHBOARD_USERNAME
+              value: "admin"
+            - name: HERMES_DASHBOARD_PASSWORD
+              value: "openagent2026"
           envFrom:
             - secretRef:
                 name: openagent-secrets
