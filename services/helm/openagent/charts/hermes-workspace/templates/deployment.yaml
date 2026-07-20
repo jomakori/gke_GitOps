@@ -30,6 +30,8 @@ spec:
             - containerPort: {{ .Values.service.port }}
               name: http
           env:
+            - name: HOST
+              value: "127.0.0.1"
             - name: HERMES_API_URL
               value: {{ .Values.hermes.apiUrl | quote }}
             - name: HERMES_DASHBOARD_URL
