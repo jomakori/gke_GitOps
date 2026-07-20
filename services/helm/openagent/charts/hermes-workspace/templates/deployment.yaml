@@ -34,11 +34,6 @@ spec:
               value: {{ .Values.hermes.apiUrl | quote }}
             - name: HERMES_DASHBOARD_URL
               value: {{ .Values.hermes.dashboardUrl | quote }}
-            - name: HERMES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: openagent-secrets
-                  key: HERMES_PASSWORD
           envFrom:
             - secretRef:
                 name: openagent-secrets
