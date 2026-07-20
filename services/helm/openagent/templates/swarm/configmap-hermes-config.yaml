@@ -1,0 +1,23 @@
+{{- if .Values.hermes-workspace.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-swarm-hermes-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  config.yaml: |
+    model:
+      default: deepseek-v4-flash
+      provider: litellm
+    providers:
+      litellm:
+        base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
+        key_env: OPENAI_API_KEY
+        discover_models: true
+    terminal:
+      backend: local
+{{- end }}

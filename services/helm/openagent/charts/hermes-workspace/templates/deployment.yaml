@@ -35,6 +35,12 @@ spec:
           emptyDir: {}
         - name: shared-bin
           emptyDir: {}
+        - name: hermes-config
+          configMap:
+            name: openagent-swarm-hermes-config
+            items:
+              - key: config.yaml
+                path: config.yaml
       initContainers:
         - name: install-hermes-tmux
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -87,6 +93,10 @@ spec:
               mountPath: /app/.runtime
             - name: hermes-home
               mountPath: /home/workspace/.hermes
+            - name: hermes-config
+              mountPath: /home/workspace/.hermes/config.yaml
+              subPath: config.yaml
+              readOnly: true
             - name: shared-bin
               mountPath: /shared/bin
               readOnly: true
