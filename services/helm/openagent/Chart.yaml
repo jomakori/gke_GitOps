@@ -23,7 +23,7 @@ dependencies:
   - name: hermes-agent
     alias: hermes
     version: 0.9.1
-    repository: https://jyje.github.io/hermes-agent-helm
+    repository: file://charts/hermes-agent
     condition: hermes.enabled
   - name: hermes-workspace
     version: 0.1.0
