@@ -31,6 +31,8 @@ spec:
                 path: swarm.yaml
         - name: runtime-data
           emptyDir: {}
+        - name: hermes-home
+          emptyDir: {}
       containers:
         - name: hermes-workspace
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -61,5 +63,7 @@ spec:
               readOnly: true
             - name: runtime-data
               mountPath: /app/.runtime
+            - name: hermes-home
+              mountPath: /home/workspace/.hermes
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
