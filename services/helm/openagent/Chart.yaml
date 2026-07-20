@@ -21,6 +21,7 @@ dependencies:
     repository: file://charts/openagent-component
     condition: component.enabled
   - name: hermes-agent
+    alias: hermes
     version: 0.9.1
     repository: https://jyje.github.io/hermes-agent-helm
     condition: hermes.enabled

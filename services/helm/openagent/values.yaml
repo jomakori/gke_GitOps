@@ -129,14 +129,16 @@ hermes:
       litellm:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
         key_env: OPENAI_API_KEY
+        discover_models: true
   env:
-    OPENAI_API_KEY: "unused"
-    DISCORD_BOT_TOKEN:
+    OPENAI_API_KEY: unused
+  extraEnv:
+    - name: DISCORD_BOT_TOKEN
       valueFrom:
         secretKeyRef:
           name: openagent-secrets
           key: DISCORD_BOT_TOKEN
-    DISCORD_BOT_CLIENT_ID:
+    - name: DISCORD_BOT_CLIENT_ID
       valueFrom:
         secretKeyRef:
           name: openagent-secrets
