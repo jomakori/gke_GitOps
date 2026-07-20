@@ -1,0 +1,23 @@
+{{- if .Values.hermes.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: openagent-hermes-gateway
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: hermes-gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: openagent
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: hermes
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: gateway
+      port: 8642
+      targetPort: 8642
+      protocol: TCP
+{{- end }}
