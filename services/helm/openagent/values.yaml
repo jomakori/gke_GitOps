@@ -116,14 +116,27 @@ litellm:
       - opencode/big-pickle: ["deepseek-v4-flash"]
       - opencode/north-mini-code-free: ["deepseek-v4-flash"]
       - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
-      - claude/sonnet-5: ["deepseek-v4-pro"]
+      - opencode/mimo-v2.5-free: ["deepseek-v4-flash"]
+      - anthropic/claude-opus-4-7: ["claude/opus-4", "deepseek-v4-pro"]
+      - moonshotai/kimi-k2.6: ["deepseek-v4-pro", "zai/glm-4.7"]
+      - deepseek-v4-flash: ["zai/glm-4.7-flash", "opencode/deepseek-v4-flash-free"]
+      - deepseek-v4-pro: ["zai/glm-4.7", "deepseek-v4-flash"]
+      - zai/glm-4.7: ["deepseek-v4-pro", "zai/glm-4.7-flash"]
+      - zai/glm-4.7-flash: ["deepseek-v4-flash", "opencode/deepseek-v4-flash-free"]
+      - minimax/M3: ["deepseek-v4-pro", "zai/glm-4.7"]
+      - minimax/M2.7: ["deepseek-v4-flash", "zai/glm-4.7-flash"]
+      - claude/sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
+      - claude/sonnet-4: ["deepseek-v4-pro", "zai/glm-4.7"]
       - claude/opus-4: ["claude/sonnet-5", "deepseek-v4-pro"]
+      - claude-sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
+      - claude-opus-4: ["claude-sonnet-5", "deepseek-v4-pro"]
 
 # ── Hermes Agent ────────────────────────────────────────────────────
 hermes:
   enabled: true
   config:
     model:
+      default: deepseek-v4-flash
       provider: litellm
     providers:
       litellm:
