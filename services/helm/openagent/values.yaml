@@ -146,13 +146,24 @@ hermes:
     - name: HERMES_DASHBOARD
       value: "1"
     - name: HERMES_DASHBOARD_HOST
-      value: "0.0.0.0"
+      value: "127.0.0.1"
     - name: HERMES_DASHBOARD_PORT
-      value: "9119"
-    - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
-      value: "admin"
-    - name: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
-      value: "openagent2026"
+      value: "19119"
+  extraContainers:
+    - name: dashboard-proxy
+      image: alpine/socat:latest
+      imagePullPolicy: IfNotPresent
+      command: ["socat"]
+      args:
+        - TCP-LISTEN:9119,fork,reuseaddr
+        - TCP:127.0.0.1:19119
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
