@@ -64,12 +64,30 @@ spec:
               ln -sf "$HERMES_BIN" /shared/.local/bin/hermes
               ln -sf /shared/bin/tmux /shared/.local/bin/tmux
 
-              # Create wrapper scripts for each worker (required by swarm-tmux-start API)
-              mkdir -p /shared/.local/bin
+              # Create central model mapping (ONE file to edit when swapping models)
+              echo 'orchestrator=claude/sonnet-4' > /shared/bin/worker-models.cfg
+              for entry in \
+                'supervisor=claude/sonnet-4' \
+                'strategist=deepseek-v4-pro' \
+                'reviewer=deepseek-v4-pro' \
+                'architect=claude/opus-4' \
+                'builder=minimax/M3' \
+                'junior-builder=deepseek-v4-flash' \
+                'researcher=zai/glm-4.7-flash' \
+                'explorer=zai/glm-4.7-flash'; do
+                echo "$entry" >> /shared/bin/worker-models.cfg
+              done
+
+              # Create single wrapper that reads model from central mapping
+              echo '#!/bin/sh' > /shared/bin/swarm-wrapper.sh
+              echo 'worker=$(basename "$0")' >> /shared/bin/swarm-wrapper.sh
+              echo 'model=$(grep "^${worker}=" /shared/bin/worker-models.cfg | cut -d= -f2)' >> /shared/bin/swarm-wrapper.sh
+              echo 'if [ -n "$model" ]; then exec /shared/bin/venv/bin/hermes -m "$model" "$@"; else exec /shared/bin/venv/bin/hermes "$@"; fi' >> /shared/bin/swarm-wrapper.sh
+              chmod 755 /shared/bin/swarm-wrapper.sh
+
+              # Symlink each worker name to the single wrapper
               for worker in orchestrator supervisor strategist reviewer architect builder junior-builder researcher explorer; do
-                echo '#!/bin/sh' > /shared/.local/bin/$worker
-                echo 'exec /shared/bin/venv/bin/hermes "$@"' >> /shared/.local/bin/$worker
-                chmod 755 /shared/.local/bin/$worker
+                ln -sf /shared/bin/swarm-wrapper.sh /shared/.local/bin/$worker
               done
           volumeMounts:
             - name: shared-bin
