@@ -12,7 +12,7 @@ service:
   port: 3000
 
 hermes:
-  apiUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
+  apiUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000"
   dashboardUrl: "http://openagent-hermes.openagent.svc.cluster.local:9119"
 
 resources:
