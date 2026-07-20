@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hermes-workspace.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hermes-workspace.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hermes-workspace
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "hermes-workspace.labels" . | nindent 6 }}
+      app.kubernetes.io/component: hermes-workspace
+  template:
+    metadata:
+      labels:
+        {{- include "hermes-workspace.labels" . | nindent 8 }}
+        app.kubernetes.io/component: hermes-workspace
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: hermes-workspace
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              name: http
+          env:
+            - name: HERMES_API_URL
+              value: {{ .Values.hermes.apiUrl | quote }}
+            - name: HERMES_DASHBOARD_URL
+              value: {{ .Values.hermes.dashboardUrl | quote }}
+            - name: HERMES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openagent-secrets
+                  key: HERMES_PASSWORD
+          envFrom:
+            - secretRef:
+                name: openagent-secrets
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hermes-workspace.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hermes-workspace.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hermes-workspace
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "hermes-workspace.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hermes-workspace
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      name: http

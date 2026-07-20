@@ -1,0 +1,24 @@
+# hermes-workspace values
+# These are accessed from the parent chart as hermes-workspace.*
+dopplerConfig: "svc_openagent"
+storageClass: "local-path"
+
+image:
+  repository: ghcr.io/outsourc-e/hermes-workspace
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 3000
+
+hermes:
+  apiUrl: "http://openagent-hermes-agent.openagent.svc.cluster.local:8642"
+  dashboardUrl: "http://openagent-hermes-agent.openagent.svc.cluster.local:9119"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
