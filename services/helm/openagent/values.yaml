@@ -201,6 +201,9 @@ hermes:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
         key_env: OPENAI_API_KEY
         discover_models: true
+    plugins:
+      enabled:
+        - discord-platform
   env:
     OPENAI_API_KEY: unused
   extraEnv:
@@ -220,6 +223,8 @@ hermes:
       value: "127.0.0.1"
     - name: HERMES_DASHBOARD_PORT
       value: "19119"
+    - name: DISCORD_ALLOW_ALL_USERS
+      value: "true"
   extraContainers:
     - name: dashboard-proxy
       image: nginx:alpine
