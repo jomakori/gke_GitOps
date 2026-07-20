@@ -29,6 +29,11 @@ spec:
             items:
               - key: swarm.yaml
                 path: swarm.yaml
+      initContainers:
+        - name: init-runtime
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c", "mkdir -p /app/.runtime && chown 1000:1000 /app/.runtime && chmod 755 /app/.runtime"]
       containers:
         - name: hermes-workspace
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
