@@ -146,6 +146,9 @@ hermes:
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
+  service:
+    enabled: true
+    port: 9119
 
 # ── Hermes Workspace ────────────────────────────────────────────────
 hermes-workspace:

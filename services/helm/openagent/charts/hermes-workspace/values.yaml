@@ -12,8 +12,8 @@ service:
   port: 3000
 
 hermes:
-  apiUrl: "http://openagent-hermes-agent.openagent.svc.cluster.local:8642"
-  dashboardUrl: "http://openagent-hermes-agent.openagent.svc.cluster.local:9119"
+  apiUrl: "http://openagent-hermes-gateway.openagent.svc.cluster.local:8642"
+  dashboardUrl: "http://openagent-hermes.openagent.svc.cluster.local:9119"
 
 resources:
   requests:
