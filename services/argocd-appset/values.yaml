@@ -96,11 +96,10 @@ services:
       - name: virtualServices.argocd.destination.port
         value: "80"
 
-   openagent:
+  openagent:
     enable: true
     syncWave: "0"
     destNamespace: openagent
-    skipSchemaValidation: true
     managedNamespaceMetadata:
       labels:
         istio.io/dataplane-mode: ambient
