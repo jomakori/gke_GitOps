@@ -1,0 +1,106 @@
+{{- if .Values.hermes.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-hermes-hooks
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  HOOK.yaml: |
+    name: discord-session-link
+    description: >
+      Posts a dashboard session link to the Discord channel when a new
+      session starts. Fires on agent:start (which carries chat_id).
+      Tracks seen session_ids in-process to post only once per session.
+    events:
+      - agent:start
+  handler.py: |
+    """Discord session-link hook.
+
+    Fires on ``agent:start`` — the event that carries ``chat_id`` (the
+    Discord channel ID).  On the first message of a new session the hook
+    POSTs a dashboard link back to that channel via the Discord REST API.
+
+    The hook is fire-and-forget: errors are logged but never raised,
+    so a failure here can't block the agent pipeline.
+    """
+
+    from __future__ import annotations
+
+    import os
+    import aiohttp
+
+    # ── Config ────────────────────────────────────────────────────────
+    _DASHBOARD_BASE = os.environ.get(
+        "DASHBOARD_BASE_URL", "https://openagent.maklab.net"
+    )
+    _DISCORD_API = "https://discord.com/api/v10"
+
+    # ── In-process seen-set (caps at 500 to bound memory) ─────────────
+    _seen: set[str] = set()
+    _MAX_SEEN = 500
+
+    async def handle(event_type: str, context: dict) -> None:
+        """Entry point called by HookRegistry.emit()."""
+        if event_type != "agent:start":
+            return
+
+        platform = context.get("platform", "")
+        if platform != "discord":
+            return
+
+        session_id = context.get("session_id", "")
+        chat_id = context.get("chat_id", "")
+        if not session_id or not chat_id:
+            return
+
+        # Only post once per session
+        if session_id in _seen:
+            return
+        _seen.add(session_id)
+        if len(_seen) > _MAX_SEEN:
+            _seen.clear()
+            _seen.add(session_id)
+
+        token = os.environ.get("DISCORD_BOT_TOKEN", "")
+        if not token:
+            print("[session-link-hook] DISCORD_BOT_TOKEN not set, skipping",
+                  flush=True)
+            return
+
+        url = f"{_DASHBOARD_BASE}/chat/{session_id}"
+        # For Discord threads, chat_id is already the thread channel ID.
+        api_url = f"{_DISCORD_API}/channels/{chat_id}/messages"
+        headers = {
+            "Authorization": f"Bot {token}",
+            "Content-Type": "application/json",
+        }
+        payload = {"content": f"📊 **Session dashboard**\n{url}"}
+
+        try:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout) as sess:
+                async with sess.post(api_url, headers=headers,
+                                     json=payload) as resp:
+                    if resp.status in (200, 201):
+                        print(
+                            f"[session-link-hook] Posted dashboard link for "
+                            f"session {session_id} to channel {chat_id}",
+                            flush=True,
+                        )
+                    else:
+                        body = await resp.text()
+                        print(
+                            f"[session-link-hook] Discord API {resp.status}: "
+                            f"{body[:300]}",
+                            flush=True,
+                        )
+        except Exception as exc:
+            print(
+                f"[session-link-hook] Failed to post dashboard link: {exc}",
+                flush=True,
+            )
+{{- end }}

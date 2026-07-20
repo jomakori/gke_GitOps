@@ -233,6 +233,16 @@ hermes:
       value: "0.0.0.0"
     - name: API_SERVER_PORT
       value: "8642"
+    - name: DASHBOARD_BASE_URL
+      value: "https://openagent.maklab.net"
+  extraVolumes:
+    - name: hermes-hooks
+      configMap:
+        name: openagent-hermes-hooks
+  extraVolumeMounts:
+    - name: hermes-hooks
+      mountPath: /opt/data/hooks/discord-session-link
+      readOnly: true
   extraContainers:
     - name: dashboard-proxy
       image: nginx:alpine
