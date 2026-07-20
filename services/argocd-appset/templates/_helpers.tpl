@@ -49,6 +49,9 @@ spec:
       {{- if $cfg.skipCrds }}
       skipCrds: true
       {{- end }}
+      {{- if $cfg.skipSchemaValidation }}
+      skipSchemaValidation: true
+      {{- end }}
       {{- $allParams := $cfg.parameters | default list }}
       {{- if $dopplerConfig }}
       {{-   $allParams = append $allParams (dict "name" "dopplerConfig" "value" $dopplerConfig) }}

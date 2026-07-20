@@ -3,6 +3,7 @@ clusterDomain: "maklab.net"
 storageClass: "local-path"
 dopplerConfig: "svc_openagent"
 namespace: "openagent"
+global: {}
 
 # Shared GHCR pull secret
 ghcrPullSecret: ""
@@ -118,6 +119,36 @@ litellm:
       - claude/sonnet-5: ["deepseek-v4-pro"]
       - claude/opus-4: ["claude/sonnet-5", "deepseek-v4-pro"]
 
+# ── Hermes Agent ────────────────────────────────────────────────────
+hermes:
+  enabled: true
+  config:
+    model:
+      provider: litellm
+    providers:
+      litellm:
+        base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
+        key_env: OPENAI_API_KEY
+  env:
+    OPENAI_API_KEY: "unused"
+    DISCORD_BOT_TOKEN:
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: DISCORD_BOT_TOKEN
+    DISCORD_BOT_CLIENT_ID:
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: DISCORD_BOT_CLIENT_ID
+  extraEnvFrom:
+    - secretRef:
+        name: openagent-secrets
+
+# ── Hermes Workspace ────────────────────────────────────────────────
+hermes-workspace:
+  enabled: true
+
 # ── Component subchart values ──────────────────────────────────────
 # These are passed to the openagent-component subchart.
 # The subchart name (openagent-component) is the key Helm uses to pass values.
@@ -146,7 +177,7 @@ openagent-component:
       accessMode: ReadWriteOnce
     litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
   bot:
-    enabled: true
+    enabled: false
     image:
       repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
       tag: "0.9.6"
@@ -190,12 +221,8 @@ postgres:
 dashboard:
   subdomain: "openagent"
   destination:
-    host: "sympozium-apiserver.sympozium-system.svc.cluster.local"
-    port: 8080
-
-# ── OpenAgent CRD ───────────────────────────────────────────────────
-ensemble:
-  enabled: true
+    host: "openagent-hermes-workspace.openagent.svc.cluster.local"
+    port: 3000
 
 # ── VPA ────────────────────────────────────────────────────────────
 vpa:

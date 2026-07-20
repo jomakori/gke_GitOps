@@ -20,3 +20,11 @@ dependencies:
     version: 0.1.0
     repository: file://charts/openagent-component
     condition: component.enabled
+  - name: hermes-agent
+    version: 0.9.1
+    repository: https://jyje.github.io/hermes-agent-helm
+    condition: hermes.enabled
+  - name: hermes-workspace
+    version: 0.1.0
+    repository: file://charts/hermes-workspace
+    condition: hermes-workspace.enabled

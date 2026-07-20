@@ -96,10 +96,11 @@ services:
       - name: virtualServices.argocd.destination.port
         value: "80"
 
-  openagent:
+   openagent:
     enable: true
     syncWave: "0"
     destNamespace: openagent
+    skipSchemaValidation: true
     managedNamespaceMetadata:
       labels:
         istio.io/dataplane-mode: ambient
@@ -110,8 +111,11 @@ services:
         value: "{{ .Values.storageClass }}"
       - name: dopplerConfig
         value: "svc_openagent"
+    gateways:
+      enable_private: true
     syncOptions:
       - CreateNamespace=true
+      - SkipSchemaValidation=true
 
   # Wave 3 — Edge infrastructure (after istio for backend routing)
   cloudflareTunnel:

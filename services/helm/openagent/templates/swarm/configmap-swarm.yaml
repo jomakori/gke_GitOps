@@ -1,0 +1,310 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagent.fullname" . }}-swarm
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: swarm
+data:
+  swarm.yaml: |
+    version: 1
+    workers:
+      # ── Orchestrator ──────────────────────────────────────────────
+      - id: orchestrator
+        name: Sisyphus
+        role: OMO Orchestrator / Intent Router
+        specialty: intent classification, delegation, verification enforcement
+        model: claude/sonnet-4
+        mission: Classify intent and delegate to the right specialist. Enforce verification tiers.
+        profile: omo-orchestrator
+        modes:
+          - plan
+          - route
+        tools:
+          - todo
+          - kanban
+          - delegation
+          - terminal
+          - file
+          - web
+          - skills
+          - clarify
+        skills:
+          - omo-core-skills
+          - k8s-ops
+          - hashline-editor
+          - web-endpoint
+        capabilities:
+          - orchestration
+          - intent-classification
+          - delegation
+          - verification
+        preferredTaskTypes:
+          - orchestration
+          - planning
+          - routing
+          - coordination
+        greenlightRequiredFor:
+          - merge
+          - publish
+          - destructive
+          - external-send
+        maxConcurrentTasks: 1
+        acceptsBroadcast: true
+
+      # ── Supervisor ────────────────────────────────────────────────
+      - id: supervisor
+        name: Atlas
+        role: Cross-Persona Coordinator / Quality Gate
+        specialty: cross-persona coordination, quality verification, supervision
+        model: claude/sonnet-4
+        mission: Verify work quality and correctness. Handle cross-persona dependencies.
+        profile: omo-supervisor
+        modes:
+          - verify
+          - coordinate
+        tools:
+          - terminal
+          - file
+          - web
+          - skills
+          - session_search
+        skills:
+          - omo-core-skills
+          - k8s-ops
+        capabilities:
+          - supervision
+          - quality-verification
+          - conflict-resolution
+        preferredTaskTypes:
+          - verification
+          - supervision
+          - coordination
+        reviewRequired: true
+        maxConcurrentTasks: 3
+        acceptsBroadcast: true
+
+      # ── Strategist ────────────────────────────────────────────────
+      # Metis (consultant) folded into this worker — pre-planning
+      # consultant capabilities merged into strategist role.
+      - id: strategist
+        name: Prometheus
+        role: Strategic Planner / Pre-planning Consultant
+        specialty: strategic planning, decomposition, ambiguity detection
+        model: deepseek-v4-pro
+        mission: Build step-by-step implementation plans. Surface hidden intentions and AI failure points.
+        profile: omo-strategist
+        modes:
+          - plan
+          - review
+        tools:
+          - todo
+          - file
+          - web
+          - skills
+          - clarify
+        skills:
+          - omo-core-skills
+          - writing-plans
+        capabilities:
+          - planning
+          - decomposition
+          - risk-assessment
+          - ambiguity-detection
+        preferredTaskTypes:
+          - planning
+          - strategy
+          - review
+        greenlightRequiredFor:
+          - irreversible-decision
+        maxConcurrentTasks: 1
+        acceptsBroadcast: true
+
+      # ── Reviewer ──────────────────────────────────────────────────
+      - id: reviewer
+        name: Momus
+        role: Ruthless Plan Reviewer
+        specialty: gap identification, risk analysis, plan quality
+        model: deepseek-v4-pro
+        mission: Reject plans with gaps. Demand clarity before approval.
+        profile: omo-reviewer
+        modes:
+          - gate
+        tools:
+          - file
+          - web
+          - skills
+        skills:
+          - omo-core-skills
+          - requesting-code-review
+        capabilities:
+          - plan-review
+          - gap-detection
+          - risk-analysis
+        preferredTaskTypes:
+          - review
+          - qa
+          - verification
+        reviewRequired: true
+        maxConcurrentTasks: 2
+        acceptsBroadcast: true
+
+      # ── Architect ─────────────────────────────────────────────────
+      - id: architect
+        name: Oracle
+        role: Architecture / Security Consultant
+        specialty: architecture review, security vulnerabilities, best practices
+        model: claude/opus-4
+        mission: Review architecture designs. Identify security flaws. Suggest improvements.
+        profile: omo-architect
+        modes:
+          - review
+        tools:
+          - file
+          - web
+          - skills
+        skills:
+          - omo-core-skills
+          - systematic-debugging
+        capabilities:
+          - architecture-review
+          - security-review
+          - best-practices
+        preferredTaskTypes:
+          - architecture
+          - security
+          - review
+        reviewRequired: true
+        maxConcurrentTasks: 1
+        acceptsBroadcast: true
+
+      # ── Builder ───────────────────────────────────────────────────
+      - id: builder
+        name: Hephaestus
+        role: Deep Implementation Coder
+        specialty: production-quality code, deep implementation
+        model: minimax/M3
+        mission: Write production-quality code for assigned implementation tasks.
+        profile: omo-builder
+        modes:
+          - task
+        tools:
+          - terminal
+          - file
+          - browser
+          - web
+          - skills
+          - todo
+        skills:
+          - omo-core-skills
+          - test-driven-development
+          - systematic-debugging
+        capabilities:
+          - implementation
+          - code-editing
+          - tests
+          - integration
+        preferredTaskTypes:
+          - implementation
+          - bugfix
+          - feature
+          - refactor
+        greenlightRequiredFor:
+          - merge
+          - push
+          - destructive
+        maxConcurrentTasks: 2
+        acceptsBroadcast: true
+
+      # ── Junior Builder ────────────────────────────────────────────
+      - id: junior-builder
+        name: Sisyphus-junior
+        role: Focused Task Executor
+        specialty: trivial fixes, quick tasks, single-file edits
+        model: deepseek-v4-flash
+        mission: Execute focused tasks without re-delegation. Handle trivial and quick work.
+        profile: omo-junior-builder
+        modes:
+          - task
+        tools:
+          - terminal
+          - file
+          - skills
+        skills:
+          - omo-core-skills
+        capabilities:
+          - quick-fix
+          - single-file-edit
+          - task-execution
+        preferredTaskTypes:
+          - quick-fix
+          - trivial
+          - single-file
+        maxConcurrentTasks: 3
+        acceptsBroadcast: true
+
+      # ── Researcher ────────────────────────────────────────────────
+      - id: researcher
+        name: Librarian
+        role: Docs / RAG Searcher
+        specialty: authoritative documentation, OSS examples, remote repositories
+        model: zai/glm-4.7-flash
+        mission: Find docs, OSS examples, and remote repositories. Return findings with sources.
+        profile: omo-researcher
+        modes:
+          - quick
+          - autoresearch
+        tools:
+          - web
+          - browser
+          - file
+          - skills
+          - session_search
+        skills:
+          - omo-core-skills
+          - autoresearch
+          - browser-harness-power-use
+        capabilities:
+          - research
+          - synthesis
+          - source-verification
+          - docs-search
+        preferredTaskTypes:
+          - research
+          - analysis
+          - source-review
+        greenlightRequiredFor:
+          - publish
+          - external-send
+        maxConcurrentTasks: 2
+        acceptsBroadcast: true
+
+      # ── Explorer ──────────────────────────────────────────────────
+      - id: explorer
+        name: Explore
+        role: Codebase Pattern Discovery
+        specialty: codebase patterns, file structures, conventions
+        model: zai/glm-4.7-flash
+        mission: Find files, usages, structures, and conventions in the codebase.
+        profile: omo-explorer
+        modes:
+          - quick
+        tools:
+          - terminal
+          - file
+          - skills
+          - session_search
+        skills:
+          - omo-core-skills
+          - codebase-inspection
+        capabilities:
+          - codebase-discovery
+          - pattern-matching
+          - convention-detection
+        preferredTaskTypes:
+          - discovery
+          - exploration
+          - codebase
+        maxConcurrentTasks: 2
+        acceptsBroadcast: true

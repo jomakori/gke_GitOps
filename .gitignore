@@ -7,6 +7,7 @@ test-gpu.yaml
 **charts/
 !services/helm/openagent/charts/openagent-component/**
 !services/helm/openagent/charts/litellm-helm/**
+!services/helm/openagent/charts/hermes-workspace/**
 **Chart.lock
 .devbox/
 **sisyphus

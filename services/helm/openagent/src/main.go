@@ -370,7 +370,7 @@ func main() {
 		log.Printf("Connected to %d guild(s): %v", guildCount, guildNames)
 	}
 
-	log.Println("Kagent Discord bot is running. Press Ctrl+C to exit.")
+	log.Println("Discord bot is running. Press Ctrl+C to exit.")
 	select {}
 }
 
@@ -703,7 +703,7 @@ func handleMessage(s *discordgo.Session, m *discordgo.MessageCreate, cfg config)
 				createSessionEmbed(s, conv)
 			} else {
 				thread, err := s.MessageThreadStartComplex(m.ChannelID, m.ID, &discordgo.ThreadStart{
-					Name:                fmt.Sprintf("kagent-%s", truncate(content, 30)),
+					Name:                fmt.Sprintf("agent-%s", truncate(content, 30)),
 					AutoArchiveDuration: 60,
 				})
 				if err != nil {
