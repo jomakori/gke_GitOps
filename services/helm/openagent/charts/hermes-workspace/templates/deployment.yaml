@@ -40,6 +40,8 @@ spec:
               value: {{ .Values.hermes.apiUrl | quote }}
             - name: HERMES_DASHBOARD_URL
               value: {{ .Values.hermes.dashboardUrl | quote }}
+            - name: OPENAI_API_KEY
+              value: {{ .Values.hermes.apiKey | quote }}
           envFrom:
             - secretRef:
                 name: openagent-secrets

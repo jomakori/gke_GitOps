@@ -225,6 +225,14 @@ hermes:
       value: "19119"
     - name: DISCORD_ALLOW_ALL_USERS
       value: "true"
+    - name: API_SERVER_ENABLED
+      value: "true"
+    - name: API_SERVER_KEY
+      value: "hermes-api-server-key-1234"
+    - name: API_SERVER_HOST
+      value: "0.0.0.0"
+    - name: API_SERVER_PORT
+      value: "8642"
   extraContainers:
     - name: dashboard-proxy
       image: nginx:alpine
@@ -263,6 +271,9 @@ hermes:
   service:
     enabled: true
     port: 9119
+    extraPorts:
+      - port: 8642
+        name: api-server
 
 # ── Hermes Workspace ────────────────────────────────────────────────
 hermes-workspace:
