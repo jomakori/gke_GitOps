@@ -44,7 +44,7 @@ spec:
             - -c
             - |
               apt-get update && apt-get install -y tmux python3-pip && \
-              pip3 install hermes-agent && \
+              pip3 install --break-system-packages hermes-agent && \
               cp /usr/bin/tmux /shared/bin/tmux && \
               cp $(which hermes) /shared/bin/hermes
           volumeMounts:
