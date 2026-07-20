@@ -14,7 +14,7 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 2
-      activeDeadlineSeconds: 120
+      activeDeadlineSeconds: 180
       template:
         spec:
           serviceAccountName: claude-proxy-refresher
@@ -100,6 +100,9 @@ spec:
                     --from-file=.credentials.json=/writable/.credentials.json \
                     -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
                   echo "Secret updated"
+                  echo "Restarting claude-proxy to pick up fresh credentials..."
+                  kubectl rollout restart deploy/claude-proxy -n "$NAMESPACE"
+                  echo "Restart triggered"
               volumeMounts:
                 - name: writable
                   mountPath: /writable
