@@ -33,23 +33,23 @@ spec:
           emptyDir: {}
         - name: hermes-home
           emptyDir: {}
-        - name: hermes-cli
+        - name: shared-bin
           emptyDir: {}
       initContainers:
-        - name: install-hermes-cli
-          image: "nousresearch/hermes-agent:v2026.7.7.2"
-          imagePullPolicy: IfNotPresent
-          command: ["sh", "-c", "cp -a /opt/hermes/. /shared/hermes/"]
-          volumeMounts:
-            - name: hermes-cli
-              mountPath: /shared/hermes
-        - name: install-tmux
+        - name: install-hermes-tmux
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["sh", "-c", "apt-get update && apt-get install -y tmux && cp /usr/bin/tmux /shared/hermes/.venv/bin/tmux"]
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y tmux python3-pip && \
+              pip3 install hermes-agent && \
+              cp /usr/bin/tmux /shared/bin/tmux && \
+              cp $(which hermes) /shared/bin/hermes
           volumeMounts:
-            - name: hermes-cli
-              mountPath: /shared/hermes
+            - name: shared-bin
+              mountPath: /shared/bin
       containers:
         - name: hermes-workspace
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -59,7 +59,7 @@ spec:
               name: http
           env:
             - name: PATH
-              value: "/opt/hermes/.venv/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
+              value: "/shared/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin"
             - name: HOST
               value: "0.0.0.0"
             - name: HERMES_ALLOW_INSECURE_REMOTE
@@ -84,7 +84,8 @@ spec:
               mountPath: /app/.runtime
             - name: hermes-home
               mountPath: /home/workspace/.hermes
-            - name: hermes-cli
-              mountPath: /opt/hermes
+            - name: shared-bin
+              mountPath: /shared/bin
+              readOnly: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
