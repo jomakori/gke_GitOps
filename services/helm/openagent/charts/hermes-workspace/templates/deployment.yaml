@@ -31,7 +31,9 @@ spec:
               name: http
           env:
             - name: HOST
-              value: "127.0.0.1"
+              value: "0.0.0.0"
+            - name: HERMES_ALLOW_INSECURE_REMOTE
+              value: "1"
             - name: HERMES_API_URL
               value: {{ .Values.hermes.apiUrl | quote }}
             - name: HERMES_DASHBOARD_URL
