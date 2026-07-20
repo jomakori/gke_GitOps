@@ -164,6 +164,12 @@ hermes:
         limits:
           cpu: 100m
           memory: 64Mi
+  command:
+    - /init
+  args:
+    - hermes
+    - gateway
+    - run
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
