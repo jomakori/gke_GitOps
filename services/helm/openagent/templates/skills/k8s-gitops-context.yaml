@@ -11,21 +11,18 @@ data:
   k8s-gitops-context.md: |
     # K8s GitOps Context
 
-    ## Repo Access on K8s Cluster
+    ## Repo Pair
 
-    On the k8s cluster, repos are NOT at Mac paths. Use one of:
-    1. **GitHub MCP** — preferred. Access via `github_search_repositories`, `github_get_file_contents`, `github_search_code` tools.
-    2. **k8s workspace** — clone repos to /workspace/repos/devops_Terraform and /workspace/repos/gke_GitOps (PVC-backed).
-    3. **Mac paths** — only valid when running locally (not on k8s cluster).
+    | Repo | GitHub MCP | Workspace Path |
+    |------|------------|----------------|
+    | Terraform | `github_search_repositories`, `github_get_file_contents` | `/workspace/repos/devops_Terraform` |
+    | GitOps | `github_search_repositories`, `github_get_file_contents` | `/workspace/repos/gke_GitOps` |
 
-    ## Repo Pair — LOCAL PATHS (subagents: read from these)
+    **Access repos via:**
+    1. **GitHub MCP (preferred)** — `github_*` tools in Hermes mcp_servers.github
+    2. **k8s workspace** — clone repos to `/workspace/repos/` (PVC-backed)
 
-    | Repo | Mac Path | k8s Workspace | GitHub MCP |
-    |------|----------|--------------|------------|
-    | Terraform | /Users/maklab/devops_Terraform | /workspace/repos/devops_Terraform | github_search_repositories + github_get_file_contents |
-    | GitOps | /Users/maklab/gke_GitOps | /workspace/repos/gke_GitOps | github_search_repositories + github_get_file_contents |
-
-    **When loaded, subagents MUST read from these absolute paths for any Terraform or GitOps reference. Never assume relative paths.**
+    **Subagents MUST use GitHub MCP tools or k8s workspace paths.**
 
     ## Execution Order (Terraform)
 
@@ -131,7 +128,7 @@ data:
 
     **Flow**:
     ```
-    variables.tf (clusterDomain default) 
+    variables.tf (clusterDomain default)
       → 4-gitops.tf (passed as Helm parameter `clusterDomain`)
         → ArgoCD services App values.yaml (clusterDomain: "<filled by Terraform>")
           → Istio Gateway, Certificate, ClusterIssuer, ExternalDNS, VirtualServices
@@ -148,7 +145,7 @@ data:
     ## Secrets Chain
 
     ```
-    Doppler 
+    Doppler
       → Terraform stores DOPPLER_TOKEN as K8s Secret "doppler-machine-token" in external-secrets ns
         → ClusterSecretStore (doppler-{config}, project + config per store) references that token
           → ExternalSecret (sync-wave: "-1", dataFrom.find.regexp: ".*", refreshInterval: 24h)
@@ -189,7 +186,7 @@ data:
 
     ### Using the Doppler CLI
 
-    **ALL secrets and global vars must be stored in Doppler.** Never hardcode API keys, tokens, or credentials anywhere in the codebase — no Helm `--set` values, no inline values in `values.yaml`, no env vars hardcoded in deployment templates. Every secret flows through: Doppler → ClusterSecretStore → ExternalSecret → K8s Secret → pod `envFrom` or `secretKeyRef`.
+    **ALL secrets and global vars must be stored in Doppler.** Never hardcode API keys, tokens, or credentials anywhere in the codebase — no Helm `--set` valuesvalues, no inline values in `values.yaml`, no env vars hardcoded in deployment templates. Every secret flows through: Doppler → ClusterSecretStore → ExternalSecret → K8s Secret → pod `envFrom` or `secretKeyRef`.
 
     #### Project and Config Selection
 
@@ -251,7 +248,7 @@ data:
       -H "Content-Type: application/json" \
       -d '{"project":"devops","config":"svc_openagent","secrets":{"AGENT_API_KEY":"sk-xxx"}}'
 
-    # Read a secret via API  
+    # Read a secret via API
     curl "https://api.doppler.com/v3/configs/config/secrets/download?project=devops&config=svc_openagent&format=json" \
       -H "Authorization: Bearer ${DOPPLER_SERVICE_TOKEN}"
     ```
