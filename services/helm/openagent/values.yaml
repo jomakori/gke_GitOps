@@ -284,7 +284,7 @@ hermes:
       mountPath: /opt/data/hooks/discord-session-link
       readOnly: true
     - name: k8s-gitops-context
-      mountPath: /opt/data/memory/k8s-gitops-context.md
+      mountPath: /opt/data/memories/k8s-gitops-context.md
       subPath: k8s-gitops-context.md
       readOnly: true
   extraContainers:
