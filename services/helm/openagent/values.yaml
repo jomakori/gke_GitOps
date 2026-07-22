@@ -204,6 +204,43 @@ hermes:
     plugins:
       enabled:
         - discord-platform
+    mcp_servers:
+      github:
+        command: "npx"
+        args: ["-y", "@modelcontextprotocol/server-github"]
+        env:
+          GITHUB_PERSONAL_ACCESS_TOKEN: "os.environ/MCP_GITHUB_TOKEN"
+        tools:
+          include: [list_issues, create_issue, update_issue, search_code, search_repositories, get_file_contents]
+          resources: false
+          prompts: false
+
+      argocd:
+        command: "npx"
+        args: ["-y", "argocd-mcp@latest", "stdio"]
+        env:
+          ARGOCD_API_TOKEN: "os.environ/MCP_ARGOCD_TOKEN"
+          ARGOCD_BASE_URL: "os.environ/MCP_ARGOCD_URL"
+        tools:
+          resources: false
+          prompts: false
+
+      grafana:
+        command: "npx"
+        args: ["-y", "@leval/mcp-grafana"]
+        env:
+          GRAFANA_URL: "os.environ/MCP_GRAFANA_URL"
+          GRAFANA_SERVICE_ACCOUNT_TOKEN: "os.environ/MCP_GRAFANA_TOKEN"
+        tools:
+          resources: false
+          prompts: false
+
+      kubectl:
+        url: "http://kubernetes-mcp-server.openagent.svc.cluster.local:8000/mcp"
+        timeout: 60
+        tools:
+          resources: false
+          prompts: false
   env:
     OPENAI_API_KEY: unused
   extraEnv:
@@ -239,9 +276,16 @@ hermes:
     - name: hermes-hooks
       configMap:
         name: openagent-hermes-hooks
+    - name: k8s-gitops-context
+      configMap:
+        name: openagent-k8s-gitops-context
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
+      readOnly: true
+    - name: k8s-gitops-context
+      mountPath: /opt/data/memory/k8s-gitops-context.md
+      subPath: k8s-gitops-context.md
       readOnly: true
   extraContainers:
     - name: dashboard-proxy

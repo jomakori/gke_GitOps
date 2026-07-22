@@ -43,6 +43,9 @@ spec:
                 path: config.yaml
         - name: local-bin
           emptyDir: {}
+        - name: k8s-gitops-context
+          configMap:
+            name: openagent-k8s-gitops-context
       initContainers:
         - name: install-hermes-tmux
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -143,6 +146,10 @@ spec:
               readOnly: true
             - name: local-bin
               mountPath: /home/workspace/.local/bin
+              readOnly: true
+            - name: k8s-gitops-context
+              mountPath: /workspace/reference/k8s-gitops-context.md
+              subPath: k8s-gitops-context.md
               readOnly: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
