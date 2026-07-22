@@ -1,0 +1,963 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-k8s-gitops-context
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/part-of: openagent
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+data:
+  k8s-gitops-context.md: |
+    # K8s GitOps Context
+
+    ## Repo Access on K8s Cluster
+
+    On the k8s cluster, repos are NOT at Mac paths. Use one of:
+    1. **GitHub MCP** — preferred. Access via `github_search_repositories`, `github_get_file_contents`, `github_search_code` tools.
+    2. **k8s workspace** — clone repos to /workspace/repos/devops_Terraform and /workspace/repos/gke_GitOps (PVC-backed).
+    3. **Mac paths** — only valid when running locally (not on k8s cluster).
+
+    ## Repo Pair — LOCAL PATHS (subagents: read from these)
+
+    | Repo | Mac Path | k8s Workspace | GitHub MCP |
+    |------|----------|--------------|------------|
+    | Terraform | /Users/maklab/devops_Terraform | /workspace/repos/devops_Terraform | github_search_repositories + github_get_file_contents |
+    | GitOps | /Users/maklab/gke_GitOps | /workspace/repos/gke_GitOps | github_search_repositories + github_get_file_contents |
+
+    **When loaded, subagents MUST read from these absolute paths for any Terraform or GitOps reference. Never assume relative paths.**
+
+    ## Execution Order (Terraform)
+
+    Terraform Cloud workspace: `tf_jmakori/k8s-maklab-cluster`
+
+    ```
+    1-k8s.tf              → k3d_cluster (custom image with iscsi pre-installed, see below)
+                             CoreDNS ConfigMap (dynamically forwards to k3d host DNS)
+    2-eso.tf              → Doppler machine token K8s Secret (in default ns, consumed by ClusterSecretStores)
+    3-managed_services.tf → helm_release.argocd (argo-helm, NodePort, insecure, HPA for server+repoServer)
+    4-gitops.tf           → kubectl_manifest "services" Application (points ArgoCD at gke_GitOps/services repo)
+                             kubectl_manifest "apps" — COMMENTED OUT (scaffolding for future app workloads)
+    5-cloudflare-tunnel.tf → tunnel, ingress config, doppler_secrets, wildcard CNAME
+    6-cloudflare-access.tf → Per-service CF Access Applications (for_each over var.private_services), Google OAuth IdP, Doppler AUD sync (CF_ACCESS_AUDS + ACCESS_AUDIENCE_TAG)
+    ```
+
+    Dependency chain: `6 ← 5 ← depends_on ← 4 ← depends_on ← 3 ← depends_on ← 2 ← depends_on ← 1`
+
+    > `6-cloudflare-access.tf` creates per-service CF Access Applications (not wildcard). Each private service gets its own app at `<name>.${clusterDomain}`. Services NOT in `var.private_services` have NO CF Access App → public passthrough. Two-apply flow: 1st apply creates apps + writes AUDs to Doppler → 2nd apply passes AUDs to ArgoCD → Istio validates JWTs.
+
+    ## Custom k3s Image (iscsi)
+
+    ### Problem
+
+    The official `rancher/k3s` image is `FROM scratch` with no package manager. The custom image was originally built to pre-install `open-iscsi` for Longhorn. Longhorn was removed (iSCSI failed on OrbStack, Longhorn v2 failed due to hugepage requirements, OpenEBS LVM failed due to k3s CSI registration bug). The iscsi binaries remain in the image as a no-op — no active dependency uses them. Storage is now `local-path` (rancher.io/local-path).
+
+    ### Solution
+
+    **Multi-stage Dockerfile** at `docker/Dockerfile` — copies `open-iscsi` binaries + musl shared libraries from Alpine into the k3s image:
+
+    ```dockerfile
+    FROM alpine:3.21 AS builder
+    RUN apk add --no-cache open-iscsi
+
+    FROM rancher/k3s:v1.35.1-k3s1
+    COPY --from=builder /usr/sbin/iscsiadm /usr/sbin/iscsiadm
+    COPY --from=builder /usr/sbin/iscsid /usr/sbin/iscsid
+    COPY --from=builder /lib/ld-musl-aarch64.so.1 /lib/ld-musl-aarch64.so.1
+    # + 10 shared library deps from ldd
+    ```
+
+    **Registry**: `ghcr.io/jomakori/k3s-iscsi:v1.35.1-k3s1` (also tagged `:latest`)
+
+    **Terraform integration**: `var.k3s_image` in `variables.tf`, referenced in `k3d_config.image`. The old `null_resource.longhorn_deps` resource was removed.
+
+    **Build command**: `make k3s-image` — builds arm64 image and pushes to GHCR. Version auto-extracted from `variables.tf:kubernetes_version`.
+
+    **Upgrade flow**: when bumping `kubernetes_version` in `variables.tf`, run `make k3s-image` to rebuild and push for the new version. Then `make apply-cluster` to recreate the cluster.
+
+    ### CoreDNS — Dynamic Upstream
+
+    k3d's default DNS forwarder (`8.8.8.8 8.8.4.4`) causes Go DNS resolver errors (`server misbehaving`) because UDP from the pod network can't reliably reach Google DNS through Docker bridge networking. The fix uses the k3d node's own DNS resolver (Docker bridge gateway, typically `192.168.97.1`):
+
+    ```hcl
+    data "external" "k3d_dns" {
+      program = ["sh", "-c", "echo \"{\\\"ip\\\":\\\"$(docker exec k3d-${var.cluster_config[\"name\"]}-server-0 cat /etc/resolv.conf | grep nameserver | head -1 | awk '{print $2}')\\\"}\""]
+      depends_on = [k3d_cluster.maklab_cluster]
+    }
+    ```
+
+    The CoreDNS forward directive uses `${data.external.k3d_dns.result.ip}` — dynamically resolved at apply time.
+
+    ### Makefile (Modular Apply Targets)
+
+    **Doppler project**: `devops`, config `ci` for Terraform `TF_VAR_` secrets. Used by the Makefile: `doppler run -p devops -c ci -- terraform`.
+
+    Six batched targets in dependency order:
+
+    | Target | Resources | Files |
+    |--------|-----------|-------|
+    | `make apply-cluster` | k3d_cluster, CoreDNS | 1-k8s.tf |
+    | `make apply-eso` | doppler-machine-token secret | 2-eso.tf |
+    | `make apply-argocd` | helm_release.argocd | 3-managed_services.tf |
+    | `make apply-gitops` | services Application | 4-gitops.tf |
+    | `make apply-tunnel` | CF tunnel + DNS + token secrets | 5-cloudflare-tunnel.tf |
+    | `make apply-access` | CF Access app + Google OAuth + AUD | 6-cloudflare-access.tf |
+
+    `make apply` runs all six in order. Also `make plan` and `make clean`.
+
+    > **apps Application**: The `kubectl_manifest "apps"` resource in `4-gitops.tf` is commented out. The GitOps chart at `gke_GitOps/apps/argocd-appset/` and all app entries (`demoApi`, `notesUi`) exist but have `enable: false`. This is intentional — the app layer is ready to activate once workloads are ready. To enable: uncomment `4-gitops.tf:13-19`, set `enable: true` in `apps/argocd-appset/values.yaml`.
+
+    ## Variables — DRY Pattern
+
+    All configs use `map(string)` vars with defaults in `variables.tf`:
+
+    | Variable | Purpose |
+    |----------|---------|
+    | `var.cluster_config` | cluster_name, cni, driver, k8s version, workers, etc. |
+    | `var.gitops_config` | repo, clusterDomain, storageClass, targetRevision, argoNamespace, etc. |
+    | `var.tunnel_config` | tunnel_name, doppler_project, doppler_config |
+    | `var.CF_TEAM` | Cloudflare Zero Trust team name, default `"jmaklab"` |
+    | `var.CF_TEAM_ACCESS` | list(string), email allowlist for CF Access policy |
+    | `var.ACCESS_TEAM_DOMAIN` | CF Access team domain, set via Doppler `TF_VAR_ACCESS_TEAM_DOMAIN` |
+    | `var.ACCESS_AUDIENCE_TAG` | CF Access Application AUD tag (sensitive), set via Doppler `TF_VAR_ACCESS_AUDIENCE_TAG` |
+
+    **Infrastructure secrets** (no defaults — set via `TF_VAR_` env vars from Doppler): `DOPPLER_TOKEN`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `TAILSCALE_HOST`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUDIENCE_TAG`, `CF_TEAM_ACCESS`.
+
+    > **`TAILSCALE_HOST`** is typed `any` in `variables.tf` — no type constraint. Add `type: string` if validation is desired.
+
+    ### Domain: `clusterDomain` is the Single Source of Truth
+
+    **Rule**: The canonical domain is `var.gitops_config["clusterDomain"]` (default: `"maklab.net"`). All ingress routing, TLS certificates, DNS records, and VirtualService hosts derive from this value.
+
+    **Flow**:
+    ```
+    variables.tf (clusterDomain default) 
+      → 4-gitops.tf (passed as Helm parameter `clusterDomain`)
+        → ArgoCD services App values.yaml (clusterDomain: "<filled by Terraform>")
+          → Istio Gateway, Certificate, ClusterIssuer, ExternalDNS, VirtualServices
+        → ArgoCD apps App values.yaml (clusterDomain: "<filled by Terraform>")
+          → App VirtualServices
+    ```
+
+    **NEVER hardcode `maklab.net`** in template logic — always reference `.Values.clusterDomain`. The only exceptions are:
+    - Chart descriptions (cosmetic, no functional impact)
+    - ExternalDNS `domainFilters` (literal domain filter, must match clusterDomain value)
+
+    > **Consistency note**: Some templates historically used `.Values.domain` instead of `.Values.clusterDomain`. Both must resolve to the same value. Prefer `clusterDomain` throughout since that's what Terraform passes. If both exist in a values.yaml, set both to the same value to avoid drift.
+
+    ## Secrets Chain
+
+    ```
+    Doppler 
+      → Terraform stores DOPPLER_TOKEN as K8s Secret "doppler-machine-token" in external-secrets ns
+        → ClusterSecretStore (doppler-{config}, project + config per store) references that token
+          → ExternalSecret (sync-wave: "-1", dataFrom.find.regexp: ".*", refreshInterval: 24h)
+            → K8s Secret (keys match Doppler exactly)
+              → Pod secretKeyRef
+    ```
+
+    **ClusterSecretStores** defined in `gke_GitOps/services/helm/external-secrets/values.yaml`:
+
+    | Store Name | Project | Config | Used By |
+    |-----------|---------|--------|---------|
+    | `doppler-svc-grafana` | devops | svc_grafana | kube-prometheus-stack |
+    | `doppler-svc-cloudflare` | devops | svc_cloudflare | istio (umbrella), external-dns, cloudflare-tunnel |
+    | `doppler-svc-postgres-operator` | devops | svc_postgres_operator | postgres-operator |
+    | `doppler-svc-onedev` | devops | svc_onedev | onedev (OneDev app + SGCluster) |
+    | `doppler-zurabase-dev` | zurabase | dev | future zurabase service |
+    | `doppler-zurabase-stg` | zurabase | stg | future zurabase service |
+    | `doppler-zurabase-prd` | zurabase | prd | future zurabase service |
+
+    Store names follow `doppler-{config}` where underscores become dashes (template: `doppler-{{`{{ $config | replace "_" "-" }}`}}`).
+
+    **Adding a new Doppler config**: add entry in `external-secrets/values.yaml` → Terraform is no-op. The ClusterSecretStore template auto-generates from the values.
+
+    ### Doppler Secrets Policy
+
+    **Doppler is the source of truth, shaped to match what the consuming app/service expects.**
+
+    - Set Doppler keys/values so the app/service can consume them directly without chart-level workarounds.
+    - Do **not** add custom template logic, hooks, or patches inside a Helm chart just to adapt an app/service to a Doppler value.
+    - For apps/services that generate their own credentials (e.g., StackGres superuser password), read the generated K8s Secret and store the value in Doppler so the consuming app (e.g., OneDev) gets the same credential via its ExternalSecret.
+    - **ExternalSecrets MUST use only `dataFrom.find.regexp: ".*"`** — no explicit `data` mappings. Doppler keys are named to match exactly what the consuming deployment expects (env var names, config keys). This keeps the ExternalSecret template zero-maintenance: adding a key in Doppler automatically flows to the deployment without chart changes.
+    - **If a Doppler key's purpose is ambiguous**, document it via a note in the Doppler dashboard (web UI → secret → note field). Note which deployment/container consumes it and what env var or config key it maps to. Example: `OPENAI_TARGET_API_URL` → "openagent-headroom: sets --openai-api-url. Routes LLM requests through LiteLLM proxy."
+    - **Exception**: StackGres-generated credentials (superuser passwords) must be copied from the generated K8s Secret into Doppler manually.
+    - **Legacy exception**: postgres-operator ExternalSecret uses explicit `data` mappings (`ADMIN_USER`→`k8sUsername`). Do not replicate in new charts.
+    - Set `creationPolicy: Owner` on all ExternalSecrets so ESO manages the secret lifecycle.
+
+    Example: `svc_onedev` stores `DB_USER` and `DB_PASSWORD`. OneDev's ExternalSecret merges `DB_PASSWORD` into `onedev-secrets`. StackGres generates its own postgres superuser password; the generated password must be copied into Doppler `DB_PASSWORD` so OneDev and the database agree.
+
+    ### Using the Doppler CLI
+
+    **ALL secrets and global vars must be stored in Doppler.** Never hardcode API keys, tokens, or credentials anywhere in the codebase — no Helm `--set` values, no inline values in `values.yaml`, no env vars hardcoded in deployment templates. Every secret flows through: Doppler → ClusterSecretStore → ExternalSecret → K8s Secret → pod `envFrom` or `secretKeyRef`.
+
+    #### Project and Config Selection
+
+    | Context | Project | Config | Example |
+    |---------|---------|--------|---------|
+    | Infrastructure (Terraform) | `devops` | `ci` | `TF_VAR_DOPPLER_TOKEN`, `TF_VAR_CLOUDFLARE_API_TOKEN` |
+    | Grafana | `devops` | `svc_grafana` | `GRAFANA_ADMIN`, `GRAFANA_PW` |
+    | Cloudflare services | `devops` | `svc_cloudflare` | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
+    | Postgres operator | `devops` | `svc_postgres_operator` | `ADMIN_USER`, `ADMIN_PASSWORD` |
+    | OneDev | `devops` | `svc_onedev` | `DB_PASSWORD`, `DB_USER` |
+    | OpenAgent stack | `devops` | `svc_openagent` | Provider API keys, `DISCORD_BOT_TOKEN`, `AGENT_API_URL`, `AGENT_API_KEY`, `GITHUB_TOKEN` |
+    | Kagent (legacy) | `devops` | `svc_kagent` | unused — kept for backward compatibility |
+    | StackGres (legacy) | `devops` | `svc_stackgres` | unused — kept for backward compatibility |
+    | Zurabase (future) | `zurabase` | `dev`, `stg`, `prd` | Future zurabase service |
+
+    **Rule**: Infrastructure/terraform vars → project `devops`, config `ci`. Per-service secrets → project `devops`, config `svc_<name>` (e.g., `svc_openagent`). The `svc_` prefix maps to a `doppler-svc-<name>` ClusterSecretStore.
+
+    #### Global Auth Token
+
+    The `doppler ci` config (`devops` / `ci`) hosts the **global Doppler service token** — this is the token that Terraform stores as the `doppler-machine-token` K8s Secret in the `external-secrets` namespace. All ClusterSecretStores reference this single token. To set it:
+
+    ```bash
+    doppler configs tokens create --project devops --config ci --plain service
+    ```
+
+    This token is stored as a `DOPPLER_TOKEN` TF_VAR via Doppler. Never commit it.
+
+    #### Setting a Secret
+
+    ```bash
+    # Add a new secret to the openagent config
+    doppler secrets set AGENT_API_KEY="sk-xxx" --project devops --config svc_openagent
+
+    # Change an existing value
+    doppler secrets set DISCORD_BOT_TOKEN="new-token" --project devops --config svc_openagent
+
+    # Set from a file (for multiline secrets, certs, etc.)
+    doppler secrets set PRIVATE_KEY="$(cat key.pem)" --project devops --config svc_openagent
+
+    # Verify what's set
+    doppler secrets get AGENT_API_KEY --project devops --config svc_openagent --plain
+
+    # List all secrets in a config
+    doppler secrets list --project devops --config svc_openagent
+    ```
+
+    **Naming convention**: Doppler key names must match the env var or config key the consuming deployment expects. For example, the Discord bot reads `AGENT_API_URL` from its environment — so the Doppler key must be `AGENT_API_URL`. No rewriting, no mapping, no translation in ExternalSecrets.
+
+    **Secrets propagate automatically**: ExternalSecrets use `dataFrom.find.regexp: ".*"` with `refreshInterval: 24h`. Adding a new key in Doppler flows to the deployment within 24 hours with zero chart changes. For immediate propagation, either trigger an ExternalSecret reconciliation or wait for the next refresh cycle.
+
+    #### Using the Doppler API
+
+    When CLI is not available (e.g., CI pipelines), use the Doppler API directly:
+
+    ```bash
+    # Set a secret via API
+    curl -X POST "https://api.doppler.com/v3/configs/config/secrets" \
+      -H "Authorization: Bearer ${DOPPLER_SERVICE_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d '{"project":"devops","config":"svc_openagent","secrets":{"AGENT_API_KEY":"sk-xxx"}}'
+
+    # Read a secret via API  
+    curl "https://api.doppler.com/v3/configs/config/secrets/download?project=devops&config=svc_openagent&format=json" \
+      -H "Authorization: Bearer ${DOPPLER_SERVICE_TOKEN}"
+    ```
+
+    The `DOPPLER_SERVICE_TOKEN` is the same token stored in the `doppler-machine-token` K8s Secret (generated via `doppler configs tokens create` above).
+
+    #### Adding a New Doppler Config
+
+    1. Add a `ClusterSecretStore` entry in `services/helm/external-secrets/values.yaml`:
+       ```yaml
+       clusterSecretStores:
+         svc_my_service:          # key matches dopplerConfig in argocd-appset
+           project: devops         # Doppler project
+           config: svc_my_service  # Doppler config (with svc_ prefix)
+       ```
+       The template auto-generates a `ClusterSecretStore` named `doppler-svc-my-service`.
+    2. Create the config in Doppler: `doppler configs create svc_my_service --project devops`
+    3. Add secrets: `doppler secrets set KEY=VALUE --project devops --config svc_my_service`
+    4. Reference `dopplerConfig: "svc_my_service"` in the service's `argocd-appset/values.yaml` entry.
+    5. No Terraform changes needed — the ClusterSecretStore template auto-generates from the values.
+
+    ### Data Persistence Policy
+
+    **Application data must survive chart deletion and be resilient/prod-ready.**
+
+    - Stateful app data (repositories, artifacts, uploads, config) must live on a PVC, not inside the container filesystem.
+    - Database data must run on the cluster's DB operator (StackGres) with its own PVC(s).
+    - Do **not** rely on `emptyDir`, container-local storage, or embedded databases for anything that must persist.
+    - PVCs created by StatefulSet `volumeClaimTemplates` persist by default when the StatefulSet is deleted.
+    - For operator-managed databases, rely on the operator's retention behavior; document any manual cleanup steps.
+    - Storage class and size are parameterized via `.Values.storageClass` and per-service values; never hardcode storage class.
+
+    Example: OneDev uses a 50Gi PVC for server data (`persistence.size`) and a StackGres SGCluster with a 5Gi PVC for Postgres. Both PVCs remain after the OneDev Application is deleted.
+
+    ## Sync Wave Order (ArgoCD)
+
+    Source: `gke_GitOps/services/argocd-appset/values.yaml`
+
+    ### Wave Philosophy
+
+    | Wave | Purpose | Examples |
+    |------|---------|----------|
+    | 0 | **Init services** | cert-manager, VPA, metrics-server |
+    | 1 | **Secret services** | external-secrets (ClusterSecretStores) |
+    | 2 | **Core networking services** | istio umbrella (CRDs + control plane + gateway) |
+    | 3 | **Edge networking services** | cloudflare-tunnel (needs istio for backend routing) |
+    | 4 | **Operator services** | external-dns, postgres-operator |
+    | 5 | **General services** | onedev, kube-prometheus-stack |
+    | 6+ | **Apps** | demoApi, notesUi |
+
+    **Rules**:
+    - Services that are dependencies for others → earlier waves
+    - Edge networking services (cloudflare-tunnel) → wave 3 (needs istio ready for backend routing)
+    - Operator services → wave 4 (no endpoint deps, just secrets/istio)
+    - General services → wave 5
+    - Apps always at wave 6+ (depend on all services being ready)
+
+    ### Current Services
+
+    | Wave | Services | Notable sync options |
+    |------|----------|---------------------|
+    | 0 | metrics-server, cert-manager, vpa | |
+    | 1 | external-secrets (ClusterSecretStores) | retryLimit:5, Replace=true |
+    | 2 | istio umbrella (CRDs + control plane + ingress gateway + config) | ServerSideApply |
+    | 3 | cloudflare-tunnel | Ingress via Cloudflare edge |
+    | 4 | external-dns, postgres-operator | skipCrds (postgres-operator) |
+    | 5 | kube-prometheus-stack, onedev | ServerSideApply |
+
+    ### Current Apps
+
+    | Wave | Apps | Notes |
+    |------|------|-------|
+    | 6+ | demoApi, notesUi | Depend on all services being ready |
+
+    **Special handler — `istio`**: The `applications.yaml` template auto-discovers services with `gateways.enable_public` or `gateways.enable_private` and injects VirtualService + auth parameters as Helm `--set` into the istio umbrella chart. The two flags are **mutually exclusive** — the template `fail`s if both are set on the same service. Derives everything from minimal keys:
+
+    ```yaml
+    gateways:
+      enable_public: true        # public access via Istio VS, no edge auth
+      enable_private: true       # CF Access Zero Trust — JWT required at edge + Istio validates
+      subdomain: my-app          # optional — defaults to chart name
+      destination:
+        serviceName: my-svc      # optional — defaults to chart name
+        servicePort: 8080        # optional — defaults to 80
+    ```
+
+    Auto-derivation (all use centralized `clusterDomain`):
+    - **host**: `{subdomain}.{clusterDomain}` → e.g. `grafana.maklab.net`
+    - **dest host**: `{serviceName}.{destNamespace}.svc.cluster.local` → e.g. `kube-prometheus-stack-grafana.kube-prometheus-stack.svc.cluster.local`
+    - **VS key**: `{subdomain}` → e.g. `grafana`
+    - **Private extension**: when `enable_private: true`, additionally injects `virtualServices.<name>.enablePrivate: true` → istio chart generates an `AuthorizationPolicy` DENY rule requiring valid CF Access JWT for that host
+
+    **`enable_private` full pipeline**:
+    ```
+    Service opts in via values.yaml:
+      gateways.enable_private: true
+
+    → applications.yaml detects flag, injects VS params + enablePrivate flag
+    → istio chart receives params:
+        - cloudflare.access.teamDomain (from Terraform gitops_config via Doppler TF_VAR)
+        - cloudflare.access.audienceTag (CF Access Application AUD, also via TF_VAR)
+        - virtualServices.<name>.enablePrivate: true
+    → request-authentication.yaml renders at gateway: validates JWT via CF JWKS
+    → authorization-policy-private.yaml renders per-private-VS: DENY requests without valid JWT
+    ```
+
+    **Terraform flow** for CF Access configuration:
+    ```
+    Doppler TF_VAR_ACCESS_TEAM_DOMAIN + TF_VAR_ACCESS_AUDIENCE_TAG
+      → variables.tf: var.ACCESS_TEAM_DOMAIN + var.ACCESS_AUDIENCE_TAG
+        → 4-gitops.tf locals: accessTeamDomain + accessAudienceTag
+          → services.yml template → ArgoCD --set accessTeamDomain / accessAudienceTag
+            → argocd-appset values.yaml: $.Values.accessTeamDomain / $.Values.accessAudienceTag
+              → applications.yaml injects cloudflare.access.* into istio Helm params
+                → istio chart renders RequestAuthentication with real AUD
+    ```
+
+    Most services need only `enable_public: true` — the subdomain and service name match the chart name. Add `enable_private: true` for Zero Trust gating.
+
+    **Per-service tuning** — each service can set:
+    - `finalizers` (most use `resources-finalizer.argocd.argoproj.io`)
+    - `retryLimit` + `retryMaxDuration` (e.g., external-secrets: 5/3m, postgres-operator: 2/3m)
+    - `ignoreDifferences` (kube-prometheus-stack: node-exporter resources)
+    - `parameters` for Helm overrides (storageClass, clusterName)
+    - `enabled` (false to disable)
+
+    ## Helm Chart Patterns (gke_GitOps)
+
+    Charts in `services/helm/`, categorized by how they're structured:
+
+    ### Thin Wrapper — Chart.yaml with upstream `dependencies` only, no local templates
+
+    `cert-manager`, `metrics-server`, `vpa`
+
+    ### Custom — Full local templates, no upstream dep
+
+    `cloudflare-tunnel` (3 templates), `onedev` — vendored upstream chart + 4 local templates (SGCluster, SGPostgresConfig, SGPoolingConfig, ExternalSecret)
+
+    ### Hybrid — Upstream dep + local templates
+
+    | Chart | Upstream | Local templates | Purpose |
+    |-------|----------|-----------------|---------|
+    | `external-dns` | external-dns | `cloudflare-external-secret.yaml` | ExternalSecret for CF_API_TOKEN |
+    | `external-secrets` | external-secrets | `cluster-secret-store.yaml` | ClusterSecretStore generation |
+    | `istio` | base + istiod + ingress-gateway | 7 local templates (Gateway, ClusterIssuer, Certificate, VirtualServices) | Umbrella — ingress gateway merged as dep |
+    | `kube-prometheus-stack` | kube-prometheus-stack | `grafana-external-secret.yaml` | ExternalSecret for Grafana admin creds |
+    | `postgres-operator` | stackgres-operator | `postgres-external-secret.yaml` | ExternalSecret for StackGres admin creds |
+
+    ### Umbrella — NEW DEFAULT PATTERN (prefer for multi-component services)
+
+    **This is now the preferred pattern for any service with 2+ logical components.** The openagent rebuild established this convention. Replace monolithic inlined charts with umbrella structure.
+
+    **Structure**:
+    ```
+    chart-name/
+    ├── Chart.yaml              ← 2 deps: upstream OCI + custom subchart (file://)
+    ├── values.yaml             ← all config under dep name keys
+    ├── charts/
+    │   ├── upstream-chart/     ← vendored upstream (OCI fallback)
+    │   └── custom-subchart/     ← own component subchart
+    ├── templates/              ← CRDs + shared resources ONLY (no workload templates)
+    │   ├── ensemble/           ← grouped by resource type
+    │   ├── db/
+    │   ├── shared/
+    │   └── gateway/
+    └── src/                    ← application source code (if any)
+    ```
+
+    **Key rules**:
+    - **Never inline templates for external services** — use upstream Helm charts as `dependencies`
+    - **Single subchart for own workload components** — one subchart with `enabled` flags per component, not separate subcharts per component
+    - **CRDs + shared resources only at umbrella level** — no Deployment/Service/PVC templates in umbrella `templates/`
+    - **Values under dependency name key**: subchart values passed via `openagent-component.*` (Helm auto-nesting)
+    - **Conditions in Chart.yaml**: `condition: component.enabled` for enable/disable deps
+    - **Vendor upstream charts** locally (`file://`) for offline `helm template` validation when OCI is unavailable. `.tgz` archives are NOT needed — Helm reads the chart directory directly for `file://` deps.
+    - **.gitignore exception required**: The root `.gitignore` has `**charts/**` which blocks ALL charts directories. Custom subcharts MUST have an exception: `!path/to/charts/subchart-name/**`
+
+    **Example** (openagent umbrella):
+    ```yaml
+    # Chart.yaml
+    dependencies:
+      - name: litellm-helm
+        version: 1.92.0
+        repository: file://charts/litellm-helm    # vendored upstream
+        condition: litellm.enabled
+      - name: openagent-component
+        version: 0.1.0
+        repository: file://charts/openagent-component  # custom subchart
+        condition: component.enabled
+    ```
+
+    ```yaml
+    # values.yaml — subchart values under dependency name key
+    component:
+      enabled: true
+    openagent-component:          # Helm auto-nests under dep name
+      headroom:
+        enabled: true
+        service: {port: 8787}
+      bot:
+        enabled: true
+        service: {port: 8080}
+    ```
+
+    ```gitignore
+    # Root .gitignore — exception needed for custom subchart
+    **charts/
+    !services/helm/openagent/charts/openagent-component/**   # unblock custom subchart
+    **Chart.lock
+    ```
+
+    **Gotcha — `**charts/**` blocks custom subcharts**: The root `.gitignore` pattern `**charts/**` ignores ALL directories named `charts`. When your umbrella chart has a custom subchart (your own code, not an upstream dep) at `charts/my-subchart/`, git will not track it. You MUST add an exception: `!path/to/charts/my-subchart/**`. Without this, `git status` silently ignores your subchart templates — they will not be committed and will not exist on other machines.
+
+    **Gotcha — `.tgz` files are redundant**: Helm `file://` dependencies read the chart directory directly. The `.tgz` archives (`chart-name-X.Y.Z.tgz`) are generated by `helm dependency update` and `helm package` — they are build artifacts, not source. The `**charts/**` gitignore already excludes them. Do not commit them. Delete them after local testing.
+
+    ### Apps Chart (1) — `apps/helm/`
+
+    A single parameterized chart with a 373-line `_helpers.tpl` (`app.manifests` define, lines 14-373) that generates ALL manifests for any app:
+    - ServiceAccount
+    - ExternalSecret (Doppler via ClusterSecretStore)
+    - **Database resources** (`enable_db` — generates SGCluster)
+    - Deployment (`nodeSelector: intent: apps`)
+    - Service (ClusterIP for Istio, NodePort otherwise)
+    - VirtualService (conditional on `enable_domain` + `enable_istio`)
+    - HPA (conditional on `enable_scaling`)
+    - PVC (conditional on `storage.size`)
+
+    Invoked via `--set appName=<key>` from the appset. Supports multi-environment (staging + production) per app.
+
+    ### Service Registration
+
+    Add a new service in `gke_GitOps/services/argocd-appset/values.yaml` — mandatory fields:
+    ```yaml
+    serviceName:
+      enable: true
+      name: my-service
+      syncWave: "5"
+      helmPath: services/helm/my-service
+      destNamespace: my-namespace
+      # Optional:
+      dopplerConfig: "svc_my_service"   # if it needs secrets
+      gateways:
+        enable_public: true              # auto-generates VirtualService via istio umbrella
+        # subdomain: my-svc              # only if different from chart name
+        # destination:
+        #   serviceName: my-svc          # only if different from chart name
+        #   servicePort: 8080            # default: 80
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    ```
+
+    ## Database Provisioning (`enable_db`)
+
+    **Source**: `apps/helm/templates/_helpers.tpl` (lines 110-207)
+
+    DB resources are generated **per-app per-environment** via the `enable_db` config block in each app's `values.yaml` entry. No hardcoded clusters or external templates — the operator CRs are embedded in the `_helpers.tpl` define alongside the other app manifests.
+
+    ### `enable_db` config block
+
+    ```yaml
+    enable_db:
+      type: postgres                    # not enabled
+      deployment: cluster               # or "db" (single instance)
+      version: "17"
+      storage: 10Gi
+      storageClass: ""
+    ```
+
+    ### Postgres (StackGres SGCluster)
+
+    - `deployment: db` → fixed 1 instance, no autoscaling
+    - `deployment: cluster` → uses `enable_scaling.db` for min/max instances with StackGres horizontal autoscaling (connection-pool-based)
+
+    ```yaml
+    enable_scaling:
+      db:
+        minInstances: 2
+        maxInstances: 5
+    ```
+
+    StackGres supports **built-in connection-based horizontal autoscaling** via `replicasConnectionsUsageTarget: "0.5"` (scale up when pool >50% utilized).
+
+    ### Operator Charts
+
+    | Chart | Location | Upstream | Pattern | Wave | Namespace |
+    |-------|----------|---------|---------|------|-----------|
+    | `postgres-operator` | `services/helm/postgres-operator/` | `stackgres-operator` (StackGres) | hybrid (+ ExternalSecret) | 3 | `postgres-operator` |
+
+    ## Istio + Networking
+
+    - **Single umbrella chart**: `services/helm/istio/` bundles 3 upstream deps — `base` (CRDs), `istiod` (control plane), `ingress-gateway` — plus 7 local templates (Gateway, ClusterIssuer, Certificate, VirtualServices). No separate `istio-ingressgateway` chart.
+    - **Ambient mode**: no sidecars. Label namespaces with `istio.io/dataplane-mode: ambient`
+    - **Gateway**: `maklab-gateway` in `istio-system`, wildcard `*.${clusterDomain}`, TLS via cert-manager `wildcard-maklab-net-tls`
+    - **CF Access Zero Trust**: Services opt in via `gateways.enable_private: true` in ArgoCD values. Terraform `var.private_services` (default: `["grafana", "onedev", "argocd"]`) controls which hostnames get CF Access OAuth at the edge. Per-service `cloudflare_zero_trust_access_application` resources created via `for_each`. Each app auto-generates a unique AUD; all AUDs are stored as comma-separated string in Doppler (`CF_ACCESS_AUDS` → `ACCESS_AUDIENCE_TAG`). Istio's `request-authentication.yaml` validates against ALL AUDs using `splitList ","` range. Three istio templates enforce it:
+      - `request-authentication.yaml` — validates CF Access JWT at ingress gateway via JWKS, supports multiple AUDs (comma-separated). **CRITICAL**: must use `fromHeaders` to extract JWT from `Cf-Access-Jwt-Assertion` header (CF Access does NOT use `Authorization: Bearer`).
+      - `authorization-policy-private.yaml` — DENY requests without valid JWT per private host
+
+    **Public vs Private control**: Services NOT in `var.private_services` have NO CF Access Application → public passthrough at CF edge. Services with `gateways.enable_public: true` in ArgoCD get Istio VirtualService only (no CF Access, no Istio JWT validation). Services with `gateways.enable_private: true` get BOTH CF Access OAuth at edge AND Istio JWT validation.
+
+    **Two-apply flow**: First `terraform apply` creates CF Access apps and writes AUDs (`CF_ACCESS_AUDS`, `ACCESS_AUDIENCE_TAG`) to Doppler. Second `terraform apply` reads updated `ACCESS_AUDIENCE_TAG` and passes multi-AUD string to ArgoCD → Istio. Adding/removing services from `var.private_services` follows the same flow.
+    - **Ambient mode note**: The AuthorizationPolicy uses HTTP attributes (`hosts`, `notRequestPrincipals`). These are enforced by Envoy on the ingress gateway. `ZtunnelAccepted` warning is informational — ztunnel ignores HTTP attributes, but the gateway's Envoy handles them correctly.
+    - **VirtualServices**: two layers:
+      - **istio umbrella** (spec-driven): auto-generated per-service from `gateways.enable_public` in the appset values. Host and destination derived from `subdomain`/`serviceName` keys + centralized `clusterDomain` + `destNamespace`.
+      - **App chart** (conditional): per-app per-environment VS when `enable_domain` + `enable_istio` are true
+    - **PeerAuthentication**: STRICT mTLS mesh-wide
+    - **ClusterIssuer**: Let's Encrypt via Cloudflare DNS-01 challenge
+    - **NodePorts**: 80→30670, 443→30160 (for direct tests, NOT for production routing)
+    - **ExternalDNS**: `upsert-only` policy, watches `istio-gateway` + `istio-virtualservice` + `service` sources, Cloudflare provider, filters on `clusterDomain`
+
+    ## Cloudflare Tunnel
+
+    ### Provider v5 (current — migration from v4 already complete)
+
+    Resource syntax is v5-native:
+    ```hcl
+    resource "cloudflare_zero_trust_tunnel_cloudflared" "maklab" { ... }  # v4: cloudflare_argo_tunnel
+    resource "cloudflare_zero_trust_tunnel_cloudflared_config" "maklab" {
+      config = { ingress = [{ ... }] }  # v4: ingress_rule blocks
+    }
+    resource "cloudflare_dns_record" "wildcard_maklab" {
+      content = "..."  # v4: value
+      ttl     = 1      # required in v5
+    }
+    ```
+
+    ### SNI (MOST COMMON ISSUE)
+
+    When cloudflared connects to istio-ingressgateway via HTTPS, it MUST send the incoming Host as SNI:
+
+    ```hcl
+    origin_request = {
+      no_tls_verify     = true
+      match_sni_to_host = true   # NOT match_sn_ito_host (missing 'i' = silent failure)
+    }
+
+    ### Config Flow
+
+    Terraform → Cloudflare API → cloudflared pod auto-picks up config changes (polling). Config resource CANNOT be destroyed from Terraform — manual cleanup only.
+
+    ### Tunnel Token Storage
+
+    Terraform creates the tunnel, generates the token via `data.cloudflare_zero_trust_tunnel_cloudflared_token`, and stores it back to Doppler:
+    ```
+    cloudflare tunnel created → token generated
+      → doppler_secret "TUNNEL_TOKEN" stored in Doppler (project: devops, config: svc_cloudflare)
+        → cloudflare-tunnel Helm chart reads via ExternalSecret (doppler-svc-cloudflare)
+    ```
+
+    ## Doppler Configs
+
+    | Config | Used By |
+    |--------|---------|
+    | `svc_grafana` | kube-prometheus-stack |
+    | `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel |
+    | `svc_postgres_operator` | postgres-operator (StackGres) — `ADMIN_USER`, `ADMIN_PASSWORD` |
+    | `svc_onedev` | onedev (OneDev app) — `DB_PASSWORD`, `DB_USER`. `DB_PASSWORD` must match the StackGres-generated postgres superuser password (see Doppler Secrets Policy). |
+
+    Additional zurabase stores exist at the ClusterSecretStore level (dev, stg, prd) for future use.
+
+    ## VPA (Vertical Pod Autoscaler)
+
+    Installed at wave 0 via `services/helm/vpa/` (thin wrapper using Fairwinds chart).
+
+    **Purpose**: Automatically adjusts CPU and memory requests for pods based on actual usage. Ideal for single-pod deployments where HPA (horizontal scaling) doesn't apply.
+
+    **Usage**: Charts can create VPA resources after VPA CRDs are installed. Example:
+    ```yaml
+    apiVersion: autoscaling.k8s.io/v1
+    kind: VerticalPodAutoscaler
+    metadata:
+      name: my-service
+    spec:
+      targetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: my-service
+      updatePolicy:
+        updateMode: Auto
+      resourcePolicy:
+        containerPolicies:
+          - containerName: my-service
+            minAllowed:
+              cpu: 100m
+              memory: 256Mi
+            maxAllowed:
+              cpu: 4000m
+              memory: 4Gi
+    ```
+
+    **Dependency**: Services using VPA must be in wave > 0 (after VPA CRDs are installed).
+
+    ## OpenAgent Loop Engineering System
+
+    The **openagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized personas, reviewed, and iterated — not answered in a single pass. Built on the **Sympozium** orchestrator (control plane in `sympozium-system`, installed out-of-band by the sympozium CLI). Replaces the old kagent stack (all kagent* charts deleted). **Consolidated into a single umbrella chart at `services/helm/openagent/`** (see Umbrella pattern above).
+
+    ### What Loop Engineering Means
+
+    **Single-pass AI**: User asks → model answers → done. No verification, no iteration, no delegation.
+
+    **Loop-engineered AI**: User asks → **orchestrator** parses intent → **planner** breaks into steps → **reviewer** catches gaps → **worker** executes → **verifier** checks output → loop repeats until quality gate passes. Each role is a distinct persona with a specialized model, prompt, and execution context. All implemented as a single `sympozium.ai/v1alpha1 Ensemble` resource.
+
+    ### System Architecture (1 umbrella chart, 2 namespaces)
+
+    All components deployed from a single umbrella chart at `services/helm/openagent/` (v2.0.0):
+
+    | Component | Deployed Via | Purpose |
+    |-----------|-------------|---------|
+    | `openagent-crds` | sympozium CLI (out-of-band) | `sympozium.ai/v1alpha1` CRDs — installed by CLI, not Helm |
+    | `openagent-headroom` | umbrella subchart (`charts/openagent-component`) | LLM proxy — routes to LiteLLM, SQLite CCR cache, 2Gi PVC, VPA |
+    | `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
+    | `openagent-discord` | umbrella subchart (`charts/openagent-component`) | Discord gateway bot (Go binary, `ghcr.io/jomakori/gke_gitops/openagent-discord-bot:0.6.0`). OpenAI-compatible chat completions. |
+    | `claude-proxy` | umbrella locals (`templates/claude-proxy/`) | Claude Pro subscription proxy — `claude-pipe` wraps `claude` CLI as OpenAI-compatible API, creds from K8s Secret, ClusterIP :4523. |
+    | Ensemble + SkillPacks | umbrella locals (`templates/`) | 10-persona `omo-loop-engineering` Ensemble + 3 SkillPacks |
+    | StackGres + istio + secrets | umbrella locals (`templates/`) | SGCluster, VirtualService, AuthorizationPolicy, ExternalSecret, VPA |
+
+    **Chart structure** (`services/helm/openagent/`):
+    ```
+    openagent/                       ← umbrella (177-line values.yaml)
+    ├── Chart.yaml                   ← litellm-helm + openagent-component deps
+    ├── charts/
+    │   ├── litellm-helm/            ← vendored upstream (OCI fallback)
+    │   └── openagent-component/      ← custom subchart (headroom + bot, 15 templates)
+    ├── templates/                    ← CRDs + shared resources only
+    │   ├── ensemble/                 ← omo-loop-engineering (10 personas)
+    │   ├── skillpacks/               ← 3 SkillPack CRDs
+    │   ├── db/                       ← StackGres CRDs
+    │   ├── shared/                   ← ExternalSecret, GHCR, VPA
+    │   └── gateway/                  ← Istio VirtualService + AuthPolicy
+    └── src/                          ← Bot Go source code
+    ```
+
+    **Namespaces**: `openagent` (application resources), `sympozium-system` (control plane — out-of-band). No `kagent`, `ate-system`, or substrate.
+
+    **Secrets**: `svc_openagent` Doppler config. Must include all provider API keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode — see LiteLLM model table below), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls).
+
+    ### The 10 Personas (Ensemble `omo-loop-engineering`, `sympozium.ai/v1alpha1`)
+
+    | Persona | Role | Model | Purpose |
+    |---------|------|-------|---------|
+    | **sisyphus** | orchestrator | claude/sonnet-4 | Main entry point. Classifies intent inline, delegates via ensemble relationships, enforces verification tiers. Skills: `k8s-ops`, `omo-core-skills`, `hashline-editor`, `web-endpoint`. |
+    | **atlas** | orchestrator | claude/sonnet-4 | Cross-persona coordination, quality verification, supervision over sisyphus/prometheus/hephaestus. |
+    | **prometheus** | planner | claude/sonnet-4 | Strategic planner — builds step-by-step implementation plans from objectives. |
+    | **metis** | planner | deepseek-v4-pro | Pre-planning consultant — identifies hidden intentions, ambiguities, AI failure points. |
+    | **momus** | reviewer | deepseek-v4-pro | Ruthless plan reviewer — finds gaps, risks, missing context in plans. |
+    | **oracle** | architect | claude/opus-4 | Read-only architecture/security consultant. |
+    | **hephaestus** | worker | minimax/M3 | Deep implementation coder — production-quality code. |
+    | **sisyphus-junior** | worker | deepseek-v4-flash | Focused task executor — no re-delegation. Trivial/quick tasks only. |
+    | **librarian** | researcher | zai/glm-4.7-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
+    | **explore** | researcher | zai/glm-4.7-flash | Codebase pattern discovery — grep, glob, file reading. |
+
+    **Delegation graph** (spec.relationships): sisyphus → {prometheus, metis, hephaestus, oracle, atlas}; atlas → {librarian, explore, sisyphus-junior}; prometheus → momus. Supervision: atlas → {sisyphus, prometheus, hephaestus}. Stimulus: `omo-loop-engineering` → sisyphus. **Shared memory**: enabled. **Workflow type**: delegation.
+
+    **Model pricing rationale** (commit 5ced131): Orchestrator/planner personas use deepseek-v4-pro (strong reasoning, balanced cost). Worker personas: deep researcher tasks use zai/glm-4.7-flash (free tier, fast); code tasks use minimax/M3 (strong coding, affordable). No Anthropic Opus/Google Gemini personas — removed in e187534 to reduce cost.
+
+    ### Intent Classification & Routing Gates (Inline, by Sisyphus)
+
+    Sisyphus classifies intent itself — no separate classification step. Same persona reads between lines and decides loop depth.
+
+    **Complexity Tiers**:
+
+    | Tier | Criteria | Loop Depth | Max Personas |
+    |---|---|---|---|
+    | **Trivial** | Single file, <10 lines, typo, rename, obvious syntax error | Direct answer or sisyphus-junior only | 1 |
+    | **Quick** | Explicit file/line, clear command, single domain | Direct to specialist (hephaestus) | 1–2 |
+    | **Scoped** | Known domain, unclear location | Explore → Execute | 2–4 |
+    | **Exploratory** | "how does X work?", multi-module discovery | librarian + explore → synthesize | 2–3 |
+    | **Complex** | Multi-file, cross-cutting, architecture, security | Full loop: metis → prometheus → momus → hephaestus → oracle → atlas | 5–8 |
+    | **Ambiguous** | Multiple interpretations with 2x+ effort difference | Ask user ONE precise question, re-classify | 0 |
+
+    **Domain Routing**:
+
+    | Domain | Primary Persona | Fallback |
+    |---|---|---|
+    | **Visual** (UI, CSS, styling) | hephaestus | sisyphus-junior |
+    | **Logic** (algorithms, architecture) | hephaestus | oracle |
+    | **Writing** (docs, prose) | hephaestus | sisyphus-junior |
+    | **Research** (docs, OSS) | librarian | explore |
+    | **Git** (commits, branches) | sisyphus-junior | hephaestus |
+    | **General** | sisyphus-junior | hephaestus |
+
+    **Key Triggers** (check before classifying): External library → include librarian. 2+ modules → include explore. Ambiguous/complex → include metis before planner. Work plan saved → include momus for review. Security/performance → include oracle. "Look into" + "create PR" → full implementation cycle.
+
+    **ask_gate**: Before routing to implementation, check: irreversible action? External side effects? Critical info missing? → confirm or ask. **re_entry_rule**: Don't re-classify on confirmation turns, explicit decisions, or when answer is already in context.
+
+    **Verification Tiers** (enforced by Sisyphus):
+    - **V1**: Trivial fixes — `lsp_diagnostics` clean on changed file
+    - **V2**: Quick/scoped — `lsp_diagnostics` + related tests pass + run entry point once
+    - **V3**: Complex or delegated — `lsp_diagnostics` (zero errors) + all tests pass + build passes + manual QA
+
+    ### LLM Routing
+
+    ```
+    Discord User
+      ↓
+    openagent-discord (Go bot, OpenAI-compatible)
+      ↓ POST /v1/chat/completions
+    omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc:8080
+      ↓
+    openagent-headroom.openagent.svc:8787  (headroom proxy, CCR SQLite cache, optimize mode)
+      ↓ OPENAI_TARGET_API_URL
+    litellm-openagent-litellm.openagent.svc:4000/v1  (LiteLLM gateway, 14 models)
+      ↓
+      Provider APIs (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode)
+      ↓
+      claude-proxy.openagent.svc:4523/v1  (Claude Pro subscription, 3 models via OAuth)
+        → Anthropic API (claude CLI OAuth, ~45 req/5h rate limit)
+    ```
+
+    **LiteLLM models** (14 configured):
+    | Model Name | Backend | API Key |
+    |------------|---------|---------|
+    | opencode/big-pickle | openai (OpenCode) | OPENCODE_API_KEY |
+    | opencode/north-mini-code-free | openai (OpenCode) | OPENCODE_API_KEY |
+    | opencode/deepseek-v4-flash-free | openai (OpenCode) | OPENCODE_API_KEY |
+    | opencode/mimo-v2.5-free | openai (OpenCode) | OPENCODE_API_KEY |
+    | anthropic/claude-opus-4-7 | anthropic (native) | ANTHROPIC_API_KEY |
+    | moonshotai/kimi-k2.6 | moonshot (native) | MOONSHOT_API_KEY |
+    | deepseek-v4-flash | deepseek (native) | DEEPSEEK_API_KEY |
+    | deepseek-v4-pro | deepseek (native) | DEEPSEEK_API_KEY |
+    | zai/glm-4.7 | zai (native) | ZAI_API_KEY |
+    | zai/glm-4.7-flash | zai (native) | ZAI_API_KEY |
+    | minimax/M3 | openai (MiniMax) | MINIMAX_API_KEY |
+    | minimax/M2.7 | openai (MiniMax) | MINIMAX_API_KEY |
+    | claude/sonnet-4 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
+    | claude/opus-4 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
+
+    **Fallback chains**: opencode/big-pickle → deepseek-v4-flash; opencode/north-mini-code-free → deepseek-v4-flash; opencode/deepseek-v4-flash-free → deepseek-v4-flash. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=3.
+
+    ### SkillPacks (sympozium.ai/v1alpha1)
+
+    Three SkillPacks deployed alongside the Ensemble in `sympozium-system`:
+    - **`omo-core-skills`** — `caveman` (ultra-compressed communication) + `ponytail` (YAGNI ladder)
+    - **`hashline-editor`** — MCP-based editing tool
+    - **`k8s-ops`** — kubectl + helm operations
+
+    Sisyphus loads all three plus `web-endpoint`. Other personas inherit ensemble defaults.
+
+    ### Adding a Persona
+
+    To add a persona to the ensemble, edit `services/helm/openagent/templates/ensemble-omo-loop-engineering.yaml`:
+    1. Add an agentConfig entry under `spec.agentConfigs` with `name`, `displayName`, `model` (LiteLLM model name), `systemPrompt` (inline), and `skills` (SkillPack refs).
+    2. If the persona is delegated to, add a relationship edge in `spec.relationships[].agents`.
+    3. If supervised, add a supervision edge.
+    4. ArgoCD sync — the Sympozium controller reconciles the Ensemble automatically. No Terraform changes needed.
+
+    ### OpenAgent Gotchas
+
+    - **Umbrella chart uses `**charts/**` gitignore exception**: Root `.gitignore` has `**charts/**` which blocks ALL charts directories. The custom `openagent-component` subchart needs `!services/helm/openagent/charts/openagent-component/**` in `.gitignore` to be tracked. Without this, `git status` silently ignores subchart templates — they won't exist on other machines after clone.
+    - **`.tgz` files are redundant build artifacts**: `helm dependency update` generates `.tgz` archives in `charts/`. These are NOT needed for `file://` deps — Helm reads the chart directory directly. The `**charts/**` gitignore already excludes them. Delete them after local testing.
+    - **GHCR packages are private-by-default for org repos**: The sympozium OCI dependency was removed from `openagent/Chart.yaml` because GHCR org packages require authentication (not supported by Helm OCI deps). The control plane must be installed out-of-band via sympozium CLI in the `sympozium-system` namespace.
+    - **Discord bot secrets flow through `envFrom`, not Helm values**: The deployment template uses `envFrom: secretRef: openagent-discord-secrets` — ALL keys from the Doppler `svc_openagent` config become env vars. No Helm `--set` parameters for secrets.
+    - **Ensemble and SkillPacks deploy to `sympozium-system`, not `.Release.Namespace`**: The `openagent` chart deploys resources into `openagent` namespace, but the Ensemble and SkillPacks have `namespace: sympozium-system` hardcoded. The Sympozium controller only reconciles resources in its own namespace.
+    - **LiteLLM uses file-based routing (no database)**: `litellm_config.yaml` uses `general_settings.database_url: null` → in-memory routing. Model config changes require a LiteLLM pod restart (config reload via ConfigMap mount). Lightweight — acceptable for 14 models.
+    - **OpenAgent headroom no longer points to OpenRouter**: `OPENAI_TARGET_API_URL` routes through `http://openagent-litellm.openagent.svc.cluster.local:4000/v1`. All LLM traffic flows through LiteLLM now. OpenRouter is completely bypassed.
+    - **Discord bot uses OpenAI-compatible API, not A2A**: The bot directly calls `POST /v1/chat/completions` on the Sisyphus web endpoint. No A2A protocol, no agent reference CRD.
+    - **4 separate openagent charts consolidated into 1 umbrella**: `openagent-crds`, `openagent-headroom`, `openagent-litellm`, `openagent-discord` chart directories no longer exist. Everything is in `services/helm/openagent/`. Root README and services/README updated to reflect this.
+
+    ### Claude Proxy (Subscription-Based)
+
+    Custom proxy that routes Claude Pro subscription through an OpenAI-compatible API, deployed as a k8s-native service in the `openagent` namespace.
+
+    **Architecture**:
+    ```
+    Local Mac (claude auth login)
+      → ~/.claude/.credentials.json (OAuth tokens)
+        → K8s Secret claude-credentials (manual create, key: .credentials.json)
+          → Pod volume mount: /root/.claude/
+            → claude-pipe (Bun) wraps claude CLI → OpenAI-compatible :4523
+    ```
+
+    **Components**:
+    | Resource | Details |
+    |----------|---------|
+    | Image | `ghcr.io/jomakori/claude-proxy:latest` (Dockerfile: `services/helm/openagent/src/claude-proxy/Dockerfile`) |
+    | Base | `oven/bun:latest` + Node.js + `@anthropic-ai/claude-code` + `claude-pipe` |
+    | Deployment | 1 replica, sync-wave 2, openagent ns, port 4523 |
+    | Service | ClusterIP `claude-proxy:4523` — no public ingress |
+    | Secret | `claude-credentials` (Opaque, key: `.credentials.json`) |
+    | Access | `kubectl port-forward svc/claude-proxy -n openagent 4523:4523` |
+    | Models | `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5` |
+    | Rate limit | ~45 Sonnet requests/5h (Pro subscription) |
+
+    **Credential model**: OAuth-based (NOT API key). Auth once on Mac: `claude auth login --email joe3rdwash@gmail.com` → creates `~/.claude/.credentials.json`. Copy to cluster: `kubectl create secret generic claude-credentials --from-file=.credentials.json=$HOME/.claude/.credentials.json -n openagent`. NOT managed by Doppler — manual secret. Re-auth flow when tokens expire: `claude auth login` on Mac → recreate K8s Secret → restart pod.
+
+    **MODEL_ALIASES patching**: `claude-pipe` only knows canonical model names (`claude-sonnet-4-6`). Deployment startup command uses `sed` to patch `/root/.bun/install/global/node_modules/claude-pipe/src/claude.ts` adding aliases like `"claude-sonnet-4": "claude-sonnet-4-6"`, `"claude-opus-4": "claude-opus-4-6"`. This is fragile — if `claude-pipe` updates, the sed pattern may break.
+
+    **Env vars required**:
+    - `HOST=0.0.0.0` — claude-pipe binds `127.0.0.1` by default. Must override for inter-pod connectivity.
+    - `CLAUDE_PROXY_API_KEY=claude-proxy-local` — dummy value. Proxy uses credential file, ignores auth. LiteLLM requires this for model config validation only.
+    - `CLAUDE_BIN=/usr/local/bin/claude` — set in Dockerfile, path to claude CLI.
+
+    **LiteLLM integration** (values.yaml):
+    ```yaml
+    - model_name: claude/sonnet-4
+      litellm_params:
+        model: openai/claude-sonnet-4
+        api_key: os.environ/CLAUDE_PROXY_API_KEY
+        api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
+    - model_name: claude/opus-4
+      litellm_params:
+        model: openai/claude-opus-4
+        api_key: os.environ/CLAUDE_PROXY_API_KEY
+        api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
+    ```
+
+    **Ensemble persona reassignment** (4 of 10 personas):
+    - sisyphus, atlas, prometheus → `claude/sonnet-4` (capable, balanced cost)
+    - oracle → `claude/opus-4` (architecture needs best reasoning)
+    - Remaining 6 personas unchanged → continue using deepseek-v4-pro, minimax/M3, etc.
+
+    **Gotcha — credential file is a dotfile, secret key must match**: `claude` CLI expects `.credentials.json` (hidden file). `kubectl create secret --from-file=.credentials.json=$HOME/.claude/.credentials.json` creates the key as `.credentials.json` (dot-prefixed). Mount the volume WITHOUT `items` mapping — the key name already matches the expected path. Using `items: [{key: credentials.json, path: .credentials.json}]` BREAKS because the secret key is `.credentials.json`, not `credentials.json`. Symptoms: `MountVolume.SetUp failed: references non-existent secret key`.
+
+    **Gotcha — proxy binds loopback only**: `claude-pipe` defaults to `HOST=127.0.0.1`. Internal DNS resolves but connections are refused. Fix: set `HOST=0.0.0.0` in deployment env vars.
+
+    ### Helm Dependency Alias Gotcha
+
+    **Critical**: When an umbrella chart passes values to a subchart dependency, the dependency MUST have `alias` set in Chart.yaml for values to route correctly.
+
+    **Problem**: Without alias, values passed under `keyName.*` in umbrella `values.yaml` don't reach the subchart — the subchart looks for them under the dependency name, not the umbrella key. Subchart silently uses its own defaults. Helm template renders but resources get wrong config.
+
+    **Example** (litellm-helm in openagent umbrella):
+    ```yaml
+    # Chart.yaml — WRONG (values never reach subchart)
+    dependencies:
+      - name: litellm-helm
+        version: 1.92.0
+        repository: file://charts/litellm-helm
+        condition: litellm.enabled
+
+    # Chart.yaml — CORRECT
+    dependencies:
+      - name: litellm-helm
+        alias: litellm
+        version: 1.92.0
+        repository: file://charts/litellm-helm
+        condition: litellm.enabled
+    ```
+
+    **Alias renames resources**: Adding alias changes `.Chart.Name` → `fullname` template output changes → resource names change (e.g., `openagent-litellm` → `openagent-openagent-litellm`). Fix: use `fullnameOverride` (not `nameOverride`) to pin resource names.
+
+    ```yaml
+    # values.yaml — WRONG (fullname still changes)
+    litellm:
+      nameOverride: "openagent-litellm"
+
+    # values.yaml — CORRECT
+    litellm:
+      fullnameOverride: "openagent-litellm"
+    ```
+
+    **Symptoms to watch for**: `helm template` renders, `helm lint` passes, but deployed resources have wrong config (e.g., LiteLLM uses default 2-model list instead of 14). Port-forward works but API calls return 400 or wrong model responses. Root cause: subchart receiving defaults.
+
+    ### Claude Proxy Gotchas
+
+    - **Claude proxy models require BOTH LiteLLM AND ensemble updates**: Two separate changes: (1) `values.yaml` → `litellm.proxy_config.model_list` for LiteLLM routing, (2) `templates/ensemble/omo-loop-engineering.yaml` → `model:` fields for persona assignment. Both must be updated together. LiteLLM restart required after config change (file-based routing, no DB).
+    - **Credentials use OAuth, not API keys**: No Doppler entry for claude credentials. Manual secret from `~/.claude/.credentials.json`. Re-auth required when tokens expire (~hours-days depending on usage).
+    - **MODEL_ALIASES sed patch is fragile**: The startup command patches claude-pipe source via `sed`. If claude-pipe updates (e.g., `bun install -g claude-pipe@latest`), the sed pattern targeting `MODEL_ALIASES` may fail. Monitor proxy logs after image rebuilds.
+    - **4-persona limit protects Pro rate limits**: Only sisyphus, atlas, prometheus, oracle use Claude. Remaining 6 personas use existing providers. Adding more Claude personas risks hitting the ~45 req/5h Pro limit.
+    - **Dockerfile node version mismatch**: `@anthropic-ai/claude-code` needs Node >=22 but `oven/bun:latest` provides v20 via apt. Non-blocking — claude-pipe runs fine without claude-code CLI. If direct `claude` CLI commands needed in container, switch base to `node:22`.
+
+    - **ESO-managed secrets are overwritten on sync — never put non-Doppler keys in them**: The `openagent-litellm-secrets` ExternalSecret uses `dataFrom.find.regexp: ".*"` with `creationPolicy: Owner`. Any manually added keys (e.g., `username`, `password`, `masterkey`) are overwritten on next ESO reconcile (every 24h or on trigger). Use DEDICATED secrets for non-Doppler values. Example: `openagent-litellm-masterkey` for the LiteLLM master key, `claude-credentials` for OAuth tokens. In values.yaml, reference these via `masterkeySecretName: "openagent-litellm-masterkey"` and `db.secret.name` + `usernameKey`/`passwordKey` to match Doppler key names.
+
+    - **Alias renames break Service selectors**: When adding `alias` to a Helm dependency, the subchart's `_helpers.tpl` uses `.Chart.Name` for `app.kubernetes.io/name` labels. Old Service selectors won't match new pods → Service has no Endpoints → DNS resolves but connections refused. Fix: update Service selector to match new pod labels, or recreate Service from updated chart. Symptoms: pods Running, health probes pass, but `curl service-name:port` returns `exit code 7` (connection refused).
+
+    - **LiteLLM health probes exhaust Claude subscription rate limits**: LiteLLM's health check probes ALL models in the `model_list` every few seconds. With ~13 unhealthy endpoints (other providers rate-limited/out of credit) plus 2 claude models, each probe cycle makes ~15 API calls. At Pro tier (~45 Sonnet/5h), this exhausts the quota in ~2-3 hours even with zero real traffic. Mitigation: use `router_settings.allowed_fails: 5` and `cooldown_time: 60` in `proxy_config` to reduce probe frequency. Longer-term: patch health check to skip claude models or disable probes for non-critical providers.
+
+    - **`CLAUDE_PROXY_API_KEY` must be in LiteLLM pod env, not just proxy**: The `api_key: os.environ/CLAUDE_PROXY_API_KEY` in LiteLLM's model config requires this env var in the LiteLLM pod — NOT just in the proxy pod. Without it, LiteLLM fails with `AuthenticationError: The api_key client option must be set`. Add to deployment via `kubectl set env` or include in Doppler `svc_openagent`.
+
+    - **DB endpoint double-nesting from StackGres**: StackGres creates services like `{cluster-name}.{namespace}.svc.cluster.local`. If values.yaml has `endpoint: "openagent-pg-openagent-pg.openagent.svc.cluster.local"` (cluster name concatenated twice), the DB connection fails with `P1001: Can't reach database server`. Correct format: `{clusterName}.{namespace}.svc.cluster.local` — e.g., `openagent-pg.openagent.svc.cluster.local`. The values `db.endpoint` must match the SGCluster `metadata.name`, not a derived name.
+
+    - **OAuth tokens expire in hours — use `claude setup-token` for longer-lived tokens**: Standard `claude auth login` tokens expire quickly (hours). `claude setup-token` creates a dedicated long-lived token. For pod-based auth, run `claude setup-token` on Mac, then `kubectl create secret generic claude-credentials --from-file=.credentials.json=$HOME/.claude/.credentials.json -n openagent`. Verify with `curl http://claude-proxy:4523/health`. Re-auth flow: expire → `claude setup-token` on Mac → recreate K8s Secret → `kubectl rollout restart deployment/claude-proxy`.
+
+    ## Critical Gotchas
+
+    - **`filter_chain_not_found`** = SNI mismatch. Fix: `match_sni_to_host = true` on tunnel origin_request. The parameter name has an `i` — `match_sni_to_host` (Server Name Indication). Typo `match_sn_ito_host` (missing `i`) silently fails — Terraform removes the unknown key but never adds the correct one.
+    - **ExternalSecret pattern — zero explicit `data` mappings**: All ExternalSecrets use `dataFrom.find.regexp: ".*"` + `creationPolicy: Owner`. Doppler keys match exactly what the consuming deployment expects. No explicit `data` mappings in new charts. Legacy exception: postgres-operator maps `ADMIN_USER`→`k8sUsername`.
+    - **Postgres-operator ExternalSecret ownership**: Set `authentication.createAdminSecret: false` but do NOT set `authentication.secretRef`. Adding `secretRef.name` causes SGConfig to set `ownerReferences` on the target secret, conflicting with ESO's `creationPolicy: Owner`. Without `secretRef`, SGConfig leaves the ExternalSecret-owned secret alone.
+    - **Storage class is `local-path` only**: `storageClass: "local-path"` in `services/argocd-appset/values.yaml` as the global default. Longhorn was removed — it failed on OrbStack (no iSCSI kernel support, v2 requires hugepages). OpenEBS LVM was tested and failed (k3s CSI node registration bug). The sole provider is `local-path` (rancher.io/local-path). All charts reference this via `.Values.storageClass` — never hardcode `longhorn`.
+    - **ExternalDNS uses `upsert-only` policy** — never deletes DNS records. Manual cleanup for stale entries.
+    - **Cloudflare token** needs `Cloudflare Tunnel:Edit` account-level permission for tunnel creation.
+    - **ArgoCD sync stuck**: `kubectl -n argocd patch application services --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}'`
+    - **Helm/kubernetes providers** use `~/.kube/config` — Terraform must run from machine with k3d context (OrbStack).
+    - **`TAILSCALE_HOST`** is typed `any` in variables.tf — be aware, defaults to no type validation.
+    - **Volume expansion NOT supported on `local-path`**: The rancher.io/local-path provisioner does NOT support volume expansion. To resize a PVC, create a new larger PVC and manually copy data. This is a known limitation of the default k3s local-path provisioner. Longhorn (which supported expansion) was removed after failing on OrbStack.
+    - **onedev SGCluster sync wave**: `SGPostgresConfig`/`SGPoolingConfig` at wave 0, `SGCluster` at wave 1 (so configs exist before reference). The `postgresVersion` must be a numeric string (e.g. `"18"`), not `"latest"` — StackGres webhook rejects non-numeric.
+    - **postgres-operator `skipCrds: true`**: CRDs are installed via `INSTALL_CRDS=true` env var, not Helm — prevents ArgoCD normalization errors on CRDs. Set in appset `syncOptions` and Helm chart values.
+    - **`enable_public` and `enable_private` are mutually exclusive**: The `applications.yaml` template has a `fail` guard — both flags on the same service stops rendering with a clear error message.
+    - **AuthorizationPolicy ZtunnelAccepted warning**: When creating a policy with HTTP attributes (`hosts`, `notRequestPrincipals`), Istio warns `"ztunnel does not support HTTP attributes"`. This is informational — the ingress gateway uses Envoy which handles L7 correctly. The ztunnel warning only affects mesh-internal traffic management.
+    - **CF Access Send JWT in `Cf-Access-Jwt-Assertion` header**: Istio's RequestAuthentication defaults to extracting JWT from `Authorization: Bearer`. But Cloudflare Access sends the JWT in the `Cf-Access-Jwt-Assertion` HTTP header. You MUST add `fromHeaders: [{name: Cf-Access-Jwt-Assertion}]` to the `jwtRules`. Without this, Istio never sees the JWT → no `requestPrincipal` set → `notRequestPrincipals: ["*"]` DENY matches → **RBAC: access denied** even after successful Google OAuth login.
+    - **CF Access AUD is not secret**: The AUD tag is embedded in every JWT and visible to users. Safe to commit to `values.yaml` or pass via Terraform Helm params. However, it is stored as `sensitive = true` in Terraform and in Doppler as `CF_ACCESS_AUD` for consistency.
+    - **VPA requires CRDs**: VPA must be installed at wave 0 before services can create VPA resources at later waves.
+    - **GHCR credential ExternalSecret blocks initial ArgoCD sync**: The `services/argocd-appset/templates/ghcr-repo-credential.yaml` renders an ExternalSecret directly in the root `services` Application. When this resource is rendered before the `external-secrets` Application (wave 1) installs the ExternalSecret CRD, the Kubernetes API returns `no matches for kind "ExternalSecret"` and ArgoCD fails the entire sync — **no child Applications are created**. Fix: the template is gated on `{{`{{ if .Values.kagentUpstream.enable }}`}}`. Set `kagentUpstream.enable: false` for initial cluster bootstrap, then re-enable after external-secrets is Healthy. Without this gate, the cluster cannot bootstrap from scratch.
+    - **Helm dependency `alias` silently breaks Service selectors**: Adding `alias` to a Chart.yaml dependency changes the subchart's `.Chart.Name`, which in turn changes `app.kubernetes.io/name` labels on pods. Existing Services (created by pre-alias chart) have selectors matching OLD labels → Endpoints go to `<none>` → DNS resolves but connections are refused with `exit code 7`. Fix: either delete and recreate the Service from the updated chart, or patch the Service selector to match new pod labels. Always check `kubectl get endpoints` after alias changes. Also affects Ingress/VirtualService backends that reference the service.
+    - **Longhorn was removed — do not re-enable**: Longhorn v1 failed because OrbStack lacks kernel iSCSI support (`iscsi_tcp` module not loaded). Longhorn v2 (1.12.0) failed because it unconditionally mounts a `HugePages` EmptyDir for v2 instance-manager pods, and OrbStack kernel lacks `CONFIG_HUGETLBFS`. OpenEBS LVM was tested as an alternative but failed because k3s v1.35.1 kubelet never registers CSI drivers from node-driver-registrar (`driver name not found in registered CSI drivers`). The only working storage is `local-path`.
+    - **CoreDNS Google DNS causes Go resolver "server misbehaving"**: k3d's pod network can't reliably forward UDP to `8.8.8.8` through Docker bridge networking. Go's pure-Go DNS resolver (used by external-secrets operator) reports `server misbehaving` on truncated/timeout responses. Fix: forward to the k3d node's own DNS resolver (`192.168.97.1` — Docker bridge gateway) via dynamic `data.external.k3d_dns` in Terraform. Without this, all 10 ClusterSecretStores fail with `InvalidProviderConfig` → no ExternalSecrets sync → cascading failures.
+    - **ArgoCD sync wave ordering won't prevent CRD-not-found failures in the services ApplicationSet**: The root `services` Application contains BOTH Application resources (deployed as sub-apps at their respective waves) AND raw resources like the GHCR credential ExternalSecret. Raw resources are applied during the root app's sync, regardless of child app sync waves. If a raw resource references a CRD installed by a child app at a later wave, the root sync fails before any child apps are created.
+
+
+    ## Repo Locations
+
+    - **Terraform**: `/Users/maklab/devops_Terraform/k8s-maklab-cluster/`
+    - **GitOps**: `/Users/maklab/gke_GitOps/`
+    - **Doppler**: CLI-based, project `devops`, config `ci` for Terraform secrets (`TF_VAR_`)
+    - **GHCR**: `ghcr.io/jomakori/k3s-iscsi` — custom k3s images with `open-iscsi` pre-installed (currently unused; Longhorn removed)
+    - **Terraform Cloud**: workspace `k8s-maklab-cluster`, organization `tf_jmakori`
+    - **Dockerfile**: `docker/Dockerfile` in the Terraform repo — multi-stage k3s+iscsi build
