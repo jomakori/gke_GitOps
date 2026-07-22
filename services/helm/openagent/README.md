@@ -145,21 +145,69 @@ Fallback chain: opencode models fall back to deepseek-v4-flash.
 
 ## Swarm Configuration
 
-The Hermes Workspace manages 9 OMO-mapped workers via the Swarm ConfigMap:
+The Hermes Workspace manages 9 OMO-mapped workers via the Swarm ConfigMap.
+Workers follow a **spec-driven methodology** with adaptive routing — each
+agent checks context sufficiency before routing to downstream specialists.
 
-| Worker ID | Name | Role | Model |
-|-----------|------|------|-------|
-| orchestrator | Sisyphus | Intent Router | claude/sonnet-4 |
-| supervisor | Atlas | Quality Gate | claude/sonnet-4 |
-| strategist | Prometheus | Strategic Planner | deepseek-v4-pro |
-| reviewer | Momus | Plan Reviewer | deepseek-v4-pro |
-| architect | Oracle | Architecture Consultant | claude/opus-4 |
-| builder | Hephaestus | Implementation Coder | minimax/M3 |
-| researcher | Librarian | Docs/RAG Searcher | zai/glm-4.7-flash |
-| explorer | Explore | Codebase Discovery | zai/glm-4.7-flash |
-| junior-builder | Sisyphus-junior | Focused Task Executor | deepseek-v4-flash |
+### Worker Roles
 
-Workers run as tmux sessions inside the Workspace container. The Workspace Conductor API handles mission assignment and Kanban board state.
+| Worker ID | Name | Role | Model | Methodology |
+|-----------|------|------|-------|-------------|
+| orchestrator | Sisyphus | Spec-Driven Router | claude/sonnet-4 | Complexity classification + context sufficiency routing + approval gate |
+| supervisor | Atlas | Quality Gate | claude/sonnet-4 | Cross-persona verification |
+| strategist | Prometheus | Spec-Driven Planner | deepseek-v4-pro | Structured specs (mermaid, tables), actionable task breakdowns |
+| reviewer | Momus | Spec Reviewer | deepseek-v4-pro | Completeness/clarity/actionability validation |
+| architect | Oracle | Architecture Consultant | claude/opus-4 | Architecture + security review |
+| builder | Hephaestus | Implementation Coder | minimax/M3 | Production code from approved plans |
+| researcher | Librarian | Docs/RAG Searcher | zai/glm-4.7-flash | Documentation + OSS examples |
+| explorer | Explore | Codebase Discovery | zai/glm-4.7-flash | Pattern matching + convention detection |
+| junior-builder | Sisyphus-junior | Focused Task Executor | deepseek-v4-flash | Trivial fixes, single-file edits |
+
+### Spec-Driven Planning Flow
+
+Requests follow an adaptive pipeline based on complexity and context clarity:
+
+```
+User request
+  ↓
+Sisyphus (classify + assess context)
+  ├─ Trivial → skip all gates → dispatch to builder
+  ├─ Standard → Prometheus (spec+plan) → Momus (if gaps) → User approval → builder
+  └─ Complex → Metis (clarify) → Oracle (arch review) → Prometheus → Momus → User → builders
+```
+
+Each agent decides whether to route further:
+- **Metis**: Scope clear? → skip, go directly to Prometheus
+- **Oracle**: Architecture defined? → skip, go directly to Prometheus
+- **Momus**: Plan solid? → approve immediately, no review needed
+- **Sisyphus**: Plan complete and actionable? → present to user, skip Momus
+
+Simple tasks bypass the entire planning gate. All standard/complex tasks
+require explicit user approval before builder dispatch.
+
+Workers run as tmux sessions inside the Workspace container. The Workspace
+Conductor API handles mission assignment and Kanban board state.
+
+### Centralized Model Mapping
+
+Worker-to-model assignments live in a single file at
+`/shared/bin/worker-models.cfg` inside the workspace pod. To swap any
+worker's model, edit one line — no config changes, no redeploy:
+
+```
+orchestrator=claude/sonnet-4
+strategist=deepseek-v4-pro
+reviewer=deepseek-v4-pro
+architect=claude/opus-4
+builder=minimax/M3
+junior-builder=deepseek-v4-flash
+researcher=zai/glm-4.7-flash
+explorer=zai/glm-4.7-flash
+supervisor=claude/sonnet-4
+```
+
+All models route through LiteLLM → Headroom. The `hermes` CLI in each
+worker's tmux session receives `-m <model>` from the swarm wrapper script.
 
 ## Verification
 
