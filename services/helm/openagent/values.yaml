@@ -253,8 +253,8 @@ hermes:
           prompts: false
 
       google-workspace:
-        command: "npx"
-        args: ["-y", "google-workspace-mcp", "serve"]
+        command: "node"
+        args: ["/opt/data/.hermes/hooks/wrap-google-mcp.cjs"]
         env:
           GOOGLE_CREDENTIALS_PATH: "/opt/data/.google-mcp/credentials.json"
   env:
