@@ -38,6 +38,32 @@ spec:
         ports:
         - containerPort: 8000
           name: http
+        env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: mcp-kubectl-config
+              key: MCP_GITHUB_TOKEN
+        - name: ARGOCD_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: mcp-kubectl-config
+              key: MCP_ARGOCD_TOKEN
+        - name: ARGOCD_URL
+          valueFrom:
+            secretKeyRef:
+              name: mcp-kubectl-config
+              key: MCP_ARGOCD_URL
+        - name: GRAFANA_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: mcp-kubectl-config
+              key: MCP_GRAFANA_TOKEN
+        - name: GRAFANA_URL
+          valueFrom:
+            secretKeyRef:
+              name: mcp-kubectl-config
+              key: MCP_GRAFANA_URL
         volumeMounts:
         - name: kubeconfig
           mountPath: /etc/mcp-kubeconfig
