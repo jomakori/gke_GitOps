@@ -127,13 +127,42 @@ spec:
         - -c
         - |
           set -eu
-          dest="{{ .Values.persistence.mountPath }}/config.yaml"
+          mnt="{{ .Values.persistence.mountPath }}"
+
+          # Seed config.yaml (existing logic)
+          dest="$mnt/config.yaml"
           if [ "{{ .Values.bootstrap.overwrite }}" = "true" ] || [ ! -f "$dest" ]; then
             echo "Seeding $dest (overwrite={{ .Values.bootstrap.overwrite }})"
             cp /seed/config.yaml "$dest"
           else
             echo "Keeping existing $dest (overwrite=false)"
           fi
+
+          # Write Google OAuth Desktop credentials for google-workspace-mcp
+          if [ -n "${GOOGLE_OAUTH_CLIENT_ID:-}" ] && [ -n "${GOOGLE_OAUTH_CLIENT_SECRET:-}" ]; then
+            gw_dir="$mnt/.google-mcp"
+            mkdir -p "$gw_dir"
+            cat > "$gw_dir/credentials.json" <<- EOF
+          {
+            "installed": {
+              "client_id": "${GOOGLE_OAUTH_CLIENT_ID}",
+              "client_secret": "${GOOGLE_OAUTH_CLIENT_SECRET}",
+              "redirect_uris": ["http://localhost"],
+              "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+              "token_uri": "https://oauth2.googleapis.com/token"
+            }
+          }
+          EOF
+            echo "Wrote $gw_dir/credentials.json"
+          else
+            echo "SKIP: GOOGLE_OAUTH_CLIENT_ID or GOOGLE_OAUTH_CLIENT_SECRET not set"
+          fi
+      envFrom:
+        - secretRef:
+            name: {{ include "hermes-agent.fullname" . }}-env
+        {{- with .Values.extraEnvFrom }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       volumeMounts:
         - name: config
           mountPath: /seed
