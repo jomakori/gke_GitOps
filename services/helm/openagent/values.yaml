@@ -251,6 +251,12 @@ hermes:
         tools:
           resources: false
           prompts: false
+
+      google-workspace:
+        command: "npx"
+        args: ["-y", "google-workspace-mcp"]
+        env:
+          GOOGLE_CREDENTIALS_PATH: "/opt/data/.google-mcp/credentials.json"
   env:
     OPENAI_API_KEY: unused
   extraEnv:
