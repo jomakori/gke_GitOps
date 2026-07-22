@@ -20,18 +20,11 @@ spec:
         app.kubernetes.io/part-of: openagent
         app.kubernetes.io/component: mcp-kubectl
     spec:
-      volumes:
-        - name: kubeconfig
-          secret:
-            secretName: mcp-kubectl-config
+      serviceAccountName: mcp-kubectl-server
       containers:
       - name: server
         image: ghcr.io/containers/kubernetes-mcp-server:latest
         args:
-        - --kubeconfig
-        - /etc/mcp-kubeconfig/kubeconfig
-        - --cluster-provider
-        - kubeconfig
         - --port
         - "8000"
         - --stateless
@@ -64,10 +57,6 @@ spec:
             secretKeyRef:
               name: mcp-kubectl-config
               key: MCP_GRAFANA_URL
-        volumeMounts:
-        - name: kubeconfig
-          mountPath: /etc/mcp-kubeconfig
-          readOnly: true
         resources:
           requests:
             cpu: 50m
