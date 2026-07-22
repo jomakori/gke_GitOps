@@ -242,6 +242,15 @@ hermes:
         tools:
           resources: false
           prompts: false
+
+      doppler:
+        command: "npx"
+        args: ["-y", "@dopplerhq/mcp-server"]
+        env:
+          DOPPLER_TOKEN: "${MCP_DOPPLER_TOKEN}"
+        tools:
+          resources: false
+          prompts: false
   env:
     OPENAI_API_KEY: unused
   extraEnv:
