@@ -209,7 +209,7 @@ hermes:
         command: "npx"
         args: ["-y", "@modelcontextprotocol/server-github"]
         env:
-          GITHUB_PERSONAL_ACCESS_TOKEN: "os.environ/MCP_GITHUB_TOKEN"
+          GITHUB_PERSONAL_ACCESS_TOKEN: "${MCP_GITHUB_TOKEN}"
           npm_config_loglevel: "error"
         tools:
           include: [list_issues, create_issue, update_issue, search_code, search_repositories, get_file_contents]
@@ -220,8 +220,8 @@ hermes:
         command: "npx"
         args: ["-y", "argocd-mcp@latest", "stdio"]
         env:
-          ARGOCD_API_TOKEN: "os.environ/MCP_ARGOCD_TOKEN"
-          ARGOCD_BASE_URL: "os.environ/MCP_ARGOCD_URL"
+          ARGOCD_API_TOKEN: "${MCP_ARGOCD_TOKEN}"
+          ARGOCD_BASE_URL: "${MCP_ARGOCD_URL}"
         tools:
           resources: false
           prompts: false
@@ -230,8 +230,8 @@ hermes:
         command: "npx"
         args: ["-y", "@leval/mcp-grafana"]
         env:
-          GRAFANA_URL: "os.environ/MCP_GRAFANA_URL"
-          GRAFANA_SERVICE_ACCOUNT_TOKEN: "os.environ/MCP_GRAFANA_TOKEN"
+          GRAFANA_URL: "${MCP_GRAFANA_URL}"
+          GRAFANA_SERVICE_ACCOUNT_TOKEN: "${MCP_GRAFANA_TOKEN}"
         tools:
           resources: false
           prompts: false
