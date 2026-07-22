@@ -253,10 +253,11 @@ hermes:
           prompts: false
 
       google-workspace:
-        command: "node"
-        args: ["/opt/data/.hermes/hooks/wrap-google-mcp.cjs"]
+        command: "uvx"
+        args: ["workspace-mcp", "--tool-tier", "complete"]
         env:
-          GOOGLE_CREDENTIALS_PATH: "/opt/data/.google-mcp/credentials.json"
+          GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
+          GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
   env:
     OPENAI_API_KEY: unused
   extraEnv:
