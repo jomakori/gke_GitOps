@@ -254,7 +254,7 @@ hermes:
 
       google-workspace:
         command: "npx"
-        args: ["-y", "google-workspace-mcp"]
+        args: ["-y", "google-workspace-mcp", "serve"]
         env:
           GOOGLE_CREDENTIALS_PATH: "/opt/data/.google-mcp/credentials.json"
   env:
