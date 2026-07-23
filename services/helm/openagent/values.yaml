@@ -258,6 +258,27 @@ hermes:
         env:
           GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
           GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
+
+      skiplagged:
+        url: "https://mcp.skiplagged.com/mcp"
+        timeout: 60
+        tools:
+          resources: false
+          prompts: false
+
+      kiwi:
+        url: "https://mcp.kiwi.com"
+        timeout: 60
+        tools:
+          resources: false
+          prompts: false
+
+      ferryhopper:
+        url: "https://mcp.ferryhopper.com/mcp"
+        timeout: 60
+        tools:
+          resources: false
+          prompts: false
   env:
     OPENAI_API_KEY: unused
   extraEnv:
