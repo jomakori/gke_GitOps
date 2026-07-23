@@ -279,6 +279,16 @@ hermes:
         tools:
           resources: false
           prompts: false
+
+      bitwarden:
+        command: "npx"
+        args: ["-y", "@bitwarden/mcp-server"]
+        env:
+          BW_CLIENT_ID: "${MCP_BW_CLIENT_ID}"
+          BW_CLIENT_SECRET: "${MCP_BW_CLIENT_SECRET}"
+        tools:
+          resources: false
+          prompts: false
   env:
     OPENAI_API_KEY: unused
   extraEnv:
