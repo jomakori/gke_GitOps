@@ -281,8 +281,13 @@ hermes:
           prompts: false
 
       bitwarden:
-        command: "npx"
-        args: ["-y", "@bitwarden/mcp-server"]
+        command: "sh"
+        args:
+          - "-c"
+          - |
+            BW_CLIENTID=$BW_CLIENTID BW_CLIENTSECRET=$BW_CLIENTSECRET bw login --apikey 2>/dev/null
+            export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD 2>/dev/null | grep 'export BW_SESSION=' | sed "s/.*export BW_SESSION=\"//;s/\".*//")
+            exec npx -y @bitwarden/mcp-server
         env:
           BW_CLIENTID: "${BW_CLIENTID}"
           BW_CLIENTSECRET: "${BW_CLIENTSECRET}"
