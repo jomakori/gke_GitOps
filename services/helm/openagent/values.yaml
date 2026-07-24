@@ -284,9 +284,9 @@ hermes:
         command: "npx"
         args: ["-y", "@bitwarden/mcp-server"]
         env:
-          BW_CLIENT_ID: "${MCP_BW_CLIENT_ID}"
-          BW_CLIENT_SECRET: "${MCP_BW_CLIENT_SECRET}"
-          BW_PASSWORD: "${MCP_BW_PASSWORD}"
+          BW_CLIENT_ID: "${BW_CLIENT_ID}"
+          BW_CLIENT_SECRET: "${BW_CLIENT_SECRET}"
+          BW_PASSWORD: "${BW_PASSWORD}"
         tools:
           resources: false
           prompts: false
