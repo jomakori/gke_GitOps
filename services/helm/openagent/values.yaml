@@ -456,6 +456,13 @@ dashboard:
     host: "openagent-hermes-workspace.openagent.svc.cluster.local"
     port: 3000
 
+# ── LiteLLM Admin UI (VirtualService) ─────────────────────────────
+litellmVirtualService:
+  host: "litellm.maklab.net"
+  destination:
+    host: "openagent-litellm.openagent.svc.cluster.local"
+    port: 4000
+
 # ── VPA ────────────────────────────────────────────────────────────
 vpa:
   enabled: true
