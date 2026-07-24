@@ -1,0 +1,21 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: litellm
+  namespace: istio-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  hosts:
+    - {{ .Values.litellmVirtualService.host | quote }}
+  gateways:
+    - maklab-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: {{ .Values.litellmVirtualService.destination.host }}
+            port:
+              number: {{ .Values.litellmVirtualService.destination.port }}
