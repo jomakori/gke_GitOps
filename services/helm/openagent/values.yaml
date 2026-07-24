@@ -362,11 +362,11 @@ hermes:
           cpu: 100m
           memory: 64Mi
   command:
-    - /init
-  args:
-    - hermes
-    - gateway
-    - run
+    - sh
+    - -c
+    - |
+      npm install -g @bitwarden/cli 2>&1
+      exec /init hermes gateway run
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
