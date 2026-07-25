@@ -31,7 +31,6 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | dashboard.subdomain | string | `"openagent"` |  |
 | dopplerConfig | string | `"svc_openagent"` |  |
 | ghcrPullSecret | string | `""` |  |
-| global | object | `{}` |  |
 | headroom.enabled | bool | `true` |  |
 | headroom.image.pullPolicy | string | `"IfNotPresent"` |  |
 | headroom.image.repository | string | `"ghcr.io/chopratejas/headroom"` |  |
@@ -119,16 +118,6 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | hermes-agent.config.providers.litellm.discover_models | bool | `true` |  |
 | hermes-agent.config.providers.litellm.key_env | string | `"LITELLM_MASTER_KEY"` |  |
 | hermes-agent.env | object | `{}` |  |
-| hermes-agent.extraContainers[0].args[0] | string | `"echo 'server {\n  listen 9119;\n  location / {\n    proxy_pass http://127.0.0.1:19119;\n    proxy_set_header Host 127.0.0.1;\n    proxy_set_header X-Forwarded-Host $host;\n    proxy_set_header X-Forwarded-Proto $scheme;\n    proxy_http_version 1.1;\n    proxy_set_header Upgrade $http_upgrade;\n    proxy_set_header Connection \"upgrade\";\n  }\n}' > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'\n"` |  |
-| hermes-agent.extraContainers[0].command[0] | string | `"sh"` |  |
-| hermes-agent.extraContainers[0].command[1] | string | `"-c"` |  |
-| hermes-agent.extraContainers[0].image | string | `"nginx:alpine"` |  |
-| hermes-agent.extraContainers[0].imagePullPolicy | string | `"IfNotPresent"` |  |
-| hermes-agent.extraContainers[0].name | string | `"dashboard-proxy"` |  |
-| hermes-agent.extraContainers[0].resources.limits.cpu | string | `"100m"` |  |
-| hermes-agent.extraContainers[0].resources.limits.memory | string | `"64Mi"` |  |
-| hermes-agent.extraContainers[0].resources.requests.cpu | string | `"10m"` |  |
-| hermes-agent.extraContainers[0].resources.requests.memory | string | `"32Mi"` |  |
 | hermes-agent.extraEnvFrom[0].secretRef.name | string | `"openagent-secrets"` |  |
 | hermes-agent.extraEnv[0].name | string | `"DISCORD_BOT_TOKEN"` |  |
 | hermes-agent.extraEnv[0].valueFrom.secretKeyRef.key | string | `"DISCORD_BOT_TOKEN"` |  |
@@ -166,8 +155,6 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | hermes-agent.extraVolumes[1].configMap.name | string | `"openagent-k8s-gitops-context"` |  |
 | hermes-agent.extraVolumes[1].name | string | `"k8s-gitops-context"` |  |
 | hermes-agent.service.enabled | bool | `true` |  |
-| hermes-agent.service.extraPorts[0].name | string | `"api-server"` |  |
-| hermes-agent.service.extraPorts[0].port | int | `8642` |  |
 | hermes-agent.service.port | int | `9119` |  |
 | hermes-workspace.enabled | bool | `true` |  |
 | hermes.enabled | bool | `true` |  |
