@@ -16,7 +16,7 @@ services/
 │   └── values.yaml           ← Service registry (enable/disable, sync waves, parameters)
 └── helm/                   ← Helm chart source for each service (16 charts)
     ├── cert-manager/        ← Thin wrapper
-    ├── cloudflare-tunnel/   ← Custom
+    ├── cloudflare-tunnel/   ← Hybrid (lexfrei upstream + ExternalSecret)
     ├── external-dns/        ← Hybrid
     ├── external-secrets/    ← Hybrid
     ├── headlamp/            ← Hybrid (upstream + user SA templates)
@@ -26,7 +26,7 @@ services/
     ├── local-path/          ← Thin wrapper
     ├── metrics-server/      ← Thin wrapper
     ├── mongodb-operator/    ← Thin wrapper (disabled)
-    ├── openagent/           ← Custom umbrella (LiteLLM + headroom + discord bot + Sympozium CRDs in single chart)
+    ├── openagent/           ← Custom umbrella (LiteLLM + headroom + hermes agent + CRDs in single chart)
     ├── opencost/            ← Thin wrapper
     ├── postgres-operator/   ← Hybrid
     ├── redis-operator/      ← Thin wrapper (disabled)
@@ -44,8 +44,8 @@ Charts fall into three patterns:
 | Pattern | Count | Description |
 |---------|-------|-------------|
 | **Thin Wrapper** | 8 | `Chart.yaml` with upstream `dependencies` only, no local templates |
-| **Custom** | 2 | Full local templates, no upstream dependency |
-| **Hybrid** | 6 | Upstream dependency + local templates for extra resources (ExternalSecrets, ClusterSecretStores, SGCluster, etc.) |
+| **Custom** | 1 | Full local templates, no upstream dependency |
+| **Hybrid** | 7 | Upstream dependency + local templates for extra resources (ExternalSecrets, ClusterSecretStores, SGCluster, etc.) |
 
 ## Adding a Service
 
