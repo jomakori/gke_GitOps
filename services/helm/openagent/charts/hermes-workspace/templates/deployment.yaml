@@ -88,7 +88,7 @@ spec:
 
               # Doppler CLI
               curl -fsSL https://cli.doppler.com/install.sh | sh && \
-              cp /usr/local/bin/doppler /shared/bin/doppler 2>/dev/null || true
+              cp $(which doppler) /shared/bin/doppler
 
               # Symlinks in ~/.local/bin/ for workspace binary resolution
               HERMES_BIN=/shared/bin/venv/bin/hermes
