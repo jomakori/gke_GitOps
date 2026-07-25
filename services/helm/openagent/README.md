@@ -130,9 +130,9 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | hermes-agent.extraEnv[2].name | string | `"HERMES_DASHBOARD"` |  |
 | hermes-agent.extraEnv[2].value | string | `"1"` |  |
 | hermes-agent.extraEnv[3].name | string | `"HERMES_DASHBOARD_HOST"` |  |
-| hermes-agent.extraEnv[3].value | string | `"127.0.0.1"` |  |
+| hermes-agent.extraEnv[3].value | string | `"0.0.0.0"` |  |
 | hermes-agent.extraEnv[4].name | string | `"HERMES_DASHBOARD_PORT"` |  |
-| hermes-agent.extraEnv[4].value | string | `"19119"` |  |
+| hermes-agent.extraEnv[4].value | string | `"9119"` |  |
 | hermes-agent.extraEnv[5].name | string | `"DISCORD_ALLOW_ALL_USERS"` |  |
 | hermes-agent.extraEnv[5].value | string | `"true"` |  |
 | hermes-agent.extraEnv[6].name | string | `"API_SERVER_ENABLED"` |  |
