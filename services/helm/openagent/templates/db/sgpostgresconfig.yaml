@@ -4,7 +4,7 @@ metadata:
   name: {{ .Values.postgres.configName | default "openagent-pg-config" }}
   namespace: {{ .Values.namespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   postgresVersion: {{ .Values.postgres.version | default "18" | quote }}
   postgresql.conf:

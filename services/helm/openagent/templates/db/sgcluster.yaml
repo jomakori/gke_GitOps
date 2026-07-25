@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.postgres.clusterName | default "openagent-pg" }}
   namespace: {{ .Values.namespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   instances: {{ .Values.postgres.instances | default 1 }}
   postgres:
