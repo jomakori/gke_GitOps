@@ -8,6 +8,7 @@ maintainers:
   - name: local
 dependencies:
   - name: litellm-helm
+    alias: litellm
     version: 1.92.0
     repository: oci://ghcr.io/berriai
     condition: litellm.enabled
