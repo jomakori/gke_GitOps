@@ -274,5 +274,3 @@ services:
         value: "false"
     syncOptions:
       - CreateNamespace=true
-
-

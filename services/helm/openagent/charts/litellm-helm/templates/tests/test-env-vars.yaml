@@ -19,14 +19,14 @@ spec:
             exit 1
           fi
           echo "✅ Environment variable DD_ENV matches expected value: $DD_ENV"
-          
+
           # Test DD_SERVICE
           if [ "$DD_SERVICE" != "litellm" ]; then
             echo "❌ Environment variable DD_SERVICE mismatch. Expected: litellm, Got: $DD_SERVICE"
             exit 1
           fi
           echo "✅ Environment variable DD_SERVICE matches expected value: $DD_SERVICE"
-          
+
           # Test USE_DDTRACE
           if [ "$USE_DDTRACE" != "true" ]; then
             echo "❌ Environment variable USE_DDTRACE mismatch. Expected: true, Got: $USE_DDTRACE"

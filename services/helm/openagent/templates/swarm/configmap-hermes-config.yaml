@@ -63,4 +63,26 @@ data:
         Resume after clear part.
 
         Source: github.com/JuliusBrussee/caveman
+
+        ## Pre-commit — Validate Before Commit
+
+        BEFORE EVERY COMMIT: run pre-commit hooks.
+
+        ```bash
+        pre-commit run --files $(git diff --cached --name-only)
+        ```
+
+        Hooks in this repo:
+        - yamllint: YAML syntax, indentation
+        - check-merge-conflict: unresolved merge markers
+        - trailing-whitespace: trailing spaces
+        - detect-secrets: API keys, tokens
+        - helm-docs: Helm chart docs sync
+
+        Failure flow:
+        1. pre-commit fails → read error
+        2. Fix issue (usually indentation)
+        3. git add fixed file
+        4. Re-run pre-commit
+        5. Green → commit
 {{ end }}
