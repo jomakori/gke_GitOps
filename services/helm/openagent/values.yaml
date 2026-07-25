@@ -199,7 +199,7 @@ hermes:
     providers:
       litellm:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
-        key_env: OPENAI_API_KEY
+        key_env: LITELLM_MASTER_KEY
         discover_models: true
     plugins:
       enabled:
@@ -295,8 +295,7 @@ hermes:
         tools:
           resources: false
           prompts: false
-  env:
-    OPENAI_API_KEY: unused
+  env: {}
   extraEnv:
     - name: DISCORD_BOT_TOKEN
       valueFrom:
