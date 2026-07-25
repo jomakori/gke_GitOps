@@ -76,7 +76,7 @@ data:
         - yamllint: YAML syntax, indentation
         - check-merge-conflict: unresolved merge markers
         - trailing-whitespace: trailing spaces
-        - detect-secrets: API keys, tokens
+        - detect-secrets: API keys, tokens  # pragma: allowlist secret
         - helm-docs: Helm chart docs sync
 
         Failure flow:
