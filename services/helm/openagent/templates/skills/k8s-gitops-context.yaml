@@ -772,22 +772,15 @@ data:
     ### Skills
 
     Hermes workspace workers use built-in skills:
-    - **`caveman`** — ultra-compressed communication
-    - **`hashline-editor`** — MCP-based editing tool
-    - **`k8s-ops`** — kubectl + helm operations
-
-    Skills are configured in the hermes-agent values.yaml mcp_servers section.
-
-    ### Adding/Removing Skills
+    - **`ponytail`** — YAGNI ladder (write only what's needed)
+    - **`caveman`** — ultra-compressed communication (~65% fewer output tokens)
+    - **`pre-commit`** — secret scanning and linting hooks
 
     Skills are configured via `config.agent.environment_hint` in the hermes config ConfigMap.
 
     **Location**: `services/helm/openagent/templates/swarm/configmap-hermes-config.yaml`
 
-    **Current skills**:
-    - `ponytail` — YAGNI ladder (write only what's needed)
-    - `caveman` — ultra-compressed communication (~65% fewer output tokens)
-    - `pre-commit` — secret scanning and linting hooks
+    ### Adding/Removing Skills
 
     **To add a skill**:
     1. Edit `configmap-hermes-config.yaml`
@@ -798,6 +791,21 @@ data:
     **To remove a skill**:
     1. Remove the skill entry from `config.agent.environment_hint`
     2. ArgoCD sync → skill no longer loaded
+
+    ### Updating Skills (Both Local + Hermes)
+
+    When adding or modifying skills, update BOTH locations for consistency:
+
+    | Location | File | Purpose |
+    |----------|------|---------|
+    | Hermes workspace | `services/helm/openagent/templates/swarm/configmap-hermes-config.yaml` | Runtime skills for swarm workers |
+    | OpenCode | `~/.config/opencode/skills/<skill>/SKILL.md` | Local agent skills |
+
+    **Process**:
+    1. Create or modify skill in `~/.config/opencode/skills/<skill>/SKILL.md`
+    2. Add matching skill rules to `configmap-hermes-config.yaml` → `config.agent.environment_hint`
+    3. Update this file (k8s-gitops-context skill) to document the new skill
+    4. Commit and push → ArgoCD syncs hermes, local opencode uses skill directly
 
     ### Adding/Removing CLIs
 
