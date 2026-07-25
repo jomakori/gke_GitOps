@@ -55,19 +55,57 @@ spec:
             - -c
             - |
               set -e
-              apt-get update && apt-get install -y tmux python3-venv && \
+
+              # System packages
+              apt-get update && apt-get install -y tmux python3-venv git curl jq unzip
+
+              # Python venv + packages
               python3 -m venv /shared/bin/venv && \
-              /shared/bin/venv/bin/pip install hermes-agent && \
+              /shared/bin/venv/bin/pip install hermes-agent pre-commit
+
+              # Copy tmux + libs
               cp /usr/bin/tmux /shared/bin/tmux && \
               ldd /usr/bin/tmux | grep -o '/[^ ]*' | while read lib; do cp "$lib" /shared/bin/ 2>/dev/null; done
 
-              # Create symlinks in ~/.local/bin/ for workspace binary resolution
+              # Terraform
+              TF_VER="1.9.8"
+              curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VER}/terraform_${TF_VER}_linux_amd64.zip" -o /tmp/tf.zip && \
+              unzip -o /tmp/tf.zip -d /shared/bin && rm /tmp/tf.zip && \
+              chmod 755 /shared/bin/terraform
+
+              # Helm
+              HELM_VER="v3.16.3"
+              curl -fsSL "https://get.helm.sh/helm-${HELM_VER}-linux-amd64.tar.gz" | tar xz -C /tmp && \
+              mv /tmp/linux-amd64/helm /shared/bin/helm && rm -rf /tmp/linux-amd64 && \
+              chmod 755 /shared/bin/helm
+
+              # kubectl
+              KUBECTL_VER="v1.31.4"
+              curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VER}/bin/linux/amd64/kubectl" -o /shared/bin/kubectl && \
+              chmod 755 /shared/bin/kubectl
+
+              # gitleaks
+              GL_VER="v8.21.2"
+              curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/${GL_VER}/gitleaks_${GL_VER}_linux_x64.tar.gz" | tar xz -C /shared/bin gitleaks && \
+              chmod 755 /shared/bin/gitleaks
+
+              # Doppler CLI
+              curl -fsSL https://cli.doppler.com/install.sh | sh && \
+              cp /usr/local/bin/doppler /shared/bin/doppler 2>/dev/null || true
+
+              # Symlinks in ~/.local/bin/ for workspace binary resolution
               HERMES_BIN=/shared/bin/venv/bin/hermes
               chmod 755 "$HERMES_BIN"
               ln -sf "$HERMES_BIN" /shared/.local/bin/hermes
               ln -sf /shared/bin/tmux /shared/.local/bin/tmux
+              ln -sf /shared/bin/terraform /shared/.local/bin/terraform
+              ln -sf /shared/bin/helm /shared/.local/bin/helm
+              ln -sf /shared/bin/kubectl /shared/.local/bin/kubectl
+              ln -sf /shared/bin/gitleaks /shared/.local/bin/gitleaks
+              ln -sf /shared/bin/doppler /shared/.local/bin/doppler
+              ln -sf /shared/bin/venv/bin/pre-commit /shared/.local/bin/pre-commit
 
-              # Create central model mapping (ONE file to edit when swapping models)
+              # Central model mapping
               echo 'orchestrator=claude/sonnet-4' > /shared/bin/worker-models.cfg
               for entry in \
                 'supervisor=claude/sonnet-4' \
@@ -81,14 +119,13 @@ spec:
                 echo "$entry" >> /shared/bin/worker-models.cfg
               done
 
-              # Create single wrapper that reads model from central mapping
+              # Swarm wrapper
               echo '#!/bin/sh' > /shared/bin/swarm-wrapper.sh
               echo 'worker=$(basename "$0")' >> /shared/bin/swarm-wrapper.sh
               echo 'model=$(grep "^${worker}=" /shared/bin/worker-models.cfg | cut -d= -f2)' >> /shared/bin/swarm-wrapper.sh
               echo 'if [ -n "$model" ]; then exec /shared/bin/venv/bin/hermes -m "$model" "$@"; else exec /shared/bin/venv/bin/hermes "$@"; fi' >> /shared/bin/swarm-wrapper.sh
               chmod 755 /shared/bin/swarm-wrapper.sh
 
-              # Symlink each worker name to the single wrapper
               for worker in orchestrator supervisor strategist reviewer architect builder junior-builder researcher explorer; do
                 ln -sf /shared/bin/swarm-wrapper.sh /shared/.local/bin/$worker
               done
