@@ -780,6 +780,63 @@ data:
 
     Skills are configured in the hermes-agent values.yaml mcp_servers section.
 
+    ### Adding/Removing Skills
+
+    Skills are configured via `config.agent.environment_hint` in the hermes config ConfigMap.
+
+    **Location**: `services/helm/openagent/templates/swarm/configmap-hermes-config.yaml`
+
+    **Current skills**:
+    - `ponytail` — YAGNI ladder (write only what's needed)
+    - `caveman` — ultra-compressed communication (~65% fewer output tokens)
+    - `pre-commit` — secret scanning and linting hooks
+
+    **To add a skill**:
+    1. Edit `configmap-hermes-config.yaml`
+    2. Add skill rules to `config.agent.environment_hint` section
+    3. Format: `- **\`skill-name\`** — description of behavior`
+    4. ArgoCD sync → hermes workspace picks up changes on next session
+
+    **To remove a skill**:
+    1. Remove the skill entry from `config.agent.environment_hint`
+    2. ArgoCD sync → skill no longer loaded
+
+    ### Adding/Removing CLIs
+
+    CLIs are installed in the hermes-workspace init container.
+
+    **Location**: `services/helm/openagent/charts/hermes-workspace/templates/deployment.yaml`
+
+    **Current CLIs** (all native ARM64):
+    | CLI | Version | Install Method |
+    |-----|---------|----------------|
+    | terraform | v1.9.8 | Direct download |
+    | helm | v3.16.3 | Direct download |
+    | kubectl | v1.31.4 | Direct download |
+    | gitleaks | 8.30.1 | Direct download |
+    | doppler | v3.76.1 | install.sh |
+    | jq | 1.7.1 | Static binary |
+    | git | 2.39.5 | apt |
+    | pre-commit | 4.6.1 | pip (venv) |
+
+    **To add a CLI**:
+    1. Edit `deployment.yaml` init container script
+    2. Add download/install command (prefer direct download over apt for portability)
+    3. Copy binary to `/shared/bin/` (shared volume)
+    4. Add symlink in `~/.local/bin/` if needed for PATH resolution
+    5. ArgoCD sync → new pod gets CLI
+
+    **To remove a CLI**:
+    1. Remove the download/install command from init container
+    2. Remove symlink if present
+    3. ArgoCD sync → next pod rollout drops CLI
+
+    **Architecture note**: Use ARM64 binaries for native performance. The cluster runs on Apple Silicon (aarch64). Download URLs:
+    - Terraform: `https://releases.hashicorp.com/terraform/{ver}/terraform_{ver}_linux_arm64.zip`
+    - Helm: `https://get.helm.sh/helm-v{ver}-linux-arm64.tar.gz`
+    - kubectl: `https://dl.k8s.io/release/v{ver}/bin/linux/arm64/kubectl`
+    - gitleaks: `https://github.com/gitleaks/gitleaks/releases/download/v{ver}/gitleaks_{ver}_linux_arm64.tar.gz` (no v prefix in filename)
+
     ### Adding a Worker
 
     To add a worker to the swarm, edit `services/helm/openagent/templates/swarm/configmap-swarm.yaml`:
@@ -938,48 +995,6 @@ data:
     - **Longhorn was removed — do not re-enable**: Longhorn v1 failed because OrbStack lacks kernel iSCSI support (`iscsi_tcp` module not loaded). Longhorn v2 (1.12.0) failed because it unconditionally mounts a `HugePages` EmptyDir for v2 instance-manager pods, and OrbStack kernel lacks `CONFIG_HUGETLBFS`. OpenEBS LVM was tested as an alternative but failed because k3s v1.35.1 kubelet never registers CSI drivers from node-driver-registrar (`driver name not found in registered CSI drivers`). The only working storage is `local-path`.
     - **CoreDNS Google DNS causes Go resolver "server misbehaving"**: k3d's pod network can't reliably forward UDP to `8.8.8.8` through Docker bridge networking. Go's pure-Go DNS resolver (used by external-secrets operator) reports `server misbehaving` on truncated/timeout responses. Fix: forward to the k3d node's own DNS resolver (`192.168.97.1` — Docker bridge gateway) via dynamic `data.external.k3d_dns` in Terraform. Without this, all 10 ClusterSecretStores fail with `InvalidProviderConfig` → no ExternalSecrets sync → cascading failures.
     - **ArgoCD sync wave ordering won't prevent CRD-not-found failures in the services ApplicationSet**: The root `services` Application contains BOTH Application resources (deployed as sub-apps at their respective waves) AND raw resources like the GHCR credential ExternalSecret. Raw resources are applied during the root app's sync, regardless of child app sync waves. If a raw resource references a CRD installed by a child app at a later wave, the root sync fails before any child apps are created.
-
-    ## Sympozium Cleanup (Legacy Removal)
-
-    The sympozium-system namespace and CRDs are leftover from the pre-Hermes architecture. Remove completely:
-
-    ### Step 1: Delete sympozium-system namespace
-
-    ```bash
-    kubectl delete namespace sympozium-system --grace-period=0 --force
-    ```
-
-    This removes all sympozium control plane components (apiserver, controller-manager, webhook, otel-collector, llmfit-daemon, node-probe) and MCPServer-managed deployments (argocd, github, grafana, k8s-mcp, nats, postgres).
-
-    ### Step 2: Delete sympozium CRDs
-
-    ```bash
-    kubectl delete crd agentruns.sympozium.ai agents.sympozium.ai ensembles.sympozium.ai \
-      mcpservers.sympozium.ai models.sympozium.ai skillpacks.sympozium.ai \
-      sympoziumconfigs.sympozium.ai sympoziumpolicies.sympozium.ai sympoziumschedules.sympozium.ai
-    ```
-
-    ### Step 3: Verify cleanup
-
-    ```bash
-    kubectl get namespace sympozium-system 2>/dev/null  # should error: NotFound
-    kubectl get crd | grep sympozium 2>/dev/null       # should return nothing
-    ```
-
-    ### What moved to openagent
-
-    | Old (sympozium-system) | New (openagent) | Notes |
-    |------------------------|-----------------|-------|
-    | k8s-mcp MCPServer | kubernetes-mcp-server Deployment | URL-based MCP server |
-    | argocd, github, grafana MCPServers | hermes-agent stdio MCP servers | Run as processes in hermes container |
-    | postgres MCPServer | openagent-pg StatefulSet | StackGres-managed |
-    | nats | removed | Not needed with hermes architecture |
-
-    ### What was removed (not migrated)
-
-    - sympozium-apiserver, controller-manager, webhook, otel-collector, llmfit-daemon, node-probe
-    - All sympozium.ai/v1alpha1 CRDs (Ensemble, SkillPack, MCPServer, etc.)
-    - sympozium OCI dependency from Chart.yaml (already removed)
 
 
     ## Repo Locations
