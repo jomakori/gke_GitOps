@@ -56,14 +56,13 @@ spec:
             - |
               set -e
 
-              # System packages
-              apt-get update && apt-get install -y tmux python3-venv git curl jq unzip
+              apt-get update && apt-get install -y tmux python3-venv git curl unzip
 
-              # Copy system binaries to shared volume (init container fs != main container fs)
               cp $(which git) /shared/bin/git
-              cp $(which jq) /shared/bin/jq
               cp $(which curl) /shared/bin/curl
               cp $(which unzip) /shared/bin/unzip
+
+              curl -fsSL "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-arm64" -o /shared/bin/jq && chmod 755 /shared/bin/jq
 
               # Python venv + packages
               python3 -m venv /shared/bin/venv && \
@@ -75,24 +74,24 @@ spec:
 
               # Terraform
               TF_VER="1.9.8"
-              curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VER}/terraform_${TF_VER}_linux_amd64.zip" -o /tmp/tf.zip && \
+              curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VER}/terraform_${TF_VER}_linux_arm64.zip" -o /tmp/tf.zip && \
               unzip -o /tmp/tf.zip -d /shared/bin && rm /tmp/tf.zip && \
               chmod 755 /shared/bin/terraform
 
               # Helm
-              curl -fsSL "https://get.helm.sh/helm-v3.16.3-linux-amd64.tar.gz" | tar xz -C /tmp && \
-              mv /tmp/linux-amd64/helm /shared/bin/helm && rm -rf /tmp/linux-amd64 && \
+              curl -fsSL "https://get.helm.sh/helm-v3.16.3-linux-arm64.tar.gz" | tar xz -C /tmp && \
+              mv /tmp/linux-arm64/helm /shared/bin/helm && rm -rf /tmp/linux-arm64 && \
               chmod 755 /shared/bin/helm
 
               # kubectl
-              curl -fsSL "https://dl.k8s.io/release/v1.31.4/bin/linux/amd64/kubectl" -o /shared/bin/kubectl && \
+              curl -fsSL "https://dl.k8s.io/release/v1.31.4/bin/linux/arm64/kubectl" -o /shared/bin/kubectl && \
               chmod 755 /shared/bin/kubectl
 
-              # gitleaks (note: filename has no v prefix)
-              curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz" | tar xz -C /shared/bin gitleaks && \
+              # gitleaks (filename has no v prefix)
+              curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz" | tar xz -C /shared/bin gitleaks && \
               chmod 755 /shared/bin/gitleaks
 
-              # Doppler CLI
+              # Doppler CLI (auto-detects arch)
               curl -fsSL https://cli.doppler.com/install.sh | sh && \
               cp $(which doppler) /shared/bin/doppler
 
