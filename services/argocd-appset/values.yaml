@@ -108,8 +108,7 @@ services:
         value: "{{ .Values.clusterDomain }}"
       - name: storageClass
         value: "{{ .Values.storageClass }}"
-      - name: dopplerConfig
-        value: "svc_openagent"
+    dopplerConfig: "svc_openagent"
     gateways:
       enable_private: true
       destination:
@@ -117,7 +116,7 @@ services:
         servicePort: 3000
     syncOptions:
       - CreateNamespace=true
-      - SkipSchemaValidation=true
+    skipSchemaValidation: true
 
   # Wave 3 — Edge infrastructure (after istio for backend routing)
   cloudflareTunnel:
