@@ -32,3 +32,4 @@ ignore: |
   services/argocd-appset/templates/**
   apps/argocd-appset/templates/**
   services/helm/*/templates/**
+  services/helm/*/charts/*/templates/**
