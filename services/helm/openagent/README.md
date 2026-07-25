@@ -80,7 +80,7 @@ The chart includes sync-wave annotations:
 | hermes.enabled | bool | `true` | Enable Hermes Agent |
 | hermes.config.model.provider | string | `"litellm"` | LLM provider |
 | hermes.config.providers.litellm.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` | LiteLLM endpoint |
-| hermes.env.OPENAI_API_KEY | string | `"unused"` | OpenAI API key (unused, using LiteLLM) |
+| hermes.env | object | `{}` | Environment variables (LITELLM_MASTER_KEY comes from secret) |
 | hermes.extraEnvFrom | list | `[secretRef: openagent-secrets]` | Additional secrets |
 | hermes-workspace.enabled | bool | `true` | Enable Hermes Workspace |
 | litellm.enabled | bool | `true` | Enable LiteLLM upstream chart |
