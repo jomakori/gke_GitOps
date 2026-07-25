@@ -124,6 +124,23 @@ services:
         namespace: openagent
         jsonPointers:
           - /spec/postgresql.conf
+      - group: stackgres.io
+        kind: SGCluster
+        name: openagent-pg
+        namespace: openagent
+        jsonPointers:
+          - /spec/configurations/observability
+          - /spec/pods/disableEnvoy
+          - /spec/pods/disablePostgresUtil
+          - /spec/pods/managementPolicy
+          - /spec/pods/updateStrategy
+          - /spec/postgres/flavor
+          - /spec/postgres/ssl
+          - /spec/postgresServices
+          - /spec/replication
+          - /spec/sgInstanceProfile
+          - /spec/users
+          - /spec/managedSql
 
   # Wave 3 — Edge infrastructure (after istio for backend routing)
   cloudflareTunnel:
