@@ -350,11 +350,20 @@ hermes-agent:
     - name: HERMES_DASHBOARD_PORT
       value: "9119"
     - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
-      value: "admin"
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
     - name: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
-      value: "openagent"
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
     - name: HERMES_DASHBOARD_BASIC_AUTH_SECRET
-      value: "local-dev-dashboard-signing-secret-32b"
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: HERMES_DASHBOARD_BASIC_AUTH_SECRET
     - name: DISCORD_ALLOW_ALL_USERS
       value: "true"
     - name: API_SERVER_ENABLED
