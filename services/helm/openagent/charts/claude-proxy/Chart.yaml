@@ -1,0 +1,6 @@
+apiVersion: v2
+name: claude-proxy
+description: Claude CLI wrapper as OpenAI-compatible API proxy
+type: application
+version: 0.1.0
+appVersion: "latest"
