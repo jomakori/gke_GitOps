@@ -3,6 +3,12 @@
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
 Cloudflare Zero Trust tunnel for public access to *.maklab.net
 
+## Requirements
+
+| Repository | Name | Version |
+|------------|------|---------|
+| oci://ghcr.io/lexfrei/charts | cloudflare-tunnel | 0.16.1 |
+
 ## Under the hood
 
 This is a **custom chart** (no upstream dependencies) that deploys a `cloudflared` daemon connecting the cluster to Cloudflare's edge via a Zero Trust tunnel. It provides public ingress for `*.<clusterDomain>` without opening firewall ports.
@@ -62,8 +68,12 @@ Internet → Cloudflare edge (CDN, WAF, DDOS protection)
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| cloudflare.mode | string | `"remote"` |  |
+| cloudflare.tunnelToken | string | `""` |  |
+| cloudflare.tunnelTokenSecretName | string | `"cloudflare-tunnel-auth"` |  |
 | dopplerConfig | string | `"svc_cloudflare"` |  |
-| image | string | `"cloudflare/cloudflared"` |  |
-| replicas | int | `2` |  |
-| tag | string | `"latest"` |  |
+| image.pullPolicy | string | `"IfNotPresent"` |  |
+| image.repository | string | `"cloudflare/cloudflared"` |  |
+| image.tag | string | `""` |  |
+| replicaCount | int | `2` |  |
 | tunnelName | string | `"maklab-cluster"` |  |
