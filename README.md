@@ -7,7 +7,7 @@ ArgoCD App-of-Apps repository for the **jmak-lab** Minikube cluster. Terraform (
 ```
 .
 ├── services/          ← 3rd-party infrastructure
-│   ├── helm/          ← Helm charts (26 services incl. openagent stack)
+│   ├── helm/          ← Helm charts (25 services incl. openagent stack)
 │   └── argocd-appset/ ← App-of-Apps manifests (single applications.yaml template)
 ├── apps/              ← Application workloads
 │   ├── helm/          ← Single parameterized Helm chart (chart name: apps)
@@ -40,7 +40,7 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 4 | [keda](services/helm/keda/) | kedacore/keda | Event-driven autoscaling | not enabled |
 | 4 | [mongodb-operator](services/helm/mongodb-operator/) | psmdb-operator | MongoDB operator (Percona) | not enabled |
 | 5 | [kube-prometheus-stack](services/helm/kube-prometheus-stack/) | prometheus-community/kube-prometheus-stack | Cluster monitoring, metrics, alerting, Grafana | enabled |
-| 5 | [onedev](services/helm/onedev/) | custom (vendored upstream + SGCluster) | All-in-one DevOps platform (Git, CI/CD, issue tracker) with StackGres PostgreSQL | enabled |
+
 | 5 | [redis-operator](services/helm/redis-operator/) | ot-operator/redis-operator | Redis cluster management | not enabled |
 | 5 | [headlamp](services/helm/headlamp/) | headlamp | Kubernetes dashboard UI | enabled |
 | 5 | [opencost](services/helm/opencost/) | opencost | Cost allocation and monitoring | enabled |
@@ -165,7 +165,7 @@ No secrets in this repo. The chain:
 | `svc_grafana` | Grafana | `GRAFANA_ADMIN`, `GRAFANA_PW` |
 | `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
 | `svc_postgres_operator` | postgres-operator (StackGres) | `ADMIN_USER`, `ADMIN_PASSWORD` |
-| `svc_onedev` | onedev | `DB_PASSWORD`, `DB_USER` |
+
 | `svc_openagent` | openagent, openagent-headroom, litellm (openagent), openagent-discord | Provider keys: `DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `MINIMAX_API_BASE`, `ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `OPENCODE_API_BASE`. Discord: `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, `AGENT_API_URL` (Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth). GHCR: `GITHUB_TOKEN`. |
 
 

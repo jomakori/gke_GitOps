@@ -23,9 +23,6 @@ clusterSecretStores:
   svc_cloudflare:
     project: devops
     config: svc_cloudflare
-  svc_onedev:
-    project: devops
-    config: svc_onedev
   svc_openagent:
     project: devops
     config: svc_openagent

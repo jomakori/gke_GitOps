@@ -79,8 +79,6 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | clusterSecretStores.svc_grafana.project | string | `"devops"` |  |
 | clusterSecretStores.svc_mongodb.config | string | `"svc_mongodb"` |  |
 | clusterSecretStores.svc_mongodb.project | string | `"devops"` |  |
-| clusterSecretStores.svc_onedev.config | string | `"svc_onedev"` |  |
-| clusterSecretStores.svc_onedev.project | string | `"devops"` |  |
 | clusterSecretStores.svc_openagent.config | string | `"svc_openagent"` |  |
 | clusterSecretStores.svc_openagent.project | string | `"devops"` |  |
 | clusterSecretStores.svc_postgres_operator.config | string | `"svc_postgres_operator"` |  |
