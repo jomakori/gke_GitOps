@@ -198,7 +198,7 @@ hermes:
       provider: litellm
     providers:
       litellm:
-        base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
+        base_url: http://openagent-headroom.openagent.svc.cluster.local:8787/v1
         key_env: LITELLM_MASTER_KEY
         discover_models: true
     plugins:
@@ -386,62 +386,28 @@ hermes:
 hermes-workspace:
   enabled: true
 
-# ── Component subchart values ──────────────────────────────────────
-# These are passed to the openagent-component subchart.
-# The subchart name (openagent-component) is the key Helm uses to pass values.
-# component.enabled is the Chart.yaml condition key for the subchart dependency.
-component:
+headroom:
   enabled: true
-openagent-component:
-  storageClass: "local-path"
-  headroom:
-    enabled: true
-    image:
-      repository: ghcr.io/chopratejas/headroom
-      tag: "latest"
-      pullPolicy: IfNotPresent
-    service:
-      port: 8787
-    resources:
-      requests:
-        cpu: 200m
-        memory: 512Mi
-      limits:
-        cpu: 2000m
-        memory: 2Gi
-    storage:
-      size: 2Gi
-      accessMode: ReadWriteOnce
-    litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
-  bot:
-    enabled: false
-    image:
-      repository: ghcr.io/jomakori/gke_gitops/openagent-discord-bot
-      tag: "0.9.6"
-      pullPolicy: Always
-    service:
-      port: 8080
-    resources:
-      requests:
-        cpu: 50m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-    storage:
-      reposSize: 1Gi
-    config:
-      mentionOnly: false
-      conversationMode: "threaded"
-      phaseUpdates: true
-      pollUI: true
-      startupChannel: "chat"
-      channelOnly: ""
-      clientId: ""
-      dashboardUrl: "https://openagent.maklab.net"
-      thinkMode: "full"
-    version:
-      configMapName: "openagent-discord-version"
+  image:
+    repository: ghcr.io/chopratejas/headroom
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    port: 8787
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  storage:
+    size: 2Gi
+    accessMode: ReadWriteOnce
+  litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
+
+claude-proxy:
+  enabled: true
 
 # ── Shared DB ───────────────────────────────────────────
 postgres:
@@ -471,20 +437,3 @@ litellmVirtualService:
 # ── VPA ────────────────────────────────────────────────────────────
 vpa:
   enabled: true
-
-# ── Claude Proxy ────────────────────────────────────────────────────
-claudeProxy:
-  enabled: true
-  image:
-    repository: ghcr.io/jomakori/claude-proxy
-    tag: latest
-    pullPolicy: IfNotPresent
-  service:
-    port: 4523
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi

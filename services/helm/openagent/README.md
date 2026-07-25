@@ -1,11 +1,8 @@
 # openagent
 
-![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
+![Version: 2.1.0](https://img.shields.io/badge/Version-2.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
-Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy,
-Discord bot, and Sympozium CRDs (Ensemble, SkillPacks). All components
-deployed via upstream deps and subcharts. Only CRDs + shared resources
-remain as local templates.
+Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Hermes Agent, Claude proxy, and supporting infrastructure.
 
 ## Maintainers
 
@@ -17,32 +14,36 @@ remain as local templates.
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://charts/hermes-agent | hermes(hermes-agent) | 0.9.1 |
+| file://charts/claude-proxy | claude-proxy | 0.1.0 |
+| file://charts/headroom | headroom | 0.1.0 |
 | file://charts/hermes-workspace | hermes-workspace | 0.1.0 |
-| file://charts/litellm-helm | litellm(litellm-helm) | 1.92.0 |
-| file://charts/openagent-component | openagent-component | 0.1.0 |
+| oci://ghcr.io/berriai | litellm-helm | 1.92.0 |
+| oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 0.9.1 |
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| claudeProxy.enabled | bool | `true` |  |
-| claudeProxy.image.pullPolicy | string | `"IfNotPresent"` |  |
-| claudeProxy.image.repository | string | `"ghcr.io/jomakori/claude-proxy"` |  |
-| claudeProxy.image.tag | string | `"latest"` |  |
-| claudeProxy.resources.limits.cpu | string | `"1000m"` |  |
-| claudeProxy.resources.limits.memory | string | `"1Gi"` |  |
-| claudeProxy.resources.requests.cpu | string | `"100m"` |  |
-| claudeProxy.resources.requests.memory | string | `"256Mi"` |  |
-| claudeProxy.service.port | int | `4523` |  |
+| claude-proxy.enabled | bool | `true` |  |
 | clusterDomain | string | `"maklab.net"` |  |
-| component.enabled | bool | `true` |  |
 | dashboard.destination.host | string | `"openagent-hermes-workspace.openagent.svc.cluster.local"` |  |
 | dashboard.destination.port | int | `3000` |  |
 | dashboard.subdomain | string | `"openagent"` |  |
 | dopplerConfig | string | `"svc_openagent"` |  |
 | ghcrPullSecret | string | `""` |  |
 | global | object | `{}` |  |
+| headroom.enabled | bool | `true` |  |
+| headroom.image.pullPolicy | string | `"IfNotPresent"` |  |
+| headroom.image.repository | string | `"ghcr.io/chopratejas/headroom"` |  |
+| headroom.image.tag | string | `"latest"` |  |
+| headroom.litellmUrl | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
+| headroom.resources.limits.cpu | string | `"2000m"` |  |
+| headroom.resources.limits.memory | string | `"2Gi"` |  |
+| headroom.resources.requests.cpu | string | `"200m"` |  |
+| headroom.resources.requests.memory | string | `"512Mi"` |  |
+| headroom.service.port | int | `8787` |  |
+| headroom.storage.accessMode | string | `"ReadWriteOnce"` |  |
+| headroom.storage.size | string | `"2Gi"` |  |
 | hermes-workspace.enabled | bool | `true` |  |
 | hermes.command[0] | string | `"sh"` |  |
 | hermes.command[1] | string | `"-c"` |  |
@@ -114,7 +115,7 @@ remain as local templates.
 | hermes.config.model.default | string | `"deepseek-v4-flash"` |  |
 | hermes.config.model.provider | string | `"litellm"` |  |
 | hermes.config.plugins.enabled[0] | string | `"discord-platform"` |  |
-| hermes.config.providers.litellm.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
+| hermes.config.providers.litellm.base_url | string | `"http://openagent-headroom.openagent.svc.cluster.local:8787/v1"` |  |
 | hermes.config.providers.litellm.discover_models | bool | `true` |  |
 | hermes.config.providers.litellm.key_env | string | `"LITELLM_MASTER_KEY"` |  |
 | hermes.enabled | bool | `true` |  |
@@ -326,39 +327,6 @@ remain as local templates.
 | litellmVirtualService.destination.port | int | `4000` |  |
 | litellmVirtualService.host | string | `"litellm.maklab.net"` |  |
 | namespace | string | `"openagent"` |  |
-| openagent-component.bot.config.channelOnly | string | `""` |  |
-| openagent-component.bot.config.clientId | string | `""` |  |
-| openagent-component.bot.config.conversationMode | string | `"threaded"` |  |
-| openagent-component.bot.config.dashboardUrl | string | `"https://openagent.maklab.net"` |  |
-| openagent-component.bot.config.mentionOnly | bool | `false` |  |
-| openagent-component.bot.config.phaseUpdates | bool | `true` |  |
-| openagent-component.bot.config.pollUI | bool | `true` |  |
-| openagent-component.bot.config.startupChannel | string | `"chat"` |  |
-| openagent-component.bot.config.thinkMode | string | `"full"` |  |
-| openagent-component.bot.enabled | bool | `false` |  |
-| openagent-component.bot.image.pullPolicy | string | `"Always"` |  |
-| openagent-component.bot.image.repository | string | `"ghcr.io/jomakori/gke_gitops/openagent-discord-bot"` |  |
-| openagent-component.bot.image.tag | string | `"0.9.6"` |  |
-| openagent-component.bot.resources.limits.cpu | string | `"500m"` |  |
-| openagent-component.bot.resources.limits.memory | string | `"512Mi"` |  |
-| openagent-component.bot.resources.requests.cpu | string | `"50m"` |  |
-| openagent-component.bot.resources.requests.memory | string | `"128Mi"` |  |
-| openagent-component.bot.service.port | int | `8080` |  |
-| openagent-component.bot.storage.reposSize | string | `"1Gi"` |  |
-| openagent-component.bot.version.configMapName | string | `"openagent-discord-version"` |  |
-| openagent-component.headroom.enabled | bool | `true` |  |
-| openagent-component.headroom.image.pullPolicy | string | `"IfNotPresent"` |  |
-| openagent-component.headroom.image.repository | string | `"ghcr.io/chopratejas/headroom"` |  |
-| openagent-component.headroom.image.tag | string | `"latest"` |  |
-| openagent-component.headroom.litellmUrl | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
-| openagent-component.headroom.resources.limits.cpu | string | `"2000m"` |  |
-| openagent-component.headroom.resources.limits.memory | string | `"2Gi"` |  |
-| openagent-component.headroom.resources.requests.cpu | string | `"200m"` |  |
-| openagent-component.headroom.resources.requests.memory | string | `"512Mi"` |  |
-| openagent-component.headroom.service.port | int | `8787` |  |
-| openagent-component.headroom.storage.accessMode | string | `"ReadWriteOnce"` |  |
-| openagent-component.headroom.storage.size | string | `"2Gi"` |  |
-| openagent-component.storageClass | string | `"local-path"` |  |
 | postgres.clusterName | string | `"openagent-pg"` |  |
 | postgres.configName | string | `"openagent-pg-config"` |  |
 | postgres.enabled | bool | `true` |  |
