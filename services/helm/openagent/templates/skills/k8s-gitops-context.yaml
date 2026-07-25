@@ -160,7 +160,7 @@ data:
     | `doppler-svc-grafana` | devops | svc_grafana | kube-prometheus-stack |
     | `doppler-svc-cloudflare` | devops | svc_cloudflare | istio (umbrella), external-dns, cloudflare-tunnel |
     | `doppler-svc-postgres-operator` | devops | svc_postgres_operator | postgres-operator |
-    | `doppler-svc-onedev` | devops | svc_onedev | onedev (OneDev app + SGCluster) |
+
     | `doppler-zurabase-dev` | zurabase | dev | future zurabase service |
     | `doppler-zurabase-stg` | zurabase | stg | future zurabase service |
     | `doppler-zurabase-prd` | zurabase | prd | future zurabase service |
@@ -182,7 +182,6 @@ data:
     - **Legacy exception**: postgres-operator ExternalSecret uses explicit `data` mappings (`ADMIN_USER`→`k8sUsername`). Do not replicate in new charts.
     - Set `creationPolicy: Owner` on all ExternalSecrets so ESO manages the secret lifecycle.
 
-    Example: `svc_onedev` stores `DB_USER` and `DB_PASSWORD`. OneDev's ExternalSecret merges `DB_PASSWORD` into `onedev-secrets`. StackGres generates its own postgres superuser password; the generated password must be copied into Doppler `DB_PASSWORD` so OneDev and the database agree.
 
     ### Using the Doppler CLI
 
@@ -196,7 +195,6 @@ data:
     | Grafana | `devops` | `svc_grafana` | `GRAFANA_ADMIN`, `GRAFANA_PW` |
     | Cloudflare services | `devops` | `svc_cloudflare` | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
     | Postgres operator | `devops` | `svc_postgres_operator` | `ADMIN_USER`, `ADMIN_PASSWORD` |
-    | OneDev | `devops` | `svc_onedev` | `DB_PASSWORD`, `DB_USER` |
     | OpenAgent stack | `devops` | `svc_openagent` | Provider API keys, `DISCORD_BOT_TOKEN`, `AGENT_API_URL`, `AGENT_API_KEY`, `GITHUB_TOKEN` |
     | Zurabase (future) | `zurabase` | `dev`, `stg`, `prd` | Future zurabase service |
 
@@ -279,7 +277,7 @@ data:
     - For operator-managed databases, rely on the operator's retention behavior; document any manual cleanup steps.
     - Storage class and size are parameterized via `.Values.storageClass` and per-service values; never hardcode storage class.
 
-    Example: OneDev uses a 50Gi PVC for server data (`persistence.size`) and a StackGres SGCluster with a 5Gi PVC for Postgres. Both PVCs remain after the OneDev Application is deleted.
+    Example: For stateful services, use a 50Gi PVC for server data (`persistence.size`) and a StackGres SGCluster with a 5Gi PVC for Postgres. Both PVCs remain after the service Application is deleted.
 
     ## Sync Wave Order (ArgoCD)
 
@@ -294,7 +292,7 @@ data:
     | 2 | **Core networking services** | istio umbrella (CRDs + control plane + gateway) |
     | 3 | **Edge networking services** | cloudflare-tunnel (needs istio for backend routing) |
     | 4 | **Operator services** | external-dns, postgres-operator |
-    | 5 | **General services** | onedev, kube-prometheus-stack |
+     | 5 | **General services** | kube-prometheus-stack |
     | 6+ | **Apps** | demoApi, notesUi |
 
     **Rules**:
@@ -313,7 +311,7 @@ data:
     | 2 | istio umbrella (CRDs + control plane + ingress gateway + config) | ServerSideApply |
     | 3 | cloudflare-tunnel | Ingress via Cloudflare edge |
     | 4 | external-dns, postgres-operator | skipCrds (postgres-operator) |
-    | 5 | kube-prometheus-stack, onedev | ServerSideApply |
+     | 5 | kube-prometheus-stack | ServerSideApply |
 
     ### Current Apps
 
@@ -383,7 +381,7 @@ data:
 
     ### Custom — Full local templates, no upstream dep
 
-    `cloudflare-tunnel` (3 templates), `onedev` — vendored upstream chart + 4 local templates (SGCluster, SGPostgresConfig, SGPoolingConfig, ExternalSecret)
+    `cloudflare-tunnel` (3 templates)
 
     ### Hybrid — Upstream dep + local templates
 
@@ -543,7 +541,7 @@ data:
     - **Single umbrella chart**: `services/helm/istio/` bundles 3 upstream deps — `base` (CRDs), `istiod` (control plane), `ingress-gateway` — plus 7 local templates (Gateway, ClusterIssuer, Certificate, VirtualServices). No separate `istio-ingressgateway` chart.
     - **Ambient mode**: no sidecars. Label namespaces with `istio.io/dataplane-mode: ambient`
     - **Gateway**: `maklab-gateway` in `istio-system`, wildcard `*.${clusterDomain}`, TLS via cert-manager `wildcard-maklab-net-tls`
-    - **CF Access Zero Trust**: Services opt in via `gateways.enable_private: true` in ArgoCD values. Terraform `var.private_services` (default: `["grafana", "onedev", "argocd"]`) controls which hostnames get CF Access OAuth at the edge. Per-service `cloudflare_zero_trust_access_application` resources created via `for_each`. Each app auto-generates a unique AUD; all AUDs are stored as comma-separated string in Doppler (`CF_ACCESS_AUDS` → `ACCESS_AUDIENCE_TAG`). Istio's `request-authentication.yaml` validates against ALL AUDs using `splitList ","` range. Three istio templates enforce it:
+    - **CF Access Zero Trust**: Services opt in via `gateways.enable_private: true` in ArgoCD values. Terraform `var.private_services` (default: `["grafana", "argocd"]`) controls which hostnames get CF Access OAuth at the edge. Per-service `cloudflare_zero_trust_access_application` resources created via `for_each`. Each app auto-generates a unique AUD; all AUDs are stored as comma-separated string in Doppler (`CF_ACCESS_AUDS` → `ACCESS_AUDIENCE_TAG`). Istio's `request-authentication.yaml` validates against ALL AUDs using `splitList ","` range. Three istio templates enforce it:
       - `request-authentication.yaml` — validates CF Access JWT at ingress gateway via JWKS, supports multiple AUDs (comma-separated). **CRITICAL**: must use `fromHeaders` to extract JWT from `Cf-Access-Jwt-Assertion` header (CF Access does NOT use `Authorization: Bearer`).
       - `authorization-policy-private.yaml` — DENY requests without valid JWT per private host
 
@@ -605,7 +603,7 @@ data:
     | `svc_grafana` | kube-prometheus-stack |
     | `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel |
     | `svc_postgres_operator` | postgres-operator (StackGres) — `ADMIN_USER`, `ADMIN_PASSWORD` |
-    | `svc_onedev` | onedev (OneDev app) — `DB_PASSWORD`, `DB_USER`. `DB_PASSWORD` must match the StackGres-generated postgres superuser password (see Doppler Secrets Policy). |
+
 
     Additional zurabase stores exist at the ClusterSecretStore level (dev, stg, prd) for future use.
 
@@ -983,7 +981,6 @@ data:
     - **Helm/kubernetes providers** use `~/.kube/config` — Terraform must run from machine with k3d context (OrbStack).
     - **`TAILSCALE_HOST`** is typed `any` in variables.tf — be aware, defaults to no type validation.
     - **Volume expansion NOT supported on `local-path`**: The rancher.io/local-path provisioner does NOT support volume expansion. To resize a PVC, create a new larger PVC and manually copy data. This is a known limitation of the default k3s local-path provisioner. Longhorn (which supported expansion) was removed after failing on OrbStack.
-    - **onedev SGCluster sync wave**: `SGPostgresConfig`/`SGPoolingConfig` at wave 0, `SGCluster` at wave 1 (so configs exist before reference). The `postgresVersion` must be a numeric string (e.g. `"18"`), not `"latest"` — StackGres webhook rejects non-numeric.
     - **postgres-operator `skipCrds: true`**: CRDs are installed via `INSTALL_CRDS=true` env var, not Helm — prevents ArgoCD normalization errors on CRDs. Set in appset `syncOptions` and Helm chart values.
     - **`enable_public` and `enable_private` are mutually exclusive**: The `applications.yaml` template has a `fail` guard — both flags on the same service stops rendering with a clear error message.
     - **AuthorizationPolicy ZtunnelAccepted warning**: When creating a policy with HTTP attributes (`hosts`, `notRequestPrincipals`), Istio warns `"ztunnel does not support HTTP attributes"`. This is informational — the ingress gateway uses Envoy which handles L7 correctly. The ztunnel warning only affects mesh-internal traffic management.
