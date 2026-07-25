@@ -24,7 +24,7 @@ All-In-One DevOps Platform
 | database.host | string | `"onedev-mysql.onedev.svc.cluster.local"` | IP address or hostname of database |
 | database.maximumPoolSize | string | `"25"` | Database maximum pool size |
 | database.name | string | `"onedev"` | Name of the database |
-| database.password | string | `"changeit"` | Database password  |
+| database.password | string | `"changeit"` | Database password |
 | database.port | string | `"3306"` | Port Number |
 | database.type | string | `"mysql"` |  |
 | database.user | string | `"root"` | User with access to database |
@@ -66,7 +66,7 @@ All-In-One DevOps Platform
 | onedev.jvm.maxMemoryPercent | string | `"50"` |  |
 | onedev.jvm.threadStackSize | string | `"1024k"` |  |
 | onedev.replicas | int | `1` | Number of OneDev servers to run. With an enterprise license, you will be able to distribute different projects to different servers for horizontal scaling, as well as replicate project repositories and artifacts for high availability. Note that setting this param to 2 or more is only meaningful if you are connecting to external database; otherwise they simply run as independent OneDev instances |
-| onedev.trustCerts.secretName | string | `"onedev-trustcerts"` | Name of an existing secret containing trusted certificates. You may create the secret with "kubectl create secret generic onedev-trustcerts -n onedev --from-file=/path/to/trust-certs", where /path/to/trust-certs is a local directory contains all certificates to be trusted. Certificate should be  of base64 encoded PEM format beginning with "-----BEGIN CERTIFICATE-----" and ending with "-----END CERTIFICATE-----" |
+| onedev.trustCerts.secretName | string | `"onedev-trustcerts"` | Name of an existing secret containing trusted certificates. You may create the secret with "kubectl create secret generic onedev-trustcerts -n onedev --from-file=/path/to/trust-certs", where /path/to/trust-certs is a local directory contains all certificates to be trusted. Certificate should be of base64 encoded PEM format beginning with "-----BEGIN CERTIFICATE-----" and ending with "-----END CERTIFICATE-----" |
 | onedev.updateStrategy | object | `{"type":"RollingUpdate"}` | Valid options: `RollingUpdate`, `OnDelete` |
 | persistence.accessModes | string | `"ReadWriteOnce"` | Specify the accessModes for PersistentVolumeClaims. |
 | persistence.selector | object | `{}` | Specify the selectors for PersistentVolumeClaims. |
@@ -84,7 +84,7 @@ All-In-One DevOps Platform
 | service.externalTrafficPolicy | string | `""` | Specify the [externalTrafficPolicy](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip). |
 | service.ipFamilies | list | `[]` | Configure [IPv4/IPv6 dual-stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/). |
 | service.ipFamilyPolicy | string | `""` | Configure [IPv4/IPv6 dual-stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/). |
-| service.loadBalancerIP | string | `""` | Required: If service type is loadbalancer  [loadBalancerIP](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer). |
+| service.loadBalancerIP | string | `""` | Required: If service type is loadbalancer [loadBalancerIP](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer). |
 | service.nodePort | string | `""` | Specify a nodePort for servcie |
 | service.ports | object | `{"http":"","ssh":""}` | Manually change the ServicePorts |
 | service.separateSSH.annotations | object | `{}` |  |

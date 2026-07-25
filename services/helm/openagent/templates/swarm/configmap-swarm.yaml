@@ -215,7 +215,7 @@ data:
           - Acceptance criteria explicit?
           - Any ambiguous terms or undefined references?
 
-          Output: 
+          Output:
           - ✅ Approved | ❌ Changes requested | ⛔ Rejected
           - Line-item findings with required fixes
         profile: omo-reviewer

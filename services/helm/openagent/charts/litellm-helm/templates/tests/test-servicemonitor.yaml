@@ -16,17 +16,17 @@ spec:
         - |
           set -e
           echo "🔍 Testing ServiceMonitor configuration..."
-          
+
           # Check if ServiceMonitor exists
           if ! kubectl get servicemonitor {{ include "litellm.fullname" . }} -n {{ .Release.Namespace }} &>/dev/null; then
             echo "❌ ServiceMonitor not found"
             exit 1
           fi
           echo "✅ ServiceMonitor exists"
-          
+
           # Get ServiceMonitor YAML
           SM=$(kubectl get servicemonitor {{ include "litellm.fullname" . }} -n {{ .Release.Namespace }} -o yaml)
-          
+
           # Test endpoint configuration
           ENDPOINT_PORT=$(echo "$SM" | grep -A 5 "endpoints:" | grep "port:" | awk '{print $2}')
           if [ "$ENDPOINT_PORT" != "http" ]; then
@@ -34,7 +34,7 @@ spec:
             exit 1
           fi
           echo "✅ Endpoint port is correctly set to: $ENDPOINT_PORT"
-          
+
           # Test endpoint path
           ENDPOINT_PATH=$(echo "$SM" | grep -A 5 "endpoints:" | grep "path:" | awk '{print $2}')
           if [ "$ENDPOINT_PATH" != "/metrics/" ]; then
@@ -42,7 +42,7 @@ spec:
             exit 1
           fi
           echo "✅ Endpoint path is correctly set to: $ENDPOINT_PATH"
-          
+
           # Test interval
           INTERVAL=$(echo "$SM" | grep "interval:" | awk '{print $2}')
           if [ "$INTERVAL" != "{{ .Values.serviceMonitor.interval }}" ]; then
@@ -50,7 +50,7 @@ spec:
             exit 1
           fi
           echo "✅ Interval is correctly set to: $INTERVAL"
-          
+
           # Test scrapeTimeout
           TIMEOUT=$(echo "$SM" | grep "scrapeTimeout:" | awk '{print $2}')
           if [ "$TIMEOUT" != "{{ .Values.serviceMonitor.scrapeTimeout }}" ]; then
@@ -58,7 +58,7 @@ spec:
             exit 1
           fi
           echo "✅ ScrapeTimeout is correctly set to: $TIMEOUT"
-          
+
           # Test scheme
           SCHEME=$(echo "$SM" | grep "scheme:" | awk '{print $2}')
           if [ "$SCHEME" != "http" ]; then
@@ -66,7 +66,7 @@ spec:
             exit 1
           fi
           echo "✅ Scheme is correctly set to: $SCHEME"
-          
+
           {{- if .Values.serviceMonitor.labels }}
           # Test custom labels
           echo "🔍 Checking custom labels..."
@@ -79,7 +79,7 @@ spec:
           echo "✅ Label {{ $key }} is correctly set to: {{ $value }}"
           {{- end }}
           {{- end }}
-          
+
           {{- if .Values.serviceMonitor.annotations }}
           # Test annotations
           echo "🔍 Checking annotations..."
@@ -92,7 +92,7 @@ spec:
           echo "✅ Annotation {{ $key }} is correctly set to: {{ $value }}"
           {{- end }}
           {{- end }}
-          
+
           {{- if .Values.serviceMonitor.namespaceSelector.matchNames }}
           # Test namespace selector
           echo "🔍 Checking namespace selector..."
@@ -111,7 +111,7 @@ spec:
           fi
           echo "✅ Default namespace selector set to release namespace: {{ .Release.Namespace }}"
           {{- end }}
-          
+
           {{- if .Values.serviceMonitor.relabelings }}
           # Test relabelings
           echo "🔍 Checking relabelings configuration..."
@@ -137,16 +137,15 @@ spec:
           {{- end }}
           {{- end }}
           {{- end }}
-          
+
           # Test selector labels match the service
           echo "🔍 Checking selector labels match service..."
           SVC_LABELS=$(kubectl get svc {{ include "litellm.fullname" . }} -n {{ .Release.Namespace }} -o jsonpath='{.metadata.labels}')
           echo "Service labels: $SVC_LABELS"
           echo "✅ Selector labels validation passed"
-          
+
           echo ""
           echo "🎉 All ServiceMonitor tests passed successfully!"
   serviceAccountName: {{ include "litellm.serviceAccountName" . }}
   restartPolicy: Never
 {{- end }}
-

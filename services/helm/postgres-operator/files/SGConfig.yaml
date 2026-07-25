@@ -8,7 +8,7 @@ spec:
   names:
     kind: SGConfig
     listKind: SGConfigList
-    plural: sgconfigs 
+    plural: sgconfigs
     singular: sgconfig
   scope: Namespaced
   versions:
@@ -75,7 +75,7 @@ spec:
                 type: object
                 description: |
                   Section to configure namespaces that the operator is allowed to use. If allowedNamespaces is defined it will be used instead. If empty all namespaces will be allowed (default).
-                  
+
                   See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#labelselector-v1-meta
 
                   > This value can only be set in operator helm chart.
@@ -86,7 +86,7 @@ spec:
                 description: |
                   When set to `true` the creation of the operator ClusterRole and ClusterRoleBinding is disabled.
                    Also, when `true`, some features that rely on unnamespaced resources permissions will be disabled:
-                  
+
                   * Creation and upgrade of CustomResourceDefinitions
                   * Set CA bundle for Webhooks
                   * Check existence of CustomResourceDefinition when listing custom resources
@@ -95,9 +95,9 @@ spec:
                   * Other REST API endpoints will not work since they rely on impersonation that requires a cluster role.
                     This point in particular breaks the Web Console completely. You may still enable this specific cluster role with `.allowImpersonationForRestApi`.
                     If you do not need the Web Console you may still disable it completely by setting `.deploy.restapi` to `false`.
-                  
+
                   When set to `true` and `allowedNamespaces` is not set or is empty then `allowedNamespaces` will be considered set and containing only the namespace of the operator.
-                  
+
                   It is `false` by default.
 
                   > This value can only be set in operator helm chart.
@@ -105,7 +105,7 @@ spec:
                 type: boolean
                 description: |
                   When set to `true` the cluster role for impersonation will be created even if `disableClusterRole` is set to `true`.
-                  
+
                   It is `false` by default.
 
                   > This value can only be set in operator helm chart.
@@ -113,7 +113,7 @@ spec:
                 type: boolean
                 description: |
                   When set to `true` the cluster role to update or patch CRDs will be disabled.
-                  
+
                   It is `false` by default.
 
                   > This value can only be set in operator helm chart.
@@ -121,7 +121,7 @@ spec:
                 type: string
                 description: |
                   When set will indicate the namespace where the SGConfig used by the operator will be created.
-                  
+
                   By default the SGConfig will be created in the same namespace as the operator.
 
                   > This value can only be set in operator helm chart.
@@ -256,7 +256,7 @@ spec:
                     default: 8080
                     description: |
                       The port that the operator will use to listen for HTTP
-                      
+
                       > This value can only be set in operator helm chart or with the environment variable `OPERATOR_HTTP_PORT`.
                   internalHttpsPort:
                     type: integer
@@ -424,7 +424,7 @@ spec:
                   ports:
                   - name: prom-http
                     protocol: TCP
-                    containerPort: 9464    
+                    containerPort: 9464
                   config:
                     receivers:
                       otlp:
@@ -474,7 +474,7 @@ spec:
                   By default a single instance of OpenTelemetry Collector will receive metrics
                    from all monitored Pods and will then exports those metrics to
                    a configured target (by default will expose a Prometheus exporter).
-                  
+
                   See receivers section to scale this architecture to a set of OpenTelemetry Collectors.
                 properties:
                   name:
@@ -508,18 +508,18 @@ spec:
                         type: array
                         description: |
                           A set of separate Deployments of 1 instance each that allow to set the OpenTelemetry Collectors receivers to a specified number of instances.
-                          
+
                           When not set the number of Deployment of OpenTelemetry Collectors receivers will match the number of instances of all the existing SGClusters
                            that has the field `.spec.configurations.observability.enableMetrics` set to `true`. Also, when not set, each Deployment will include a pod
                            affinity rule matching any of the SGClusters Pods set defined below. This will allow to create an OpenTelemetry Collector receiver instance
                            dedicated to each SGCluster Pod running in the same Node.
-                          
+
                           Each Deployment will use a configuration for the OpenTelemetry Collector that will scrape from a set of SGClusters Pods that has the field
                            `.spec.configurations.observability.enableMetrics` set to `true`. The set of Pods of each of those OpenTelemetry Collector configuration
                            will be a partition of the list of SGClusters Pods that has the field `.spec.configurations.observability.enableMetrics` set to `true`
                            ordered by the field `Pod.metadata.creationTimestamp` (from the oldest to the newest) and ordered crescently alphabetically by the fields
                            `Pod.metadata.namespace` and `Pod.metadata.name`.
-                          
+
                           If is possible to override (even partially) the list of SGCluster Pods using the `sgClusters` section.
                         items:
                           type: object
@@ -543,7 +543,7 @@ spec:
                                     description: |
                                       The indexes of the SGCluster's Pods that will be included to the OpenTelemetry Collector configuration alongside
                                        the SGCluster Pods assigned as described in `SGConfig.spec.collector.receivers.deployments`.
-                                      
+
                                       If not specified all the SGCluster's Pods will be included.
                                     items:
                                       type: integer
@@ -649,15 +649,15 @@ spec:
                         description: |
                           If set to false or monitors is set automatic bind to Prometheus
                            created using the [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator) will be disabled.
-                          
+
                           If disabled the cluster will not be bound to Prometheus automatically and will require manual configuration.
-                          
+
                           Will be ignored if monitors is set.
                       monitors:
                         type: array
                         description: |
                           Optional section to configure PodMonitors for specific Prometheus instances
-                          
+
                           *WARNING*: resources created by this integration that does set
                            the metadata namespace to the same as the operator will not
                            be removed when removing the helm chart. Changing the namespace
@@ -898,19 +898,19 @@ spec:
                     default: admin
                     description: |
                       The admin username that will be created for the Web Console
-                      
+
                       Operator bundle installation can not change the default value of this field.
                   password:
                     type: string
                     description: |
                       The admin password that will be created for the Web Console.
-                      
+
                       If not specified a random password will be generated.
                   secretRef:
                     type: object
                     description: |
                       Allow to specify a reference to a Secret with the admin user credentials for the Web Console.
-                      
+
                       In order to assign properly permissions. Make sure the `user` field match the value of the `k8sUsername` key in the referenced Secret.
                     properties:
                       name:
@@ -947,15 +947,15 @@ spec:
                 type: object
                 description: |
                   **Deprecated** this section has been replaced by `.spec.collector.prometheusOperator`.
-                  
+
                   Section to configure Prometheus integration.
-                properties: 
+                properties:
                   allowAutobind:
                     type: boolean
                     default: true
                     description: |
                       **Deprecated** this field has been replaced by `.spec.collector.prometheusOperator.allowDiscovery`.
-  
+
                       If set to false disable automatic bind to Prometheus
                         created using the [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator).
                       If disabled the cluster will not be bound to Prometheus automatically and will require manual
@@ -969,7 +969,7 @@ spec:
                     default: false
                     description: |
                       When set to `true` embed automatically Grafana into the Web Console by creating the
-                       StackGres dashboard and the read-only role used to read it from the Web Console 
+                       StackGres dashboard and the read-only role used to read it from the Web Console
                   schema:
                     type: string
                     default: http
@@ -980,8 +980,8 @@ spec:
                     type: string
                     description: |
                       The service host name to access grafana (used to embed manually and
-                       automatically Grafana). 
-                      The parameter value should point to the grafana service following the 
+                       automatically Grafana).
+                      The parameter value should point to the grafana service following the
                        [DNS reference](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/) `svc_name.namespace`
                   datasourceName:
                     type: string
@@ -1032,7 +1032,7 @@ spec:
                        Grafana)
 
                       Manual Steps:
-                       
+
                       Create grafana dashboard for postgres exporter and copy/paste share URL:
                       - Grafana > Create > Import > Grafana.com Dashboard 9628
                       Copy/paste grafana dashboard URL for postgres exporter:
@@ -1049,7 +1049,7 @@ spec:
                        in Grafana (used to embed manually Grafana)
 
                       Manual Steps:
-                       
+
                       Create and copy/paste grafana API token:
                       - Grafana > Configuration > API Keys > Add API key (for viewer) > Copy key value
               extensions:
@@ -1062,12 +1062,12 @@ spec:
                     - https://extensions.stackgres.io/postgres/repository
                     description: |
                       A list of extensions repository URLs used to retrieve extensions
-                      
+
                       To set a proxy for extensions repository add parameter proxyUrl to the URL:
                           `https://extensions.stackgres.io/postgres/repository?proxyUrl=<proxy scheme>%3A%2F%2F<proxy host>[%3A<proxy port>]` (URL encoded)
-                      
+
                       Other URL parameters are:
-                      
+
                       * `skipHostnameVerification`: set it to `true` in order to use a server or a proxy with a self signed certificate
                       * `retry`: set it to `<max retries>[:<sleep before next retry>]` in order to retry a request on failure
                       * `setHttpScheme`: set it to `true` in order to force using HTTP scheme
@@ -1077,7 +1077,7 @@ spec:
                     type: object
                     description: |
                       Section to configure extensions cache (experimental).
-                      
+
                       This feature is in beta and may cause failures, please use with caution and report any
                        error to https://gitlab.com/ongresinc/stackgres/-/issues/new
                     properties:
@@ -1086,7 +1086,7 @@ spec:
                         default: false
                         description: |
                           When set to `true` enable the extensions cache.
-                          
+
                           This feature is in beta and may cause failures, please use with caution and report any
                            error to https://gitlab.com/ongresinc/stackgres/-/issues/new
                       preloadedExtensions:
@@ -1106,7 +1106,7 @@ spec:
                             default: 1Gi
                             description: |
                               The PersistentVolume size for the extensions cache
-                              
+
                               Only use whole numbers (e.g. not 1e6) and K/Ki/M/Mi/G/Gi as units
                           storageClass:
                             type: string
@@ -1130,7 +1130,7 @@ spec:
                     type: object
                     description: |
                       Section to configure ServiceAccount used by ShardingSphere operator.
-                      
+
                       You may configure a specific value for a sharded cluster under section
                        `SGShardedCluster.spec.coordinator.configurations.shardingSphere.serviceAccount`.
                     required: [namespace,name]
@@ -1146,7 +1146,7 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
                 description: |
                   Section to configure developer options.
-                  
+
                   Following options are for developers only, but can also be useful in some cases ;)
                 properties:
                   version:

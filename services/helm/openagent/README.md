@@ -2,226 +2,373 @@
 
 ![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
-Umbrella chart for the openagent stack — Hermes Agent (gateway + Discord bot),
-Hermes Workspace (swarm controller + UI), LiteLLM gateway, and Headroom proxy.
-All components deployed via upstream deps and subcharts.
+Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy,
+Discord bot, and Sympozium CRDs (Ensemble, SkillPacks). All components
+deployed via upstream deps and subcharts. Only CRDs + shared resources
+remain as local templates.
 
 ## Maintainers
 
-No active maintainers.
+| Name | Email | Url |
+| ---- | ------ | --- |
+| local |  |  |
 
-## Dependencies
+## Requirements
 
-| Dependency | Version | Repository | Description |
-|-----------|---------|------------|-------------|
-| hermes-agent | 0.9.1 | https://jyje.github.io/hermes-agent-helm | Hermes Agent gateway + Discord bot |
-| hermes-workspace | 0.1.0 | file://charts/hermes-workspace | Swarm controller + Web UI |
-| litellm-helm | 1.92.0 | file://charts/litellm-helm | Multi-provider LLM gateway |
-| openagent-component | 0.1.0 | file://charts/openagent-component | Headroom proxy (bot disabled) |
-
-## Under the Hood
-
-The umbrella chart consists of four layers:
-
-1. **Hermes Agent** (upstream dependency): Gateway + Dashboard + Discord bot. Configured via `hermes.*` in values.yaml.
-
-2. **Hermes Workspace** (custom subchart): Swarm controller with 9 OMO-mapped workers + Web UI. Configured via `hermes-workspace.*` in values.yaml.
-
-3. **LiteLLM** (upstream dependency): Multi-provider LLM gateway with model routing, fallbacks, and key management. Configured via `litellm.*` in values.yaml.
-
-4. **OpenAgent Component** (subchart): Headroom proxy with SQLite CCR cache. Bot is disabled (replaced by Hermes Discord bot). Configured via `openagent-component.*` in values.yaml.
-
-5. **Local templates**: Shared resources:
-   - `templates/db/` — StackGres CRDs (SGCluster, SGPostgresConfig, SGPoolingConfig)
-   - `templates/shared/` — Shared ExternalSecret, GHCR pull secret, VPA, helpers
-   - `templates/swarm/` — Swarm ConfigMap (9 OMO-mapped workers)
-
-### LLM Routing
-
-All LLM traffic follows this path:
-
-```
-Discord User
-  → Hermes Agent Discord Bot (built-in)
-    → Hermes Gateway (port 8642)
-      → Hermes Workspace (swarm controller, port 3000)
-        → Swarm Workers (9 OMO-mapped personas via tmux)
-      → LiteLLM (port 4000)
-        → Provider APIs
-```
-
-The headroom proxy provides a SQLite CCR (Cache-Clause-Response) cache.
-LiteLLM manages 12 models across 5 providers with configurable fallbacks.
-
-## Setup
-
-### Namespace
-All components deploy to the `openagent` namespace (configurable via `.Values.namespace`).
-
-### Secrets
-The chart expects an `openagent-secrets` ExternalSecret pulling from Doppler config `svc_openagent`. Provider keys flow through this secret.
-
-### ArgoCD Sync
-The chart includes sync-wave annotations:
-- Wave -2: GHCR pull secret
-- Wave -1: ExternalSecrets
-- Wave 1: Infrastructure (services, PVCs, RBAC, StackGres)
-- Wave 2: Deployments, VPAs, CRDs
+| Repository | Name | Version |
+|------------|------|---------|
+| file://charts/hermes-agent | hermes(hermes-agent) | 0.9.1 |
+| file://charts/hermes-workspace | hermes-workspace | 0.1.0 |
+| file://charts/litellm-helm | litellm(litellm-helm) | 1.92.0 |
+| file://charts/openagent-component | openagent-component | 0.1.0 |
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| clusterDomain | string | `"maklab.net"` | Cluster domain for DNS |
-| dopplerConfig | string | `"svc_openagent"` | Doppler config for ExternalSecrets |
-| namespace | string | `"openagent"` | Target namespace |
-| ghcrPullSecret | string | `""` | GHCR pull secret (base64) |
-| storageClass | string | `"local-path"` | Default storage class |
-| hermes.enabled | bool | `true` | Enable Hermes Agent |
-| hermes.config.model.provider | string | `"litellm"` | LLM provider |
-| hermes.config.providers.litellm.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` | LiteLLM endpoint |
-| hermes.env | object | `{}` | Environment variables (LITELLM_MASTER_KEY comes from secret) |
-| hermes.extraEnvFrom | list | `[secretRef: openagent-secrets]` | Additional secrets |
-| hermes-workspace.enabled | bool | `true` | Enable Hermes Workspace |
-| litellm.enabled | bool | `true` | Enable LiteLLM upstream chart |
-| litellm.nameOverride | string | `"openagent-litellm"` | LiteLLM service name |
-| litellm.image.repository | string | `"ghcr.io/berriai/litellm"` | LiteLLM image |
-| litellm.image.tag | string | `"main-stable"` | LiteLLM image tag |
-| litellm.service.port | int | `4000` | LiteLLM service port |
-| litellm.resources.requests.cpu | string | `"100m"` | LiteLLM CPU request |
-| litellm.resources.requests.memory | string | `"256Mi"` | LiteLLM memory request |
-| litellm.resources.limits.cpu | string | `"2000m"` | LiteLLM CPU limit |
-| litellm.resources.limits.memory | string | `"2Gi"` | LiteLLM memory limit |
-| litellm.db.deployStandalone | bool | `false` | Use existing PostgreSQL |
-| litellm.db.useExisting | bool | `true` | Use existing PostgreSQL |
-| litellm.db.endpoint | string | `"openagent-pg-openagent-pg.openagent.svc.cluster.local"` | PostgreSQL endpoint |
-| litellm.db.database | string | `"litellm"` | LiteLLM database name |
-| litellm.db.secret.name | string | `"openagent-litellm-secrets"` | DB secret name |
-| litellm.masterkeySecretName | string | `"openagent-litellm-secrets"` | Master key secret |
-| litellm.environmentSecrets | list | `["openagent-secrets"]` | Additional secrets |
-| litellm.proxy_config | object | `{}` | LiteLLM proxy config (model_list, fallbacks, etc.) |
-| component.enabled | bool | `true` | Enable component subchart |
-| openagent-component.headroom.enabled | bool | `true` | Enable headroom proxy |
-| openagent-component.headroom.image.repository | string | `"ghcr.io/chopratejas/headroom"` | Headroom image |
-| openagent-component.headroom.image.tag | string | `"latest"` | Headroom image tag |
-| openagent-component.headroom.service.port | int | `8787` | Headroom service port |
-| openagent-component.headroom.resources.requests.cpu | string | `"200m"` | Headroom CPU request |
-| openagent-component.headroom.resources.requests.memory | string | `"512Mi"` | Headroom memory request |
-| openagent-component.headroom.storage.size | string | `"2Gi"` | Headroom PVC size |
-| openagent-component.headroom.storage.accessMode | string | `"ReadWriteOnce"` | Headroom PVC access mode |
-| openagent-component.headroom.litellmUrl | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` | Upstream LiteLLM URL |
-| openagent-component.bot.enabled | bool | `false` | Enable Discord bot (disabled, using Hermes) |
-| postgres.enabled | bool | `true` | Enable StackGres cluster |
-| postgres.clusterName | string | `"openagent-pg"` | StackGres cluster name |
-| postgres.instances | int | `1` | PostgreSQL instances |
-| postgres.storage | string | `"5Gi"` | PostgreSQL storage size |
-| postgres.version | string | `"18"` | PostgreSQL version |
-| postgres.profile | string | `"development"` | Postgres profile |
-| dashboard.subdomain | string | `"openagent"` | Dashboard subdomain |
-| dashboard.destination.host | string | `"openagent-hermes-workspace.openagent.svc.cluster.local"` | Dashboard upstream host |
-| dashboard.destination.port | int | `3000` | Dashboard upstream port |
-| vpa.enabled | bool | `true` | Enable controller VPA |
+| claudeProxy.enabled | bool | `true` |  |
+| claudeProxy.image.pullPolicy | string | `"IfNotPresent"` |  |
+| claudeProxy.image.repository | string | `"ghcr.io/jomakori/claude-proxy"` |  |
+| claudeProxy.image.tag | string | `"latest"` |  |
+| claudeProxy.resources.limits.cpu | string | `"1000m"` |  |
+| claudeProxy.resources.limits.memory | string | `"1Gi"` |  |
+| claudeProxy.resources.requests.cpu | string | `"100m"` |  |
+| claudeProxy.resources.requests.memory | string | `"256Mi"` |  |
+| claudeProxy.service.port | int | `4523` |  |
+| clusterDomain | string | `"maklab.net"` |  |
+| component.enabled | bool | `true` |  |
+| dashboard.destination.host | string | `"openagent-hermes-workspace.openagent.svc.cluster.local"` |  |
+| dashboard.destination.port | int | `3000` |  |
+| dashboard.subdomain | string | `"openagent"` |  |
+| dopplerConfig | string | `"svc_openagent"` |  |
+| ghcrPullSecret | string | `""` |  |
+| global | object | `{}` |  |
+| hermes-workspace.enabled | bool | `true` |  |
+| hermes.command[0] | string | `"sh"` |  |
+| hermes.command[1] | string | `"-c"` |  |
+| hermes.command[2] | string | `"npm install -g @bitwarden/cli 2>&1\nexec /init hermes gateway run\n"` |  |
+| hermes.config.mcp_servers.argocd.args[0] | string | `"-y"` |  |
+| hermes.config.mcp_servers.argocd.args[1] | string | `"argocd-mcp@latest"` |  |
+| hermes.config.mcp_servers.argocd.args[2] | string | `"stdio"` |  |
+| hermes.config.mcp_servers.argocd.command | string | `"npx"` |  |
+| hermes.config.mcp_servers.argocd.env.ARGOCD_API_TOKEN | string | `"${MCP_ARGOCD_TOKEN}"` |  |
+| hermes.config.mcp_servers.argocd.env.ARGOCD_BASE_URL | string | `"${MCP_ARGOCD_URL}"` |  |
+| hermes.config.mcp_servers.argocd.tools.prompts | bool | `false` |  |
+| hermes.config.mcp_servers.argocd.tools.resources | bool | `false` |  |
+| hermes.config.mcp_servers.bitwarden.args[0] | string | `"-c"` |  |
+| hermes.config.mcp_servers.bitwarden.args[1] | string | `"BW_CLIENTID=$BW_CLIENTID BW_CLIENTSECRET=$BW_CLIENTSECRET bw login --apikey 2>/dev/null\nexport BW_SESSION=$(BW_PASSWORD=$BW_PASSWORD bw unlock --passwordenv BW_PASSWORD 2>/dev/null | grep \"BW_SESSION=\" | sed \"s/.*BW_SESSION=\\\"//;s/\\\".*//\")\nexec npx -y @bitwarden/mcp-server\n"` |  |
+| hermes.config.mcp_servers.bitwarden.command | string | `"sh"` |  |
+| hermes.config.mcp_servers.bitwarden.env.BW_CLIENTID | string | `"${BW_CLIENTID}"` |  |
+| hermes.config.mcp_servers.bitwarden.env.BW_CLIENTSECRET | string | `"${BW_CLIENTSECRET}"` |  |
+| hermes.config.mcp_servers.bitwarden.env.BW_PASSWORD | string | `"${BW_PASSWORD}"` |  |
+| hermes.config.mcp_servers.bitwarden.tools.prompts | bool | `false` |  |
+| hermes.config.mcp_servers.bitwarden.tools.resources | bool | `false` |  |
+| hermes.config.mcp_servers.doppler.args[0] | string | `"-y"` |  |
+| hermes.config.mcp_servers.doppler.args[1] | string | `"@dopplerhq/mcp-server"` |  |
+| hermes.config.mcp_servers.doppler.command | string | `"npx"` |  |
+| hermes.config.mcp_servers.doppler.env.DOPPLER_TOKEN | string | `"${MCP_DOPPLER_TOKEN}"` |  |
+| hermes.config.mcp_servers.doppler.tools.prompts | bool | `false` |  |
+| hermes.config.mcp_servers.doppler.tools.resources | bool | `false` |  |
+| hermes.config.mcp_servers.ferryhopper.timeout | int | `60` |  |
+| hermes.config.mcp_servers.ferryhopper.tools.prompts | bool | `false` |  |
+| hermes.config.mcp_servers.ferryhopper.tools.resources | bool | `false` |  |
+| hermes.config.mcp_servers.ferryhopper.url | string | `"https://mcp.ferryhopper.com/mcp"` |  |
+| hermes.config.mcp_servers.github.args[0] | string | `"-y"` |  |
+| hermes.config.mcp_servers.github.args[1] | string | `"@modelcontextprotocol/server-github"` |  |
+| hermes.config.mcp_servers.github.command | string | `"npx"` |  |
+| hermes.config.mcp_servers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN | string | `"${MCP_GITHUB_TOKEN}"` |  |
+| hermes.config.mcp_servers.github.env.npm_config_loglevel | string | `"error"` |  |
+| hermes.config.mcp_servers.github.tools.include[0] | string | `"list_issues"` |  |
+| hermes.config.mcp_servers.github.tools.include[1] | string | `"create_issue"` |  |
+| hermes.config.mcp_servers.github.tools.include[2] | string | `"update_issue"` |  |
+| hermes.config.mcp_servers.github.tools.include[3] | string | `"search_code"` |  |
+| hermes.config.mcp_servers.github.tools.include[4] | string | `"search_repositories"` |  |
+| hermes.config.mcp_servers.github.tools.include[5] | string | `"get_file_contents"` |  |
+| hermes.config.mcp_servers.github.tools.prompts | bool | `false` |  |
+| hermes.config.mcp_servers.github.tools.resources | bool | `false` |  |
+| hermes.config.mcp_servers.google-workspace.args[0] | string | `"workspace-mcp"` |  |
+| hermes.config.mcp_servers.google-workspace.args[1] | string | `"--tool-tier"` |  |
+| hermes.config.mcp_servers.google-workspace.args[2] | string | `"complete"` |  |
+| hermes.config.mcp_servers.google-workspace.command | string | `"uvx"` |  |
+| hermes.config.mcp_servers.google-workspace.env.GOOGLE_OAUTH_CLIENT_ID | string | `"${GOOGLE_OAUTH_CLIENT_ID}"` |  |
+| hermes.config.mcp_servers.google-workspace.env.GOOGLE_OAUTH_CLIENT_SECRET | string | `"${GOOGLE_OAUTH_CLIENT_SECRET}"` |  |
+| hermes.config.mcp_servers.grafana.args[0] | string | `"-y"` |  |
+| hermes.config.mcp_servers.grafana.args[1] | string | `"@leval/mcp-grafana"` |  |
+| hermes.config.mcp_servers.grafana.command | string | `"npx"` |  |
+| hermes.config.mcp_servers.grafana.env.GRAFANA_SERVICE_ACCOUNT_TOKEN | string | `"${MCP_GRAFANA_TOKEN}"` |  |
+| hermes.config.mcp_servers.grafana.env.GRAFANA_URL | string | `"${MCP_GRAFANA_URL}"` |  |
+| hermes.config.mcp_servers.grafana.tools.prompts | bool | `false` |  |
+| hermes.config.mcp_servers.grafana.tools.resources | bool | `false` |  |
+| hermes.config.mcp_servers.kiwi.timeout | int | `60` |  |
+| hermes.config.mcp_servers.kiwi.tools.prompts | bool | `false` |  |
+| hermes.config.mcp_servers.kiwi.tools.resources | bool | `false` |  |
+| hermes.config.mcp_servers.kiwi.url | string | `"https://mcp.kiwi.com"` |  |
+| hermes.config.mcp_servers.kubectl.timeout | int | `60` |  |
+| hermes.config.mcp_servers.kubectl.tools.prompts | bool | `false` |  |
+| hermes.config.mcp_servers.kubectl.tools.resources | bool | `false` |  |
+| hermes.config.mcp_servers.kubectl.url | string | `"http://kubernetes-mcp-server.openagent.svc.cluster.local:8000/mcp"` |  |
+| hermes.config.mcp_servers.skiplagged.timeout | int | `60` |  |
+| hermes.config.mcp_servers.skiplagged.tools.prompts | bool | `false` |  |
+| hermes.config.mcp_servers.skiplagged.tools.resources | bool | `false` |  |
+| hermes.config.mcp_servers.skiplagged.url | string | `"https://mcp.skiplagged.com/mcp"` |  |
+| hermes.config.model.default | string | `"deepseek-v4-flash"` |  |
+| hermes.config.model.provider | string | `"litellm"` |  |
+| hermes.config.plugins.enabled[0] | string | `"discord-platform"` |  |
+| hermes.config.providers.litellm.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
+| hermes.config.providers.litellm.discover_models | bool | `true` |  |
+| hermes.config.providers.litellm.key_env | string | `"LITELLM_MASTER_KEY"` |  |
+| hermes.enabled | bool | `true` |  |
+| hermes.env | object | `{}` |  |
+| hermes.extraContainers[0].args[0] | string | `"echo 'server {\n  listen 9119;\n  location / {\n    proxy_pass http://127.0.0.1:19119;\n    proxy_set_header Host 127.0.0.1;\n    proxy_set_header X-Forwarded-Host $host;\n    proxy_set_header X-Forwarded-Proto $scheme;\n    proxy_http_version 1.1;\n    proxy_set_header Upgrade $http_upgrade;\n    proxy_set_header Connection \"upgrade\";\n  }\n}' > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'\n"` |  |
+| hermes.extraContainers[0].command[0] | string | `"sh"` |  |
+| hermes.extraContainers[0].command[1] | string | `"-c"` |  |
+| hermes.extraContainers[0].image | string | `"nginx:alpine"` |  |
+| hermes.extraContainers[0].imagePullPolicy | string | `"IfNotPresent"` |  |
+| hermes.extraContainers[0].name | string | `"dashboard-proxy"` |  |
+| hermes.extraContainers[0].resources.limits.cpu | string | `"100m"` |  |
+| hermes.extraContainers[0].resources.limits.memory | string | `"64Mi"` |  |
+| hermes.extraContainers[0].resources.requests.cpu | string | `"10m"` |  |
+| hermes.extraContainers[0].resources.requests.memory | string | `"32Mi"` |  |
+| hermes.extraEnvFrom[0].secretRef.name | string | `"openagent-secrets"` |  |
+| hermes.extraEnv[0].name | string | `"DISCORD_BOT_TOKEN"` |  |
+| hermes.extraEnv[0].valueFrom.secretKeyRef.key | string | `"DISCORD_BOT_TOKEN"` |  |
+| hermes.extraEnv[0].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
+| hermes.extraEnv[10].name | string | `"DASHBOARD_BASE_URL"` |  |
+| hermes.extraEnv[10].value | string | `"https://openagent.maklab.net"` |  |
+| hermes.extraEnv[1].name | string | `"DISCORD_BOT_CLIENT_ID"` |  |
+| hermes.extraEnv[1].valueFrom.secretKeyRef.key | string | `"DISCORD_BOT_CLIENT_ID"` |  |
+| hermes.extraEnv[1].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
+| hermes.extraEnv[2].name | string | `"HERMES_DASHBOARD"` |  |
+| hermes.extraEnv[2].value | string | `"1"` |  |
+| hermes.extraEnv[3].name | string | `"HERMES_DASHBOARD_HOST"` |  |
+| hermes.extraEnv[3].value | string | `"127.0.0.1"` |  |
+| hermes.extraEnv[4].name | string | `"HERMES_DASHBOARD_PORT"` |  |
+| hermes.extraEnv[4].value | string | `"19119"` |  |
+| hermes.extraEnv[5].name | string | `"DISCORD_ALLOW_ALL_USERS"` |  |
+| hermes.extraEnv[5].value | string | `"true"` |  |
+| hermes.extraEnv[6].name | string | `"API_SERVER_ENABLED"` |  |
+| hermes.extraEnv[6].value | string | `"true"` |  |
+| hermes.extraEnv[7].name | string | `"API_SERVER_KEY"` |  |
+| hermes.extraEnv[7].value | string | `"***REMOVED***"` |  |
+| hermes.extraEnv[8].name | string | `"API_SERVER_HOST"` |  |
+| hermes.extraEnv[8].value | string | `"0.0.0.0"` |  |
+| hermes.extraEnv[9].name | string | `"API_SERVER_PORT"` |  |
+| hermes.extraEnv[9].value | string | `"8642"` |  |
+| hermes.extraVolumeMounts[0].mountPath | string | `"/opt/data/hooks/discord-session-link"` |  |
+| hermes.extraVolumeMounts[0].name | string | `"hermes-hooks"` |  |
+| hermes.extraVolumeMounts[0].readOnly | bool | `true` |  |
+| hermes.extraVolumeMounts[1].mountPath | string | `"/opt/data/memories/k8s-gitops-context.md"` |  |
+| hermes.extraVolumeMounts[1].name | string | `"k8s-gitops-context"` |  |
+| hermes.extraVolumeMounts[1].readOnly | bool | `true` |  |
+| hermes.extraVolumeMounts[1].subPath | string | `"k8s-gitops-context.md"` |  |
+| hermes.extraVolumes[0].configMap.name | string | `"openagent-hermes-hooks"` |  |
+| hermes.extraVolumes[0].name | string | `"hermes-hooks"` |  |
+| hermes.extraVolumes[1].configMap.name | string | `"openagent-k8s-gitops-context"` |  |
+| hermes.extraVolumes[1].name | string | `"k8s-gitops-context"` |  |
+| hermes.service.enabled | bool | `true` |  |
+| hermes.service.extraPorts[0].name | string | `"api-server"` |  |
+| hermes.service.extraPorts[0].port | int | `8642` |  |
+| hermes.service.port | int | `9119` |  |
+| litellm.db.database | string | `"litellm"` |  |
+| litellm.db.deployStandalone | bool | `false` |  |
+| litellm.db.endpoint | string | `"openagent-pg.openagent.svc.cluster.local"` |  |
+| litellm.db.secret.name | string | `"openagent-litellm-secrets"` |  |
+| litellm.db.secret.passwordKey | string | `"OPENAGENT_PG_PASSWORD"` |  |
+| litellm.db.secret.usernameKey | string | `"OPENAGENT_PG_USER"` |  |
+| litellm.db.useExisting | bool | `true` |  |
+| litellm.enabled | bool | `true` |  |
+| litellm.environmentSecrets[0] | string | `"openagent-secrets"` |  |
+| litellm.fullnameOverride | string | `"openagent-litellm"` |  |
+| litellm.image.pullPolicy | string | `"IfNotPresent"` |  |
+| litellm.image.repository | string | `"ghcr.io/berriai/litellm"` |  |
+| litellm.image.tag | string | `"main-stable"` |  |
+| litellm.masterkeySecretKey | string | `"masterkey"` |  |
+| litellm.masterkeySecretName | string | `"openagent-litellm-masterkey"` |  |
+| litellm.proxy_config.fallbacks[0].opencode/big-pickle[0] | string | `"deepseek-v4-flash"` |  |
+| litellm.proxy_config.fallbacks[10].minimax/M3[0] | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.fallbacks[10].minimax/M3[1] | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.fallbacks[11]."minimax/M2.7"[0] | string | `"deepseek-v4-flash"` |  |
+| litellm.proxy_config.fallbacks[11]."minimax/M2.7"[1] | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.fallbacks[12].claude/sonnet-5[0] | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.fallbacks[12].claude/sonnet-5[1] | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.fallbacks[13].claude/sonnet-4[0] | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.fallbacks[13].claude/sonnet-4[1] | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.fallbacks[14].claude/opus-4[0] | string | `"claude/sonnet-5"` |  |
+| litellm.proxy_config.fallbacks[14].claude/opus-4[1] | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.fallbacks[1].opencode/north-mini-code-free[0] | string | `"deepseek-v4-flash"` |  |
+| litellm.proxy_config.fallbacks[2].opencode/deepseek-v4-flash-free[0] | string | `"deepseek-v4-flash"` |  |
+| litellm.proxy_config.fallbacks[3]."opencode/mimo-v2.5-free"[0] | string | `"deepseek-v4-flash"` |  |
+| litellm.proxy_config.fallbacks[4].anthropic/claude-opus-4-7[0] | string | `"claude/opus-4"` |  |
+| litellm.proxy_config.fallbacks[4].anthropic/claude-opus-4-7[1] | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.fallbacks[5]."moonshotai/kimi-k2.6"[0] | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.fallbacks[5]."moonshotai/kimi-k2.6"[1] | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.fallbacks[6].deepseek-v4-flash[0] | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.fallbacks[6].deepseek-v4-flash[1] | string | `"opencode/deepseek-v4-flash-free"` |  |
+| litellm.proxy_config.fallbacks[7].deepseek-v4-pro[0] | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.fallbacks[7].deepseek-v4-pro[1] | string | `"deepseek-v4-flash"` |  |
+| litellm.proxy_config.fallbacks[8]."zai/glm-4.7"[0] | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.fallbacks[8]."zai/glm-4.7"[1] | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.fallbacks[9]."zai/glm-4.7-flash"[0] | string | `"deepseek-v4-flash"` |  |
+| litellm.proxy_config.fallbacks[9]."zai/glm-4.7-flash"[1] | string | `"opencode/deepseek-v4-flash-free"` |  |
+| litellm.proxy_config.general_settings.master_key | string | `"os.environ/LITELLM_MASTER_KEY"` |  |
+| litellm.proxy_config.model_list[0].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
+| litellm.proxy_config.model_list[0].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
+| litellm.proxy_config.model_list[0].litellm_params.model | string | `"openai/big-pickle"` |  |
+| litellm.proxy_config.model_list[0].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[0].model_name | string | `"opencode/big-pickle"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.api_key | string | `"os.environ/ZAI_API_KEY"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.model | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[10].model_name | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.model_list[11].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[11].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[11].litellm_params.order | int | `2` |  |
+| litellm.proxy_config.model_list[11].model_name | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.model_list[12].litellm_params.api_key | string | `"os.environ/ZAI_API_KEY"` |  |
+| litellm.proxy_config.model_list[12].litellm_params.model | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.model_list[12].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[12].model_name | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.model | string | `"deepseek/deepseek-v4-flash"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.order | int | `2` |  |
+| litellm.proxy_config.model_list[13].model_name | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.api_base | string | `"os.environ/MINIMAX_API_BASE"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.api_key | string | `"os.environ/MINIMAX_API_KEY"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.model | string | `"openai/MiniMax-M3"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[14].model_name | string | `"minimax/M3"` |  |
+| litellm.proxy_config.model_list[15].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[15].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[15].litellm_params.order | int | `2` |  |
+| litellm.proxy_config.model_list[15].model_name | string | `"minimax/M3"` |  |
+| litellm.proxy_config.model_list[16].litellm_params.api_base | string | `"os.environ/MINIMAX_API_BASE"` |  |
+| litellm.proxy_config.model_list[16].litellm_params.api_key | string | `"os.environ/MINIMAX_API_KEY"` |  |
+| litellm.proxy_config.model_list[16].litellm_params.model | string | `"openai/MiniMax-M2.7"` |  |
+| litellm.proxy_config.model_list[16].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[16].model_name | string | `"minimax/M2.7"` |  |
+| litellm.proxy_config.model_list[17].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[17].litellm_params.model | string | `"deepseek/deepseek-v4-flash"` |  |
+| litellm.proxy_config.model_list[17].litellm_params.order | int | `2` |  |
+| litellm.proxy_config.model_list[17].model_name | string | `"minimax/M2.7"` |  |
+| litellm.proxy_config.model_list[18].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
+| litellm.proxy_config.model_list[18].litellm_params.api_key | string | `"os.environ/CLAUDE_PROXY_API_KEY"` |  |
+| litellm.proxy_config.model_list[18].litellm_params.model | string | `"openai/claude-sonnet-5"` |  |
+| litellm.proxy_config.model_list[18].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[18].model_name | string | `"claude/sonnet-5"` |  |
+| litellm.proxy_config.model_list[19].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[19].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[19].litellm_params.order | int | `2` |  |
+| litellm.proxy_config.model_list[19].model_name | string | `"claude/sonnet-5"` |  |
+| litellm.proxy_config.model_list[1].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
+| litellm.proxy_config.model_list[1].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
+| litellm.proxy_config.model_list[1].litellm_params.model | string | `"openai/north-mini-code-free"` |  |
+| litellm.proxy_config.model_list[1].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[1].model_name | string | `"opencode/north-mini-code-free"` |  |
+| litellm.proxy_config.model_list[20].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
+| litellm.proxy_config.model_list[20].litellm_params.api_key | string | `"os.environ/CLAUDE_PROXY_API_KEY"` |  |
+| litellm.proxy_config.model_list[20].litellm_params.model | string | `"openai/claude-sonnet-4"` |  |
+| litellm.proxy_config.model_list[20].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[20].model_name | string | `"claude/sonnet-4"` |  |
+| litellm.proxy_config.model_list[21].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[21].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[21].litellm_params.order | int | `2` |  |
+| litellm.proxy_config.model_list[21].model_name | string | `"claude/sonnet-4"` |  |
+| litellm.proxy_config.model_list[22].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
+| litellm.proxy_config.model_list[22].litellm_params.api_key | string | `"os.environ/CLAUDE_PROXY_API_KEY"` |  |
+| litellm.proxy_config.model_list[22].litellm_params.model | string | `"openai/claude-opus-4"` |  |
+| litellm.proxy_config.model_list[22].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[22].model_name | string | `"claude/opus-4"` |  |
+| litellm.proxy_config.model_list[23].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[23].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[23].litellm_params.order | int | `2` |  |
+| litellm.proxy_config.model_list[23].model_name | string | `"claude/opus-4"` |  |
+| litellm.proxy_config.model_list[2].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
+| litellm.proxy_config.model_list[2].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
+| litellm.proxy_config.model_list[2].litellm_params.model | string | `"openai/deepseek-v4-flash-free"` |  |
+| litellm.proxy_config.model_list[2].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[2].model_name | string | `"opencode/deepseek-v4-flash-free"` |  |
+| litellm.proxy_config.model_list[3].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
+| litellm.proxy_config.model_list[3].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
+| litellm.proxy_config.model_list[3].litellm_params.model | string | `"openai/mimo-v2.5-free"` |  |
+| litellm.proxy_config.model_list[3].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[3].model_name | string | `"opencode/mimo-v2.5-free"` |  |
+| litellm.proxy_config.model_list[4].litellm_params.api_key | string | `"os.environ/ANTHROPIC_API_KEY"` |  |
+| litellm.proxy_config.model_list[4].litellm_params.model | string | `"anthropic/claude-opus-4-7"` |  |
+| litellm.proxy_config.model_list[4].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[4].model_name | string | `"anthropic/claude-opus-4-7"` |  |
+| litellm.proxy_config.model_list[5].litellm_params.api_key | string | `"os.environ/MOONSHOT_API_KEY"` |  |
+| litellm.proxy_config.model_list[5].litellm_params.model | string | `"moonshot/kimi-k2.6"` |  |
+| litellm.proxy_config.model_list[5].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[5].model_name | string | `"moonshotai/kimi-k2.6"` |  |
+| litellm.proxy_config.model_list[6].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[6].litellm_params.model | string | `"deepseek/deepseek-v4-flash"` |  |
+| litellm.proxy_config.model_list[6].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[6].model_name | string | `"deepseek-v4-flash"` |  |
+| litellm.proxy_config.model_list[7].litellm_params.api_key | string | `"os.environ/ZAI_API_KEY"` |  |
+| litellm.proxy_config.model_list[7].litellm_params.model | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.model_list[7].litellm_params.order | int | `2` |  |
+| litellm.proxy_config.model_list[7].model_name | string | `"deepseek-v4-flash"` |  |
+| litellm.proxy_config.model_list[8].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[8].litellm_params.cache | bool | `true` |  |
+| litellm.proxy_config.model_list[8].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[8].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[8].model_name | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[9].litellm_params.api_key | string | `"os.environ/ZAI_API_KEY"` |  |
+| litellm.proxy_config.model_list[9].litellm_params.model | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.model_list[9].litellm_params.order | int | `2` |  |
+| litellm.proxy_config.model_list[9].model_name | string | `"deepseek-v4-pro"` |  |
+| litellm.resources.limits.cpu | string | `"2000m"` |  |
+| litellm.resources.limits.memory | string | `"2Gi"` |  |
+| litellm.resources.requests.cpu | string | `"100m"` |  |
+| litellm.resources.requests.memory | string | `"256Mi"` |  |
+| litellm.service.port | int | `4000` |  |
+| litellmVirtualService.destination.host | string | `"openagent-litellm.openagent.svc.cluster.local"` |  |
+| litellmVirtualService.destination.port | int | `4000` |  |
+| litellmVirtualService.host | string | `"litellm.maklab.net"` |  |
+| namespace | string | `"openagent"` |  |
+| openagent-component.bot.config.channelOnly | string | `""` |  |
+| openagent-component.bot.config.clientId | string | `""` |  |
+| openagent-component.bot.config.conversationMode | string | `"threaded"` |  |
+| openagent-component.bot.config.dashboardUrl | string | `"https://openagent.maklab.net"` |  |
+| openagent-component.bot.config.mentionOnly | bool | `false` |  |
+| openagent-component.bot.config.phaseUpdates | bool | `true` |  |
+| openagent-component.bot.config.pollUI | bool | `true` |  |
+| openagent-component.bot.config.startupChannel | string | `"chat"` |  |
+| openagent-component.bot.config.thinkMode | string | `"full"` |  |
+| openagent-component.bot.enabled | bool | `false` |  |
+| openagent-component.bot.image.pullPolicy | string | `"Always"` |  |
+| openagent-component.bot.image.repository | string | `"ghcr.io/jomakori/gke_gitops/openagent-discord-bot"` |  |
+| openagent-component.bot.image.tag | string | `"0.9.6"` |  |
+| openagent-component.bot.resources.limits.cpu | string | `"500m"` |  |
+| openagent-component.bot.resources.limits.memory | string | `"512Mi"` |  |
+| openagent-component.bot.resources.requests.cpu | string | `"50m"` |  |
+| openagent-component.bot.resources.requests.memory | string | `"128Mi"` |  |
+| openagent-component.bot.service.port | int | `8080` |  |
+| openagent-component.bot.storage.reposSize | string | `"1Gi"` |  |
+| openagent-component.bot.version.configMapName | string | `"openagent-discord-version"` |  |
+| openagent-component.headroom.enabled | bool | `true` |  |
+| openagent-component.headroom.image.pullPolicy | string | `"IfNotPresent"` |  |
+| openagent-component.headroom.image.repository | string | `"ghcr.io/chopratejas/headroom"` |  |
+| openagent-component.headroom.image.tag | string | `"latest"` |  |
+| openagent-component.headroom.litellmUrl | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
+| openagent-component.headroom.resources.limits.cpu | string | `"2000m"` |  |
+| openagent-component.headroom.resources.limits.memory | string | `"2Gi"` |  |
+| openagent-component.headroom.resources.requests.cpu | string | `"200m"` |  |
+| openagent-component.headroom.resources.requests.memory | string | `"512Mi"` |  |
+| openagent-component.headroom.service.port | int | `8787` |  |
+| openagent-component.headroom.storage.accessMode | string | `"ReadWriteOnce"` |  |
+| openagent-component.headroom.storage.size | string | `"2Gi"` |  |
+| openagent-component.storageClass | string | `"local-path"` |  |
+| postgres.clusterName | string | `"openagent-pg"` |  |
+| postgres.configName | string | `"openagent-pg-config"` |  |
+| postgres.enabled | bool | `true` |  |
+| postgres.instances | int | `1` |  |
+| postgres.poolingConfigName | string | `"openagent-pg-pooling"` |  |
+| postgres.profile | string | `"development"` |  |
+| postgres.storage | string | `"5Gi"` |  |
+| postgres.version | string | `"18"` |  |
+| storageClass | string | `"local-path"` |  |
+| vpa.enabled | bool | `true` |  |
 
-## Model List
-
-The chart configures 12 models via LiteLLM proxy_config:
-
-| Model Name | Provider | API Key Source |
-|-----------|----------|---------------|
-| opencode/big-pickle | OpenCode | OPENCODE_API_KEY |
-| opencode/north-mini-code-free | OpenCode | OPENCODE_API_KEY |
-| opencode/deepseek-v4-flash-free | OpenCode | OPENCODE_API_KEY |
-| opencode/mimo-v2.5-free | OpenCode | OPENCODE_API_KEY |
-| anthropic/claude-opus-4-7 | Anthropic | ANTHROPIC_API_KEY |
-| moonshotai/kimi-k2.6 | Moonshot | MOONSHOT_API_KEY |
-| deepseek-v4-flash | DeepSeek | DEEPSEEK_API_KEY |
-| deepseek-v4-pro | DeepSeek | DEEPSEEK_API_KEY |
-| zai/glm-4.7 | z.ai | ZAI_API_KEY |
-| zai/glm-4.7-flash | z.ai | ZAI_API_KEY |
-| minimax/M3 | MiniMax | MINIMAX_API_KEY |
-| minimax/M2.7 | MiniMax | MINIMAX_API_KEY |
-
-Fallback chain: opencode models fall back to deepseek-v4-flash.
-
-## Swarm Configuration
-
-The Hermes Workspace manages 9 OMO-mapped workers via the Swarm ConfigMap.
-Workers follow a **spec-driven methodology** with adaptive routing — each
-agent checks context sufficiency before routing to downstream specialists.
-
-### Worker Roles
-
-| Worker ID | Name | Role | Model | Methodology |
-|-----------|------|------|-------|-------------|
-| orchestrator | Sisyphus | Spec-Driven Router | claude/sonnet-4 | Complexity classification + context sufficiency routing + approval gate |
-| supervisor | Atlas | Quality Gate | claude/sonnet-4 | Cross-persona verification |
-| strategist | Prometheus | Spec-Driven Planner | deepseek-v4-pro | Structured specs (mermaid, tables), actionable task breakdowns |
-| reviewer | Momus | Spec Reviewer | deepseek-v4-pro | Completeness/clarity/actionability validation |
-| architect | Oracle | Architecture Consultant | claude/opus-4 | Architecture + security review |
-| builder | Hephaestus | Implementation Coder | minimax/M3 | Production code from approved plans |
-| researcher | Librarian | Docs/RAG Searcher | zai/glm-4.7-flash | Documentation + OSS examples |
-| explorer | Explore | Codebase Discovery | zai/glm-4.7-flash | Pattern matching + convention detection |
-| junior-builder | Sisyphus-junior | Focused Task Executor | deepseek-v4-flash | Trivial fixes, single-file edits |
-
-### Spec-Driven Planning Flow
-
-Requests follow an adaptive pipeline based on complexity and context clarity:
-
-```
-User request
-  ↓
-Sisyphus (classify + assess context)
-  ├─ Trivial → skip all gates → dispatch to builder
-  ├─ Standard → Prometheus (spec+plan) → Momus (if gaps) → User approval → builder
-  └─ Complex → Metis (clarify) → Oracle (arch review) → Prometheus → Momus → User → builders
-```
-
-Each agent decides whether to route further:
-- **Metis**: Scope clear? → skip, go directly to Prometheus
-- **Oracle**: Architecture defined? → skip, go directly to Prometheus
-- **Momus**: Plan solid? → approve immediately, no review needed
-- **Sisyphus**: Plan complete and actionable? → present to user, skip Momus
-
-Simple tasks bypass the entire planning gate. All standard/complex tasks
-require explicit user approval before builder dispatch.
-
-Workers run as tmux sessions inside the Workspace container. The Workspace
-Conductor API handles mission assignment and Kanban board state.
-
-### Centralized Model Mapping
-
-Worker-to-model assignments live in a single file at
-`/shared/bin/worker-models.cfg` inside the workspace pod. To swap any
-worker's model, edit one line — no config changes, no redeploy:
-
-```
-orchestrator=claude/sonnet-4
-strategist=deepseek-v4-pro
-reviewer=deepseek-v4-pro
-architect=claude/opus-4
-builder=minimax/M3
-junior-builder=deepseek-v4-flash
-researcher=zai/glm-4.7-flash
-explorer=zai/glm-4.7-flash
-supervisor=claude/sonnet-4
-```
-
-All models route through LiteLLM → Headroom. The `hermes` CLI in each
-worker's tmux session receives `-m <model>` from the swarm wrapper script.
-
-## Verification
-
-```bash
-# Validate chart
-helm lint services/helm/openagent/
-
-# Render templates
-helm template openagent services/helm/openagent/
-
-# Test with specific components disabled
-helm template openagent services/helm/openagent/ --set openagent-component.headroom.enabled=false
-helm template openagent services/helm/openagent/ --set openagent-component.bot.enabled=false
-
-# View complete rendered output with debug info
-helm template openagent services/helm/openagent/ --debug 2>&1 | less
-```
+----------------------------------------------
+Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

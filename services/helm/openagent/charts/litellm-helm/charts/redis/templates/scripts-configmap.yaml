@@ -57,7 +57,7 @@ data:
         echo "${full_hostname}"
         {{- else }}
         retry_count=0
-        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do 
+        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do
             if [[ $retry_count -lt {{ .Values.nameResolutionThreshold }} ]]; then
                 sleep {{ .Values.nameResolutionTimeout }}
             else
@@ -290,7 +290,7 @@ data:
         echo "${full_hostname}"
         {{- else }}
         retry_count=0
-        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do 
+        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do
             if [[ $retry_count -lt {{ .Values.nameResolutionThreshold }} ]]; then
                 sleep {{ .Values.nameResolutionTimeout }}
             else
@@ -474,7 +474,7 @@ data:
         echo "${full_hostname}"
         {{- else }}
         retry_count=0
-        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do 
+        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do
             if [[ $retry_count -lt {{ .Values.nameResolutionThreshold }} ]]; then
                 sleep {{ .Values.nameResolutionTimeout }}
             else
@@ -554,7 +554,7 @@ data:
         echo "${full_hostname}"
         {{- else }}
         retry_count=0
-        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do 
+        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do
             if [[ $retry_count -lt {{ .Values.nameResolutionThreshold }} ]]; then
                 sleep {{ .Values.nameResolutionTimeout }}
             else
@@ -700,7 +700,7 @@ data:
         echo "${full_hostname}"
         {{- else }}
         retry_count=0
-        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do 
+        until getent hosts "${full_hostname}" | awk '{ print $1; exit }' | grep .; do
             if [[ $retry_count -lt {{ .Values.nameResolutionThreshold }} ]]; then
                 sleep {{ .Values.nameResolutionTimeout }}
             else

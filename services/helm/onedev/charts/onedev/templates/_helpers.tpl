@@ -101,7 +101,7 @@ Invalid database type
 {{- trim $connectionURL -}}
 {{- end -}}
 
-{{/* 
+{{/*
 Set dilect and driver env variables based database type
  */}}
 {{- define "setDatabaseEnvVars" -}}
