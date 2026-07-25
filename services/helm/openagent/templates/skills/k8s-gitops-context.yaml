@@ -645,27 +645,25 @@ data:
 
     ## OpenAgent Loop Engineering System
 
-    The **openagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized personas, reviewed, and iterated — not answered in a single pass. Built on the **Sympozium** orchestrator (control plane in `sympozium-system`, installed out-of-band by the sympozium CLI). Replaces the old kagent stack (all kagent* charts deleted). **Consolidated into a single umbrella chart at `services/helm/openagent/`** (see Umbrella pattern above).
+    The **openagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized personas, reviewed, and iterated — not answered in a single pass. Built on the **Hermes Agent** framework. Replaces the old kagent stack (all kagent* charts deleted). **Consolidated into a single umbrella chart at `services/helm/openagent/`** (see Umbrella pattern above).
 
     ### What Loop Engineering Means
 
     **Single-pass AI**: User asks → model answers → done. No verification, no iteration, no delegation.
 
-    **Loop-engineered AI**: User asks → **orchestrator** parses intent → **planner** breaks into steps → **reviewer** catches gaps → **worker** executes → **verifier** checks output → loop repeats until quality gate passes. Each role is a distinct persona with a specialized model, prompt, and execution context. All implemented as a single `sympozium.ai/v1alpha1 Ensemble` resource.
+    **Loop-engineered AI**: User asks → **orchestrator** parses intent → **planner** breaks into steps → **reviewer** catches gaps → **worker** executes → **verifier** checks output → loop repeats until quality gate passes. Each role is a distinct persona with a specialized model, prompt, and execution context. Managed by Hermes Workspace swarm controller.
 
     ### System Architecture (1 umbrella chart, 2 namespaces)
 
     All components deployed from a single umbrella chart at `services/helm/openagent/` (v2.0.0):
 
-    | Component | Deployed Via | Purpose |
-    |-----------|-------------|---------|
-    | `openagent-crds` | sympozium CLI (out-of-band) | `sympozium.ai/v1alpha1` CRDs — installed by CLI, not Helm |
-    | `openagent-headroom` | umbrella subchart (`charts/openagent-component`) | LLM proxy — routes to LiteLLM, SQLite CCR cache, 2Gi PVC, VPA |
-    | `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
-    | `openagent-discord` | umbrella subchart (`charts/openagent-component`) | Discord gateway bot (Go binary, `ghcr.io/jomakori/gke_gitops/openagent-discord-bot:0.6.0`). OpenAI-compatible chat completions. |
-    | `claude-proxy` | umbrella locals (`templates/claude-proxy/`) | Claude Pro subscription proxy — `claude-pipe` wraps `claude` CLI as OpenAI-compatible API, creds from K8s Secret, ClusterIP :4523. |
-    | Ensemble + SkillPacks | umbrella locals (`templates/`) | 10-persona `omo-loop-engineering` Ensemble + 3 SkillPacks |
-    | StackGres + istio + secrets | umbrella locals (`templates/`) | SGCluster, VirtualService, AuthorizationPolicy, ExternalSecret, VPA |
+| Component | Deployed Via | Purpose |
+|-----------|-------------|---------|
+| `openagent-headroom` | umbrella subchart (`charts/openagent-component`) | LLM proxy — routes to LiteLLM, SQLite CCR cache, 2Gi PVC, VPA |
+| `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
+| `openagent-discord` | umbrella subchart (`charts/openagent-component`) | Discord gateway bot (Go binary, `ghcr.io/jomakori/gke_gitops/openagent-discord-bot:0.6.0`). OpenAI-compatible chat completions. |
+| `claude-proxy` | umbrella locals (`templates/claude-proxy/`) | Claude Pro subscription proxy — `claude-pipe` wraps `claude` CLI as OpenAI-compatible API, creds from K8s Secret, ClusterIP :4523. |
+| StackGres + istio + secrets | umbrella locals (`templates/`) | SGCluster, VirtualService, AuthorizationPolicy, ExternalSecret, VPA |
 
     **Chart structure** (`services/helm/openagent/`):
     ```
@@ -683,11 +681,11 @@ data:
     └── src/                          ← Bot Go source code
     ```
 
-    **Namespaces**: `openagent` (application resources), `sympozium-system` (control plane — out-of-band). No `kagent`, `ate-system`, or substrate.
+    **Namespaces**: All application resources deploy to `openagent` namespace. Hermes Agent runs the swarm controller and MCP servers as stdio processes within the container.
 
     **Secrets**: `svc_openagent` Doppler config. Must include all provider API keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode — see LiteLLM model table below), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls).
 
-    ### The 10 Personas (Ensemble `omo-loop-engineering`, `sympozium.ai/v1alpha1`)
+    ### The 10 Personas (Hermes Workspace Workers)
 
     | Persona | Role | Model | Purpose |
     |---------|------|-------|---------|
@@ -745,20 +743,15 @@ data:
 
     ```
     Discord User
-      ↓
-    openagent-discord (Go bot, OpenAI-compatible)
-      ↓ POST /v1/chat/completions
-    omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc:8080
-      ↓
-    openagent-headroom.openagent.svc:8787  (headroom proxy, CCR SQLite cache, optimize mode)
-      ↓ OPENAI_TARGET_API_URL
-    litellm-openagent-litellm.openagent.svc:4000/v1  (LiteLLM gateway, 14 models)
-      ↓
-      Provider APIs (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode)
-      ↓
-      claude-proxy.openagent.svc:4523/v1  (Claude Pro subscription, 3 models via OAuth)
-        → Anthropic API (claude CLI OAuth, ~45 req/5h rate limit)
+      → Hermes Agent Discord Bot (built-in)
+        → Hermes Gateway (port 8642)
+          → Hermes Workspace (swarm controller, port 3000)
+            → Swarm Workers (9 OMO-mapped personas via tmux)
+          → LiteLLM (port 4000)
+            → Provider APIs
     ```
+
+    All LLM traffic flows through LiteLLM. The headroom proxy provides CCR caching.
 
     **LiteLLM models** (14 configured):
     | Model Name | Backend | API Key |
@@ -780,34 +773,33 @@ data:
 
     **Fallback chains**: opencode/big-pickle → deepseek-v4-flash; opencode/north-mini-code-free → deepseek-v4-flash; opencode/deepseek-v4-flash-free → deepseek-v4-flash. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=3.
 
-    ### SkillPacks (sympozium.ai/v1alpha1)
+    ### Skills
 
-    Three SkillPacks deployed alongside the Ensemble in `sympozium-system`:
-    - **`omo-core-skills`** — `caveman` (ultra-compressed communication) + `ponytail` (YAGNI ladder)
+    Hermes workspace workers use built-in skills:
+    - **`caveman`** — ultra-compressed communication
     - **`hashline-editor`** — MCP-based editing tool
     - **`k8s-ops`** — kubectl + helm operations
 
-    Sisyphus loads all three plus `web-endpoint`. Other personas inherit ensemble defaults.
+    Skills are configured in the hermes-agent values.yaml mcp_servers section.
 
-    ### Adding a Persona
+    ### Adding a Worker
 
-    To add a persona to the ensemble, edit `services/helm/openagent/templates/ensemble-omo-loop-engineering.yaml`:
-    1. Add an agentConfig entry under `spec.agentConfigs` with `name`, `displayName`, `model` (LiteLLM model name), `systemPrompt` (inline), and `skills` (SkillPack refs).
-    2. If the persona is delegated to, add a relationship edge in `spec.relationships[].agents`.
-    3. If supervised, add a supervision edge.
-    4. ArgoCD sync — the Sympozium controller reconciles the Ensemble automatically. No Terraform changes needed.
+    To add a worker to the swarm, edit `services/helm/openagent/templates/swarm/configmap-swarm.yaml`:
+    1. Add a new worker entry with ID, name, role, model, and methodology.
+    2. Update the hermes-agent values.yaml if needed for MCP server access.
+    3. ArgoCD sync — Hermes Workspace reconciles the swarm automatically.
 
     ### OpenAgent Gotchas
 
     - **Umbrella chart uses `**charts/**` gitignore exception**: Root `.gitignore` has `**charts/**` which blocks ALL charts directories. The custom `openagent-component` subchart needs `!services/helm/openagent/charts/openagent-component/**` in `.gitignore` to be tracked. Without this, `git status` silently ignores subchart templates — they won't exist on other machines after clone.
     - **`.tgz` files are redundant build artifacts**: `helm dependency update` generates `.tgz` archives in `charts/`. These are NOT needed for `file://` deps — Helm reads the chart directory directly. The `**charts/**` gitignore already excludes them. Delete them after local testing.
-    - **GHCR packages are private-by-default for org repos**: The sympozium OCI dependency was removed from `openagent/Chart.yaml` because GHCR org packages require authentication (not supported by Helm OCI deps). The control plane must be installed out-of-band via sympozium CLI in the `sympozium-system` namespace.
+    - **GHCR packages are private-by-default for org repos**: Authentication required for GHCR org packages.
     - **Discord bot secrets flow through `envFrom`, not Helm values**: The deployment template uses `envFrom: secretRef: openagent-discord-secrets` — ALL keys from the Doppler `svc_openagent` config become env vars. No Helm `--set` parameters for secrets.
-    - **Ensemble and SkillPacks deploy to `sympozium-system`, not `.Release.Namespace`**: The `openagent` chart deploys resources into `openagent` namespace, but the Ensemble and SkillPacks have `namespace: sympozium-system` hardcoded. The Sympozium controller only reconciles resources in its own namespace.
+    - **Hermes Workspace manages swarm workers**: All components deploy to `openagent` namespace. The hermes-agent and hermes-workspace handle swarm coordination.
     - **LiteLLM uses file-based routing (no database)**: `litellm_config.yaml` uses `general_settings.database_url: null` → in-memory routing. Model config changes require a LiteLLM pod restart (config reload via ConfigMap mount). Lightweight — acceptable for 14 models.
     - **OpenAgent headroom no longer points to OpenRouter**: `OPENAI_TARGET_API_URL` routes through `http://openagent-litellm.openagent.svc.cluster.local:4000/v1`. All LLM traffic flows through LiteLLM now. OpenRouter is completely bypassed.
     - **Discord bot uses OpenAI-compatible API, not A2A**: The bot directly calls `POST /v1/chat/completions` on the Sisyphus web endpoint. No A2A protocol, no agent reference CRD.
-    - **4 separate openagent charts consolidated into 1 umbrella**: `openagent-crds`, `openagent-headroom`, `openagent-litellm`, `openagent-discord` chart directories no longer exist. Everything is in `services/helm/openagent/`. Root README and services/README updated to reflect this.
+    - **Components consolidated into 1 umbrella**: All components are in `services/helm/openagent/`. Root README and services/README updated to reflect this.
 
     ### Claude Proxy (Subscription-Based)
 
@@ -948,6 +940,48 @@ data:
     - **Longhorn was removed — do not re-enable**: Longhorn v1 failed because OrbStack lacks kernel iSCSI support (`iscsi_tcp` module not loaded). Longhorn v2 (1.12.0) failed because it unconditionally mounts a `HugePages` EmptyDir for v2 instance-manager pods, and OrbStack kernel lacks `CONFIG_HUGETLBFS`. OpenEBS LVM was tested as an alternative but failed because k3s v1.35.1 kubelet never registers CSI drivers from node-driver-registrar (`driver name not found in registered CSI drivers`). The only working storage is `local-path`.
     - **CoreDNS Google DNS causes Go resolver "server misbehaving"**: k3d's pod network can't reliably forward UDP to `8.8.8.8` through Docker bridge networking. Go's pure-Go DNS resolver (used by external-secrets operator) reports `server misbehaving` on truncated/timeout responses. Fix: forward to the k3d node's own DNS resolver (`192.168.97.1` — Docker bridge gateway) via dynamic `data.external.k3d_dns` in Terraform. Without this, all 10 ClusterSecretStores fail with `InvalidProviderConfig` → no ExternalSecrets sync → cascading failures.
     - **ArgoCD sync wave ordering won't prevent CRD-not-found failures in the services ApplicationSet**: The root `services` Application contains BOTH Application resources (deployed as sub-apps at their respective waves) AND raw resources like the GHCR credential ExternalSecret. Raw resources are applied during the root app's sync, regardless of child app sync waves. If a raw resource references a CRD installed by a child app at a later wave, the root sync fails before any child apps are created.
+
+    ## Sympozium Cleanup (Legacy Removal)
+
+    The sympozium-system namespace and CRDs are leftover from the pre-Hermes architecture. Remove completely:
+
+    ### Step 1: Delete sympozium-system namespace
+
+    ```bash
+    kubectl delete namespace sympozium-system --grace-period=0 --force
+    ```
+
+    This removes all sympozium control plane components (apiserver, controller-manager, webhook, otel-collector, llmfit-daemon, node-probe) and MCPServer-managed deployments (argocd, github, grafana, k8s-mcp, nats, postgres).
+
+    ### Step 2: Delete sympozium CRDs
+
+    ```bash
+    kubectl delete crd agentruns.sympozium.ai agents.sympozium.ai ensembles.sympozium.ai \
+      mcpservers.sympozium.ai models.sympozium.ai skillpacks.sympozium.ai \
+      sympoziumconfigs.sympozium.ai sympoziumpolicies.sympozium.ai sympoziumschedules.sympozium.ai
+    ```
+
+    ### Step 3: Verify cleanup
+
+    ```bash
+    kubectl get namespace sympozium-system 2>/dev/null  # should error: NotFound
+    kubectl get crd | grep sympozium 2>/dev/null       # should return nothing
+    ```
+
+    ### What moved to openagent
+
+    | Old (sympozium-system) | New (openagent) | Notes |
+    |------------------------|-----------------|-------|
+    | k8s-mcp MCPServer | kubernetes-mcp-server Deployment | URL-based MCP server |
+    | argocd, github, grafana MCPServers | hermes-agent stdio MCP servers | Run as processes in hermes container |
+    | postgres MCPServer | openagent-pg StatefulSet | StackGres-managed |
+    | nats | removed | Not needed with hermes architecture |
+
+    ### What was removed (not migrated)
+
+    - sympozium-apiserver, controller-manager, webhook, otel-collector, llmfit-daemon, node-probe
+    - All sympozium.ai/v1alpha1 CRDs (Ensemble, SkillPack, MCPServer, etc.)
+    - sympozium OCI dependency from Chart.yaml (already removed)
 
 
     ## Repo Locations

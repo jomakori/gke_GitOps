@@ -49,7 +49,7 @@ Dependency chain: local-path + cert-manager + VPA → external-secrets (ClusterS
 
 ### OpenAgent Loop Engineering System
 
-The **openagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized personas, reviewed, and iterated — not answered in a single pass. This is the cluster's native AI workforce, built on the **Sympozium** orchestrator.
+The **openagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized personas, reviewed, and iterated — not answered in a single pass. This is the cluster's native AI workforce, built on the **Hermes Agent** framework.
 
 #### Components
 
@@ -57,12 +57,11 @@ The openagent umbrella chart (`services/helm/openagent/`) bundles all components
 
 | Component | Deployed Via | Purpose |
 |-----------|-------------|---------|
-| `openagent-crds` | sympozium CLI (out-of-band) | `sympozium.ai/v1alpha1` CRDs (Ensemble, SkillPack). Not a Helm chart — installed directly by CLI. |
 | `openagent-headroom` | umbrella subchart (`charts/openagent-component`) | LLM proxy (`chopratejas/headroom`) — routes to LiteLLM, SQLite CCR cache. |
 | `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`) | Multi-provider LLM gateway v1.92.0 — 14 models (12 direct + 2 via claude-proxy), fallback chains. |
 | `claude-proxy` | umbrella locals (`templates/claude-proxy/`) | Claude Pro subscription proxy — `claude-pipe` wraps `claude` CLI as OpenAI-compatible API, creds from K8s Secret, ClusterIP :4523. |
 | `openagent-discord` | umbrella subchart (`charts/openagent-component`) | Discord gateway bot (Go binary) — OpenAI-compatible chat completions. |
-| `openagent` templates | umbrella locals (`templates/`) | Ensemble + SkillPacks + StackGres + istio gateway. 10-persona loop engineering. |
+| `openagent` templates | umbrella locals (`templates/`) | StackGres + istio gateway. 10-persona loop engineering via Hermes workspace. |
 
 **Chart structure** (`services/helm/openagent/`):
 ```
@@ -73,7 +72,6 @@ openagent/                       ← umbrella (v2.0.0)
 ├── templates/                    ← CRDs only
 │   ├── claude-proxy/            ← claude-proxy Deployment + Service
 │   ├── ensemble/                 ← omo-loop-engineering (10 personas)
-│   ├── skillpacks/               ← 3 SkillPack CRDs
 │   ├── db/                       ← StackGres CRDs (SGCluster, config)
 │   ├── shared/                   ← ExternalSecret, GHCR, VPA
 │   └── gateway/                  ← Istio VirtualService + AuthPolicy
@@ -82,9 +80,9 @@ openagent/                       ← umbrella (v2.0.0)
 └── Chart.yaml                    ← 2 deps + conditions
 ```
 
-**Namespaces**: Application resources live in `openagent`. The c control plane runs separately in `sympozium-system` (out of band — installed by the sympozium CLI). The Discord bot calls `http://omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc.cluster.local:8080/v1/chat/completions`.
+**Namespaces**: All application resources deploy to `openagent` namespace. Hermes Agent runs the swarm controller and MCP servers as stdio processes within the container.
 
-**Secrets**: `svc_openagent` Doppler config. Must include provider keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode), `AGENT_API_URL` (Sympozium Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth token), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls), `CLAUDE_PROXY_API_KEY` (dummy, proxy uses OAuth credential file). All flow via `envFrom: secretRef` in deployment templates — no Helm `--set` parameters for secrets.
+**Secrets**: `svc_openagent` Doppler config. Must include provider keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, `GITHUB_TOKEN` (for GHCR image pulls), and `CLAUDE_PROXY_API_KEY` (dummy, proxy uses OAuth credential file). All flow via `envFrom: secretRef` in deployment templates — no Helm `--set` parameters for secrets.
 
 #### The 10 Personas (Ensemble `omo-loop-engineering`)
 
@@ -103,20 +101,39 @@ openagent/                       ← umbrella (v2.0.0)
 
 **Delegation graph** (spec.relationships): sisyphus → {prometheus, metis, hephaestus, oracle, atlas}; atlas → {librarian, explore, sisyphus-junior}; prometheus → momus. Supervision: atlas → {sisyphus, prometheus, hephaestus}. Stimulus: `omo-loop-engineering` → sisyphus.
 
-**Skills attached**: sisyphus loads `k8s-ops`, `omo-core-skills`, `hashline-editor`, `web-endpoint`. Other personas inherit ensemble defaults.
+#### Skills
+
+Hermes workspace workers use built-in skills configured via `config.agent.environment_hint`:
+
+| Skill | Source | Purpose |
+|-------|--------|---------|
+| **ponytail** | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) | YAGNI ladder — write only what's needed, reuse > rewrite, stdlib > custom |
+| **caveman** | [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) | Terse communication — ~65% fewer output tokens, drop filler, keep substance |
+
+**Ponytail YAGNI ladder** (before writing code):
+1. Does this need to exist? → no: skip it
+2. Already in codebase? → reuse
+3. Stdlib does it? → use stdlib
+4. Native platform feature? → use it
+5. Installed dependency? → use it
+6. One line? → one line
+7. Only then: minimum that works
+
+**Caveman rules**: Drop articles, filler, pleasantries, hedging. Fragments OK. Short synonyms. Technical terms exact. Code blocks unchanged.
 
 #### LLM Routing
 
 ```
-openagent-discord (Go bot)
-  → POST /v1/chat/completions
-  → omo-loop-engineering-sisyphus-web-endpoint-server.sympozium-system.svc:8080
-    → openagent-headroom.openagent.svc:8787   (headroom proxy, CCR cache)
-      → litellm-openagent-litellm.openagent.svc:4000/v1   (LiteLLM gateway)
-                 → provider APIs (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode)
-         → claude-proxy.openagent.svc:4523/v1   (Claude Pro subscription proxy, 3 models)
-               → Anthropic API (claude CLI OAuth, ~45 req/5h rate limit)
+Discord User
+  → Hermes Agent Discord Bot (built-in)
+    → Hermes Gateway (port 8642)
+      → Hermes Workspace (swarm controller, port 3000)
+        → Swarm Workers (9 OMO-mapped personas via tmux)
+      → LiteLLM (port 4000)
+        → Provider APIs
 ```
+
+All LLM traffic flows through LiteLLM. The headroom proxy provides CCR caching.
 
 The headroom proxy is configured with `OPENAI_TARGET_API_URL=http://litellm-openagent-litellm.openagent.svc.cluster.local:4000/v1` — all upstream LLM calls route through LiteLLM, never directly to OpenRouter.
 
