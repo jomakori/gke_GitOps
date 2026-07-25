@@ -346,9 +346,9 @@ hermes-agent:
     - name: HERMES_DASHBOARD
       value: "1"
     - name: HERMES_DASHBOARD_HOST
-      value: "127.0.0.1"
+      value: "0.0.0.0"
     - name: HERMES_DASHBOARD_PORT
-      value: "19119"
+      value: "9119"
     - name: DISCORD_ALLOW_ALL_USERS
       value: "true"
     - name: API_SERVER_ENABLED
