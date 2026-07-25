@@ -400,59 +400,74 @@ data:
     **Structure**:
     ```
     chart-name/
-    ├── Chart.yaml              ← 2 deps: upstream OCI + custom subchart (file://)
+    ├── Chart.yaml              ← remote OCI deps + local file:// subcharts
     ├── values.yaml             ← all config under dep name keys
     ├── charts/
-    │   ├── upstream-chart/     ← vendored upstream (OCI fallback)
-    │   └── custom-subchart/     ← own component subchart
+    │   ├── subchart-1/          ← local custom subchart (tracked in git)
+    │   └── subchart-2/          ← local custom subchart (tracked in git)
     ├── templates/              ← CRDs + shared resources ONLY (no workload templates)
-    │   ├── ensemble/           ← grouped by resource type
-    │   ├── db/
-    │   ├── shared/
-    │   └── gateway/
+    │   ├── swarm/              ← ensemble config + hermes config
+    │   ├── db/                 ← operator CRDs
+    │   ├── hooks/              ← hermes hook scripts
+    │   ├── mcp-kubectl/        ← MCP server deployment
+    │   ├── skills/             ← skill ConfigMaps
+    │   ├── shared/             ← ExternalSecrets, GHCR, VPA
+    │   └── gateway/            ← Istio VirtualService + AuthPolicy
     └── src/                    ← application source code (if any)
     ```
 
     **Key rules**:
-    - **Never inline templates for external services** — use upstream Helm charts as `dependencies`
-    - **Single subchart for own workload components** — one subchart with `enabled` flags per component, not separate subcharts per component
+    - **Remote OCI for upstream charts** — pull from `oci://` registries, not vendored local copies
+    - **Local file:// subcharts for own components** — one subchart per logical component
     - **CRDs + shared resources only at umbrella level** — no Deployment/Service/PVC templates in umbrella `templates/`
-    - **Values under dependency name key**: subchart values passed via `openagent-component.*` (Helm auto-nesting)
-    - **Conditions in Chart.yaml**: `condition: component.enabled` for enable/disable deps
-    - **Vendor upstream charts** locally (`file://`) for offline `helm template` validation when OCI is unavailable. `.tgz` archives are NOT needed — Helm reads the chart directory directly for `file://` deps.
+    - **Values under dependency name key**: subchart values passed via `headroom.*`, `claude-proxy.*`, etc. (Helm auto-nesting)
+    - **Conditions in Chart.yaml**: `condition: headroom.enabled` for enable/disable deps
+    - **No vendored charts** — remote charts pulled via `helm dependency update`, `.tgz` build artifacts are gitignored
     - **.gitignore exception required**: The root `.gitignore` has `**charts/**` which blocks ALL charts directories. Custom subcharts MUST have an exception: `!path/to/charts/subchart-name/**`
 
-    **Example** (openagent umbrella):
+    **Example** (openagent umbrella, post-migration):
     ```yaml
-    # Chart.yaml
+    # Chart.yaml — remote OCI + local subcharts
     dependencies:
       - name: litellm-helm
         version: 1.92.0
-        repository: file://charts/litellm-helm    # vendored upstream
+        repository: oci://ghcr.io/berriai           # remote OCI
         condition: litellm.enabled
-      - name: openagent-component
+      - name: hermes-agent
+        version: 0.9.1
+        repository: oci://ghcr.io/jyje/hermes-agent-helm  # remote OCI
+        condition: hermes.enabled
+      - name: headroom
         version: 0.1.0
-        repository: file://charts/openagent-component  # custom subchart
-        condition: component.enabled
+        repository: file://charts/headroom          # local subchart
+        condition: headroom.enabled
+      - name: hermes-workspace
+        version: 0.1.0
+        repository: file://charts/hermes-workspace  # local subchart
+        condition: hermes-workspace.enabled
+      - name: claude-proxy
+        version: 0.1.0
+        repository: file://charts/claude-proxy      # local subchart
+        condition: claude-proxy.enabled
     ```
 
     ```yaml
     # values.yaml — subchart values under dependency name key
-    component:
+    headroom:
       enabled: true
-    openagent-component:          # Helm auto-nests under dep name
-      headroom:
-        enabled: true
-        service: {port: 8787}
-      bot:
-        enabled: true
-        service: {port: 8080}
+      litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
+    hermes-workspace:
+      enabled: true
+    claude-proxy:
+      enabled: true
     ```
 
     ```gitignore
-    # Root .gitignore — exception needed for custom subchart
+    # Root .gitignore — exceptions for local subcharts
     **charts/
-    !services/helm/openagent/charts/openagent-component/**   # unblock custom subchart
+    !services/helm/openagent/charts/headroom/**
+    !services/helm/openagent/charts/hermes-workspace/**
+    !services/helm/openagent/charts/claude-proxy/**
     **Chart.lock
     ```
 
@@ -649,32 +664,37 @@ data:
 
     **Loop-engineered AI**: User asks → **orchestrator** parses intent → **planner** breaks into steps → **reviewer** catches gaps → **worker** executes → **verifier** checks output → loop repeats until quality gate passes. Each role is a distinct persona with a specialized model, prompt, and execution context. Managed by Hermes Workspace swarm controller.
 
-    ### System Architecture (1 umbrella chart, 2 namespaces)
+    ### System Architecture (1 umbrella chart, 1 namespace)
 
     All components deployed from a single umbrella chart at `services/helm/openagent/` (v2.0.0):
 
     | Component | Deployed Via | Purpose |
     |-----------|-------------|---------|
-    | `openagent-headroom` | umbrella subchart (`charts/openagent-component`) | LLM proxy — routes to LiteLLM, SQLite CCR cache, 2Gi PVC, VPA |
-    | `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
-    | `openagent-discord` | umbrella subchart (`charts/openagent-component`) | Discord gateway bot (Go binary, `ghcr.io/jomakori/gke_gitops/openagent-discord-bot:0.6.0`). OpenAI-compatible chat completions. |
-    | `claude-proxy` | umbrella locals (`templates/claude-proxy/`) | Claude Pro subscription proxy — `claude-pipe` wraps `claude` CLI as OpenAI-compatible API, creds from K8s Secret, ClusterIP :4523. |
+    | `openagent-headroom` | local subchart (`charts/headroom`) | LLM proxy — routes to LiteLLM, SQLite CCR cache, 2Gi PVC, VPA |
+    | `openagent-litellm` | remote OCI dep (`oci://ghcr.io/berriai/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
+    | `openagent-hermes` | remote OCI dep (`oci://ghcr.io/jyje/hermes-agent-helm`, v0.9.1) | Hermes Agent — swarm controller, Discord bot, MCP servers (stdio) |
+    | `hermes-workspace` | local subchart (`charts/hermes-workspace`) | Workspace container — CLIs (terraform, helm, kubectl, etc.), shared workspace PVC |
+    | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP :4523 |
+    | Swarm config + skills | umbrella locals (`templates/`) | Hermes configmap, swarm workers, skill ConfigMaps, hooks |
     | StackGres + istio + secrets | umbrella locals (`templates/`) | SGCluster, VirtualService, AuthorizationPolicy, ExternalSecret, VPA |
 
     **Chart structure** (`services/helm/openagent/`):
     ```
-    openagent/                       ← umbrella (177-line values.yaml)
-    ├── Chart.yaml                   ← litellm-helm + openagent-component deps
+    openagent/                       ← umbrella (380-line values.yaml)
+    ├── Chart.yaml                   ← 2 remote OCI + 3 local subchart deps
     ├── charts/
-    │   ├── litellm-helm/            ← vendored upstream (OCI fallback)
-    │   └── openagent-component/      ← custom subchart (headroom + bot, 15 templates)
-    ├── templates/                    ← CRDs + shared resources only
-    │   ├── ensemble/                 ← omo-loop-engineering (10 personas)
-    │   ├── skillpacks/               ← 3 SkillPack CRDs
-    │   ├── db/                       ← StackGres CRDs
-    │   ├── shared/                   ← ExternalSecret, GHCR, VPA
-    │   └── gateway/                  ← Istio VirtualService + AuthPolicy
-    └── src/                          ← Bot Go source code
+    │   ├── headroom/                ← local subchart (LLM proxy)
+    │   ├── hermes-workspace/        ← local subchart (workspace + CLIs)
+    │   └── claude-proxy/            ← local subchart (Claude Pro proxy)
+    ├── templates/                   ← CRDs + shared resources only
+    │   ├── swarm/                   ← hermes config + swarm worker definitions
+    │   ├── db/                      ← StackGres CRDs (SGCluster, config, pooling)
+    │   ├── hooks/                   ← hermes hook scripts (discord-session-link)
+    │   ├── mcp-kubectl/             ← kubectl MCP server deployment
+    │   ├── skills/                  ← skill ConfigMaps (k8s-gitops-context)
+    │   ├── shared/                  ← ExternalSecrets, GHCR pull secret, VPA
+    │   └── gateway/                 ← Istio VirtualService + AuthPolicy
+    └── src/                         ← Bot Go source code (deprecated, bot removed)
     ```
 
     **Namespaces**: All application resources deploy to `openagent` namespace. Hermes Agent runs the swarm controller and MCP servers as stdio processes within the container.
@@ -852,11 +872,10 @@ data:
 
     ### OpenAgent Gotchas
 
-    - **Umbrella chart uses `**charts/**` gitignore exception**: Root `.gitignore` has `**charts/**` which blocks ALL charts directories. The custom `openagent-component` subchart needs `!services/helm/openagent/charts/openagent-component/**` in `.gitignore` to be tracked. Without this, `git status` silently ignores subchart templates — they won't exist on other machines after clone.
-    - **`.tgz` files are redundant build artifacts**: `helm dependency update` generates `.tgz` archives in `charts/`. These are NOT needed for `file://` deps — Helm reads the chart directory directly. The `**charts/**` gitignore already excludes them. Delete them after local testing.
-    - **GHCR packages are private-by-default for org repos**: Authentication required for GHCR org packages.
-    - **Discord bot secrets flow through `envFrom`, not Helm values**: The deployment template uses `envFrom: secretRef: openagent-discord-secrets` — ALL keys from the Doppler `svc_openagent` config become env vars. No Helm `--set` parameters for secrets.
-    - **Hermes Workspace manages swarm workers**: All components deploy to `openagent` namespace. The hermes-agent and hermes-workspace handle swarm coordination.
+    - **Umbrella chart uses `**charts/**` gitignore exception**: Root `.gitignore` has `**charts/**` which blocks ALL charts directories. Local subcharts need exceptions: `!services/helm/openagent/charts/headroom/**`, `!services/helm/openagent/charts/hermes-workspace/**`, `!services/helm/openagent/charts/claude-proxy/**`. Without these, `git status` silently ignores subchart templates — they won't exist on other machines after clone.
+    - **`.tgz` files are redundant build artifacts**: `helm dependency update` generates `.tgz` archives in `charts/`. For remote OCI deps, these are downloaded archives. For local `file://` deps, Helm reads the chart directory directly. The `**charts/**` gitignore already excludes them. Delete them after local testing.
+    - **Hermes Workspace manages swarm workers**: All components deploy to `openagent` namespace. The hermes-agent (remote OCI) and hermes-workspace (local subchart) handle swarm coordination.
+    - **Discord bot removed**: The standalone Discord bot was removed. Hermes Agent now handles Discord natively via its built-in `discord-platform` plugin.
     - **LiteLLM uses file-based routing (no database)**: `litellm_config.yaml` uses `general_settings.database_url: null` → in-memory routing. Model config changes require a LiteLLM pod restart (config reload via ConfigMap mount). Lightweight — acceptable for 14 models.
     - **OpenAgent headroom no longer points to OpenRouter**: `OPENAI_TARGET_API_URL` routes through `http://openagent-litellm.openagent.svc.cluster.local:4000/v1`. All LLM traffic flows through LiteLLM now. OpenRouter is completely bypassed.
     - **Discord bot uses OpenAI-compatible API, not A2A**: The bot directly calls `POST /v1/chat/completions` on the Sisyphus web endpoint. No A2A protocol, no agent reference CRD.
@@ -925,34 +944,14 @@ data:
 
     **Problem**: Without alias, values passed under `keyName.*` in umbrella `values.yaml` don't reach the subchart — the subchart looks for them under the dependency name, not the umbrella key. Subchart silently uses its own defaults. Helm template renders but resources get wrong config.
 
-    **Example** (litellm-helm in openagent umbrella):
+    **Example** (litellm-helm in openagent umbrella, post-migration to OCI):
     ```yaml
-    # Chart.yaml — WRONG (values never reach subchart)
+    # Chart.yaml — remote OCI (correct)
     dependencies:
       - name: litellm-helm
         version: 1.92.0
-        repository: file://charts/litellm-helm
+        repository: oci://ghcr.io/berriai
         condition: litellm.enabled
-
-    # Chart.yaml — CORRECT
-    dependencies:
-      - name: litellm-helm
-        alias: litellm
-        version: 1.92.0
-        repository: file://charts/litellm-helm
-        condition: litellm.enabled
-    ```
-
-    **Alias renames resources**: Adding alias changes `.Chart.Name` → `fullname` template output changes → resource names change (e.g., `openagent-litellm` → `openagent-openagent-litellm`). Fix: use `fullnameOverride` (not `nameOverride`) to pin resource names.
-
-    ```yaml
-    # values.yaml — WRONG (fullname still changes)
-    litellm:
-      nameOverride: "openagent-litellm"
-
-    # values.yaml — CORRECT
-    litellm:
-      fullnameOverride: "openagent-litellm"
     ```
 
     **Symptoms to watch for**: `helm template` renders, `helm lint` passes, but deployed resources have wrong config (e.g., LiteLLM uses default 2-model list instead of 14). Port-forward works but API calls return 400 or wrong model responses. Root cause: subchart receiving defaults.

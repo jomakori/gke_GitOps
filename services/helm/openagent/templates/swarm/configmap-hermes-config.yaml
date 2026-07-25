@@ -22,7 +22,19 @@ data:
       backend: local
     agent:
       environment_hint: |
-        # Skills: Ponytail + Caveman
+        # Skills: Ponytail + Caveman + k8s-gitops-context
+
+        ## K8s GitOps Context
+
+        THIS IS THE CLUSTER SOURCE OF TRUTH. Read @/opt/data/memories/k8s-gitops-context.md
+        before ANY cluster-related task. Contains:
+        - Repo paths, secrets chain (Doppler → ESO → pods)
+        - Sync wave order, helm chart patterns, service registration
+        - Istio networking, Cloudflare tunnel, Terraform execution order
+        - OpenAgent architecture (umbrella chart, persona routing, Claude proxy)
+        - Critical gotchas (SNI, ExternalSecret patterns, storage limitations)
+
+        NEVER operate on cluster resources without reading the context first.
 
         ## Ponytail — YAGNI Ladder (before writing code)
 
