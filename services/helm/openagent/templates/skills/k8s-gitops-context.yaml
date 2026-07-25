@@ -657,13 +657,13 @@ data:
 
     All components deployed from a single umbrella chart at `services/helm/openagent/` (v2.0.0):
 
-| Component | Deployed Via | Purpose |
-|-----------|-------------|---------|
-| `openagent-headroom` | umbrella subchart (`charts/openagent-component`) | LLM proxy — routes to LiteLLM, SQLite CCR cache, 2Gi PVC, VPA |
-| `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
-| `openagent-discord` | umbrella subchart (`charts/openagent-component`) | Discord gateway bot (Go binary, `ghcr.io/jomakori/gke_gitops/openagent-discord-bot:0.6.0`). OpenAI-compatible chat completions. |
-| `claude-proxy` | umbrella locals (`templates/claude-proxy/`) | Claude Pro subscription proxy — `claude-pipe` wraps `claude` CLI as OpenAI-compatible API, creds from K8s Secret, ClusterIP :4523. |
-| StackGres + istio + secrets | umbrella locals (`templates/`) | SGCluster, VirtualService, AuthorizationPolicy, ExternalSecret, VPA |
+    | Component | Deployed Via | Purpose |
+    |-----------|-------------|---------|
+    | `openagent-headroom` | umbrella subchart (`charts/openagent-component`) | LLM proxy — routes to LiteLLM, SQLite CCR cache, 2Gi PVC, VPA |
+    | `openagent-litellm` | umbrella upstream dep (`charts/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
+    | `openagent-discord` | umbrella subchart (`charts/openagent-component`) | Discord gateway bot (Go binary, `ghcr.io/jomakori/gke_gitops/openagent-discord-bot:0.6.0`). OpenAI-compatible chat completions. |
+    | `claude-proxy` | umbrella locals (`templates/claude-proxy/`) | Claude Pro subscription proxy — `claude-pipe` wraps `claude` CLI as OpenAI-compatible API, creds from K8s Secret, ClusterIP :4523. |
+    | StackGres + istio + secrets | umbrella locals (`templates/`) | SGCluster, VirtualService, AuthorizationPolicy, ExternalSecret, VPA |
 
     **Chart structure** (`services/helm/openagent/`):
     ```
