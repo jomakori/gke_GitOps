@@ -1,0 +1,71 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.postgres.clusterName | default "openagent-pg" }}-db-init
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: db-init
+          image: postgres:18-alpine
+          env:
+            - name: PGHOST
+              value: {{ .Values.postgres.clusterName | default "openagent-pg" }}.{{ .Values.namespace }}.svc.cluster.local
+            - name: PGPORT
+              value: "5432"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.clusterName | default "openagent-pg" }}
+                  key: superuser-username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.clusterName | default "openagent-pg" }}
+                  key: superuser-password
+            - name: OPENAGENT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: openagent-secrets
+                  key: OPENAGENT_PG_USER
+            - name: OPENAGENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openagent-secrets
+                  key: OPENAGENT_PG_PASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "Waiting for database at $PGHOST:$PGPORT..."
+              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
+                echo "Database not ready, retrying..."
+                sleep 3
+              done
+              echo "Database ready. Creating user and database..."
+              psql -v ON_ERROR_STOP=1 \
+                -v db_user="$OPENAGENT_USER" \
+                -v db_pass="$OPENAGENT_PASSWORD" \
+                <<'SQL'
+              DO $$
+              BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'db_user') THEN
+                  EXECUTE format('CREATE ROLE %I WITH LOGIN SUPERUSER PASSWORD %L', :'db_user', :'db_pass');
+                ELSE
+                  EXECUTE format('ALTER ROLE %I WITH LOGIN SUPERUSER PASSWORD %L', :'db_user', :'db_pass');
+                END IF;
+              END $$;
+              SQL
+              psql -v ON_ERROR_STOP=1 \
+                -v db_user="$OPENAGENT_USER" \
+                -c "SELECT 'CREATE DATABASE litellm OWNER ' || quote_ident(:'db_user') WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'litellm')\gexec"
+              echo "User and database created successfully."
+{{- end }}

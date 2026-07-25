@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: openagent
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "0"
 data:
   k8s-gitops-context.md: |
     # K8s GitOps Context
