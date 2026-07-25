@@ -1,0 +1,19 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: stackgres.io/v1
+kind: SGScript
+metadata:
+  name: {{ .Values.postgres.clusterName | default "openagent-pg" }}-init
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  scripts:
+    - name: create-litellm-db
+      script: |
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'litellm') THEN
+            CREATE DATABASE litellm OWNER {{ .Values.postgres.userName | default "openagent" }};
+          END IF;
+        END $$;
+{{- end }}

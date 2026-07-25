@@ -22,4 +22,22 @@ spec:
   configurations:
     sgPostgresConfig: {{ .Values.postgres.configName | default "openagent-pg-config" | quote }}
     sgPoolingConfig: {{ .Values.postgres.poolingConfigName | default "openagent-pg-pooling" | quote }}
+  managedSql:
+    scripts:
+      - id: 0
+        sgScript: {{ .Values.postgres.clusterName | default "openagent-pg" }}-init
+  users:
+    - name: {{ .Values.postgres.userName | default "openagent" }}
+      password:
+        secretKeyRef:
+          name: openagent-secrets
+          key: OPENAGENT_PG_PASSWORD
+      superuser: true
+      createdb: true
+      createrole: true
+      login: true
+      inherit: true
+      databases:
+        - name: litellm
+          owner: true
 {{- end }}
