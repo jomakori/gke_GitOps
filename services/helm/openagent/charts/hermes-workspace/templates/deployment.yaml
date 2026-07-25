@@ -59,6 +59,12 @@ spec:
               # System packages
               apt-get update && apt-get install -y tmux python3-venv git curl jq unzip
 
+              # Copy system binaries to shared volume (init container fs != main container fs)
+              cp $(which git) /shared/bin/git
+              cp $(which jq) /shared/bin/jq
+              cp $(which curl) /shared/bin/curl
+              cp $(which unzip) /shared/bin/unzip
+
               # Python venv + packages
               python3 -m venv /shared/bin/venv && \
               /shared/bin/venv/bin/pip install hermes-agent pre-commit
