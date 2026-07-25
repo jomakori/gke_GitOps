@@ -218,7 +218,7 @@ data:
 
     ```bash
     # Add a new secret to the openagent config
-    doppler secrets set AGENT_API_KEY="sk-xxx" --project devops --config svc_openagent
+    doppler secrets set AGENT_API_KEY="sk-xxx" --project devops --config svc_openagent  # pragma: allowlist secret
 
     # Change an existing value
     doppler secrets set DISCORD_BOT_TOKEN="new-token" --project devops --config svc_openagent
@@ -246,7 +246,7 @@ data:
     curl -X POST "https://api.doppler.com/v3/configs/config/secrets" \
       -H "Authorization: Bearer ${DOPPLER_SERVICE_TOKEN}" \
       -H "Content-Type: application/json" \
-      -d '{"project":"devops","config":"svc_openagent","secrets":{"AGENT_API_KEY":"sk-xxx"}}'
+      -d '{"project":"devops","config":"svc_openagent","secrets":{"AGENT_API_KEY":"sk-xxx"}}'  # pragma: allowlist secret
 
     # Read a secret via API
     curl "https://api.doppler.com/v3/configs/config/secrets/download?project=devops&config=svc_openagent&format=json" \
@@ -266,7 +266,7 @@ data:
        ```
        The template auto-generates a `ClusterSecretStore` named `doppler-svc-my-service`.
     2. Create the config in Doppler: `doppler configs create svc_my_service --project devops`
-    3. Add secrets: `doppler secrets set KEY=VALUE --project devops --config svc_my_service`
+    3. Add secrets: `doppler secrets set KEY=VALUE --project devops --config svc_my_service`  # pragma: allowlist secret
     4. Reference `dopplerConfig: "svc_my_service"` in the service's `argocd-appset/values.yaml` entry.
     5. No Terraform changes needed — the ClusterSecretStore template auto-generates from the values.
 
@@ -370,7 +370,7 @@ data:
 
     **Per-service tuning** — each service can set:
     - `finalizers` (most use `resources-finalizer.argocd.argoproj.io`)
-    - `retryLimit` + `retryMaxDuration` (e.g., external-secrets: 5/3m, postgres-operator: 2/3m)
+    - `retryLimit` + `retryMaxDuration` (e.g., external-secrets: 5/3m, postgres-operator: 2/3m)  # pragma: allowlist secret
     - `ignoreDifferences` (kube-prometheus-stack: node-exporter resources)
     - `parameters` for Helm overrides (storageClass, clusterName)
     - `enabled` (false to disable)
@@ -794,7 +794,7 @@ data:
     - **Umbrella chart uses `**charts/**` gitignore exception**: Root `.gitignore` has `**charts/**` which blocks ALL charts directories. The custom `openagent-component` subchart needs `!services/helm/openagent/charts/openagent-component/**` in `.gitignore` to be tracked. Without this, `git status` silently ignores subchart templates — they won't exist on other machines after clone.
     - **`.tgz` files are redundant build artifacts**: `helm dependency update` generates `.tgz` archives in `charts/`. These are NOT needed for `file://` deps — Helm reads the chart directory directly. The `**charts/**` gitignore already excludes them. Delete them after local testing.
     - **GHCR packages are private-by-default for org repos**: Authentication required for GHCR org packages.
-    - **Discord bot secrets flow through `envFrom`, not Helm values**: The deployment template uses `envFrom: secretRef: openagent-discord-secrets` — ALL keys from the Doppler `svc_openagent` config become env vars. No Helm `--set` parameters for secrets.
+    - **Discord bot secrets flow through `envFrom`, not Helm values**: The deployment template uses `envFrom: secretRef: openagent-discord-secrets` — ALL keys from the Doppler `svc_openagent` config become env vars. No Helm `--set` parameters for secrets.  # pragma: allowlist secret
     - **Hermes Workspace manages swarm workers**: All components deploy to `openagent` namespace. The hermes-agent and hermes-workspace handle swarm coordination.
     - **LiteLLM uses file-based routing (no database)**: `litellm_config.yaml` uses `general_settings.database_url: null` → in-memory routing. Model config changes require a LiteLLM pod restart (config reload via ConfigMap mount). Lightweight — acceptable for 14 models.
     - **OpenAgent headroom no longer points to OpenRouter**: `OPENAI_TARGET_API_URL` routes through `http://openagent-litellm.openagent.svc.cluster.local:4000/v1`. All LLM traffic flows through LiteLLM now. OpenRouter is completely bypassed.
@@ -832,7 +832,7 @@ data:
 
     **Env vars required**:
     - `HOST=0.0.0.0` — claude-pipe binds `127.0.0.1` by default. Must override for inter-pod connectivity.
-    - `CLAUDE_PROXY_API_KEY=claude-proxy-local` — dummy value. Proxy uses credential file, ignores auth. LiteLLM requires this for model config validation only.
+    - `CLAUDE_PROXY_API_KEY=claude-proxy-local` — dummy value. Proxy uses credential file, ignores auth. LiteLLM requires this for model config validation only.  # pragma: allowlist secret
     - `CLAUDE_BIN=/usr/local/bin/claude` — set in Dockerfile, path to claude CLI.
 
     **LiteLLM integration** (values.yaml):
@@ -840,12 +840,12 @@ data:
     - model_name: claude/sonnet-4
       litellm_params:
         model: openai/claude-sonnet-4
-        api_key: os.environ/CLAUDE_PROXY_API_KEY
+        api_key: os.environ/CLAUDE_PROXY_API_KEY  # pragma: allowlist secret
         api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
     - model_name: claude/opus-4
       litellm_params:
         model: openai/claude-opus-4
-        api_key: os.environ/CLAUDE_PROXY_API_KEY
+        api_key: os.environ/CLAUDE_PROXY_API_KEY  # pragma: allowlist secret
         api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
     ```
 
@@ -904,13 +904,13 @@ data:
     - **4-persona limit protects Pro rate limits**: Only sisyphus, atlas, prometheus, oracle use Claude. Remaining 6 personas use existing providers. Adding more Claude personas risks hitting the ~45 req/5h Pro limit.
     - **Dockerfile node version mismatch**: `@anthropic-ai/claude-code` needs Node >=22 but `oven/bun:latest` provides v20 via apt. Non-blocking — claude-pipe runs fine without claude-code CLI. If direct `claude` CLI commands needed in container, switch base to `node:22`.
 
-    - **ESO-managed secrets are overwritten on sync — never put non-Doppler keys in them**: The `openagent-litellm-secrets` ExternalSecret uses `dataFrom.find.regexp: ".*"` with `creationPolicy: Owner`. Any manually added keys (e.g., `username`, `password`, `masterkey`) are overwritten on next ESO reconcile (every 24h or on trigger). Use DEDICATED secrets for non-Doppler values. Example: `openagent-litellm-masterkey` for the LiteLLM master key, `claude-credentials` for OAuth tokens. In values.yaml, reference these via `masterkeySecretName: "openagent-litellm-masterkey"` and `db.secret.name` + `usernameKey`/`passwordKey` to match Doppler key names.
+    - **ESO-managed secrets are overwritten on sync — never put non-Doppler keys in them**: The `openagent-litellm-secrets` ExternalSecret uses `dataFrom.find.regexp: ".*"` with `creationPolicy: Owner`. Any manually added keys (e.g., `username`, `password`, `masterkey`) are overwritten on next ESO reconcile (every 24h or on trigger). Use DEDICATED secrets for non-Doppler values. Example: `openagent-litellm-masterkey` for the LiteLLM master key, `claude-credentials` for OAuth tokens. In values.yaml, reference these via `masterkeySecretName: "openagent-litellm-masterkey"` and `db.secret.name` + `usernameKey`/`passwordKey` to match Doppler key names.  # pragma: allowlist secret
 
     - **Alias renames break Service selectors**: When adding `alias` to a Helm dependency, the subchart's `_helpers.tpl` uses `.Chart.Name` for `app.kubernetes.io/name` labels. Old Service selectors won't match new pods → Service has no Endpoints → DNS resolves but connections refused. Fix: update Service selector to match new pod labels, or recreate Service from updated chart. Symptoms: pods Running, health probes pass, but `curl service-name:port` returns `exit code 7` (connection refused).
 
     - **LiteLLM health probes exhaust Claude subscription rate limits**: LiteLLM's health check probes ALL models in the `model_list` every few seconds. With ~13 unhealthy endpoints (other providers rate-limited/out of credit) plus 2 claude models, each probe cycle makes ~15 API calls. At Pro tier (~45 Sonnet/5h), this exhausts the quota in ~2-3 hours even with zero real traffic. Mitigation: use `router_settings.allowed_fails: 5` and `cooldown_time: 60` in `proxy_config` to reduce probe frequency. Longer-term: patch health check to skip claude models or disable probes for non-critical providers.
 
-    - **`CLAUDE_PROXY_API_KEY` must be in LiteLLM pod env, not just proxy**: The `api_key: os.environ/CLAUDE_PROXY_API_KEY` in LiteLLM's model config requires this env var in the LiteLLM pod — NOT just in the proxy pod. Without it, LiteLLM fails with `AuthenticationError: The api_key client option must be set`. Add to deployment via `kubectl set env` or include in Doppler `svc_openagent`.
+    - **`CLAUDE_PROXY_API_KEY` must be in LiteLLM pod env, not just proxy**: The `api_key: os.environ/CLAUDE_PROXY_API_KEY` in LiteLLM's model config requires this env var in the LiteLLM pod — NOT just in the proxy pod. Without it, LiteLLM fails with `AuthenticationError: The api_key client option must be set`. Add to deployment via `kubectl set env` or include in Doppler `svc_openagent`.  # pragma: allowlist secret
 
     - **DB endpoint double-nesting from StackGres**: StackGres creates services like `{cluster-name}.{namespace}.svc.cluster.local`. If values.yaml has `endpoint: "openagent-pg-openagent-pg.openagent.svc.cluster.local"` (cluster name concatenated twice), the DB connection fails with `P1001: Can't reach database server`. Correct format: `{clusterName}.{namespace}.svc.cluster.local` — e.g., `openagent-pg.openagent.svc.cluster.local`. The values `db.endpoint` must match the SGCluster `metadata.name`, not a derived name.
 
@@ -920,7 +920,7 @@ data:
 
     - **`filter_chain_not_found`** = SNI mismatch. Fix: `match_sni_to_host = true` on tunnel origin_request. The parameter name has an `i` — `match_sni_to_host` (Server Name Indication). Typo `match_sn_ito_host` (missing `i`) silently fails — Terraform removes the unknown key but never adds the correct one.
     - **ExternalSecret pattern — zero explicit `data` mappings**: All ExternalSecrets use `dataFrom.find.regexp: ".*"` + `creationPolicy: Owner`. Doppler keys match exactly what the consuming deployment expects. No explicit `data` mappings in new charts. Legacy exception: postgres-operator maps `ADMIN_USER`→`k8sUsername`.
-    - **Postgres-operator ExternalSecret ownership**: Set `authentication.createAdminSecret: false` but do NOT set `authentication.secretRef`. Adding `secretRef.name` causes SGConfig to set `ownerReferences` on the target secret, conflicting with ESO's `creationPolicy: Owner`. Without `secretRef`, SGConfig leaves the ExternalSecret-owned secret alone.
+    - **Postgres-operator ExternalSecret ownership**: Set `authentication.createAdminSecret: false` but do NOT set `authentication.secretRef`. Adding `secretRef.name` causes SGConfig to set `ownerReferences` on the target secret, conflicting with ESO's `creationPolicy: Owner`. Without `secretRef`, SGConfig leaves the ExternalSecret-owned secret alone.  # pragma: allowlist secret
     - **Storage class is `local-path` only**: `storageClass: "local-path"` in `services/argocd-appset/values.yaml` as the global default. Longhorn was removed — it failed on OrbStack (no iSCSI kernel support, v2 requires hugepages). OpenEBS LVM was tested and failed (k3s CSI node registration bug). The sole provider is `local-path` (rancher.io/local-path). All charts reference this via `.Values.storageClass` — never hardcode `longhorn`.
     - **ExternalDNS uses `upsert-only` policy** — never deletes DNS records. Manual cleanup for stale entries.
     - **Cloudflare token** needs `Cloudflare Tunnel:Edit` account-level permission for tunnel creation.
