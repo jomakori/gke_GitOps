@@ -10,7 +10,7 @@ Subchart for Hermes Workspace — web-based AI agent workspace UI
 |-----|------|---------|-------------|
 | dopplerConfig | string | `"svc_openagent"` |  |
 | hermes.apiKey | string | `"***REMOVED***"` |  |
-| hermes.apiUrl | string | `"http://openagent-hermes.openagent.svc.cluster.local:8642"` |  |
+| hermes.apiUrl | string | `"http://openagent-hermes-api.openagent.svc.cluster.local:8642"` |  |
 | hermes.dashboardUrl | string | `"http://openagent-hermes.openagent.svc.cluster.local:9119"` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/outsourc-e/hermes-workspace"` |  |

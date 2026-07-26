@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: openagent-hermes-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{ include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hermes-api
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: openagent
+    app.kubernetes.io/name: hermes-agent
+  ports:
+    - name: api
+      port: 8642
+      targetPort: 8642
+      protocol: TCP
