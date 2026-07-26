@@ -140,14 +140,11 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | hermes-agent.extraEnv[4].name | string | `"HERMES_DASHBOARD_PORT"` |  |
 | hermes-agent.extraEnv[4].value | string | `"9119"` |  |
 | hermes-agent.extraEnv[5].name | string | `"HERMES_DASHBOARD_BASIC_AUTH_USERNAME"` |  |
-| hermes-agent.extraEnv[5].valueFrom.secretKeyRef.key | string | `"HERMES_DASHBOARD_BASIC_AUTH_USERNAME"` |  |
-| hermes-agent.extraEnv[5].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
+| hermes-agent.extraEnv[5].value | string | `"admin"` |  |
 | hermes-agent.extraEnv[6].name | string | `"HERMES_DASHBOARD_BASIC_AUTH_PASSWORD"` |  |
-| hermes-agent.extraEnv[6].valueFrom.secretKeyRef.key | string | `"HERMES_DASHBOARD_BASIC_AUTH_PASSWORD"` |  |
-| hermes-agent.extraEnv[6].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
+| hermes-agent.extraEnv[6].value | string | `"openagent"` |  |
 | hermes-agent.extraEnv[7].name | string | `"HERMES_DASHBOARD_BASIC_AUTH_SECRET"` |  |
-| hermes-agent.extraEnv[7].valueFrom.secretKeyRef.key | string | `"HERMES_DASHBOARD_BASIC_AUTH_SECRET"` |  |
-| hermes-agent.extraEnv[7].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
+| hermes-agent.extraEnv[7].value | string | `"local-dev-dashboard-signing-secret-32b"` |  |
 | hermes-agent.extraEnv[8].name | string | `"DISCORD_ALLOW_ALL_USERS"` |  |
 | hermes-agent.extraEnv[8].value | string | `"true"` |  |
 | hermes-agent.extraEnv[9].name | string | `"API_SERVER_ENABLED"` |  |
