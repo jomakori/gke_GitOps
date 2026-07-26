@@ -168,6 +168,8 @@ spec:
               value: {{ .Values.hermes.apiKey | quote }}
             - name: AGENT_API_KEY
               value: {{ .Values.hermes.apiKey | quote }}
+            - name: ANTHROPIC_API_KEY
+              value: {{ .Values.hermes.apiKey | quote }}
           envFrom:
             - secretRef:
                 name: openagent-secrets
