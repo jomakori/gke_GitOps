@@ -164,11 +164,7 @@ spec:
               value: {{ .Values.hermes.dashboardUrl | quote }}
             - name: OPENAI_API_KEY
               value: {{ .Values.hermes.apiKey | quote }}
-            - name: HERMES_API_KEY
-              value: {{ .Values.hermes.apiKey | quote }}
-            - name: AGENT_API_KEY
-              value: {{ .Values.hermes.apiKey | quote }}
-            - name: ANTHROPIC_API_KEY
+            - name: HERMES_API_TOKEN
               value: {{ .Values.hermes.apiKey | quote }}
           envFrom:
             - secretRef:
