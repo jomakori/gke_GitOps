@@ -140,6 +140,20 @@ Discord User
 
 All LLM traffic flows through Headroom → LiteLLM. Headroom provides CCR caching; LiteLLM provides multi-provider routing and fallback chains.
 
+#### Web Dashboard
+
+```
+Browser
+  → https://openagent.maklab.net
+    → Cloudflare Tunnel
+      → Istio Ingress Gateway
+        → openagent-hermes-workspace.openagent:3000 (Web UI)
+          → openagent-hermes-api.openagent:8642 (API, chat/sessions)
+          → openagent-hermes-agent.openagent:9119 (Dashboard, config/skills)
+```
+
+The workspace web UI at `openagent.maklab.net` connects to two hermes-agent backends: the API server (`:8642`) for chat/sessions and the dashboard (`:9119`) for config/skills. Dashboard uses cookie-based basic auth with credentials from Doppler `svc_openagent`. See the [k8s-gitops-context skill](#) for connectivity modes and troubleshooting.
+
 See `services/helm/openagent/templates/swarm/configmap-swarm.yaml` for the full system prompts, delegation rules, and verification tiers.
 
 ### Apps
