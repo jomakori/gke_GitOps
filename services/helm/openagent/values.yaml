@@ -350,11 +350,20 @@ hermes-agent:
     - name: HERMES_DASHBOARD_PORT
       value: "9119"
     - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
-      value: "admin"                                                # TODO: move to Doppler → secretKeyRef: openagent-secrets/HERMES_DASHBOARD_BASIC_AUTH_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
     - name: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
-      value: "openagent"                                            # TODO: move to Doppler → secretKeyRef: openagent-secrets/HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
     - name: HERMES_DASHBOARD_BASIC_AUTH_SECRET
-      value: "local-dev-dashboard-signing-secret-32b"               # TODO: move to Doppler → secretKeyRef: openagent-secrets/HERMES_DASHBOARD_BASIC_AUTH_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: HERMES_DASHBOARD_BASIC_AUTH_SECRET
     - name: DISCORD_ALLOW_ALL_USERS
       value: "true"
     - name: API_SERVER_ENABLED
