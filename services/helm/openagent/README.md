@@ -2,7 +2,18 @@
 
 ![Version: 2.1.0](https://img.shields.io/badge/Version-2.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
-Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Hermes Agent, Claude proxy, and supporting infrastructure.
+Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Hermes Agent (API + Dashboard), Claude proxy, and supporting infrastructure.
+
+## Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `openagent-hermes-agent` | 9119 | Dashboard web UI (s6-supervised, basic auth) |
+| `openagent-hermes-api` | 8642 | Hermes Agent API server (chat, sessions, models, runs) |
+| `openagent-hermes-workspace` | 3000 | Web workspace UI (connects to API + Dashboard) |
+| `openagent-headroom` | 8787 | LLM proxy → LiteLLM |
+| `openagent-litellm` | 4000 | Multi-provider LLM gateway |
+| `claude-proxy` | 4523 | Claude Pro subscription proxy |
 
 ## Maintainers
 
