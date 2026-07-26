@@ -789,6 +789,38 @@ data:
 
     **Fallback chains**: opencode/big-pickle → deepseek-v4-flash; opencode/north-mini-code-free → deepseek-v4-flash; opencode/deepseek-v4-flash-free → deepseek-v4-flash. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=3.
 
+    ### Hermes Dashboard & Workspace
+
+    The hermes-workspace web UI (`https://openagent.maklab.net`) connects to two hermes-agent backends:
+
+    | Service | Port | DNS | Purpose |
+    |---------|------|-----|---------|
+    | `openagent-hermes-agent` | 9119 | dashboard | Web UI, session cookies, config, skills admin |
+    | `openagent-hermes-api` | 8642 | API | Chat completions, sessions, models, runs, capabilities |
+
+    **Why two Services**: The hermes-agent OCI subchart creates a single Service exposing only port 9119 (dashboard). Port 8642 (API server) is NOT exposed by the subchart's Service template. A separate `openagent-hermes-api` Service (`templates/shared/hermes-api-service.yaml`) was added to expose the API port.
+
+    **Dashboard auth** (`values.yaml` → `hermes-agent.extraEnv`):
+    - `HERMES_DASHBOARD=1` — enables the dashboard process (s6-supervised)
+    - `HERMES_DASHBOARD_HOST=0.0.0.0` — binds all interfaces (was 127.0.0.1)
+    - `HERMES_DASHBOARD_PORT=9119` — matches Service targetPort (was 19119)
+    - `HERMES_DASHBOARD_BASIC_AUTH_USERNAME/PASSWORD/SECRET` — from Doppler `svc_openagent` via `openagent-secrets`
+
+    **Workspace config** (`charts/hermes-workspace/values.yaml`):
+    ```yaml
+    hermes:
+      apiUrl: "http://openagent-hermes-api.openagent.svc.cluster.local:8642"
+      dashboardUrl: "http://openagent-hermes.openagent.svc.cluster.local:9119"
+      apiKey: "hermes-api-server-key-1234"
+    ```
+
+    **Connectivity modes** (workspace log output):
+    - `disconnected` — can't reach any backend → setup screen shown
+    - `enhanced-fork` — API reachable, dashboard token fetch failed → chat/models/sessions work, skills/config missing
+    - `connected` — both API and dashboard reachable → full features
+
+    **Key gotcha**: Dashboard refuses to bind `0.0.0.0` without auth. Error: "auth gate engages on non-loopback binds, but no auth providers are registered." Fix: set `HERMES_DASHBOARD_BASIC_AUTH_*` env vars. Creds MUST be in Doppler `svc_openagent` — ESO syncs them to `openagent-secrets` K8s Secret. The hermes-agent values.yaml uses `secretKeyRef` to reference them.
+
     ### Skills
 
     Hermes workspace workers use built-in skills:
@@ -880,6 +912,11 @@ data:
     - **OpenAgent headroom no longer points to OpenRouter**: `OPENAI_TARGET_API_URL` routes through `http://openagent-litellm.openagent.svc.cluster.local:4000/v1`. All LLM traffic flows through LiteLLM now. OpenRouter is completely bypassed.
     - **Discord bot uses OpenAI-compatible API, not A2A**: The bot directly calls `POST /v1/chat/completions` on the Sisyphus web endpoint. No A2A protocol, no agent reference CRD.
     - **Components consolidated into 1 umbrella**: All components are in `services/helm/openagent/`. Root README and services/README updated to reflect this.
+    - **Hermes-agent Service only exposes dashboard port (9119)**: The OCI subchart's Service template only maps port 9119 → 9119. The API server (8642) needs a separate Service (`openagent-hermes-api`). Without it, workspace can't reach the API via DNS → setup screen shown.
+    - **Dashboard auth keys live in Doppler**: `HERMES_DASHBOARD_BASIC_AUTH_USERNAME/PASSWORD/SECRET` are synced from Doppler `svc_openagent` via ESO. Add them in Doppler dashboard, not in values.yaml. The values.yaml uses `secretKeyRef` → `openagent-secrets`.
+    - **Dashboard refuses 0.0.0.0 bind without auth**: Binding to non-loopback triggers the auth gate. Requires basic auth credentials. Without them, dashboard silently fails — `HERMES_DASHBOARD_READY` won't appear in logs.
+    - **Workspace DNS failures in minimal containers**: The `curl` binary in `ghcr.io/outsourc-e/hermes-workspace` can't resolve K8s service DNS (exit code 6). Node.js process uses its own resolver and works fine. Test connectivity with pod IP directly, not DNS.
+    - **Dashboard token fetch fails without auth**: Even when dashboard is running, workspace's `fetch("http://...:9119/...")` returns `{"error":"unauthenticated","reason":"no_cookie"}` because dashboard uses cookie-based auth. Workspace needs `HERMES_DASHBOARD_BASIC_AUTH_*` env vars to authenticate and get a session cookie.
 
     ### Claude Proxy (Subscription-Based)
 
