@@ -374,6 +374,8 @@ hermes-agent:
       value: "0.0.0.0"
     - name: API_SERVER_PORT
       value: "8642"
+    - name: API_SERVER_CORS_ORIGINS
+      value: "https://openagent.maklab.net"
     - name: DASHBOARD_BASE_URL
       value: "https://openagent.maklab.net"
   extraVolumes:
