@@ -90,6 +90,8 @@ apps:
   opendesign:
     enable: true
     enable_private: true
+    gateways:
+      enable_public: false
     helmPath: apps/helm/opendesign
     project: default
     environment:
