@@ -1,6 +1,6 @@
 apiVersion: v2
 name: openagent
-description: Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Hermes Agent, Claude proxy, and supporting infrastructure.
+description: Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude proxy, and supporting infrastructure.
 type: application
 version: 2.1.0
 appVersion: "1.0.0"
@@ -17,11 +17,6 @@ dependencies:
     version: 0.9.1
     repository: oci://ghcr.io/jyje/hermes-agent-helm
     condition: hermes.enabled
-
-  - name: headroom
-    version: 0.1.0
-    repository: file://charts/headroom
-    condition: headroom.enabled
 
   - name: hermes-workspace
     version: 0.1.0
