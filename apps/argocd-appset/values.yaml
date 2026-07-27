@@ -86,32 +86,31 @@ apps:
         value: "{{ .Values.notesUi.environment.staging.dopplerConfig }}"
       - name: notesUi.environments.production.dopplerConfig
         value: "{{ .Values.notesUi.environment.production.dopplerConfig }}"
-
-opendesign:
-  enable: true
-  enable_private: true
-  helmPath: apps/helm/opendesign
-  project: default
-  environment:
-    production:
-      cluster: https://kubernetes.default.svc
-      namespace: opendesign
-  parameters:
-    - name: opendesign.config.disableApiAuth
-      value: "1"
-    - name: opendesign.config.bindHost
-      value: "127.0.0.1"
-    - name: opendesign.config.allowedOrigins
-      value: "https://design.maklab.net"
-    - name: opendesign.config.publicBaseUrl
-      value: "https://design.maklab.net"
-    - name: opendesign.replicaCount
-      value: "1"
-    - name: opendesign.persistence.enabled
-      value: "true"
-    - name: opendesign.persistence.storageClass
-      value: "local-path"
-    - name: opendesign.persistence.size
-      value: "10Gi"
-    - name: opendesign.ingress.enabled
-      value: "false"
+  opendesign:
+    enable: true
+    enable_private: true
+    helmPath: apps/helm/opendesign
+    project: default
+    environment:
+      production:
+        cluster: https://kubernetes.default.svc
+        namespace: opendesign
+    parameters:
+      - name: opendesign.config.disableApiAuth
+        value: "1"
+      - name: opendesign.config.bindHost
+        value: "127.0.0.1"
+      - name: opendesign.config.allowedOrigins
+        value: "https://design.maklab.net"
+      - name: opendesign.config.publicBaseUrl
+        value: "https://design.maklab.net"
+      - name: opendesign.replicaCount
+        value: "1"
+      - name: opendesign.persistence.enabled
+        value: "true"
+      - name: opendesign.persistence.storageClass
+        value: "local-path"
+      - name: opendesign.persistence.size
+        value: "10Gi"
+      - name: opendesign.ingress.enabled
+        value: "false"
