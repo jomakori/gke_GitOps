@@ -1,6 +1,0 @@
-apiVersion: v2
-name: headroom
-description: Headroom — LLM token optimization proxy with CCR compression
-type: application
-version: 0.1.0
-appVersion: "latest"

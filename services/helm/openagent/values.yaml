@@ -198,7 +198,7 @@ hermes-agent:
       provider: litellm
     providers:
       litellm:
-        base_url: http://openagent-headroom.openagent.svc.cluster.local:8787/v1
+        base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
         key_env: LITELLM_MASTER_KEY
         discover_models: true
     agent:
@@ -409,26 +409,6 @@ hermes-agent:
 # ── Hermes Workspace ────────────────────────────────────────────────
 hermes-workspace:
   enabled: true
-
-headroom:
-  enabled: true
-  image:
-    repository: ghcr.io/chopratejas/headroom
-    tag: "latest"
-    pullPolicy: IfNotPresent
-  service:
-    port: 8787
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 2000m
-      memory: 2Gi
-  storage:
-    size: 2Gi
-    accessMode: ReadWriteOnce
-  litellmUrl: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
 
 claude-proxy:
   enabled: true
