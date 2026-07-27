@@ -9,8 +9,8 @@
 config:
   disableApiAuth: 1
   bindHost: "127.0.0.1"
-  allowedOrigins: "https://od.maklab.net"
-  publicBaseUrl: "https://od.maklab.net"
+  allowedOrigins: "https://design.maklab.net"
+  publicBaseUrl: "https://design.maklab.net"
   apiToken: "dummy"
 
 replicaCount: 1

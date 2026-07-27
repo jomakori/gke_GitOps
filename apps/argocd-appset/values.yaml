@@ -102,9 +102,9 @@ opendesign:
     - name: opendesign.config.bindHost
       value: "127.0.0.1"
     - name: opendesign.config.allowedOrigins
-      value: "https://od.maklab.net"
+      value: "https://design.maklab.net"
     - name: opendesign.config.publicBaseUrl
-      value: "https://od.maklab.net"
+      value: "https://design.maklab.net"
     - name: opendesign.replicaCount
       value: "1"
     - name: opendesign.persistence.enabled
