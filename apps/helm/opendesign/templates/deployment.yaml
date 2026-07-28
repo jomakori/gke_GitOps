@@ -115,6 +115,7 @@ spec:
               mountPath: /tmp
       {{- end }}
       initContainers:
+      initContainers:
         - name: seed-config
           image: busybox:1.36
           command:
@@ -122,35 +123,33 @@ spec:
             - -c
             - |
               if [ ! -f /app/.od/app-config.json ]; then
-                cat > /app/.od/app-config.json <<'EOF'
-{
-  "agentCliEnv": {
-    "codex": {
-      "OPENAI_BASE_URL": "{{ .Values.provider.endpoint }}",
-      "CODEX_API_KEY": "seeded-by-helm"
-    },
-    "claude": {
-      "ANTHROPIC_BASE_URL": "{{ .Values.provider.endpoint }}"
-    }
-  }
-}
-EOF
-                echo "Seeded agent config from Helm values"
+                printf '%%s
+' '{' > /app/.od/app-config.json
+                printf '%%s
+' '  "agentCliEnv": {' >> /app/.od/app-config.json
+                printf '%%s
+' '    "codex": {' >> /app/.od/app-config.json
+                printf '  "OPENAI_BASE_URL": "%s",
+' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
+                printf '%%s
+' '      "CODEX_API_KEY": "seeded-by-helm"' >> /app/.od/app-config.json
+                printf '%%s
+' '    },' >> /app/.od/app-config.json
+                printf '%%s
+' '    "claude": {' >> /app/.od/app-config.json
+                printf '  "ANTHROPIC_BASE_URL": "%s"
+' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
+                printf '%%s
+' '    }' >> /app/.od/app-config.json
+                printf '%%s
+' '  }' >> /app/.od/app-config.json
+                printf '%%s
+' '}' >> /app/.od/app-config.json
+                echo "Seeded agent config from Helm"
               else
-                echo "app-config.json exists, skipping seed"
+                echo "app-config.json exists, skipping"
               fi
           volumeMounts:
             - name: data
               mountPath: /app/.od
-      {{- if .Values.enable_auth_proxy }}
-        - name: auth-proxy-init
-          image: nginxinc/nginx-unprivileged:1.25-alpine-slim
-          command: ["sh", "-c", "echo 'server { listen 8080; location / { proxy_pass http://127.0.0.1:7456; proxy_set_header Authorization "Bearer ${PROXY_API_TOKEN}"; } }' > /etc/nginx/conf.d/default.conf"]
-          env:
-            - name: PROXY_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "opendesign.fullname" . }}
-                  key: OD_API_TOKEN
-                  optional: true
-      {{- end }}
+      {- end }
