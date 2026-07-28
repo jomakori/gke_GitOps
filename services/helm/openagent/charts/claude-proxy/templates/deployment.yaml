@@ -163,10 +163,50 @@ spec:
           volumeMounts:
             - name: claude-credentials-writable
               mountPath: /root/.claude
+        - name: responses-proxy
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - exec bun run /app/responses-proxy.ts
+          ports:
+            - containerPort: 4524
+              name: responses
+          env:
+            - name: PORT
+              value: "4524"
+            - name: UPSTREAM
+              value: "http://127.0.0.1:{{ .Values.service.port }}"
+          volumeMounts:
+            - name: responses-proxy
+              mountPath: /app
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: responses
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: responses
+            periodSeconds: 15
+            failureThreshold: 2
       volumes:
         - name: claude-credentials-secret
           secret:
             secretName: claude-credentials
         - name: claude-credentials-writable
           emptyDir: {}
+        - name: responses-proxy
+          configMap:
+            name: claude-proxy-responses
 {{- end }}
