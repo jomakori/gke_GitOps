@@ -52,7 +52,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: opendesign-secrets
-                  key: CODEX_API_KEY
+                  key: LITELLM_MASTER_KEY
           volumeMounts:
             - name: data
               mountPath: /app/.od
@@ -103,7 +103,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "opendesign.fullname" . }}
-                  key: CODEX_API_KEY
+                  key: LITELLM_MASTER_KEY
                   optional: true
             {{- end }}
             {{- if .Values.agents.claude.ANTHROPIC_BASE_URL }}
@@ -130,7 +130,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: opendesign-secrets
-                  key: CODEX_API_KEY
+                  key: LITELLM_MASTER_KEY
           volumeMounts:
             - name: data
               mountPath: /app/.od
