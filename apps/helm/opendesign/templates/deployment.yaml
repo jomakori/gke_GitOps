@@ -31,6 +31,8 @@ spec:
             - |
               if [ ! -f /app/.od/app-config.json ]; then
                 printf '{\n' > /app/.od/app-config.json
+                printf '  "onboardingCompleted": true,\n' >> /app/.od/app-config.json
+                printf '  "agentId": "codex",\n' >> /app/.od/app-config.json
                 printf '  "agentCliEnv": {\n' >> /app/.od/app-config.json
                 printf '    "codex": {\n' >> /app/.od/app-config.json
                 printf '      "OPENAI_BASE_URL": "%s",\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
