@@ -22,6 +22,44 @@ spec:
       {{- end }}
       securityContext:
         fsGroup: 1001
+      initContainers:
+        - name: seed-config
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /app/.od/app-config.json ]; then
+                printf '{\n' > /app/.od/app-config.json
+                printf '  "agentCliEnv": {\n' >> /app/.od/app-config.json
+                printf '    "codex": {\n' >> /app/.od/app-config.json
+                printf '      "OPENAI_BASE_URL": "%s",\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
+                printf '      "CODEX_API_KEY": "seeded-by-helm"\n' >> /app/.od/app-config.json
+                printf '    },\n' >> /app/.od/app-config.json
+                printf '    "claude": {\n' >> /app/.od/app-config.json
+                printf '      "ANTHROPIC_BASE_URL": "%s"\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
+                printf '    }\n' >> /app/.od/app-config.json
+                printf '  }\n' >> /app/.od/app-config.json
+                printf '}\n' >> /app/.od/app-config.json
+                echo "Seeded agent config from Helm"
+              else
+                echo "app-config.json exists, skipping"
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: /app/.od
+      {{- if .Values.enable_auth_proxy }}
+        - name: auth-proxy-init
+          image: nginxinc/nginx-unprivileged:1.25-alpine-slim
+          command: ["sh", "-c", "echo 'server { listen 8080; location / { proxy_pass http://127.0.0.1:7456; proxy_set_header Authorization "Bearer ${PROXY_API_TOKEN}"; } }' > /etc/nginx/conf.d/default.conf"]
+          env:
+            - name: PROXY_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opendesign.fullname" . }}
+                  key: OD_API_TOKEN
+                  optional: true
+      {{- end }}
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -114,42 +152,3 @@ spec:
             - name: proxy-tmp
               mountPath: /tmp
       {{- end }}
-      initContainers:
-      initContainers:
-        - name: seed-config
-          image: busybox:1.36
-          command:
-            - sh
-            - -c
-            - |
-              if [ ! -f /app/.od/app-config.json ]; then
-                printf '%%s
-' '{' > /app/.od/app-config.json
-                printf '%%s
-' '  "agentCliEnv": {' >> /app/.od/app-config.json
-                printf '%%s
-' '    "codex": {' >> /app/.od/app-config.json
-                printf '  "OPENAI_BASE_URL": "%s",
-' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
-                printf '%%s
-' '      "CODEX_API_KEY": "seeded-by-helm"' >> /app/.od/app-config.json
-                printf '%%s
-' '    },' >> /app/.od/app-config.json
-                printf '%%s
-' '    "claude": {' >> /app/.od/app-config.json
-                printf '  "ANTHROPIC_BASE_URL": "%s"
-' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
-                printf '%%s
-' '    }' >> /app/.od/app-config.json
-                printf '%%s
-' '  }' >> /app/.od/app-config.json
-                printf '%%s
-' '}' >> /app/.od/app-config.json
-                echo "Seeded agent config from Helm"
-              else
-                echo "app-config.json exists, skipping"
-              fi
-          volumeMounts:
-            - name: data
-              mountPath: /app/.od
-      {- end }
