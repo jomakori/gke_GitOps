@@ -45,3 +45,9 @@ resources:
 service:
   type: ClusterIP
   port: 80
+
+# Image
+image:
+  repository: ghcr.io/nexu-io/od
+  tag: latest
+  pullPolicy: IfNotPresent
