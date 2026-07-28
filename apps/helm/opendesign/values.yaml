@@ -10,7 +10,7 @@ provider:
 # App runtime config — domain is resolved from top-level
 config:
   disableApiAuth: 1
-  bindHost: "127.0.0.1"
+  bindHost: "0.0.0.0"
   allowedOrigins: ""
   publicBaseUrl: ""
   apiToken: ""
