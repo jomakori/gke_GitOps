@@ -23,6 +23,17 @@ spec:
       securityContext:
         fsGroup: 1001
       initContainers:
+        - name: install-codex
+          image: node:24-alpine
+          command:
+            - sh
+            - -c
+            - |
+              npm install -g @openai/codex@0.145.0 2>&1 | tail -5
+              echo "Codex CLI installed"
+          volumeMounts:
+            - name: node-modules
+              mountPath: /usr/local/lib/node_modules
         - name: seed-config
           image: busybox:1.36
           command:
@@ -56,6 +67,8 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /app/.od
+            - name: node-modules
+              mountPath: /usr/local/lib/node_modules
       {{- if .Values.enable_auth_proxy }}
         - name: auth-proxy-init
           image: nginxinc/nginx-unprivileged:1.25-alpine-slim
@@ -69,6 +82,8 @@ spec:
                   optional: true
       {{- end }}
       volumes:
+        - name: node-modules
+          emptyDir: {}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "opendesign.fullname" . }}
