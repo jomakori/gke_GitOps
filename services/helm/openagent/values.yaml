@@ -244,6 +244,11 @@ hermes-agent:
       api_key: ${LITELLM_MASTER_KEY}
       max_iterations: 30
       reasoning_effort: medium
+
+    auxiliary:
+      vision:
+        provider: litellm
+        model: claude/sonnet-4
     plugins:
       enabled:
         - discord-platform
