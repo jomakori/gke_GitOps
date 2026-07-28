@@ -23,6 +23,18 @@ spec:
       securityContext:
         fsGroup: 1001
       initContainers:
+        - name: install-codex
+          image: node:24-alpine
+          command:
+            - sh
+            - -c
+            - |
+              npm install --prefix /opt/codex @openai/codex@0.145.0 2>&1 | tail -5
+              ln -sf /opt/codex/node_modules/.bin/codex /usr/local/bin/codex
+              echo "Codex CLI installed"
+          volumeMounts:
+            - name: codex
+              mountPath: /opt/codex
         - name: seed-config
           image: busybox:1.36
           command:
@@ -59,7 +71,7 @@ spec:
       {{- if .Values.enable_auth_proxy }}
         - name: auth-proxy-init
           image: nginxinc/nginx-unprivileged:1.25-alpine-slim
-          command: ["sh", "-c", "printf '%%s\n' 'server { listen 8080; location / { proxy_pass http://127.0.0.1:7456; proxy_set_header Authorization "Bearer ${PROXY_API_TOKEN}"; } }' > /etc/nginx/conf.d/default.conf"]
+          command: ["sh", "-c", "printf '%s\n' 'server { listen 8080; location / { proxy_pass http://127.0.0.1:7456; proxy_set_header Authorization "Bearer ${PROXY_API_TOKEN}"; } }' > /etc/nginx/conf.d/default.conf"]
           env:
             - name: PROXY_API_TOKEN
               valueFrom:
@@ -69,6 +81,8 @@ spec:
                   optional: true
       {{- end }}
       volumes:
+        - name: codex
+          emptyDir: {}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "opendesign.fullname" . }}
@@ -82,6 +96,8 @@ spec:
             - configMapRef:
                 name: {{ include "opendesign.fullname" . }}
           env:
+            - name: PATH
+              value: "/opt/codex/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             - name: OD_API_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -95,17 +111,12 @@ spec:
             - name: OPENAI_BASE_URL
               value: {{ .Values.provider.endpoint | quote }}
             {{- end }}
-            {{- if .Values.agents.codex.OPENAI_API_KEY }}
-            - name: CODEX_API_KEY
-              value: {{ .Values.agents.codex.OPENAI_API_KEY | quote }}
-            {{- else }}
             - name: CODEX_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "opendesign.fullname" . }}
+                  name: opendesign-secrets
                   key: LITELLM_MASTER_KEY
                   optional: true
-            {{- end }}
             {{- if .Values.agents.claude.ANTHROPIC_BASE_URL }}
             - name: ANTHROPIC_BASE_URL
               value: {{ .Values.agents.claude.ANTHROPIC_BASE_URL | quote }}
@@ -113,25 +124,13 @@ spec:
             - name: ANTHROPIC_BASE_URL
               value: {{ .Values.provider.endpoint | quote }}
             {{- end }}
-            {{- if .Values.agents.claude.ANTHROPIC_API_KEY }}
-            - name: ANTHROPIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "opendesign.fullname" . }}
-                  key: ANTHROPIC_API_KEY
-                  optional: true
-            {{- end }}
           ports:
             - name: http
               containerPort: 7456
               protocol: TCP
-          env:
-            - name: CODEX_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: opendesign-secrets
-                  key: LITELLM_MASTER_KEY
           volumeMounts:
+            - name: codex
+              mountPath: /opt/codex
             - name: data
               mountPath: /app/.od
             - name: tmp
