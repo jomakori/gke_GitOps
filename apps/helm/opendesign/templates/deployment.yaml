@@ -36,7 +36,7 @@ spec:
                 printf '  "agentCliEnv": {\n' >> /app/.od/app-config.json
                 printf '    "codex": {\n' >> /app/.od/app-config.json
                 printf '      "OPENAI_BASE_URL": "%s",\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
-                printf '      "CODEX_API_KEY": "%s"\n' "$LITELLM_MASTER_KEY" >> /app/.od/app-config.json
+                printf '      "CODEX_API_KEY": "%s"\n' "$CODEX_API_KEY" >> /app/.od/app-config.json
                 printf '    },\n' >> /app/.od/app-config.json
                 printf '    "claude": {\n' >> /app/.od/app-config.json
                 printf '      "ANTHROPIC_BASE_URL": "%s"\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
@@ -52,7 +52,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: opendesign-secrets
-                  key: LITELLM_MASTER_KEY
+                  key: CODEX_API_KEY
           volumeMounts:
             - name: data
               mountPath: /app/.od
@@ -103,7 +103,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "opendesign.fullname" . }}
-                  key: LITELLM_MASTER_KEY
+                  key: CODEX_API_KEY
                   optional: true
             {{- end }}
             {{- if .Values.agents.claude.ANTHROPIC_BASE_URL }}
@@ -130,7 +130,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: opendesign-secrets
-                  key: LITELLM_MASTER_KEY
+                  key: CODEX_API_KEY
           volumeMounts:
             - name: data
               mountPath: /app/.od
