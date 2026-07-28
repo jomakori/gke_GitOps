@@ -43,6 +43,14 @@ spec:
             - sh
             - -c
             - |
+              # Always ensure Codex config exists with app_server disabled
+              mkdir -p /app/.od/codex
+              chmod 775 /app/.od/codex
+              chown 1001:1001 /app/.od/codex
+              printf 'app_server.enabled = false\n' > /app/.od/codex/config.toml
+              printf 'api_url = "%s"\n' "{{ .Values.provider.endpoint }}" >> /app/.od/codex/config.toml
+              echo "Seeded Codex config (app_server disabled)"
+
               if [ ! -f /app/.od/app-config.json ]; then
                 printf '{\n' > /app/.od/app-config.json
                 printf '  "onboardingCompleted": true,\n' >> /app/.od/app-config.json
@@ -57,9 +65,6 @@ spec:
                 printf '    }\n' >> /app/.od/app-config.json
                 printf '  }\n' >> /app/.od/app-config.json
                 printf '}\n' >> /app/.od/app-config.json
-                mkdir -p /app/.od/codex
-                printf 'api_url = "%s"\n' "{{ .Values.provider.endpoint }}" > /app/.od/codex/config.toml
-                echo "Seeded Codex config"
                 echo "Seeded agent config from Helm"
               else
                 echo "app-config.json exists, skipping"
