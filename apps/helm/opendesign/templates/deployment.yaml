@@ -98,8 +98,6 @@ spec:
             - configMapRef:
                 name: {{ include "opendesign.fullname" . }}
           env:
-            - name: HOME
-              value: /tmp
             - name: PATH
               value: "/opt/codex/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             - name: OD_API_TOKEN
