@@ -57,6 +57,9 @@ spec:
                 printf '    }\n' >> /app/.od/app-config.json
                 printf '  }\n' >> /app/.od/app-config.json
                 printf '}\n' >> /app/.od/app-config.json
+                mkdir -p /app/.od/codex
+                printf 'api_url = "%s"\n' "{{ .Values.provider.endpoint }}" > /app/.od/codex/config.toml
+                echo "Seeded Codex config"
                 echo "Seeded agent config from Helm"
               else
                 echo "app-config.json exists, skipping"
@@ -100,6 +103,8 @@ spec:
           env:
             - name: HOME
               value: /app/.od
+            - name: CODEX_HOME
+              value: /app/.od/codex
             - name: PATH
               value: "/opt/codex/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             - name: OD_API_TOKEN
