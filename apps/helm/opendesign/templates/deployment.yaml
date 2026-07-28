@@ -36,7 +36,7 @@ spec:
                 printf '  "agentCliEnv": {\n' >> /app/.od/app-config.json
                 printf '    "codex": {\n' >> /app/.od/app-config.json
                 printf '      "OPENAI_BASE_URL": "%s",\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
-                printf '      "CODEX_API_KEY": "seeded-by-helm"\n' >> /app/.od/app-config.json
+                printf '      "CODEX_API_KEY": "%s"\n' "$CODEX_API_KEY" >> /app/.od/app-config.json
                 printf '    },\n' >> /app/.od/app-config.json
                 printf '    "claude": {\n' >> /app/.od/app-config.json
                 printf '      "ANTHROPIC_BASE_URL": "%s"\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
@@ -47,6 +47,12 @@ spec:
               else
                 echo "app-config.json exists, skipping"
               fi
+          env:
+            - name: CODEX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: opendesign-secrets
+                  key: CODEX_API_KEY
           volumeMounts:
             - name: data
               mountPath: /app/.od
@@ -119,6 +125,12 @@ spec:
             - name: http
               containerPort: 7456
               protocol: TCP
+          env:
+            - name: CODEX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: opendesign-secrets
+                  key: CODEX_API_KEY
           volumeMounts:
             - name: data
               mountPath: /app/.od
