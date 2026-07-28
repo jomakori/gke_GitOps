@@ -88,7 +88,7 @@ apps:
         value: "{{ .Values.notesUi.environment.production.dopplerConfig }}"
 
   opendesign:
-    enable: true
+    enable: false
     enable_private: true
     gateways:
       enable_public: false
