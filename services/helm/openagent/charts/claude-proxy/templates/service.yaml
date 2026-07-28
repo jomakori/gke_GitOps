@@ -18,4 +18,7 @@ spec:
     - port: {{ .Values.service.port }}
       targetPort: http
       name: http
+    - port: 4524
+      targetPort: responses
+      name: responses
 {{- end }}
