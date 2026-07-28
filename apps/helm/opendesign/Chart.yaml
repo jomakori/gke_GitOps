@@ -1,5 +1,5 @@
 apiVersion: v2
 name: opendesign
-description: Open Design — values override layer for upstream chart
+description: Open Design — self-hosted spec-driven chart
 version: 0.1.0
 appVersion: "0.7.0"
