@@ -115,6 +115,33 @@ spec:
               mountPath: /tmp
       {{- end }}
       initContainers:
+        - name: seed-config
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /app/.od/app-config.json ]; then
+                cat > /app/.od/app-config.json <<'EOF'
+{
+  "agentCliEnv": {
+    "codex": {
+      "OPENAI_BASE_URL": "{{ .Values.provider.endpoint }}",
+      "CODEX_API_KEY": "seeded-by-helm"
+    },
+    "claude": {
+      "ANTHROPIC_BASE_URL": "{{ .Values.provider.endpoint }}"
+    }
+  }
+}
+EOF
+                echo "Seeded agent config from Helm values"
+              else
+                echo "app-config.json exists, skipping seed"
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: /app/.od
       {{- if .Values.enable_auth_proxy }}
         - name: auth-proxy-init
           image: nginxinc/nginx-unprivileged:1.25-alpine-slim
