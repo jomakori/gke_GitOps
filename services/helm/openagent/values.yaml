@@ -237,6 +237,13 @@ hermes-agent:
         - ALWAYS verbalize your classification: "Classified as [tier]."
         - Show your work. Tell user what you're doing.
         - When delegating: "Delegating to [persona] for [task]."
+    delegation:
+      model: claude/sonnet-4
+      provider: litellm
+      base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
+      api_key: ${LITELLM_MASTER_KEY}
+      max_iterations: 30
+      reasoning_effort: medium
     plugins:
       enabled:
         - discord-platform
