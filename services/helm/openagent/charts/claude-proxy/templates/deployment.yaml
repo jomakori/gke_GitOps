@@ -17,6 +17,8 @@ spec:
       app.kubernetes.io/component: claude-proxy
   template:
     metadata:
+      annotations:
+        checksum/responses-config: {{ include (print $.Template.BasePath "/configmap-responses.yaml") . | sha256sum }}
       labels:
         {{- include "claude-proxy.labels" . | nindent 8 }}
         app.kubernetes.io/component: claude-proxy
