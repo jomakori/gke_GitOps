@@ -42,6 +42,11 @@ litellm:
       master_key: os.environ/LITELLM_MASTER_KEY
     litellm_settings:
       drop_params: true
+    router_settings:
+      allowed_fails: 5
+      cooldown_time: 300
+      num_retries: 2
+      request_timeout: 60
     model_list:
       - model_name: opencode/big-pickle
         litellm_params:
@@ -82,97 +87,55 @@ litellm:
           model: deepseek/deepseek-v4-flash
           api_key: os.environ/DEEPSEEK_API_KEY
           order: 1
-      - model_name: deepseek-v4-flash
-        litellm_params:
-          model: zai/glm-4.7-flash
-          api_key: os.environ/ZAI_API_KEY
-          order: 2
       - model_name: deepseek-v4-pro
         litellm_params:
           model: deepseek/deepseek-v4-pro
           api_key: os.environ/DEEPSEEK_API_KEY
           cache: true
           order: 1
-      - model_name: deepseek-v4-pro
-        litellm_params:
-          model: zai/glm-4.7
-          api_key: os.environ/ZAI_API_KEY
-          order: 2
       - model_name: zai/glm-4.7
         litellm_params:
           model: zai/glm-4.7
           api_key: os.environ/ZAI_API_KEY
           order: 1
-      - model_name: zai/glm-4.7
-        litellm_params:
-          model: deepseek/deepseek-v4-pro
-          api_key: os.environ/DEEPSEEK_API_KEY
-          order: 2
       - model_name: zai/glm-4.7-flash
         litellm_params:
           model: zai/glm-4.7-flash
           api_key: os.environ/ZAI_API_KEY
           order: 1
-      - model_name: zai/glm-4.7-flash
-        litellm_params:
-          model: deepseek/deepseek-v4-flash
-          api_key: os.environ/DEEPSEEK_API_KEY
-          order: 2
       - model_name: minimax/M3
         litellm_params:
           model: openai/MiniMax-M3
           api_key: os.environ/MINIMAX_API_KEY
           api_base: os.environ/MINIMAX_API_BASE
           order: 1
-      - model_name: minimax/M3
-        litellm_params:
-          model: deepseek/deepseek-v4-pro
-          api_key: os.environ/DEEPSEEK_API_KEY
-          order: 2
       - model_name: minimax/M2.7
         litellm_params:
           model: openai/MiniMax-M2.7
           api_key: os.environ/MINIMAX_API_KEY
           api_base: os.environ/MINIMAX_API_BASE
           order: 1
-      - model_name: minimax/M2.7
-        litellm_params:
-          model: deepseek/deepseek-v4-flash
-          api_key: os.environ/DEEPSEEK_API_KEY
-          order: 2
       - model_name: claude/sonnet-5
         litellm_params:
           model: openai/claude-sonnet-5
-          api_key: dummy
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4524/v1
+          api_key: claude-proxy-local
+          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
+          rpm: 20
           order: 1
-      - model_name: claude/sonnet-5
-        litellm_params:
-          model: deepseek/deepseek-v4-pro
-          api_key: os.environ/DEEPSEEK_API_KEY
-          order: 2
       - model_name: claude/sonnet-4
         litellm_params:
           model: openai/claude-sonnet-4
-          api_key: dummy
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4524/v1
+          api_key: claude-proxy-local
+          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
+          rpm: 10
           order: 1
-      - model_name: claude/sonnet-4
-        litellm_params:
-          model: deepseek/deepseek-v4-pro
-          api_key: os.environ/DEEPSEEK_API_KEY
-          order: 2
       - model_name: claude/opus-4
         litellm_params:
           model: openai/claude-opus-4
-          api_key: dummy
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4524/v1
+          api_key: claude-proxy-local
+          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
+          rpm: 5
           order: 1
-      - model_name: claude/opus-4
-        litellm_params:
-          model: deepseek/deepseek-v4-pro
-          api_key: os.environ/DEEPSEEK_API_KEY
-          order: 2
     fallbacks:
       - opencode/big-pickle: ["deepseek-v4-flash"]
       - opencode/north-mini-code-free: ["deepseek-v4-flash"]

@@ -56,6 +56,11 @@ jobs:
         run: |
           ./ct_check.sh "$changed_files" lint
 
+      - name: Validate LiteLLM ConfigMap
+        if: contains(steps.changed-files.outputs.all_changed_files, 'services/helm/openagent/values.yaml')
+        run: |
+          .useful-scripts/validate_litellm_config.sh
+
       # - name: Run Dry-Run
       #   env:
       #     changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
