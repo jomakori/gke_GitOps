@@ -46,7 +46,7 @@ litellm:
       allowed_fails: 5
       cooldown_time: 300
       num_retries: 2
-      request_timeout: 60
+      request_timeout: 180
     model_list:
       - model_name: opencode/big-pickle
         litellm_params:
