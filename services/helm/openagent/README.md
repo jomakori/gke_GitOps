@@ -283,7 +283,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 | litellm.proxy_config.router_settings.allowed_fails | int | `5` |  |
 | litellm.proxy_config.router_settings.cooldown_time | int | `300` |  |
 | litellm.proxy_config.router_settings.num_retries | int | `2` |  |
-| litellm.proxy_config.router_settings.request_timeout | int | `60` |  |
+| litellm.proxy_config.router_settings.request_timeout | int | `180` |  |
 | litellm.resources.limits.cpu | string | `"2000m"` |  |
 | litellm.resources.limits.memory | string | `"2Gi"` |  |
 | litellm.resources.requests.cpu | string | `"100m"` |  |
