@@ -3,7 +3,7 @@ domain: design.maklab.net
 
 # AI provider backend (LiteLLM)
 provider:
-  endpoint: "http://responses-proxy.openagent.svc.cluster.local:4524/v1"
+  endpoint: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
   apiKeyRef: "openagent-secrets"
   apiKeyKey: "LITELLM_MASTER_KEY"
 
