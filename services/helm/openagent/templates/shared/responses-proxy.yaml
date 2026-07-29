@@ -62,6 +62,13 @@ data:
             headers: { "Content-Type": "application/json" },
           });
 
+        // Reject WebSocket on /v1/responses to force Codex HTTP SSE fallback
+        if (
+          u.pathname === "/v1/responses" &&
+          req.headers.get("upgrade")?.toLowerCase() === "websocket"
+        )
+          return new Response("Use HTTP POST for /v1/responses", { status: 426 });
+
         // ── Responses API → Chat Completions translation ──
         if (u.pathname === "/v1/responses" && req.method === "POST") {
           try {
