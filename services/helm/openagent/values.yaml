@@ -119,21 +119,21 @@ litellm:
         litellm_params:
           model: openai/claude-sonnet-5
           api_key: claude-proxy-local
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
+          api_base: http://192.168.1.64:4523/v1
           rpm: 20
           order: 1
       - model_name: claude/sonnet-4
         litellm_params:
           model: openai/claude-sonnet-4
           api_key: claude-proxy-local
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
+          api_base: http://192.168.1.64:4523/v1
           rpm: 10
           order: 1
       - model_name: claude/opus-4
         litellm_params:
           model: openai/claude-opus-4
           api_key: claude-proxy-local
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
+          api_base: http://192.168.1.64:4523/v1
           rpm: 5
           order: 1
     fallbacks:
