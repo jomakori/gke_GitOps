@@ -40,6 +40,8 @@ litellm:
   proxy_config:
     general_settings:
       master_key: os.environ/LITELLM_MASTER_KEY
+    litellm_settings:
+      drop_params: true
     model_list:
       - model_name: opencode/big-pickle
         litellm_params:
