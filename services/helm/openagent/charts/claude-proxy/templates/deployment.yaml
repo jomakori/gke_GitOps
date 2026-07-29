@@ -95,9 +95,7 @@ spec:
                   print(f'Refresh failed: {e}')
               " && \
                echo "Token refresh init complete"
-               echo "Pre-warming claude CLI..."
-               claude -p "ping" 2>&1 || true
-               echo "Pre-warm complete"
+               echo "Token refresh complete"
           volumeMounts:
             - name: claude-credentials-secret
               mountPath: /secrets
@@ -140,15 +138,13 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           startupProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - claude -p "ping" 2>&1 | grep -q .
-            initialDelaySeconds: 2
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
             periodSeconds: 10
-            failureThreshold: 6
-            timeoutSeconds: 30
+            failureThreshold: 10
+            timeoutSeconds: 10
           readinessProbe:
             httpGet:
               path: /health
