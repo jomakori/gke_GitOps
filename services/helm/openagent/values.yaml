@@ -143,7 +143,7 @@ litellm:
       - model_name: claude/sonnet-5
         litellm_params:
           model: openai/claude-sonnet-5
-          api_key: os.environ/CLAUDE_PROXY_API_KEY
+          api_key: dummy
           api_base: http://claude-proxy.openagent.svc.cluster.local:4524/v1
           order: 1
       - model_name: claude/sonnet-5
@@ -154,7 +154,7 @@ litellm:
       - model_name: claude/sonnet-4
         litellm_params:
           model: openai/claude-sonnet-4
-          api_key: os.environ/CLAUDE_PROXY_API_KEY
+          api_key: dummy
           api_base: http://claude-proxy.openagent.svc.cluster.local:4524/v1
           order: 1
       - model_name: claude/sonnet-4
@@ -165,7 +165,7 @@ litellm:
       - model_name: claude/opus-4
         litellm_params:
           model: openai/claude-opus-4
-          api_key: os.environ/CLAUDE_PROXY_API_KEY
+          api_key: dummy
           api_base: http://claude-proxy.openagent.svc.cluster.local:4524/v1
           order: 1
       - model_name: claude/opus-4
