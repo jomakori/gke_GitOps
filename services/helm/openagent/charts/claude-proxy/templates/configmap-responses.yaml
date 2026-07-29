@@ -8,6 +8,6 @@ metadata:
     {{- include "claude-proxy.labels" . | nindent 4 }}
     app.kubernetes.io/component: claude-proxy
 data:
-  responses-proxy.ts: |
-{{ .Files.Get "files/responses-proxy.ts" | indent 4 }}
+  responses.ts: |
+{{ .Files.Get "files/responses.ts" | indent 4 }}
 {{- end }}
