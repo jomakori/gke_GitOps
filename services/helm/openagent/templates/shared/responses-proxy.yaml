@@ -1,0 +1,85 @@
+{{- if .Values.claude-proxy.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: responses-proxy
+  namespace: {{ .Release.Namespace }}
+data:
+  proxy.ts: |
+    const PORT=parseInt(process.env.PORT??"4524");
+    const LITELLM=process.env.LITELLM??"http://openagent-litellm.{{ .Release.Namespace }}.svc.cluster.local:4000";
+    const MAC=process.env.MAC??"http://192.168.1.64:4523";
+    const cache=new Map();
+    Bun.serve({port:PORT,hostname:"0.0.0.0",async fetch(req){
+      const u=new URL(req.url);
+      if(u.pathname==="/v1/responses"&&req.method==="POST"){
+        try{
+          const body=await req.json();
+          const key=JSON.stringify(body);
+          const cached=cache.get(key);
+          if(cached&&Date.now()-cached.time<30000){
+            return new Response(new ReadableStream({start(c){c.enqueue(cached.buf);c.close()}}),{headers:{"Content-Type":"text/event-stream"}})
+          }
+          const inp=typeof body.input==="string"?body.input:JSON.stringify(body.input);
+          const cr={model:"claude-sonnet-5",messages:[{role:"system",content:"You are a helpful coding assistant."},...(body.instructions?[{role:"system",content:body.instructions}]:[]),{role:"user",content:inp}],stream:false};
+          const cr2=await fetch(MAC+"/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(cr)});
+          if(!cr2.ok){const e=await cr2.text();return new Response(e,{status:cr2.status})}
+          const cd=await cr2.json();const ct=cd.choices?.[0]?.message?.content??"";
+          const id="resp_"+crypto.randomUUID().slice(0,24);const mi=id+"_msg";
+          const usage=cd.usage||{prompt_tokens:0,completion_tokens:0,total_tokens:0};
+          const enc=new TextEncoder();
+          const rj={id,object:"response",model:body.model||cr.model,output:[{id:mi,type:"message",role:"assistant",content:[{type:"output_text",text:ct}]}],usage:{input_tokens:usage.prompt_tokens||0,output_tokens:usage.completion_tokens||0,total_tokens:(usage.prompt_tokens||0)+(usage.completion_tokens||0)}};
+          const buf=enc.encode("data: "+JSON.stringify(rj)+"\n\n");
+          cache.set(key,{time:Date.now(),buf});
+          return new Response(new ReadableStream({start(c){c.enqueue(buf);c.close()}}),{headers:{"Content-Type":"text/event-stream","Cache-Control":"no-cache"}})
+        }catch(e){return new Response(String(e),{status:500})}
+      }
+      return await fetch(LITELLM+u.pathname+u.search,{method:req.method,headers:req.headers,body:req.body})
+    }});
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: responses-proxy
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: responses-proxy
+  template:
+    metadata:
+      labels:
+        app: responses-proxy
+    spec:
+      containers:
+        - name: proxy
+          image: oven/bun:1-alpine
+          command: ["bun", "/proxy/proxy.ts"]
+          ports:
+            - containerPort: 4524
+          readinessProbe:
+            tcpSocket:
+              port: 4524
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: proxy-script
+              mountPath: /proxy
+      volumes:
+        - name: proxy-script
+          configMap:
+            name: responses-proxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: responses-proxy
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: responses-proxy
+  ports:
+    - port: 4524
+      targetPort: 4524
+{{- end }}
