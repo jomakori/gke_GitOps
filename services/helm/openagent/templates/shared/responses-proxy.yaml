@@ -52,7 +52,7 @@ data:
     Bun.serve({
       port: PORT,
       hostname: "0.0.0.0",
-      idleTimeout: 300, // Match Codex DEFAULT_STREAM_IDLE_TIMEOUT_MS (5 min)
+      idleTimeout: 255, // Bun max; Codex default is 300s but Bun caps at 255
       async fetch(req) {
         const u = new URL(req.url);
 
