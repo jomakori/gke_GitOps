@@ -60,12 +60,14 @@ litellm:
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
           order: 1
+          use_chat_completions_api: true
       - model_name: opencode/deepseek-v4-flash-free
         litellm_params:
           model: openai/deepseek-v4-flash-free
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
           order: 1
+          use_chat_completions_api: true
       - model_name: opencode/mimo-v2.5-free
         litellm_params:
           model: openai/mimo-v2.5-free
@@ -87,22 +89,26 @@ litellm:
           model: deepseek/deepseek-v4-flash
           api_key: os.environ/DEEPSEEK_API_KEY
           order: 1
+          use_chat_completions_api: true
       - model_name: deepseek-v4-pro
         litellm_params:
           model: deepseek/deepseek-v4-pro
           api_key: os.environ/DEEPSEEK_API_KEY
           cache: true
           order: 1
+          use_chat_completions_api: true
       - model_name: zai/glm-4.7
         litellm_params:
           model: zai/glm-4.7
           api_key: os.environ/ZAI_API_KEY
           order: 1
+          use_chat_completions_api: true
       - model_name: zai/glm-4.7-flash
         litellm_params:
           model: zai/glm-4.7-flash
           api_key: os.environ/ZAI_API_KEY
           order: 1
+          use_chat_completions_api: true
       - model_name: minimax/M3
         litellm_params:
           model: openai/MiniMax-M3
@@ -122,6 +128,15 @@ litellm:
           api_base: http://192.168.1.64:4523/v1
           rpm: 20
           order: 1
+          use_chat_completions_api: true
+      - model_name: claude-sonnet-5
+        litellm_params:
+          model: openai/claude-sonnet-5
+          api_key: claude-proxy-local
+          api_base: http://192.168.1.64:4523/v1
+          rpm: 20
+          order: 1
+          use_chat_completions_api: true
       - model_name: claude/sonnet-4
         litellm_params:
           model: openai/claude-sonnet-4
@@ -129,6 +144,7 @@ litellm:
           api_base: http://192.168.1.64:4523/v1
           rpm: 10
           order: 1
+          use_chat_completions_api: true
       - model_name: claude/opus-4
         litellm_params:
           model: openai/claude-opus-4
@@ -136,6 +152,7 @@ litellm:
           api_base: http://192.168.1.64:4523/v1
           rpm: 5
           order: 1
+          use_chat_completions_api: true
     fallbacks:
       - opencode/big-pickle: ["deepseek-v4-flash"]
       - opencode/north-mini-code-free: ["deepseek-v4-flash"]
