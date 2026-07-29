@@ -2,7 +2,7 @@
 
 ![Version: 2.1.0](https://img.shields.io/badge/Version-2.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
-Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Hermes Agent, Claude proxy, and supporting infrastructure.
+Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude proxy, and supporting infrastructure.
 
 ## Maintainers
 
@@ -15,7 +15,6 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | Repository | Name | Version |
 |------------|------|---------|
 | file://charts/claude-proxy | claude-proxy | 0.1.0 |
-| file://charts/headroom | headroom | 0.1.0 |
 | file://charts/hermes-workspace | hermes-workspace | 0.1.0 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |
 | oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 0.9.1 |
@@ -31,22 +30,18 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | dashboard.subdomain | string | `"openagent"` |  |
 | dopplerConfig | string | `"svc_openagent"` |  |
 | ghcrPullSecret | string | `""` |  |
-| headroom.enabled | bool | `true` |  |
-| headroom.image.pullPolicy | string | `"IfNotPresent"` |  |
-| headroom.image.repository | string | `"ghcr.io/chopratejas/headroom"` |  |
-| headroom.image.tag | string | `"latest"` |  |
-| headroom.litellmUrl | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
-| headroom.resources.limits.cpu | string | `"2000m"` |  |
-| headroom.resources.limits.memory | string | `"2Gi"` |  |
-| headroom.resources.requests.cpu | string | `"200m"` |  |
-| headroom.resources.requests.memory | string | `"512Mi"` |  |
-| headroom.service.port | int | `8787` |  |
-| headroom.storage.accessMode | string | `"ReadWriteOnce"` |  |
-| headroom.storage.size | string | `"2Gi"` |  |
 | hermes-agent.command[0] | string | `"sh"` |  |
 | hermes-agent.command[1] | string | `"-c"` |  |
 | hermes-agent.command[2] | string | `"npm install -g @bitwarden/cli 2>&1\nexec /init hermes gateway run\n"` |  |
 | hermes-agent.config.agent.system_prompt | string | `"You are Sisyphus — OMO Orchestrator. You field ALL prompts.\nClassify every request BEFORE acting.\n\n## Classification\n\n- TRIVIAL (typo, single config, known pattern): Answer directly. No delegation.\n- STANDARD (new feature, refactor, multi-file): Route through planning pipeline.\n- COMPLEX (architecture, cross-system, security): Full pipeline with review gates.\n\n## Delegation Pipeline (Standard + Complex)\n\n1. Assess context: is the request clear and unambiguous?\n   → NO: Ask ONE clarifying question first.\n   → YES: Proceed.\n\n2. Standard: Build a plan → present for USER APPROVAL → wait for \"go\" / \"approved\".\n   Complex: Analyze (Metis) → Architect (Oracle) → Plan (Prometheus) → Review (Momus)\n   → present for USER APPROVAL.\n\n3. NEVER execute Standard/Complex work without explicit user sign-off.\n\n## Approval Gates (BLOCK these without asking)\n\n- merge / commit\n- publish / deploy / push\n- destructive (delete, teardown, drop)\n- external-send (email, API, webhook)\n\n## Style\n\n- Terse. Caveman mode. Drop articles and filler.\n- ALWAYS verbalize your classification: \"Classified as [tier].\"\n- Show your work. Tell user what you're doing.\n- When delegating: \"Delegating to [persona] for [task].\"\n"` |  |
+| hermes-agent.config.auxiliary.vision.model | string | `"claude/sonnet-4"` |  |
+| hermes-agent.config.auxiliary.vision.provider | string | `"litellm"` |  |
+| hermes-agent.config.delegation.api_key | string | `"${LITELLM_MASTER_KEY}"` |  |
+| hermes-agent.config.delegation.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
+| hermes-agent.config.delegation.max_iterations | int | `30` |  |
+| hermes-agent.config.delegation.model | string | `"claude/sonnet-4"` |  |
+| hermes-agent.config.delegation.provider | string | `"litellm"` |  |
+| hermes-agent.config.delegation.reasoning_effort | string | `"medium"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[0] | string | `"-y"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[1] | string | `"argocd-mcp@latest"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[2] | string | `"stdio"` |  |
@@ -114,7 +109,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | hermes-agent.config.model.default | string | `"deepseek-v4-flash"` |  |
 | hermes-agent.config.model.provider | string | `"litellm"` |  |
 | hermes-agent.config.plugins.enabled[0] | string | `"discord-platform"` |  |
-| hermes-agent.config.providers.litellm.base_url | string | `"http://openagent-headroom.openagent.svc.cluster.local:8787/v1"` |  |
+| hermes-agent.config.providers.litellm.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
 | hermes-agent.config.providers.litellm.discover_models | bool | `true` |  |
 | hermes-agent.config.providers.litellm.key_env | string | `"LITELLM_MASTER_KEY"` |  |
 | hermes-agent.env | object | `{}` |  |
@@ -211,77 +206,45 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | litellm.proxy_config.fallbacks[9]."zai/glm-4.7-flash"[0] | string | `"deepseek-v4-flash"` |  |
 | litellm.proxy_config.fallbacks[9]."zai/glm-4.7-flash"[1] | string | `"opencode/deepseek-v4-flash-free"` |  |
 | litellm.proxy_config.general_settings.master_key | string | `"os.environ/LITELLM_MASTER_KEY"` |  |
+| litellm.proxy_config.litellm_settings.drop_params | bool | `true` |  |
 | litellm.proxy_config.model_list[0].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
 | litellm.proxy_config.model_list[0].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
 | litellm.proxy_config.model_list[0].litellm_params.model | string | `"openai/big-pickle"` |  |
 | litellm.proxy_config.model_list[0].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[0].model_name | string | `"opencode/big-pickle"` |  |
-| litellm.proxy_config.model_list[10].litellm_params.api_key | string | `"os.environ/ZAI_API_KEY"` |  |
-| litellm.proxy_config.model_list[10].litellm_params.model | string | `"zai/glm-4.7"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.api_base | string | `"os.environ/MINIMAX_API_BASE"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.api_key | string | `"os.environ/MINIMAX_API_KEY"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.model | string | `"openai/MiniMax-M3"` |  |
 | litellm.proxy_config.model_list[10].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[10].model_name | string | `"zai/glm-4.7"` |  |
-| litellm.proxy_config.model_list[11].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
-| litellm.proxy_config.model_list[11].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
-| litellm.proxy_config.model_list[11].litellm_params.order | int | `2` |  |
-| litellm.proxy_config.model_list[11].model_name | string | `"zai/glm-4.7"` |  |
-| litellm.proxy_config.model_list[12].litellm_params.api_key | string | `"os.environ/ZAI_API_KEY"` |  |
-| litellm.proxy_config.model_list[12].litellm_params.model | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.model_list[10].model_name | string | `"minimax/M3"` |  |
+| litellm.proxy_config.model_list[11].litellm_params.api_base | string | `"os.environ/MINIMAX_API_BASE"` |  |
+| litellm.proxy_config.model_list[11].litellm_params.api_key | string | `"os.environ/MINIMAX_API_KEY"` |  |
+| litellm.proxy_config.model_list[11].litellm_params.model | string | `"openai/MiniMax-M2.7"` |  |
+| litellm.proxy_config.model_list[11].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[11].model_name | string | `"minimax/M2.7"` |  |
+| litellm.proxy_config.model_list[12].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
+| litellm.proxy_config.model_list[12].litellm_params.api_key | string | `"claude-proxy-local"` |  |
+| litellm.proxy_config.model_list[12].litellm_params.model | string | `"openai/claude-sonnet-5"` |  |
 | litellm.proxy_config.model_list[12].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[12].model_name | string | `"zai/glm-4.7-flash"` |  |
-| litellm.proxy_config.model_list[13].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
-| litellm.proxy_config.model_list[13].litellm_params.model | string | `"deepseek/deepseek-v4-flash"` |  |
-| litellm.proxy_config.model_list[13].litellm_params.order | int | `2` |  |
-| litellm.proxy_config.model_list[13].model_name | string | `"zai/glm-4.7-flash"` |  |
-| litellm.proxy_config.model_list[14].litellm_params.api_base | string | `"os.environ/MINIMAX_API_BASE"` |  |
-| litellm.proxy_config.model_list[14].litellm_params.api_key | string | `"os.environ/MINIMAX_API_KEY"` |  |
-| litellm.proxy_config.model_list[14].litellm_params.model | string | `"openai/MiniMax-M3"` |  |
+| litellm.proxy_config.model_list[12].litellm_params.rpm | int | `20` |  |
+| litellm.proxy_config.model_list[12].model_name | string | `"claude/sonnet-5"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.api_key | string | `"claude-proxy-local"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.model | string | `"openai/claude-sonnet-4"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[13].litellm_params.rpm | int | `10` |  |
+| litellm.proxy_config.model_list[13].model_name | string | `"claude/sonnet-4"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.api_key | string | `"claude-proxy-local"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.model | string | `"openai/claude-opus-4"` |  |
 | litellm.proxy_config.model_list[14].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[14].model_name | string | `"minimax/M3"` |  |
-| litellm.proxy_config.model_list[15].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
-| litellm.proxy_config.model_list[15].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
-| litellm.proxy_config.model_list[15].litellm_params.order | int | `2` |  |
-| litellm.proxy_config.model_list[15].model_name | string | `"minimax/M3"` |  |
-| litellm.proxy_config.model_list[16].litellm_params.api_base | string | `"os.environ/MINIMAX_API_BASE"` |  |
-| litellm.proxy_config.model_list[16].litellm_params.api_key | string | `"os.environ/MINIMAX_API_KEY"` |  |
-| litellm.proxy_config.model_list[16].litellm_params.model | string | `"openai/MiniMax-M2.7"` |  |
-| litellm.proxy_config.model_list[16].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[16].model_name | string | `"minimax/M2.7"` |  |
-| litellm.proxy_config.model_list[17].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
-| litellm.proxy_config.model_list[17].litellm_params.model | string | `"deepseek/deepseek-v4-flash"` |  |
-| litellm.proxy_config.model_list[17].litellm_params.order | int | `2` |  |
-| litellm.proxy_config.model_list[17].model_name | string | `"minimax/M2.7"` |  |
-| litellm.proxy_config.model_list[18].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
-| litellm.proxy_config.model_list[18].litellm_params.api_key | string | `"os.environ/CLAUDE_PROXY_API_KEY"` |  |
-| litellm.proxy_config.model_list[18].litellm_params.model | string | `"openai/claude-sonnet-5"` |  |
-| litellm.proxy_config.model_list[18].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[18].model_name | string | `"claude/sonnet-5"` |  |
-| litellm.proxy_config.model_list[19].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
-| litellm.proxy_config.model_list[19].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
-| litellm.proxy_config.model_list[19].litellm_params.order | int | `2` |  |
-| litellm.proxy_config.model_list[19].model_name | string | `"claude/sonnet-5"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.rpm | int | `5` |  |
+| litellm.proxy_config.model_list[14].model_name | string | `"claude/opus-4"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.model | string | `"openai/north-mini-code-free"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[1].model_name | string | `"opencode/north-mini-code-free"` |  |
-| litellm.proxy_config.model_list[20].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
-| litellm.proxy_config.model_list[20].litellm_params.api_key | string | `"os.environ/CLAUDE_PROXY_API_KEY"` |  |
-| litellm.proxy_config.model_list[20].litellm_params.model | string | `"openai/claude-sonnet-4"` |  |
-| litellm.proxy_config.model_list[20].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[20].model_name | string | `"claude/sonnet-4"` |  |
-| litellm.proxy_config.model_list[21].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
-| litellm.proxy_config.model_list[21].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
-| litellm.proxy_config.model_list[21].litellm_params.order | int | `2` |  |
-| litellm.proxy_config.model_list[21].model_name | string | `"claude/sonnet-4"` |  |
-| litellm.proxy_config.model_list[22].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
-| litellm.proxy_config.model_list[22].litellm_params.api_key | string | `"os.environ/CLAUDE_PROXY_API_KEY"` |  |
-| litellm.proxy_config.model_list[22].litellm_params.model | string | `"openai/claude-opus-4"` |  |
-| litellm.proxy_config.model_list[22].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[22].model_name | string | `"claude/opus-4"` |  |
-| litellm.proxy_config.model_list[23].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
-| litellm.proxy_config.model_list[23].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
-| litellm.proxy_config.model_list[23].litellm_params.order | int | `2` |  |
-| litellm.proxy_config.model_list[23].model_name | string | `"claude/opus-4"` |  |
 | litellm.proxy_config.model_list[2].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
 | litellm.proxy_config.model_list[2].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
 | litellm.proxy_config.model_list[2].litellm_params.model | string | `"openai/deepseek-v4-flash-free"` |  |
@@ -304,19 +267,23 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Headroom proxy, Herm
 | litellm.proxy_config.model_list[6].litellm_params.model | string | `"deepseek/deepseek-v4-flash"` |  |
 | litellm.proxy_config.model_list[6].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[6].model_name | string | `"deepseek-v4-flash"` |  |
-| litellm.proxy_config.model_list[7].litellm_params.api_key | string | `"os.environ/ZAI_API_KEY"` |  |
-| litellm.proxy_config.model_list[7].litellm_params.model | string | `"zai/glm-4.7-flash"` |  |
-| litellm.proxy_config.model_list[7].litellm_params.order | int | `2` |  |
-| litellm.proxy_config.model_list[7].model_name | string | `"deepseek-v4-flash"` |  |
-| litellm.proxy_config.model_list[8].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
-| litellm.proxy_config.model_list[8].litellm_params.cache | bool | `true` |  |
-| litellm.proxy_config.model_list[8].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[7].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
+| litellm.proxy_config.model_list[7].litellm_params.cache | bool | `true` |  |
+| litellm.proxy_config.model_list[7].litellm_params.model | string | `"deepseek/deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[7].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[7].model_name | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[8].litellm_params.api_key | string | `"os.environ/ZAI_API_KEY"` |  |
+| litellm.proxy_config.model_list[8].litellm_params.model | string | `"zai/glm-4.7"` |  |
 | litellm.proxy_config.model_list[8].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[8].model_name | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[8].model_name | string | `"zai/glm-4.7"` |  |
 | litellm.proxy_config.model_list[9].litellm_params.api_key | string | `"os.environ/ZAI_API_KEY"` |  |
-| litellm.proxy_config.model_list[9].litellm_params.model | string | `"zai/glm-4.7"` |  |
-| litellm.proxy_config.model_list[9].litellm_params.order | int | `2` |  |
-| litellm.proxy_config.model_list[9].model_name | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.model_list[9].litellm_params.model | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.model_list[9].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[9].model_name | string | `"zai/glm-4.7-flash"` |  |
+| litellm.proxy_config.router_settings.allowed_fails | int | `5` |  |
+| litellm.proxy_config.router_settings.cooldown_time | int | `300` |  |
+| litellm.proxy_config.router_settings.num_retries | int | `2` |  |
+| litellm.proxy_config.router_settings.request_timeout | int | `60` |  |
 | litellm.resources.limits.cpu | string | `"2000m"` |  |
 | litellm.resources.limits.memory | string | `"2Gi"` |  |
 | litellm.resources.requests.cpu | string | `"100m"` |  |

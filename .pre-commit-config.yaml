@@ -26,3 +26,11 @@ repos:
           # Make the tool search for charts only under the `helm` directory
           - --chart-search-root=apps/helm
           - --chart-search-root=services/helm
+  - repo: local
+    hooks:
+      - id: validate-litellm-config
+        name: Validate LiteLLM ConfigMap
+        entry: .useful-scripts/validate_litellm_config.sh
+        language: system
+        files: ^services/helm/openagent/values\.yaml$
+        pass_filenames: false
