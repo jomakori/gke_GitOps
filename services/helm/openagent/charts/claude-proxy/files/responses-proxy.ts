@@ -85,7 +85,7 @@ Bun.serve({
                 if (!sentCreated) {
                   const created = JSON.stringify({
                     type: 'response.created',
-                    response: { id, object: 'response', model: chatReq.model, output: [] }
+                    response: { id, object: 'response', model: chatReq.model, output: [{ id: `${id}_msg`, type: 'message', role: 'assistant', content: [] }] }
                   });
                   controller.enqueue(encoder.encode(`data: ${created}\n\n`));
                   sentCreated = true;
