@@ -3,7 +3,7 @@ domain: design.maklab.net
 
 # AI provider backend (LiteLLM)
 provider:
-  endpoint: "http://responses-proxy.openagent.svc.cluster.local:4524/v1"
+  endpoint: "http://192.168.1.64:4523/v1"  # direct Mac claude-pipe
   apiKeyRef: "openagent-secrets"
   apiKeyKey: "LITELLM_MASTER_KEY"
 
