@@ -252,6 +252,15 @@ hermes-agent:
           resources: false
           prompts: false
 
+      gistpad:
+        command: "npx"
+        args: ["-y", "gistpad-mcp"]
+        env:
+          GITHUB_TOKEN: "${MCP_GITHUB_TOKEN}"
+        tools:
+          resources: false
+          prompts: false
+
       argocd:
         command: "npx"
         args: ["-y", "argocd-mcp@latest", "stdio"]
