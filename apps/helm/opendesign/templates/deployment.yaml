@@ -50,7 +50,7 @@ spec:
                printf '' > /app/.od/codex/config.toml
                cat >> /app/.od/codex/config.toml << 'CODEXEOF'
 model_provider = "litellm"
-model = "claude-sonnet-5"
+model = "gpt-5.5"
 
 [model_providers.litellm]
 name = "LiteLLM Gateway"
@@ -62,7 +62,7 @@ stream_idle_timeout_ms = 300000
 stream_max_retries = 5
 request_max_retries = 4
 CODEXEOF
-               echo "Seeded Codex config (custom provider + supports_websockets=false)"
+               echo "Seeded Codex config (custom provider, model gpt-5.5)"
 
               if [ ! -f /app/.od/app-config.json ]; then
                 printf '{\n' > /app/.od/app-config.json
