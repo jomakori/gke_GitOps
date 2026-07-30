@@ -1,0 +1,240 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opendesign-skills
+  labels: {{- include "opendesign.labels" . | nindent 4 }}
+data:
+  design-taste-frontend.SKILL.md: |
+    ---
+    name: design-taste-frontend
+    description: Anti-slop frontend skill. Infers design style from brief, produces polished output.
+    od:
+      mode: prototype
+      platform: desktop
+      scenario: design
+      preview:
+        type: html
+        entry: index.html
+      design_system:
+        requires: true
+    ---
+    # Design Taste Frontend
+
+    Produce distinctive, production-grade frontend interfaces. Anti-"AI slop" by design.
+
+    ## Core Rules
+    1. NEVER use Inter, system-ui, or generic sans-serif as display fonts
+    2. NEVER use purple gradients, emoji icons, or generic hero sections
+    3. Match font personality to brand: editorial→serif, SaaS→geometric, luxury→elegant sans
+    4. Every design must have ONE clear visual hook (unusual layout, bold color, striking typography)
+    5. Spacing must be intentional: 8px grid minimum, generous whitespace
+    6. Shadows only when functional (elevation), never decorative
+    7. Borders < 1px, subtle colors only
+
+    ## Output
+    - Single self-contained HTML file
+    - All CSS inline in <style> tag
+    - Mobile-responsive with at least 1 breakpoint
+    - Semantic HTML5 elements
+    - Dark mode support recommended
+
+  reference-design-contract.SKILL.md: |
+    ---
+    name: reference-design-contract
+    description: Turn screenshots, URLs, or taste references into a grounded DESIGN.md
+    od:
+      mode: design-system
+      scenario: design
+    ---
+    # Reference Design Contract
+
+    Extract a repeatable brand system from ANY reference: screenshot, URL, product note, or "make it feel like X".
+
+    ## Output: DESIGN.md
+    ```markdown
+    # [Brand Name] Design System
+
+    ## Color
+    - Primary: #XXXXXX (usage)
+    - Secondary: #XXXXXX
+    - Accent: #XXXXXX
+    - Background: #XXXXXX
+    - Text: #XXXXXX
+
+    ## Typography
+    - Display: [Font] (headings)
+    - Body: [Font] (paragraphs)
+    - Scale: 12/14/16/20/24/32/48/64
+
+    ## Spacing
+    - Grid: 8px
+    - Section padding: 80px desktop / 40px mobile
+    - Card padding: 24px
+
+    ## Components
+    - Buttons: height, radius, states
+    - Cards: shadow, border, padding
+    - Inputs: height, border, focus ring
+
+    ## Tone
+    - Voice: [professional/playful/minimal/edgy]
+    - Motion: [subtle/bold/none]
+    ```
+
+  impeccable-design-polish.SKILL.md: |
+    ---
+    name: impeccable-design-polish
+    description: Post-generation audit, critique, and polish. Turns good designs into great ones.
+    od:
+      mode: prototype
+      platform: desktop
+      scenario: design
+      preview:
+        type: html
+        entry: index.html
+    ---
+    # Impeccable Design Polish
+
+    Apply AFTER a design exists. Audit systematically, then fix.
+
+    ## Audit Checklist (P0 — Must Fix)
+    - [ ] Visual hierarchy: can you scan in 3 seconds?
+    - [ ] Color contrast: all text passes WCAG AA (4.5:1)
+    - [ ] Typography: no more than 2 font families
+    - [ ] Spacing: consistent 8px grid throughout
+    - [ ] Responsive: works at 375px and 1440px
+    - [ ] No `<br>` tags for spacing (use CSS margin/padding)
+
+    ## P1 — Should Fix
+    - [ ] Hover states on all interactive elements
+    - [ ] Focus rings visible on keyboard navigation
+    - [ ] Loading/empty/error states handled
+    - [ ] Animation duration ≤ 300ms (snappy)
+
+    ## P2 — Nice to Have
+    - [ ] Subtle entrance animations (fade-up, not slide)
+    - [ ] Micro-interactions on buttons/links
+    - [ ] Skeleton loading states
+
+    ## Anti-Patterns (NEVER)
+    - Purple gradient backgrounds
+    - Emoji as icons
+    - System font stacks (Inter, system-ui)
+    - Box-shadow as decoration
+    - Border-radius > 12px on functional elements
+
+  artifacts-builder.SKILL.md: |
+    ---
+    name: artifacts-builder
+    description: Multi-component HTML artifacts for complex UIs: dashboards, app screens, data displays.
+    od:
+      mode: prototype
+      platform: desktop
+      scenario: design
+      preview:
+        type: html
+        entry: index.html
+    ---
+    # Artifacts Builder
+
+    Build complex, multi-component HTML artifacts. NOT single landing pages.
+
+    ## When to Use
+    - Dashboards with charts, tables, sidebars
+    - App screens with navigation, forms, data displays
+    - Multi-section pages with tabs, accordions, modals
+    - Admin panels with CRUD tables, filters, search
+
+    ## Component Library (include at least 3)
+    - Data table with sorting
+    - Chart/visualization (SVG or canvas)
+    - Sidebar navigation
+    - Search + filter bar
+    - Modal/dialog
+    - Tabbed content
+    - Stat cards (KPI display)
+    - Form with validation
+
+    ## Layout Pattern
+    ```
+    ┌─────────────────────────────────────┐
+    │  HEADER                              │
+    ├──────────┬──────────────────────────┤
+    │ SIDEBAR  │  MAIN CONTENT             │
+    │          │  ┌─────────┬─────────┐    │
+    │          │  │ CARD    │ CARD    │    │
+    │          │  └─────────┴─────────┘    │
+    │          │  ┌───────────────────┐    │
+    │          │  │ TABLE / CHART      │    │
+    │          │  └───────────────────┘    │
+    └──────────┴──────────────────────────┘
+    ```
+
+  design-md.SKILL.md: |
+    ---
+    name: design-md
+    description: Create a DESIGN.md brand system from scratch for repeatable, on-brand design output.
+    od:
+      mode: design-system
+      scenario: design
+    ---
+    # Design MD
+
+    Build a complete DESIGN.md that teaches ANY agent to produce on-brand output.
+
+    ## When to Use
+    - Starting a new project that needs consistent design
+    - Extracting brand from a company/product description
+    - Codifying an existing design language
+    - After reference-design-contract (use that for screenshot/URL inputs)
+
+    ## DESIGN.md Template
+    ```markdown
+    # [Project Name] Design System
+
+    ## Brand Identity
+    - Industry: [e.g. fintech, SaaS, e-commerce]
+    - Personality: [professional, playful, minimal, bold]
+    - Target: [who uses this]
+
+    ## Visual Language
+    ### Color
+    - Primary: #XXXXXX → buttons, links, active states
+    - Surface: #XXXXXX → cards, modals, dropdowns
+    - Background: #XXXXXX → page background
+    - Text Primary: #XXXXXX
+    - Text Secondary: #XXXXXX
+    - Border: #XXXXXX
+    - Success/Warning/Error: standard colors
+
+    ### Typography
+    - Display: [Font Name] → H1-H2, hero text
+    - Body: [Font Name] → H3-H6, paragraphs, UI
+    - Mono: [Font Name] → code, data, technical content
+    - Scale: [list your type scale]
+
+    ### Spacing Scale
+    - xs: 4px, sm: 8px, md: 16px, lg: 24px, xl: 32px, 2xl: 48px, 3xl: 64px
+
+    ### Border Radius
+    - sm: 4px (inputs, buttons)
+    - md: 8px (cards, modals)
+    - lg: 12px (large containers)
+
+    ### Shadows
+    - sm: 0 1px 2px rgba(0,0,0,0.05)
+    - md: 0 4px 6px rgba(0,0,0,0.07)
+    - lg: 0 10px 25px rgba(0,0,0,0.1)
+
+    ## Components
+    [Define key components with specs]
+
+    ## Anti-Patterns
+    - [What to NEVER do]
+
+    ## Examples
+    - [Reference URLs or screenshots]
+    ```
+
+    ## Output
+    Save as `DESIGN.md` at project root. All subsequent design skills will reference it.
