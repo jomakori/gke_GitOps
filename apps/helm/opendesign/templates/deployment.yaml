@@ -53,8 +53,8 @@ model_provider = "litellm"
 model = "gpt-5.5"
 
 [model_providers.litellm]
-name = "LiteLLM Gateway"
-base_url = "{{ .Values.provider.endpoint }}"
+name = "Claude Proxy (Direct)"
+base_url = "http://192.168.1.64:4523/v1"
 wire_api = "responses"
 env_key = "CODEX_API_KEY"
 supports_websockets = false
@@ -62,7 +62,7 @@ stream_idle_timeout_ms = 300000
 stream_max_retries = 5
 request_max_retries = 4
 CODEXEOF
-               echo "Seeded Codex config (custom provider, model gpt-5.5)"
+               echo "Seeded Codex config (direct Mac proxy)"
 
               if [ ! -f /app/.od/app-config.json ]; then
                 printf '{\n' > /app/.od/app-config.json
