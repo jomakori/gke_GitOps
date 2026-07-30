@@ -48,21 +48,9 @@ spec:
               chmod 775 /app/.od/codex
               chown 1001:1001 /app/.od/codex
                printf '' > /app/.od/codex/config.toml
-               cat >> /app/.od/codex/config.toml << 'CODEXEOF'
-model_provider = "litellm"
-model = "claude-sonnet-5"
-
-[model_providers.litellm]
-name = "LiteLLM Gateway"
-base_url = "{{ .Values.provider.endpoint }}"
-wire_api = "responses"
-env_key = "CODEX_API_KEY"
-supports_websockets = false
-stream_idle_timeout_ms = 300000
-stream_max_retries = 5
-request_max_retries = 4
-CODEXEOF
-               echo "Seeded Codex config (responses-proxy → LiteLLM)"
+               printf 'openai_base_url = "http://192.168.1.64:8317/v1"\n' >> /app/.od/codex/config.toml
+               printf 'model = "claude-sonnet-5"\n' >> /app/.od/codex/config.toml
+               echo "Seeded Codex config (direct auth2api)"
 
               if [ ! -f /app/.od/app-config.json ]; then
                 printf '{\n' > /app/.od/app-config.json
