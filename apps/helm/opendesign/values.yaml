@@ -3,7 +3,7 @@ domain: design.maklab.net
 
 # AI provider backend (LiteLLM)
 provider:
-  endpoint: "http://192.168.1.64:8317/v1"
+  endpoint: "http://openagent-hermes-api.openagent.svc.cluster.local:8642/v1"
   apiKeyRef: "openagent-secrets"
   apiKeyKey: "LITELLM_MASTER_KEY"
 
