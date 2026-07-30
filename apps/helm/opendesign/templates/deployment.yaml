@@ -99,10 +99,27 @@ spec:
             claimName: {{ include "opendesign.fullname" . }}
         - name: tmp
           emptyDir: {}
+        - name: default-skill
+          configMap:
+            name: opendesign-default-skill
       containers:
         - name: {{ include "opendesign.name" . }}
           image: {{ .Values.image.repository | default "ghcr.io/nexu-io/od" }}:{{ .Values.image.tag | default "latest" }}
           imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - sh
+                  - -c
+                  - |
+                    sleep 10
+                    for i in 1 2 3 4 5; do
+                      wget -qO- --post-data='{}' --header='Content-Type: application/json' \
+                        http://127.0.0.1:7456/api/library/ingest \
+                        2>/dev/null && break
+                      sleep 5
+                    done &
           envFrom:
             - configMapRef:
                 name: {{ include "opendesign.fullname" . }}
@@ -148,6 +165,10 @@ spec:
               mountPath: /opt/codex
             - name: data
               mountPath: /app/.od
+            - name: tmp
+              mountPath: /tmp
+            - name: default-skill
+              mountPath: /app/.od/skills/default
             - name: tmp
               mountPath: /tmp
           resources: {{- toYaml .Values.resources | nindent 12 }}
