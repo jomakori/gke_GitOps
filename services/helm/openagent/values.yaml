@@ -125,44 +125,39 @@ litellm:
           order: 1
       - model_name: claude/sonnet-5
         litellm_params:
-          model: openai/claude-sonnet-5
-          api_key: claude-proxy-local
-          api_base: http://192.168.1.64:4523/v1
+          model: openai/claude-sonnet-4-6
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
           rpm: 20
           order: 1
-          use_chat_completions_api: true
       - model_name: claude-sonnet-5
         litellm_params:
-          model: openai/claude-sonnet-5
-          api_key: claude-proxy-local
-          api_base: http://192.168.1.64:4523/v1
+          model: openai/claude-sonnet-4-6
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
           rpm: 20
           order: 1
-          use_chat_completions_api: true
       - model_name: gpt-5.5
         litellm_params:
-          model: openai/claude-sonnet-5
-          api_key: claude-proxy-local
-          api_base: http://192.168.1.64:4523/v1
+          model: openai/claude-sonnet-4-6
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
           rpm: 20
           order: 1
-          use_chat_completions_api: true
-      - model_name: claude/sonnet-4
-        litellm_params:
-          model: openai/claude-sonnet-4
-          api_key: claude-proxy-local
-          api_base: http://192.168.1.64:4523/v1
-          rpm: 10
-          order: 1
-          use_chat_completions_api: true
       - model_name: claude/opus-4
         litellm_params:
-          model: openai/claude-opus-4
-          api_key: claude-proxy-local
-          api_base: http://192.168.1.64:4523/v1
-          rpm: 5
+          model: openai/claude-opus-4-7
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 10
           order: 1
-          use_chat_completions_api: true
+      - model_name: claude/haiku-4
+        litellm_params:
+          model: openai/claude-haiku-4-5-20251001
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 30
+          order: 1
     fallbacks:
       - opencode/big-pickle: ["deepseek-v4-flash"]
       - opencode/north-mini-code-free: ["deepseek-v4-flash"]
