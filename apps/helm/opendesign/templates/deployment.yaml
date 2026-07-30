@@ -50,11 +50,11 @@ spec:
                printf '' > /app/.od/codex/config.toml
                cat >> /app/.od/codex/config.toml << 'CODEXEOF'
 model_provider = "litellm"
-model = "gpt-5.5"
+model = "claude-sonnet-5"
 
 [model_providers.litellm]
-name = "Claude Proxy (Direct)"
-base_url = "http://192.168.1.64:4523/v1"
+name = "LiteLLM Gateway"
+base_url = "{{ .Values.provider.endpoint }}"
 wire_api = "responses"
 env_key = "CODEX_API_KEY"
 supports_websockets = false
@@ -62,7 +62,7 @@ stream_idle_timeout_ms = 300000
 stream_max_retries = 5
 request_max_retries = 4
 CODEXEOF
-               echo "Seeded Codex config (direct Mac proxy)"
+               echo "Seeded Codex config (responses-proxy → LiteLLM)"
 
               if [ ! -f /app/.od/app-config.json ]; then
                 printf '{\n' > /app/.od/app-config.json
