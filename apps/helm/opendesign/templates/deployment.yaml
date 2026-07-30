@@ -48,9 +48,9 @@ spec:
               chmod 775 /app/.od/codex
               chown 1001:1001 /app/.od/codex
                printf '' > /app/.od/codex/config.toml
-               printf 'openai_base_url = "http://192.168.1.64:8317/v1"\n' >> /app/.od/codex/config.toml
-               printf 'model = "claude-sonnet-5"\n' >> /app/.od/codex/config.toml
-               echo "Seeded Codex config (direct auth2api)"
+               printf 'openai_base_url = "http://openagent-hermes-api.openagent.svc.cluster.local:8642/v1"\n' >> /app/.od/codex/config.toml
+               printf 'model = "gpt-5.5"\n' >> /app/.od/codex/config.toml
+               echo "Seeded Codex config (Hermes API)"
 
               if [ ! -f /app/.od/app-config.json ]; then
                 printf '{\n' > /app/.od/app-config.json
