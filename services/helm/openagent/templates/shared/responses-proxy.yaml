@@ -8,6 +8,7 @@ data:
   proxy.ts: |
     const PORT = parseInt(process.env.PORT ?? "4524");
     const LITELLM = process.env.LITELLM ?? "http://openagent-litellm.{{ .Release.Namespace }}.svc.cluster.local:4000";
+    const LITELLM_KEY = process.env.LITELLM_KEY ?? "sk-litellm-master-key";
     const enc = new TextEncoder();
 
     // Map Responses API model names → LiteLLM model names
@@ -82,10 +83,9 @@ data:
             if (body.temperature != null) chatReq.temperature = body.temperature;
             if (body.max_output_tokens != null) chatReq.max_tokens = body.max_output_tokens;
 
-            const auth = req.headers.get("Authorization") || "";
             const litellmResp = await fetch(LITELLM + "/v1/chat/completions", {
               method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: auth },
+              headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
               body: JSON.stringify(chatReq),
             });
 
