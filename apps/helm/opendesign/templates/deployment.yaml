@@ -102,6 +102,9 @@ spec:
         - name: default-skill
           configMap:
             name: opendesign-default-skill
+        - name: design-skills
+          configMap:
+            name: opendesign-skills
       containers:
         - name: {{ include "opendesign.name" . }}
           image: {{ .Values.image.repository | default "ghcr.io/nexu-io/od" }}:{{ .Values.image.tag | default "latest" }}
@@ -169,6 +172,21 @@ spec:
               mountPath: /tmp
             - name: default-skill
               mountPath: /app/.od/skills/default
+            - name: design-skills
+              mountPath: /app/.od/skills/design-taste-frontend/SKILL.md
+              subPath: design-taste-frontend.SKILL.md
+            - name: design-skills
+              mountPath: /app/.od/skills/reference-design-contract/SKILL.md
+              subPath: reference-design-contract.SKILL.md
+            - name: design-skills
+              mountPath: /app/.od/skills/impeccable-design-polish/SKILL.md
+              subPath: impeccable-design-polish.SKILL.md
+            - name: design-skills
+              mountPath: /app/.od/skills/artifacts-builder/SKILL.md
+              subPath: artifacts-builder.SKILL.md
+            - name: design-skills
+              mountPath: /app/.od/skills/design-md/SKILL.md
+              subPath: design-md.SKILL.md
             - name: tmp
               mountPath: /tmp
           resources: {{- toYaml .Values.resources | nindent 12 }}
