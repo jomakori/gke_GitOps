@@ -127,21 +127,21 @@ litellm:
           order: 1
       - model_name: claude/sonnet-5
         litellm_params:
-          model: openai/claude-sonnet-4-6
+          model: openai/claude-sonnet-5
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
           rpm: 20
           order: 1
       - model_name: claude-sonnet-5
         litellm_params:
-          model: openai/claude-sonnet-4-6
+          model: openai/claude-sonnet-5
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
           rpm: 20
           order: 1
       - model_name: gpt-5.5
         litellm_params:
-          model: openai/claude-sonnet-4-6
+          model: openai/claude-sonnet-5
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
           rpm: 20
