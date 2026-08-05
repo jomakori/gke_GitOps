@@ -14,7 +14,7 @@ dependencies:
     condition: litellm.enabled
 
   - name: hermes-agent
-    version: 0.9.1
+    version: 1.2.0
     repository: oci://ghcr.io/jyje/hermes-agent-helm
     condition: hermes.enabled
 
