@@ -234,6 +234,15 @@ hermes-agent:
       api_key: ${LITELLM_MASTER_KEY}
       max_iterations: 30
       reasoning_effort: medium
+    fallback_providers:
+      - provider: litellm
+        model: deepseek-v4-pro       # high reasoning: orchestrator, planner, reviewer fallback
+      - provider: litellm
+        model: zai/glm-4.7           # secondary reasoning: deep planners
+      - provider: litellm
+        model: deepseek-v4-flash     # fast worker: builder, task executor fallback
+      - provider: litellm
+        model: zai/glm-4.7-flash     # researcher: librarian, explore fallback
 
     auxiliary:
       vision:
