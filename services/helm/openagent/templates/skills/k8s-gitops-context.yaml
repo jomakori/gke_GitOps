@@ -11,6 +11,18 @@ data:
   k8s-gitops-context.md: |
     # K8s GitOps Context
 
+    {{- if eq .Values.runtimeMode "local" }}
+
+    ## Repo Pair — LOCAL PATHS (subagents: read from these)
+
+    | Repo | Absolute Path | Purpose |
+    |------|--------------|---------|
+    | Terraform | `/Users/maklab/devops_Terraform` | Provisions k3d cluster (OrbStack) + ArgoCD + Cloudflare Tunnel. Contains `k8s-maklab-cluster/` subdirectory with TF files. |
+    | GitOps | `/Users/maklab/gke_GitOps` | ArgoCD App-of-Apps deploys all services and apps (synced on merge). Current working directory. |
+
+    **When loaded, subagents MUST read from these absolute paths for any Terraform or GitOps reference. Never assume relative paths.**
+    {{- else }}
+
     ## Repo Pair
 
     | Repo | GitHub MCP | Workspace Path |
@@ -23,6 +35,7 @@ data:
     2. **k8s workspace** — clone repos to `/workspace/repos/` (PVC-backed)
 
     **Subagents MUST use GitHub MCP tools or k8s workspace paths.**
+    {{- end }}
 
     ## Execution Order (Terraform)
 
@@ -1036,8 +1049,7 @@ data:
     - **Longhorn was removed — do not re-enable**: Longhorn v1 failed because OrbStack lacks kernel iSCSI support (`iscsi_tcp` module not loaded). Longhorn v2 (1.12.0) failed because it unconditionally mounts a `HugePages` EmptyDir for v2 instance-manager pods, and OrbStack kernel lacks `CONFIG_HUGETLBFS`. OpenEBS LVM was tested as an alternative but failed because k3s v1.35.1 kubelet never registers CSI drivers from node-driver-registrar (`driver name not found in registered CSI drivers`). The only working storage is `local-path`.
     - **CoreDNS Google DNS causes Go resolver "server misbehaving"**: k3d's pod network can't reliably forward UDP to `8.8.8.8` through Docker bridge networking. Go's pure-Go DNS resolver (used by external-secrets operator) reports `server misbehaving` on truncated/timeout responses. Fix: forward to the k3d node's own DNS resolver (`192.168.97.1` — Docker bridge gateway) via dynamic `data.external.k3d_dns` in Terraform. Without this, all 10 ClusterSecretStores fail with `InvalidProviderConfig` → no ExternalSecrets sync → cascading failures.
     - **ArgoCD sync wave ordering won't prevent CRD-not-found failures in the services ApplicationSet**: The root `services` Application contains BOTH Application resources (deployed as sub-apps at their respective waves) AND raw resources like the GHCR credential ExternalSecret. Raw resources are applied during the root app's sync, regardless of child app sync waves. If a raw resource references a CRD installed by a child app at a later wave, the root sync fails before any child apps are created.
-
-
+    {{- if eq .Values.runtimeMode "local" }}
     ## Repo Locations
 
     - **Terraform**: `/Users/maklab/devops_Terraform/k8s-maklab-cluster/`
@@ -1046,3 +1058,11 @@ data:
     - **GHCR**: `ghcr.io/jomakori/k3s-iscsi` — custom k3s images with `open-iscsi` pre-installed (currently unused; Longhorn removed)
     - **Terraform Cloud**: workspace `k8s-maklab-cluster`, organization `tf_jmakori`
     - **Dockerfile**: `docker/Dockerfile` in the Terraform repo — multi-stage k3s+iscsi build
+    {{- else }}
+    ## Repo Locations
+
+    - **Doppler**: CLI-based, project `devops`, config `ci` for Terraform secrets (`TF_VAR_`)
+    - **GHCR**: `ghcr.io/jomakori/k3s-iscsi` — custom k3s images with `open-iscsi` pre-installed (currently unused; Longhorn removed)
+    - **Terraform Cloud**: workspace `k8s-maklab-cluster`, organization `tf_jmakori`
+    - **Dockerfile**: `docker/Dockerfile` in the Terraform repo — multi-stage k3s+iscsi build
+    {{- end }}
