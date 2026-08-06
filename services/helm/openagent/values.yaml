@@ -4,6 +4,13 @@ storageClass: "local-path"
 dopplerConfig: "svc_openagent"
 namespace: "openagent"
 
+# Skill rendering runtime. "cluster" (default) renders the k8s-gitops-context
+# skill body for the in-cluster ConfigMap (GitHub MCP + /workspace/repos paths,
+# no local absolute paths). "local" renders for the opencode workstation
+# (~/.config/opencode/skills) with /Users/maklab paths + Repo Locations block.
+# The local SKILL.md is a GENERATED COPY via .useful-scripts/render_local_skill.sh.
+runtimeMode: "cluster"
+
 # Shared GHCR pull secret
 ghcrPullSecret: ""
 
@@ -131,6 +138,13 @@ litellm:
           rpm: 20
           order: 1
       - model_name: claude-sonnet-5
+        litellm_params:
+          model: openai/claude-sonnet-4-6
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 20
+          order: 1
+      - model_name: claude/sonnet-4
         litellm_params:
           model: openai/claude-sonnet-4-6
           api_base: http://192.168.1.64:8317/v1
