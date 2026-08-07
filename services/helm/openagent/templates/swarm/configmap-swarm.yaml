@@ -248,7 +248,7 @@ data:
         name: Oracle
         role: Architecture / Security Consultant
         specialty: architecture review, security vulnerabilities, best practices
-        model: claude/opus-4
+        model: claude/opus-5
         mission: Review architecture designs. Identify security flaws. Suggest improvements.
         profile: omo-architect
         modes:

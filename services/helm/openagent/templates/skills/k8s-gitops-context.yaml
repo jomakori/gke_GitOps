@@ -723,7 +723,7 @@ data:
     | **prometheus** | planner | claude/sonnet-5 | Strategic planner — builds step-by-step implementation plans from objectives. |
     | **metis** | planner | deepseek-v4-pro | Pre-planning consultant — identifies hidden intentions, ambiguities, AI failure points. |
     | **momus** | reviewer | deepseek-v4-pro | Ruthless plan reviewer — finds gaps, risks, missing context in plans. |
-    | **oracle** | architect | claude/opus-4 | Read-only architecture/security consultant. |
+    | **oracle** | architect | claude/opus-5 | Read-only architecture/security consultant. |
     | **hephaestus** | worker | minimax/M3 | Deep implementation coder — production-quality code. |
     | **sisyphus-junior** | worker | deepseek-v4-flash | Focused task executor — no re-delegation. Trivial/quick tasks only. |
     | **librarian** | researcher | zai/glm-4.7-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
@@ -798,7 +798,7 @@ data:
     | minimax/M3 | openai (MiniMax) | MINIMAX_API_KEY |
     | minimax/M2.7 | openai (MiniMax) | MINIMAX_API_KEY |
     | claude/sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
-    | claude/opus-4 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
+    | claude/opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
     **Fallback chains**: opencode/big-pickle → deepseek-v4-flash; opencode/north-mini-code-free → deepseek-v4-flash; opencode/deepseek-v4-flash-free → deepseek-v4-flash. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=3.
 
@@ -965,23 +965,23 @@ data:
     - `CLAUDE_PROXY_API_KEY=claude-proxy-local` — dummy value. Proxy uses credential file, ignores auth. LiteLLM requires this for model config validation only.
     - `CLAUDE_BIN=/usr/local/bin/claude` — set in Dockerfile, path to claude CLI.
 
-    **LiteLLM integration** (values.yaml):
+    **LiteLLM integration** (values.yaml, via auth2api `192.168.1.64:8317`):
     ```yaml
     - model_name: claude/sonnet-5
       litellm_params:
-        model: openai/claude-sonnet-4
-        api_key: os.environ/CLAUDE_PROXY_API_KEY
-        api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-    - model_name: claude/opus-4
+        model: openai/claude-sonnet-4-6
+        api_key: sk-auth2api-claude-proxy-key
+        api_base: http://192.168.1.64:8317/v1
+    - model_name: claude/opus-5
       litellm_params:
-        model: openai/claude-opus-4
-        api_key: os.environ/CLAUDE_PROXY_API_KEY
-        api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
+        model: openai/claude-opus-5
+        api_key: sk-auth2api-claude-proxy-key
+        api_base: http://192.168.1.64:8317/v1
     ```
 
     **Ensemble persona reassignment** (4 of 10 personas):
     - sisyphus, atlas, prometheus → `claude/sonnet-5` (capable, balanced cost)
-    - oracle → `claude/opus-4` (architecture needs best reasoning)
+    - oracle → `claude/opus-5` (architecture needs best reasoning)
     - Remaining 6 personas unchanged → continue using deepseek-v4-pro, minimax/M3, etc.
 
     **Gotcha — credential file is a dotfile, secret key must match**: `claude` CLI expects `.credentials.json` (hidden file). `kubectl create secret --from-file=.credentials.json=$HOME/.claude/.credentials.json` creates the key as `.credentials.json` (dot-prefixed). Mount the volume WITHOUT `items` mapping — the key name already matches the expected path. Using `items: [{key: credentials.json, path: .credentials.json}]` BREAKS because the secret key is `.credentials.json`, not `credentials.json`. Symptoms: `MountVolume.SetUp failed: references non-existent secret key`.
