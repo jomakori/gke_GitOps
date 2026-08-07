@@ -1,7 +1,7 @@
 {
   "packages": [
     "yq-go@latest",
-    "git@latest"
+    "git@2.49.0"
   ],
   "shell": {
     "scripts": {
