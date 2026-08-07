@@ -117,3 +117,15 @@ apps:
         value: "10Gi"
       - name: opendesign.ingress.enabled
         value: "false"
+
+  excalidash:
+    enable: false
+    enable_private: true
+    gateways:
+      enable_public: false
+    helmPath: apps/helm/excalidash
+    project: default
+    environment:
+      production:
+        cluster: https://kubernetes.default.svc
+        namespace: excalidash
