@@ -113,7 +113,7 @@ spec:
                 'supervisor=claude/sonnet-5' \
                 'strategist=deepseek-v4-pro' \
                 'reviewer=deepseek-v4-pro' \
-                'architect=claude/opus-4' \
+                'architect=claude/opus-5' \
                 'builder=minimax/M3' \
                 'junior-builder=deepseek-v4-flash' \
                 'researcher=zai/glm-4.7-flash' \

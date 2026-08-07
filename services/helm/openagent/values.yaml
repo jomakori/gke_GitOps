@@ -144,6 +144,13 @@ litellm:
           api_key: sk-auth2api-claude-proxy-key
           rpm: 20
           order: 1
+      - model_name: claude/sonnet-4
+        litellm_params:
+          model: openai/claude-sonnet-4-6
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 20
+          order: 1
       - model_name: gpt-5.5
         litellm_params:
           model: openai/claude-sonnet-4-6
@@ -154,6 +161,13 @@ litellm:
       - model_name: claude/opus-4
         litellm_params:
           model: openai/claude-opus-4-7
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 10
+          order: 1
+      - model_name: claude/opus-5
+        litellm_params:
+          model: openai/claude-opus-5
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
           rpm: 10
@@ -181,6 +195,7 @@ litellm:
       - claude/sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
       - claude-sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
       - claude/opus-4: ["claude/sonnet-5", "deepseek-v4-pro"]
+      - claude/opus-5: ["claude/sonnet-5", "deepseek-v4-pro"]
 
 # ── Hermes Agent ────────────────────────────────────────────────────
 hermes:
