@@ -144,13 +144,6 @@ litellm:
           api_key: sk-auth2api-claude-proxy-key
           rpm: 20
           order: 1
-      - model_name: claude/sonnet-4
-        litellm_params:
-          model: openai/claude-sonnet-4-6
-          api_base: http://192.168.1.64:8317/v1
-          api_key: sk-auth2api-claude-proxy-key
-          rpm: 20
-          order: 1
       - model_name: gpt-5.5
         litellm_params:
           model: openai/claude-sonnet-4-6
@@ -187,7 +180,6 @@ litellm:
       - minimax/M2.7: ["deepseek-v4-flash", "zai/glm-4.7-flash"]
       - claude/sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
       - claude-sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
-      - claude/sonnet-4: ["deepseek-v4-pro", "zai/glm-4.7"]
       - claude/opus-4: ["claude/sonnet-5", "deepseek-v4-pro"]
 
 # ── Hermes Agent ────────────────────────────────────────────────────
@@ -240,7 +232,7 @@ hermes-agent:
         - Show your work. Tell user what you're doing.
         - When delegating: "Delegating to [persona] for [task]."
     delegation:
-      model: claude/sonnet-4
+      model: claude/sonnet-5
       provider: litellm
       base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
       api_key: ${LITELLM_MASTER_KEY}
@@ -250,7 +242,7 @@ hermes-agent:
     auxiliary:
       vision:
         provider: litellm
-        model: claude/sonnet-4
+        model: claude/sonnet-5
     plugins:
       enabled:
         - discord-platform

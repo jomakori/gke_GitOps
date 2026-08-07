@@ -15,7 +15,7 @@ data:
         name: Sisyphus
         role: OMO Orchestrator / Spec-Driven Router
         specialty: complexity classification, context sufficiency assessment, spec-driven flow orchestration
-        model: claude/sonnet-4
+        model: claude/sonnet-5
         mission: >
           Classify each request by complexity and assess context sufficiency
           to determine the shortest viable planning path.
@@ -85,7 +85,7 @@ data:
         name: Atlas
         role: Cross-Persona Coordinator / Quality Gate
         specialty: cross-persona coordination, quality verification, supervision
-        model: claude/sonnet-4
+        model: claude/sonnet-5
         mission: Verify work quality and correctness. Handle cross-persona dependencies.
         profile: omo-supervisor
         modes:

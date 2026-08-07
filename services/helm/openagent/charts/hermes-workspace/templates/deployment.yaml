@@ -108,9 +108,9 @@ spec:
               ln -sf /shared/bin/venv/bin/pre-commit /shared/.local/bin/pre-commit
 
               # Central model mapping
-              echo 'orchestrator=claude/sonnet-4' > /shared/bin/worker-models.cfg
+              echo 'orchestrator=claude/sonnet-5' > /shared/bin/worker-models.cfg
               for entry in \
-                'supervisor=claude/sonnet-4' \
+                'supervisor=claude/sonnet-5' \
                 'strategist=deepseek-v4-pro' \
                 'reviewer=deepseek-v4-pro' \
                 'architect=claude/opus-4' \
