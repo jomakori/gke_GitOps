@@ -97,6 +97,14 @@ virtualServices:
     destination:
       host: argo-cd-argocd-server.argocd.svc.cluster.local
       port: 80
+
+  excalidash:
+    enabled: true
+    host: excalidash.maklab.net
+    enablePrivate: true
+    destination:
+      host: excalidash.excalidash.svc.cluster.local
+      port: 80
   opencost:
     enabled: false
     host: opencost.maklab.net

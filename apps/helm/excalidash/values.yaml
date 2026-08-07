@@ -1,0 +1,44 @@
+# Local values — consumed by templates/externalsecret.yaml
+dopplerConfig: "svc_excalidash"
+
+# ── Upstream chart overrides (alekc/excalidash v1.0.0) ─────────────────
+# Docs: https://artifacthub.io/packages/helm/alekc/excalidash
+excalidash:
+  ingress:
+    main:
+      enabled: false        # Routing via Istio VirtualService (istio chart)
+
+  persistence:
+    db:
+      enabled: true
+      accessMode: ReadWriteOnce
+      size: 5Gi
+      storageClass: local-path
+      targetSelector:
+        backend:
+          main:
+            mountPath: /app/prisma
+
+  # No static secrets — Doppler ExternalSecret (excalidash-secrets) provides JWT/CSRF
+  secret:
+    secrets:
+      enabled: false
+      data:
+        JWT_SECRET: ""
+        CSRF_SECRET: ""
+
+  workload:
+    backend:
+      podSpec:
+        containers:
+          main:
+            env:
+              FRONTEND_URL: https://excalidash.maklab.net
+              AUTH_MODE: local
+              TRUST_PROXY: "true"
+              UPDATE_CHECK_OUTBOUND: "false"
+              # Edge (CF Tunnel → Istio) terminates TLS; disable built-in redirect
+              ENFORCE_HTTPS_REDIRECT: "false"
+            envFrom:
+              - secretRef:
+                  name: excalidash-secrets
