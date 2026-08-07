@@ -110,11 +110,20 @@ authority`).
 This is what happened on 2026-08-07: adding `svc_excalidash` to
 `clusterSecretStores` triggered an auto-sync that wiped the certs.
 
-### Protection (applied live)
+### Protection
 
-These resources carry `helm.sh/resource-policy: keep` so ArgoCD skips them on
-sync/prune and ESO manages them freely. If they are ever recreated, re-apply:
+`helm.sh/resource-policy: keep` alone is **not enough** — ArgoCD honors it only
+for pruning, not for `Replace` syncs. The durable fix (git):
 
+1. **No `Replace=true`** on the external-secrets Application (appset entry) —
+   `Replace` bypasses `ignoreDifferences` and clobbers ESO-managed state.
+2. **`ignoreDifferences`** for the webhook Secret (`/data`, `/type`) and both
+   ValidatingWebhookConfigurations (`.webhooks[].clientConfig.caBundle`, ...) —
+   so apply-mode syncs never revert ESO's cert data or the injected caBundle.
+
+Live annotations on the three resources are belt-and-suspenders and must be
+re-applied if they are ever recreated: `helm.sh/resource-policy: keep` +
+`argocd.argoproj.io/sync-options: Replace=false` on:
 - Secret `external-secrets/external-secrets-webhook`
 - ValidatingWebhookConfiguration `externalsecret-validate`
 - ValidatingWebhookConfiguration `secretstore-validate`
