@@ -28,6 +28,14 @@ excalidash:
         JWT_SECRET: ""
         CSRF_SECRET: ""
 
+  # TrueCharts common defaults target amd64; this cluster is arm64 (k3d on OrbStack).
+  # Also disables the generated single-replica PVC podAffinity (truecharts.org/pvc),
+  # which can never be satisfied by the pod itself -> unschedulable.
+  podOptions:
+    nodeSelector:
+      kubernetes.io/arch: arm64
+    defaultAffinity: false
+
   workload:
     backend:
       podSpec:
