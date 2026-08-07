@@ -1,4 +1,4 @@
-{{- if .Values.claude-proxy.enabled }}
+{{- if index .Values "claude-proxy" "enabled" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,6 +16,7 @@ data:
       const map = {
         "claude-sonnet-5": "claude/sonnet-5",
         "claude-sonnet-4": "claude/sonnet-4",
+        "claude-opus-5": "claude/opus-5",
         "claude-opus-4": "claude/opus-4",
       };
       return map[m] ?? m;

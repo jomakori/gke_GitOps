@@ -35,6 +35,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# ── Ensure chart deps are extracted ──────────────────────────────────
+# The umbrella chart depends on remote OCI charts (litellm-helm, hermes-agent)
+# that are NOT vendored. `helm template` fails without them, so fetch them
+# like ct_check.sh does. charts/ is gitignored.
+if [ ! -d "${CHART_DIR}/charts/litellm-helm" ] || [ ! -d "${CHART_DIR}/charts/hermes-agent" ]; then
+    echo "  → helm dependency update (fetch remote chart deps)"
+    ( cd "${CHART_DIR}" && helm dependency update ) > /tmp/litellm-config-validate-deps.log 2>&1 \
+        || { echo -e "${RED}✗ helm dependency update failed${RESET}"; cat /tmp/litellm-config-validate-deps.log | tail -15; exit 1; }
+fi
+
 # ── Render chart ─────────────────────────────────────────────────────
 echo -e "${GREEN}── Rendering chart: ${CHART_DIR}${RESET}"
 
