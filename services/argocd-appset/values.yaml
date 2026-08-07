@@ -53,7 +53,6 @@ services:
     retryMaxDuration: 3m
     syncOptions:
       - CreateNamespace=true
-      - Replace=true
     ignoreDifferences:
       - group: ""
         kind: Secret
@@ -62,6 +61,16 @@ services:
         jsonPointers:
           - /data
           - /type
+      - group: admissionregistration.k8s.io
+        kind: ValidatingWebhookConfiguration
+        jqPathExpressions:
+          - .webhooks[].clientConfig.caBundle
+          - .webhooks[].failurePolicy
+          - .webhooks[].matchPolicy
+          - .webhooks[].namespaceSelector
+          - .webhooks[].objectSelector
+          - .webhooks[].timeoutSeconds
+          - .webhooks[].rules[].scope
 
   # Wave 2 — Istio umbrella (after external-secrets ClusterSecretStores are ready)
   istio:
