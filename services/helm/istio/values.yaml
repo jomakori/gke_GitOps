@@ -100,7 +100,7 @@ virtualServices:
 
   excalidash:
     enabled: true
-    host: excalidash.maklab.net
+    host: draw.maklab.net
     enablePrivate: true
     destination:
       host: excalidash.excalidash.svc.cluster.local

@@ -34,7 +34,7 @@ excalidash:
         containers:
           main:
             env:
-              FRONTEND_URL: https://excalidash.maklab.net
+              FRONTEND_URL: https://draw.maklab.net
               AUTH_MODE: local
               TRUST_PROXY: "true"
               UPDATE_CHECK_OUTBOUND: "false"
