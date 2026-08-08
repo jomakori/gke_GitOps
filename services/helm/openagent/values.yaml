@@ -318,6 +318,14 @@ hermes-agent:
           resources: false
           prompts: false
 
+      obscura:
+        command: "/usr/local/bin/obscura"
+        args: ["mcp", "--stealth"]
+        timeout: 120
+        tools:
+          resources: false
+          prompts: false
+
       google-workspace:
         command: "uvx"
         args: ["workspace-mcp", "--tool-tier", "complete"]
@@ -428,6 +436,9 @@ hermes-agent:
     - -c
     - |
       npm install -g @bitwarden/cli 2>&1
+      if [ ! -f /usr/local/bin/obscura ]; then
+        curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /usr/local/bin
+      fi
       exec /init hermes gateway run
   extraEnvFrom:
     - secretRef:
