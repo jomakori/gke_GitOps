@@ -1,0 +1,38 @@
+{
+  "_comment": "Payroll/records provider registry for IRS W&I transcript cross-matching. 'detect' hints match payer/employer names found in transcripts. Records NOT in the IRS W&I transcript (payer never filed) must be fetched from the portal directly.",
+  "payroll_providers": [
+    {"id": "adp", "name": "ADP", "portal": "https://my.adp.com", "record": "W-2",
+     "detect": ["automatic data processing", "adp, inc", "adp total source"], "notes": "Most common for mid/large employers; W-2 issuer name on transcript is the EMPLOYER, not ADP — match by employer name instead."},
+    {"id": "gusto", "name": "Gusto", "portal": "https://app.gusto.com", "record": "W-2",
+     "detect": ["gusto"], "notes": "Small business payroll; employee login downloads W-2 PDFs."},
+    {"id": "paychex", "name": "Paychex", "portal": "https://www.paychex.com", "record": "W-2",
+     "detect": ["paychex"], "notes": ""},
+    {"id": "intuit-qb", "name": "QuickBooks Payroll", "portal": "https://payroll.intuit.com", "record": "W-2",
+     "detect": ["intuit", "quickbooks"], "notes": "Intuit API exists (OAuth partner approval) — v3 transport."},
+    {"id": "rippling", "name": "Rippling", "portal": "https://app.rippling.com", "record": "W-2",
+     "detect": ["rippling"], "notes": ""},
+    {"id": "workday", "name": "Workday", "portal": "https://www.myworkday.com", "record": "W-2",
+     "detect": ["workday"], "notes": "Employer-specific tenant URL needed."},
+    {"id": "ukg", "name": "UKG / Kronos", "portal": "https://www.myukg.com", "record": "W-2",
+     "detect": ["ukg", "kronos", "ultipro"], "notes": ""},
+    {"id": "paylocity", "name": "Paylocity", "portal": "https://access.paylocity.com", "record": "W-2",
+     "detect": ["paylocity"], "notes": ""},
+    {"id": "trinet", "name": "TriNet", "portal": "https://trinet.com", "record": "W-2",
+     "detect": ["trinet"], "notes": ""},
+    {"id": "surepayroll", "name": "SurePayroll", "portal": "https://www.surepayroll.com", "record": "W-2",
+     "detect": ["surepayroll"], "notes": ""},
+    {"id": "square", "name": "Square Payroll", "portal": "https://squareup.com", "record": "W-2",
+     "detect": ["square"], "notes": ""},
+    {"id": "justworks", "name": "Justworks", "portal": "https://www.justworks.com", "record": "W-2",
+     "detect": ["justworks"], "notes": ""},
+    {"id": "bamboohr", "name": "BambooHR Payroll", "portal": "https://www.bamboohr.com", "record": "W-2",
+     "detect": ["bamboo"], "notes": ""}
+  ],
+  "brokerage_1099": [
+    {"id": "fidelity", "name": "Fidelity", "portal": "https://www.fidelity.com", "record": "1099-DIV/INT/B", "detect": ["fidelity"]},
+    {"id": "schwab", "name": "Charles Schwab", "portal": "https://www.schwab.com", "record": "1099-DIV/INT/B", "detect": ["schwab"]},
+    {"id": "vanguard", "name": "Vanguard", "portal": "https://investor.vanguard.com", "record": "1099-DIV/INT/B", "detect": ["vanguard"]},
+    {"id": "robinhood", "name": "Robinhood", "portal": "https://robinhood.com", "record": "1099-DIV/INT/B", "detect": ["robinhood"]},
+    {"id": "coinbase", "name": "Coinbase", "portal": "https://www.coinbase.com", "record": "1099-MISC/NEC/DA", "detect": ["coinbase"]}
+  ]
+}
