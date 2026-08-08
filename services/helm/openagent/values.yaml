@@ -423,6 +423,9 @@ hermes-agent:
     - name: k8s-gitops-context
       configMap:
         name: openagent-k8s-gitops-context
+    - name: skill-us-tax-filing-automation
+      configMap:
+        name: openagent-skill-us-tax-filing-automation
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -430,6 +433,10 @@ hermes-agent:
     - name: k8s-gitops-context
       mountPath: /opt/data/memories/k8s-gitops-context.md
       subPath: k8s-gitops-context.md
+      readOnly: true
+    - name: skill-us-tax-filing-automation
+      mountPath: /opt/data/skills/us-tax-filing-automation/SKILL.md
+      subPath: us-tax-filing-automation.SKILL.md
       readOnly: true
   command:
     - sh
