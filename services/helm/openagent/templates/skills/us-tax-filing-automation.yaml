@@ -12,7 +12,7 @@ data:
     ---
     name: us-tax-filing-automation
     description: "Automate US federal + Minnesota income tax filing for free — IRS records ingestion (Get Transcript online → parser → payroll registry), obscura-driven FreeTaxUSA e-file (current + prior years), paper-filing workflow for old years."
-    version: 2.1.0
+    version: 2.2.0
     author: Hermes Agent
     license: MIT
     platforms: [linux, macos, windows]
@@ -48,8 +48,9 @@ data:
     1. **IRS Get Transcript online** (irs.gov/individuals/get-transcript) via obscura — ID.me login (MFA = human gate; "remember device" ≈ 1yr session).
     2. Download **Wage & Income transcript** PDF (every W-2/1099 filed against SSN — the authoritative aggregate).
     3. Parse: `scripts/parse_wi_transcript.py <pdf>` → `transcripts.json` (payer EIN, wages, fed/state withholding, 1099-INT/DIV/NEC/R).
-    4. Match payers against `references/payroll-registry.json` → missing/incomplete records → obscura drives the payroll portal (ADP/Gusto/…, brokered creds).
-    5. Flag gaps (payer never filed) → manual fetch.
+    4. **Fetch actual form copies** — for EVERY payer in transcripts.json, obtain the real W-2 / 1099 PDF: portal download via obscura (payroll/brokerage registry) or employer/payer copy. The transcript is the data source; the form PDFs are the archival record.
+    5. Match payers against `references/payroll-registry.json` → missing/incomplete records → obscura drives the payroll portal (ADP/Gusto/…, brokered creds).
+    6. Flag gaps (payer never filed) → manual fetch.
 
     ### 2. File current + prior years (e-file)
 
@@ -70,11 +71,16 @@ data:
 
     ### 4. Archive to Google Drive (taxes/<year>)
 
-    1. Stage everything in `/opt/data/tax/<year>/` (local, PVC-backed): `transcripts.json`, W&I transcript PDF, filed federal+state PDFs, e-file acceptance/status, paper mailing copies, IRS/MN correspondence.
+    1. Stage in `/opt/data/tax/<year>/` (local, PVC-backed) with this exact layout:
+       - `source_w2s/` — **actual W-2 PDFs** (one per employer; from payroll portal or employer copy)
+       - `source_1099s/` — **actual 1099 PDFs** (INT/DIV/NEC/MISC/R/B/SSA; one per payer)
+       - `wi_transcript.pdf` + `transcripts.json` (IRS data + parsed records)
+       - `filed/` — **completed filed forms**: federal 1040 + schedules, MN M1 + schedules (PDF)
+       - `confirmations/` — e-file acceptance/status, IRS/MN correspondence, certified-mail receipts
     2. Upload via google-workspace MCP (`user_google_email: joe3rdwash@gmail.com`):
-       - ensure folder exists: `create_drive_folder` (parent `taxes`, name `<year>`); create root `taxes` once
+       - ensure root `taxes` exists (once), then `create_drive_folder` `taxes/<year>` + subfolders (`source_w2s`, `source_1099s`, `filed`, `confirmations`)
        - `create_drive_file` per staged file (mime `application/pdf` / `application/json` / `text/plain`)
-    3. Convention: `taxes/2025`, `taxes/2024`, … under Drive root. Local copy retained; Drive is the durable archive.
+    3. Convention: `taxes/2025/source_w2s/*.pdf`, `taxes/2025/source_1099s/*.pdf`, `taxes/2025/filed/*.pdf`, `taxes/2025/confirmations/*`. Local copy retained; Drive is the durable archive.
 
     ## Pitfalls & reality checks
 
