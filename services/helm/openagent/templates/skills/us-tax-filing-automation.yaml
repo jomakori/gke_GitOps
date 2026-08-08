@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: openagent-skill-us-tax-filing-automation
-  namespace: {{ .Values.namespace }}
+  namespace: {{{{ .Values.namespace }}}}
   labels:
     app.kubernetes.io/part-of: openagent
   annotations:
@@ -12,7 +12,7 @@ data:
     ---
     name: us-tax-filing-automation
     description: "Automate US federal + Minnesota income tax filing for free — IRS records ingestion (Get Transcript online → parser → payroll registry), obscura-driven FreeTaxUSA e-file (current + prior years), paper-filing workflow for old years."
-    version: 2.0.0
+    version: 2.1.0
     author: Hermes Agent
     license: MIT
     platforms: [linux, macos, windows]
@@ -68,12 +68,21 @@ data:
     3. Federal: address depends on form + payment/no-payment + state → fetch current from irs.gov "where to file" (obscura). Payments: check + Form 1040-V via REGULAR mail (private couriers delay payment processing).
     4. Certified mail w/ return receipt = proof of filing date. Keep copies.
 
+    ### 4. Archive to Google Drive (taxes/<year>)
+
+    1. Stage everything in `/opt/data/tax/<year>/` (local, PVC-backed): `transcripts.json`, W&I transcript PDF, filed federal+state PDFs, e-file acceptance/status, paper mailing copies, IRS/MN correspondence.
+    2. Upload via google-workspace MCP (`user_google_email: joe3rdwash@gmail.com`):
+       - ensure folder exists: `create_drive_folder` (parent `taxes`, name `<year>`); create root `taxes` once
+       - `create_drive_file` per staged file (mime `application/pdf` / `application/json` / `text/plain`)
+    3. Convention: `taxes/2025`, `taxes/2024`, … under Drive root. Local copy retained; Drive is the durable archive.
+
     ## Pitfalls & reality checks
 
     - **Refund claims expire 3 years after due date.** TY2022 refunds forfeited (~4/15/2026). TY2023 expires 4/15/2027.
     - **Old years that owe**: FTF 5%/mo (cap 25%) + FTP 0.5%/mo + interest (fed + MN). Request **First-Time Penalty Abatement** (3 clean prior years) or reasonable cause.
     - **ToS**: automating FreeTaxUSA/Cash App violates their ToS — account-ban risk, low for personal use, real. Low volume only.
     - **Automation ceiling**: ID.me MFA, e-file attestation, the mailbox — human. Everything before is automatable.
+    - **google-workspace MCP OAuth**: Drive/Gmail tokens can expire or be wiped (pod restarts). Re-auth: `kubectl port-forward -n openagent <hermes-pod> 8000:8000`, then open the consent URL from the MCP error/`start_google_auth` in a browser — callback lands on localhost:8000 → port-forward → pod. Tokens live in `/opt/data/.google_workspace_mcp/credentials/`.
     - **MN amended returns**: e-filable from TY2025.
     - **State returns**: FreeTaxUSA MN = $15.99/$17.99; Cash App free but current-year only; OLT free-state claim — verify at signup.
     - Re-verify every season: the IRS free-filing program set changes drastically year to year.
