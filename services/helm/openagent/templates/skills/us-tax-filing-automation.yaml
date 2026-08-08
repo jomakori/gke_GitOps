@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: openagent-skill-us-tax-filing-automation
-  namespace: {{{{ .Values.namespace }}}}
+  namespace: {{ .Values.namespace }}
   labels:
     app.kubernetes.io/part-of: openagent
   annotations:
