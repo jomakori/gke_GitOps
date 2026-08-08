@@ -436,6 +436,11 @@ hermes-agent:
     - -c
     - |
       npm install -g @bitwarden/cli 2>&1
+      if [ ! -f /usr/local/go/bin/go ]; then
+        curl -sL https://golang.org/dl/go1.22.4.linux-arm64.tar.gz | tar -xz -C /usr/local
+      fi
+      export PATH=/usr/local/go/bin:$PATH
+      cd /opt/data && go mod download
       if [ ! -f /usr/local/bin/obscura ]; then
         curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /usr/local/bin
       fi
