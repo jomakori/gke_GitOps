@@ -56,6 +56,8 @@ services:
       # SSA avoids the 256KB last-applied annotation on the huge ESO CRDs
       # (SyncError: metadata.annotations: Too long). Required since 2026-08-09.
       - ServerSideApply=true
+      # Fail-fast: a wedged sync (e.g. CRD/health gate) must not hang forever.
+      - SyncTimeoutSeconds=300
     ignoreDifferences:
       - group: ""
         kind: Secret
@@ -108,13 +110,24 @@ services:
       - name: virtualServices.argocd.destination.port
         value: "80"
 
+  # Wave 2 — Tailscale operator. Sync order: external-secrets (wave 1) must
+  # land first so the doppler-svc-tailscale ClusterSecretStore exists; the
+  # operator Deployment mounts Secret operator-oauth which is rendered by the
+  # chart's wave −1 ExternalSecret. ArgoCD treats wave-annotated resources as
+  # hooks — the argocd-cm health check for external-secrets.io/ExternalSecret
+  # (see devops_Terraform argocd-values.yaml) is what lets that hook complete.
+  # retry + SyncTimeoutSeconds: fail fast instead of "waiting for healthy state"
+  # forever when the store/secret hasn't propagated yet.
   tailscale:
     enable: true
     syncWave: "2"
     destNamespace: tailscale
     dopplerConfig: "svc_tailscale"
+    retryLimit: 3
+    retryMaxDuration: 3m
     syncOptions:
       - CreateNamespace=true
+      - SyncTimeoutSeconds=300
 
   openagent:
     enable: true
