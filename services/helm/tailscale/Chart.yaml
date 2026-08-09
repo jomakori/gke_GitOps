@@ -1,6 +1,6 @@
 apiVersion: v2
 name: tailscale
-description: Tailscale Kubernetes Operator — exposes the kube-apiserver on the tailnet for CI/remote access
+description: Tailscale Kubernetes Operator
 type: application
 version: 0.1.0
 appVersion: 1.98.9
