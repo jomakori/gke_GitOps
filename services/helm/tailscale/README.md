@@ -1,9 +1,7 @@
 # Tailscale Kubernetes Operator
 
-Dependency-override layer for the upstream `tailscale-operator` chart (v1.98.9,
-repo `https://pkgs.tailscale.com/helmcharts`). The operator joins this cluster to
-the tailnet and exposes the kube-apiserver as a tailnet service so the Terraform
-CI pipeline (GitHub Actions runners, off-cluster) can reach the API server.
+This operator joins this cluster to
+the tailnet for private access.
 
 ## What it does
 
