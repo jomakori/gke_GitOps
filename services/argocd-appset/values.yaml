@@ -105,6 +105,14 @@ services:
       - name: virtualServices.argocd.destination.port
         value: "80"
 
+  tailscale:
+    enable: true
+    syncWave: "2"
+    destNamespace: tailscale
+    dopplerConfig: "svc_tailscale"
+    syncOptions:
+      - CreateNamespace=true
+
   openagent:
     enable: true
     syncWave: "0"
