@@ -29,6 +29,9 @@ clusterSecretStores:
   svc_excalidash:
     project: devops
     config: svc_excalidash
+  svc_tailscale:
+    project: devops
+    config: svc_tailscale
   zurabase-dev:
     project: zurabase
     config: dev

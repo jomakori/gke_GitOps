@@ -1,0 +1,21 @@
+# Local values — consumed by templates/externalsecret.yaml
+dopplerConfig: "svc_tailscale"
+
+# ── Upstream chart overrides (tailscale-operator v1.98.9 @ pkgs.tailscale.com/helmcharts) ──
+tailscale-operator:
+  # OAuth client auth. The chart mounts Secret `operator-oauth` (files client_id /
+  # client_secret) — pre-created by the Doppler ExternalSecret below. No static
+  # secrets in git. OAuth client must own tag:k8s-operator (see README).
+  oauth:
+    clientId: ""
+    clientSecret: ""
+
+  # Expose the kube-apiserver on the tailnet (auth mode → tailnet ACLs + generated
+  # kubeconfig ConfigMap in this namespace). CI / remote kubectl use it.
+  apiServerProxyConfig:
+    mode: "true"
+
+  operatorConfig:
+    hostname: "tailscale-operator"
+    nodeSelector:
+      kubernetes.io/os: linux
