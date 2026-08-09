@@ -1,0 +1,18 @@
+
+dopplerConfig: "svc_tailscale"
+
+tailscale-operator:
+  # OAuth client auth
+  # secrets in git. OAuth client must own tag:k8s-operator (see README).
+  oauth:
+    clientId: ""
+    clientSecret: ""
+
+  # Expose the kube-apiserver on the tailnet
+  apiServerProxyConfig:
+    mode: "true"
+
+  operatorConfig:
+    hostname: "tailscale-operator"
+    nodeSelector:
+      kubernetes.io/os: linux
