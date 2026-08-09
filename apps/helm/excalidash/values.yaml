@@ -19,10 +19,13 @@ excalidash:
           main:
             mountPath: /app/prisma
 
-  # Chart-managed secret — auto-generates JWT/CSRF as boot fallback.
-  # Doppler ExternalSecret (creationPolicy: Merge) overwrites with real values.
+  # Chart-managed secret — key `secrets` renders the Secret object as
+  # `excalidash-secrets` (<fullname>-<key>), so the name is directly
+  # fetchable/predictable. Auto-generates JWT/CSRF as boot fallback;
+  # the Doppler ExternalSecret (creationPolicy: Merge, dataFrom find-all)
+  # overwrites with real values.
   secret:
-    excalidash-secrets:
+    secrets:
       enabled: true
       data:
         JWT_SECRET: ""
@@ -50,4 +53,4 @@ excalidash:
               ENFORCE_HTTPS_REDIRECT: "false"
             envFrom:
               - secretRef:
-                  name: excalidash-secrets
+                  name: secrets
