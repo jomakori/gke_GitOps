@@ -451,6 +451,11 @@ hermes-agent:
       if [ ! -f /usr/local/bin/obscura ]; then
         curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /usr/local/bin
       fi
+      export PATH=$HOME/.local/bin:$PATH
+      command -v agent-reach >/dev/null 2>&1 || uv tool install https://github.com/Panniantong/agent-reach/archive/main.zip 2>&1
+      command -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp 2>&1
+      command -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1
+      mkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }
       exec /init hermes gateway run
   extraEnvFrom:
     - secretRef:
