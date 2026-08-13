@@ -135,49 +135,49 @@ litellm:
           model: openai/claude-sonnet-4-6
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
-          rpm: 20
+          rpm: 120
           order: 1
       - model_name: claude-sonnet-5
         litellm_params:
           model: openai/claude-sonnet-4-6
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
-          rpm: 20
+          rpm: 120
           order: 1
       - model_name: claude/sonnet-4
         litellm_params:
           model: openai/claude-sonnet-4-6
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
-          rpm: 20
+          rpm: 120
           order: 1
       - model_name: gpt-5.5
         litellm_params:
           model: openai/claude-sonnet-4-6
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
-          rpm: 20
+          rpm: 120
           order: 1
       - model_name: claude/opus-4
         litellm_params:
           model: openai/claude-opus-4-7
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
-          rpm: 10
+          rpm: 30
           order: 1
       - model_name: claude/opus-5
         litellm_params:
           model: openai/claude-opus-5
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
-          rpm: 10
+          rpm: 30
           order: 1
       - model_name: claude/haiku-4
         litellm_params:
           model: openai/claude-haiku-4-5-20251001
           api_base: http://192.168.1.64:8317/v1
           api_key: sk-auth2api-claude-proxy-key
-          rpm: 30
+          rpm: 60
           order: 1
     fallbacks:
       - opencode/big-pickle: ["deepseek-v4-flash"]
