@@ -253,6 +253,11 @@ data:
         if (u.pathname === "/v1/responses" && req.method === "POST") {
           try {
             const body = JSON.parse(await req.text());
+            console.log("[od-dbg] " + JSON.stringify({
+              model: body.model,
+              items: (body.input || []).map((i) => ({ t: i.type, r: i.role, id: (i.call_id || "").slice(0, 28), n: i.name })),
+              tools: (body.tools || []).length,
+            }));
             const model = body.model || "claude-sonnet-5";
             const chatReq = buildChatBody(body);
             const respId = "resp_" + crypto.randomUUID().slice(0, 24);
