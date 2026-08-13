@@ -70,7 +70,12 @@ data:
             },
           ];
         }
-        return [{ role: item.role === "assistant" ? "assistant" : "user", content: text }];
+        // auth2api claude-proxy predates the OpenAI "developer" role and mangles
+        // message ordering when it appears -> normalize to "system".
+        let role = "user";
+        if (item.role === "assistant") role = "assistant";
+        else if (item.role === "system" || item.role === "developer") role = "system";
+        return [{ role, content: text }];
       }
       return []; // reasoning / other items: skip
     }
