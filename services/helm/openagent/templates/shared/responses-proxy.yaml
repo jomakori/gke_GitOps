@@ -127,6 +127,7 @@ data:
       let fullText = "";
       let textItemId = null;
       let callItem = null; // {id, call_id, name, args}
+      const items = []; // completed items, surfaced in response.completed.output
       let usage = null;
       const reader = litellmResp.body.getReader();
       const decoder = new TextDecoder();
@@ -134,21 +135,30 @@ data:
       const closeCall = () => {
         if (!callItem) return;
         send({ type: "response.function_call_arguments.done", item_id: callItem.id, output_index: 0, arguments: callItem.args });
-        send({
-          type: "response.output_item.done",
-          output_index: 0,
-          item: { id: callItem.id, type: "function_call", status: "completed", call_id: callItem.call_id, name: callItem.name, arguments: callItem.args },
-        });
+        const item = {
+          id: callItem.id,
+          type: "function_call",
+          status: "completed",
+          call_id: callItem.call_id,
+          name: callItem.name,
+          arguments: callItem.args,
+        };
+        send({ type: "response.output_item.done", output_index: 0, item });
+        items.push(item);
         callItem = null;
       };
       const closeText = () => {
         if (!textItemId) return;
         send({ type: "response.output_text.done", item_id: textItemId, output_index: 0, content_index: 0, text: fullText });
-        send({
-          type: "response.output_item.done",
-          output_index: 0,
-          item: { id: textItemId, type: "message", role: "assistant", status: "completed", content: [{ type: "output_text", text: fullText, annotations: [] }] },
-        });
+        const item = {
+          id: textItemId,
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: fullText, annotations: [] }],
+        };
+        send({ type: "response.output_item.done", output_index: 0, item });
+        items.push(item);
         textItemId = null;
       };
       try {
@@ -202,14 +212,18 @@ data:
       }
       closeCall();
       closeText();
-      const output = [];
-      if (textItemId === null && callItem === null && fullText) {
-        // fallback: plain text with no streamed item events
-        output.push({ id: "msg_" + crypto.randomUUID().slice(0, 16), type: "message", role: "assistant", status: "completed", content: [{ type: "output_text", text: fullText, annotations: [] }] });
+      if (!items.length && fullText) {
+        items.push({
+          id: "msg_" + crypto.randomUUID().slice(0, 16),
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: fullText, annotations: [] }],
+        });
       }
       send({
         type: "response.completed",
-        response: { id: respId, object: "response", status: "completed", model, output, usage: usageFromChat(usage) },
+        response: { id: respId, object: "response", status: "completed", model, output: items, usage: usageFromChat(usage) },
       });
       send({ type: "done" });
       controller.close();
