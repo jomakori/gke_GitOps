@@ -9,6 +9,11 @@ data:
     const PORT = parseInt(process.env.PORT ?? "4524");
     const LITELLM = process.env.LITELLM ?? "http://openagent-litellm.{{ .Release.Namespace }}.svc.cluster.local:4000";
     const LITELLM_KEY = process.env.LITELLM_KEY ?? "sk-litellm-master-key-1234";
+    // Models to retry with when the primary upstream rate-limits (429) or 5xxs.
+    // The Claude Code account via auth2api caps requests per window, so agentic
+    // bursts spill to these. LiteLLM's own `fallbacks` don't trigger on this
+    // RateLimitError when cooldowns are disabled, hence the proxy-level retry.
+    const FALLBACK_MODELS = (process.env.FALLBACK_MODELS ?? "deepseek-v4-pro,zai/glm-4.7").split(",").filter(Boolean);
     const enc = new TextEncoder();
 
     // ── Responses API -> chat completions translation ──
@@ -288,11 +293,29 @@ data:
             const model = body.model || "claude-sonnet-5";
             const chatReq = buildChatBody(body);
             const respId = "resp_" + crypto.randomUUID().slice(0, 24);
-            const litellmResp = await fetch(LITELLM + "/v1/chat/completions", {
+            let litellmResp = await fetch(LITELLM + "/v1/chat/completions", {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
               body: JSON.stringify(chatReq),
             });
+            // Rate-limit / upstream-error spillover: retry with fallback models.
+            // Keeps runs alive when the Claude Code account quota is exhausted.
+            if ((litellmResp.status === 429 || litellmResp.status >= 500) && FALLBACK_MODELS.length) {
+              for (const fb of FALLBACK_MODELS) {
+                const fbReq = { ...chatReq, model: fb };
+                const fbResp = await fetch(LITELLM + "/v1/chat/completions", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
+                  body: JSON.stringify(fbReq),
+                });
+                if (fbResp.ok) {
+                  console.log(`[responses-proxy] ${model} ${litellmResp.status} -> fallback ${fb}`);
+                  litellmResp = fbResp;
+                  break;
+                }
+                await fbResp.body?.cancel();
+              }
+            }
 
             if (!litellmResp.ok) {
               const errText = await litellmResp.text();
