@@ -50,11 +50,15 @@ spec:
               printf '' > /app/.od/codex/config.toml
               printf 'openai_base_url = "%s"\n' "{{ .Values.provider.endpoint }}" >> /app/.od/codex/config.toml
               printf 'model = "%s"\n' "{{ .Values.provider.model | default "claude-sonnet-5" }}" >> /app/.od/codex/config.toml
-              echo "Seeded Codex config (LiteLLM)"
+              # Expose the app's stdio MCP server so the agent can register artifacts
+              # (create_artifact / write_file / get_artifact) — required for the
+              # preview pane to render anything.
+              printf '\n[mcp_servers.open-design]\ncommand = "%s"\nargs = %s\n' "{{ .Values.provider.mcpCommand | default "/usr/local/bin/node" }}" "{{ .Values.provider.mcpArgs | default (list "/app/apps/daemon/dist/cli.js" "mcp" "--daemon-url" "http://127.0.0.1:7456") | toJson }}" >> /app/.od/codex/config.toml
+              echo "Seeded Codex config (LiteLLM + MCP open-design)"
 
               # Always refresh agentCliEnv so stale endpoints/keys never break runs
               if [ -f /app/.od/app-config.json ]; then
-                sed -i "s#http://openagent-hermes-api.openagent.svc.cluster.local:8642/v1#{{ .Values.provider.endpoint }}#g; s#http://responses-proxy.openagent.svc.cluster.local:4524/v1#{{ .Values.provider.endpoint }}#g; s#hermes-api-server-key-1234#$CODEX_API_KEY#g" /app/.od/app-config.json
+                sed -i "s#http://openagent-hermes-api.openagent.svc.cluster.local:8642/v1#{{ .Values.provider.endpoint }}#g; s#http://openagent-litellm.openagent.svc.cluster.local:4000/v1#{{ .Values.provider.endpoint }}#g; s#http://responses-proxy.openagent.svc.cluster.local:4524/v1#{{ .Values.provider.endpoint }}#g; s#hermes-api-server-key-1234#$CODEX_API_KEY#g" /app/.od/app-config.json
                 echo "Refreshed app-config.json agentCliEnv"
               else
                 printf '{\n' > /app/.od/app-config.json
