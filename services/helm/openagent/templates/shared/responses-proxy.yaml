@@ -10,10 +10,17 @@ data:
     const LITELLM = process.env.LITELLM ?? "http://openagent-litellm.{{ .Release.Namespace }}.svc.cluster.local:4000";
     const LITELLM_KEY = process.env.LITELLM_KEY ?? "sk-litellm-master-key-1234";
     // Models to retry with when the primary upstream rate-limits (429) or 5xxs.
-    // The Claude Code account via auth2api caps requests per window, so agentic
-    // bursts spill to these. LiteLLM's own `fallbacks` don't trigger on this
-    // RateLimitError when cooldowns are disabled, hence the proxy-level retry.
+    // The Claude Code account via auth2api caps requests per window, so bursts
+    // first retry the primary with a delay (window may clear), then spill to
+    // these. LiteLLM's own `fallbacks` don't trigger on this RateLimitError
+    // when cooldowns are disabled, hence the proxy-level retry logic.
     const FALLBACK_MODELS = (process.env.FALLBACK_MODELS ?? "deepseek-v4-pro,zai/glm-4.7").split(",").filter(Boolean);
+    // Delayed retries on the primary before falling back: count + base delay in
+    // ms (escalating: base * attempt). Defaults: 2 retries at 15s + 30s (~45s
+    // total, inside Codex's per-attempt patience).
+    const FALLBACK_RETRIES = parseInt(process.env.FALLBACK_RETRIES ?? "2");
+    const FALLBACK_RETRY_BASE_MS = parseInt(process.env.FALLBACK_RETRY_BASE_MS ?? "15000");
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const enc = new TextEncoder();
 
     // ── Responses API -> chat completions translation ──
@@ -298,22 +305,53 @@ data:
               headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
               body: JSON.stringify(chatReq),
             });
-            // Rate-limit / upstream-error spillover: retry with fallback models.
-            // Keeps runs alive when the Claude Code account quota is exhausted.
-            if ((litellmResp.status === 429 || litellmResp.status >= 500) && FALLBACK_MODELS.length) {
-              for (const fb of FALLBACK_MODELS) {
-                const fbReq = { ...chatReq, model: fb };
-                const fbResp = await fetch(LITELLM + "/v1/chat/completions", {
+            // Rate-limit / upstream-error recovery: first retry the PRIMARY with
+            // escalating delays (the quota window may clear), then spill over to
+            // fallback models. Keeps runs alive when the account is throttled.
+            let lastStatus = litellmResp.status;
+            if (lastStatus === 429 || lastStatus >= 500) {
+              let recovered = false;
+              for (let attempt = 1; attempt <= FALLBACK_RETRIES && !recovered; attempt++) {
+                await sleep(FALLBACK_RETRY_BASE_MS * attempt);
+                const retry = await fetch(LITELLM + "/v1/chat/completions", {
                   method: "POST",
                   headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
-                  body: JSON.stringify(fbReq),
+                  body: JSON.stringify(chatReq),
                 });
-                if (fbResp.ok) {
-                  console.log(`[responses-proxy] ${model} ${litellmResp.status} -> fallback ${fb}`);
-                  litellmResp = fbResp;
-                  break;
+                if (retry.ok) {
+                  console.log(`[responses-proxy] ${model} ${lastStatus} -> delayed retry ${attempt} OK`);
+                  litellmResp = retry;
+                  recovered = true;
+                } else {
+                  lastStatus = retry.status;
+                  await retry.body?.cancel();
                 }
-                await fbResp.body?.cancel();
+              }
+              if (!recovered) {
+                for (const fb of FALLBACK_MODELS) {
+                  const fbReq = { ...chatReq, model: fb };
+                  const fbResp = await fetch(LITELLM + "/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
+                    body: JSON.stringify(fbReq),
+                  });
+                  if (fbResp.ok) {
+                    console.log(`[responses-proxy] ${model} ${lastStatus} -> fallback ${fb}`);
+                    litellmResp = fbResp;
+                    recovered = true;
+                    break;
+                  }
+                  lastStatus = fbResp.status;
+                  await fbResp.body?.cancel();
+                }
+              }
+              if (!recovered) {
+                return new Response(
+                  JSON.stringify({
+                    error: { message: `${model} upstream failed after ${FALLBACK_RETRIES} delayed retries and fallbacks (last: ${lastStatus})`, type: "upstream_error" },
+                  }),
+                  { status: lastStatus, headers: { "Content-Type": "application/json" } },
+                );
               }
             }
 
