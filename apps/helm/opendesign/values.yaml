@@ -9,8 +9,9 @@ provider:
   apiKeyRef: "opendesign-secrets"
   apiKeyKey: "LITELLM_MASTER_KEY"
   # stdio MCP server exposed to the Codex agent (create_artifact etc.)
+  # mcpArgs is a pre-quoted TOML array string (Helm toJson strips quoting)
   mcpCommand: "/usr/local/bin/node"
-  mcpArgs: ["/app/apps/daemon/dist/cli.js", "mcp", "--daemon-url", "http://127.0.0.1:7456"]
+  mcpArgs: '["/app/apps/daemon/dist/cli.js", "mcp", "--daemon-url", "http://127.0.0.1:7456"]'
 
 # App runtime config — domain is resolved from top-level
 config:

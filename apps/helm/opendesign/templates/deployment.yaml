@@ -53,7 +53,7 @@ spec:
               # Expose the app's stdio MCP server so the agent can register artifacts
               # (create_artifact / write_file / get_artifact) — required for the
               # preview pane to render anything.
-              printf '\n[mcp_servers.open-design]\ncommand = "%s"\nargs = %s\n' "{{ .Values.provider.mcpCommand | default "/usr/local/bin/node" }}" "{{ .Values.provider.mcpArgs | default (list "/app/apps/daemon/dist/cli.js" "mcp" "--daemon-url" "http://127.0.0.1:7456") | toJson }}" >> /app/.od/codex/config.toml
+              printf '\n[mcp_servers.open-design]\ncommand = "%s"\nargs = %s\n' "{{ .Values.provider.mcpCommand | default "/usr/local/bin/node" }}" "{{ .Values.provider.mcpArgs | default "[\"/app/apps/daemon/dist/cli.js\", \"mcp\", \"--daemon-url\", \"http://127.0.0.1:7456\"]" }}" >> /app/.od/codex/config.toml
               echo "Seeded Codex config (LiteLLM + MCP open-design)"
 
               # Always refresh agentCliEnv so stale endpoints/keys never break runs
