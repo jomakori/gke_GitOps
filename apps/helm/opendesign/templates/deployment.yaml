@@ -43,16 +43,20 @@ spec:
             - sh
             - -c
             - |
-              # Always ensure Codex config exists with app_server disabled
+              # Always ensure Codex config points at LiteLLM with a Claude model
               mkdir -p /app/.od/codex
               chmod 775 /app/.od/codex
               chown 1001:1001 /app/.od/codex
-               printf '' > /app/.od/codex/config.toml
-               printf 'openai_base_url = "http://openagent-hermes-api.openagent.svc.cluster.local:8642/v1"\n' >> /app/.od/codex/config.toml
-               printf 'model = "gpt-5.5"\n' >> /app/.od/codex/config.toml
-               echo "Seeded Codex config (Hermes API)"
+              printf '' > /app/.od/codex/config.toml
+              printf 'openai_base_url = "%s"\n' "{{ .Values.provider.endpoint }}" >> /app/.od/codex/config.toml
+              printf 'model = "%s"\n' "{{ .Values.provider.model | default "claude-sonnet-5" }}" >> /app/.od/codex/config.toml
+              echo "Seeded Codex config (LiteLLM)"
 
-              if [ ! -f /app/.od/app-config.json ]; then
+              # Always refresh agentCliEnv so stale endpoints/keys never break runs
+              if [ -f /app/.od/app-config.json ]; then
+                sed -i "s#http://openagent-hermes-api.openagent.svc.cluster.local:8642/v1#{{ .Values.provider.endpoint }}#g; s#http://responses-proxy.openagent.svc.cluster.local:4524/v1#{{ .Values.provider.endpoint }}#g; s#hermes-api-server-key-1234#$CODEX_API_KEY#g" /app/.od/app-config.json
+                echo "Refreshed app-config.json agentCliEnv"
+              else
                 printf '{\n' > /app/.od/app-config.json
                 printf '  "onboardingCompleted": true,\n' >> /app/.od/app-config.json
                 printf '  "agentId": "codex",\n' >> /app/.od/app-config.json
@@ -66,9 +70,7 @@ spec:
                 printf '    }\n' >> /app/.od/app-config.json
                 printf '  }\n' >> /app/.od/app-config.json
                 printf '}\n' >> /app/.od/app-config.json
-                echo "Seeded agent config from Helm"
-              else
-                echo "app-config.json exists, skipping"
+                echo "Created app-config.json from Helm"
               fi
           env:
             - name: CODEX_API_KEY

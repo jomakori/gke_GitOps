@@ -3,8 +3,9 @@ domain: design.maklab.net
 
 # AI provider backend (LiteLLM)
 provider:
-  endpoint: "http://openagent-hermes-api.openagent.svc.cluster.local:8642/v1"
-  apiKeyRef: "openagent-secrets"
+  endpoint: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
+  model: "claude-sonnet-5"
+  apiKeyRef: "opendesign-secrets"
   apiKeyKey: "LITELLM_MASTER_KEY"
 
 # App runtime config — domain is resolved from top-level
