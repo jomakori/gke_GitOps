@@ -1,9 +1,10 @@
 # Single source of truth for the domain
 domain: design.maklab.net
 
-# AI provider backend (LiteLLM)
+# AI provider backend (LiteLLM via responses-proxy: filters Codex custom tools,
+# translates Responses API, forwards to LiteLLM -> claude-proxy -> Claude)
 provider:
-  endpoint: "http://openagent-litellm.openagent.svc.cluster.local:4000/v1"
+  endpoint: "http://responses-proxy.openagent.svc.cluster.local:4524/v1"
   model: "claude-sonnet-5"
   apiKeyRef: "opendesign-secrets"
   apiKeyKey: "LITELLM_MASTER_KEY"

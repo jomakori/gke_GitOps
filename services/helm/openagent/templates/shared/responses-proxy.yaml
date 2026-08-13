@@ -8,48 +8,7 @@ data:
   proxy.ts: |
     const PORT = parseInt(process.env.PORT ?? "4524");
     const LITELLM = process.env.LITELLM ?? "http://openagent-litellm.{{ .Release.Namespace }}.svc.cluster.local:4000";
-    const LITELLM_KEY = process.env.LITELLM_KEY ?? "sk-litellm-master-key";
-    const enc = new TextEncoder();
-
-    // Map Responses API model names → LiteLLM model names
-    function mapModel(m) {
-      const map = {
-        "claude-sonnet-5": "claude/sonnet-5",
-        "claude-sonnet-4": "claude/sonnet-4",
-        "claude-opus-5": "claude/opus-5",
-        "claude-opus-4": "claude/opus-4",
-      };
-      return map[m] ?? m;
-    }
-
-    // Translate Responses API input → chat completions messages
-    function toMessages(body) {
-      const msgs = [];
-      if (body.instructions)
-        msgs.push({ role: "system", content: body.instructions });
-      const inp = body.input;
-      if (typeof inp === "string") {
-        msgs.push({ role: "user", content: inp });
-      } else if (Array.isArray(inp)) {
-        for (const item of inp) {
-          if (typeof item === "string") {
-            msgs.push({ role: "user", content: item });
-          } else if (item.type === "message" || (item.role && item.content)) {
-            const role = item.role || "user";
-            let text = "";
-            if (typeof item.content === "string") {
-              text = item.content;
-            } else if (Array.isArray(item.content)) {
-              text = item.content
-                .map(function (c) { return c.text || c.content || ""; })
-                .join("");
-            }
-            msgs.push({ role: role, content: text });
-          }
-        }
-      }
-      return msgs;
-    }
+    const LITELLM_KEY = process.env.LITELLM_KEY ?? "sk-litellm-master-key-1234";
 
     Bun.serve({
       port: PORT,
@@ -71,191 +30,69 @@ data:
         )
           return new Response("Use HTTP POST for /v1/responses", { status: 426 });
 
-        // ── Responses API → Chat Completions translation ──
+        // ── Responses API passthrough with tool filtering ──
+        // Codex 0.145 sends `web_search` and `namespace` tool types that break
+        // OpenAI-schema upstreams (auth2api claude-proxy pydantic validation:
+        // "tools.N.custom.name: Field required"). Keep only `function` tools so
+        // the agent keeps its exec/file/plan capabilities. LiteLLM handles the
+        // Responses <-> provider conversion (incl. tool_calls round-trips).
         if (u.pathname === "/v1/responses" && req.method === "POST") {
           try {
-            const raw = await req.text();
-            const body = JSON.parse(raw);
-            const model = mapModel(body.model || "claude-sonnet-5");
-            const stream = body.stream ?? false;
-            const messages = toMessages(body);
-
-            const chatReq = { model: model, messages: messages, stream: stream };
-            if (body.temperature != null) chatReq.temperature = body.temperature;
-            if (body.max_output_tokens != null) chatReq.max_tokens = body.max_output_tokens;
-
-            const litellmResp = await fetch(LITELLM + "/v1/chat/completions", {
+            const body = JSON.parse(await req.text());
+            if (Array.isArray(body.tools)) {
+              const before = body.tools.length;
+              body.tools = body.tools.filter(
+                (t) => t && typeof t === "object" && t.type === "function",
+              );
+              if (body.tools.length === 0) delete body.tools;
+              else if (body.tools.length !== before)
+                console.log(`[responses-proxy] filtered tools ${before} -> ${body.tools.length}`);
+            }
+            const litellmResp = await fetch(LITELLM + "/v1/responses", {
               method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
-              body: JSON.stringify(chatReq),
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + LITELLM_KEY,
+              },
+              body: JSON.stringify(body),
             });
+            return new Response(litellmResp.body, {
+              status: litellmResp.status,
+              headers: {
+                "Content-Type": litellmResp.headers.get("content-type") ?? "application/json",
+              },
+            });
+          } catch (e) {
+            return new Response(String(e), { status: 500 });
+          }
+        }
 
-            if (!litellmResp.ok) {
-              const errText = await litellmResp.text();
-              return new Response(errText, { status: litellmResp.status });
-            }
-
-            const respId = "resp_" + crypto.randomUUID().slice(0, 24);
-            const msgId = respId + "_msg";
-
-            if (stream) {
-              // Translate chat completions SSE → Responses API SSE
-              return new Response(
-                new ReadableStream({
-                  async start(controller) {
-                    // 1. response.created
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.created",
-                        response: { id: respId, status: "in_progress", model: model },
-                      }) + "\n\n"
-                    ));
-                    // 2. response.output_item.added
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.output_item.added",
-                        item: {
-                          type: "message", role: "assistant", id: msgId,
-                          status: "in_progress",
-                          content: [{ type: "output_text", text: "" }],
-                        },
-                      }) + "\n\n"
-                    ));
-
-                    let fullText = "";
-                    let usage = null;
-                    const reader = litellmResp.body.getReader();
-                    const decoder = new TextDecoder();
-                    let buffer = "";
-
-                    try {
-                      while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split("\n");
-                        buffer = lines.pop() || "";
-                        for (const line of lines) {
-                          if (!line.startsWith("data: ")) continue;
-                          const data = line.slice(6).trim();
-                          if (data === "[DONE]") continue;
-                          try {
-                            const chunk = JSON.parse(data);
-                            const delta = chunk.choices?.[0]?.delta?.content;
-                            if (delta) {
-                              fullText += delta;
-                              controller.enqueue(enc.encode(
-                                "data: " + JSON.stringify({
-                                  type: "response.output_text.delta", delta: delta,
-                                }) + "\n\n"
-                              ));
-                            }
-                            if (chunk.usage) usage = chunk.usage;
-                          } catch {}
-                        }
-                      }
-                    } catch (e) {
-                      controller.error(e);
-                      return;
-                    }
-
-                    // 4. response.output_text.done
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.output_text.done", text: fullText,
-                      }) + "\n\n"
-                    ));
-                    // 5. response.output_item.done
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.output_item.done",
-                        item: {
-                          type: "message", role: "assistant", id: msgId,
-                          status: "completed",
-                          content: [{ type: "output_text", text: fullText }],
-                        },
-                      }) + "\n\n"
-                    ));
-                    // 6. response.completed
-                    const ut = usage || {};
-                    const it = ut.prompt_tokens || 0;
-                    const ot = ut.completion_tokens || 0;
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.completed",
-                        response: {
-                          id: respId, status: "completed", model: model,
-                          output: [{
-                            type: "message", role: "assistant", id: msgId,
-                            status: "completed",
-                            content: [{ type: "output_text", text: fullText }],
-                          }],
-                          usage: { input_tokens: it, output_tokens: ot, total_tokens: it + ot },
-                        },
-                      }) + "\n\n"
-                    ));
-                    // 7. [DONE]
-                    controller.enqueue(enc.encode("data: [DONE]\n\n"));
-                    controller.close();
-                  },
-                }),
-                {
-                  headers: {
-                    "Content-Type": "text/event-stream",
-                    "Cache-Control": "no-cache",
-                    Connection: "keep-alive",
-                  },
-                }
+        // ── Chat completions passthrough with the same tool filtering ──
+        // Belt-and-braces: if Codex ever falls back to the chat wire, custom
+        // tool types would otherwise 400 at the upstream.
+        if (u.pathname === "/chat/completions" && req.method === "POST") {
+          try {
+            const body = JSON.parse(await req.text());
+            if (Array.isArray(body.tools)) {
+              body.tools = body.tools.filter(
+                (t) => t && typeof t === "object" && t.type === "function",
               );
-            } else {
-              // Non-streaming: return SSE with full response
-              const cd = await litellmResp.json();
-              const text = cd.choices?.[0]?.message?.content ?? "";
-              const ut = cd.usage || {};
-              const it = ut.prompt_tokens || 0;
-              const ot = ut.completion_tokens || 0;
-              return new Response(
-                new ReadableStream({
-                  start(controller) {
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.created",
-                        response: { id: respId, status: "in_progress", model: model },
-                      }) + "\n\n"
-                    ));
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.output_item.done",
-                        item: {
-                          type: "message", role: "assistant", id: msgId,
-                          status: "completed",
-                          content: [{ type: "output_text", text: text }],
-                        },
-                      }) + "\n\n"
-                    ));
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.completed",
-                        response: {
-                          id: respId, status: "completed", model: model,
-                          output: [{
-                            type: "message", role: "assistant", id: msgId,
-                            status: "completed",
-                            content: [{ type: "output_text", text: text }],
-                          }],
-                          usage: { input_tokens: it, output_tokens: ot, total_tokens: it + ot },
-                        },
-                      }) + "\n\n"
-                    ));
-                    controller.enqueue(enc.encode("data: [DONE]\n\n"));
-                    controller.close();
-                  },
-                }),
-                {
-                  headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
-                }
-              );
+              if (body.tools.length === 0) delete body.tools;
             }
+            const litellmResp = await fetch(LITELLM + "/chat/completions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + LITELLM_KEY,
+              },
+              body: JSON.stringify(body),
+            });
+            return new Response(litellmResp.body, {
+              status: litellmResp.status,
+              headers: {
+                "Content-Type": litellmResp.headers.get("content-type") ?? "application/json",
+              },
+            });
           } catch (e) {
             return new Response(String(e), { status: 500 });
           }
@@ -289,6 +126,9 @@ spec:
         - name: proxy
           image: oven/bun:1-alpine
           command: ["bun", "/proxy/proxy.ts"]
+          env:
+            - name: LITELLM_KEY
+              value: "sk-litellm-master-key-1234"
           ports:
             - containerPort: 4524
           readinessProbe:
