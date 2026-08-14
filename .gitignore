@@ -4,9 +4,12 @@
 .DS_Store
 *.log
 test-gpu.yaml
-**charts/
+**/charts/*
+!services/helm/openagent/charts/headroom/
 !services/helm/openagent/charts/headroom/**
+!services/helm/openagent/charts/hermes-workspace/
 !services/helm/openagent/charts/hermes-workspace/**
+!services/helm/openagent/charts/claude-proxy/
 !services/helm/openagent/charts/claude-proxy/**
 **Chart.lock
 .devbox/
