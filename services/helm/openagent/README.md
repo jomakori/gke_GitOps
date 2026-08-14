@@ -46,6 +46,9 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | claude-proxy.enabled | bool | `true` |  |
+| claude-proxy.persistence.enabled | bool | `true` | Keep ~/.claude on a PVC so rotated OAuth tokens survive restarts |
+| claude-proxy.persistence.size | string | `"100Mi"` |  |
+| claude-proxy.persistence.storageClass | string | `"local-path"` |  |
 | clusterDomain | string | `"maklab.net"` |  |
 | dashboard.destination.host | string | `"openagent-hermes-workspace.openagent.svc.cluster.local"` |  |
 | dashboard.destination.port | int | `3000` |  |
