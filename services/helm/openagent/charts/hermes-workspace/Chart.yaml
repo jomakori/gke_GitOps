@@ -1,0 +1,6 @@
+apiVersion: v2
+name: hermes-workspace
+description: Subchart for Hermes Workspace — web-based AI agent workspace UI
+type: application
+version: 0.1.0
+appVersion: "latest"

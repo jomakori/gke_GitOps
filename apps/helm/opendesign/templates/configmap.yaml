@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "opendesign.fullname" . }}
+  labels: {{- include "opendesign.labels" . | nindent 4 }}
+data:
+  NODE_ENV: "production"
+  NODE_OPTIONS: "--max-old-space-size=192"
+  OD_BIND_HOST: {{ .Values.config.bindHost | quote }}
+  OD_PORT: "7456"
+  OD_WEB_PORT: "7456"
+  OD_ALLOWED_ORIGINS: {{ .Values.config.allowedOrigins | default (printf "https://%s" (include "opendesign.domain" .)) | quote }}
+  OD_PUBLIC_BASE_URL: {{ .Values.config.publicBaseUrl | default (printf "https://%s" (include "opendesign.domain" .)) | quote }}
+  {{- if .Values.config.disableApiAuth }}
+  OD_DISABLE_API_AUTH: "1"
+  {{- end }}
+  {{- if .Values.provider.endpoint }}
+  OD_LITELLM_ENDPOINT: {{ .Values.provider.endpoint | quote }}
+  {{- end }}

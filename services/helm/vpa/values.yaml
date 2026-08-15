@@ -1,0 +1,28 @@
+vpa:
+  replicaCount: 1
+
+  image:
+    tag: "1.2.0"
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+
+  recommender:
+    enabled: true
+    extraArgs:
+      v: "2"
+
+  updater:
+    enabled: true
+    extraArgs:
+      v: "2"
+
+  admissionController:
+    enabled: true
+    extraArgs:
+      v: "2"

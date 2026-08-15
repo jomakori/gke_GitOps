@@ -1,50 +1,294 @@
-# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ Global Values - shared values - passed in via DevOps repo (Terraform)                    │
-# └──────────────────────────────────────────────────────────────────────────────────────────┘
-repoUrl: ""
-path: ""
-targetRevision: ""
-region: ""
-account: ""
+# Global Values - shared values - passed in via DevOps repo (Terraform)
+argoNamespace: ""
+argoProject: ""
+clusterDomain: ""
 clusterName: ""
-clusterEndpoint: ""
-grafanaCreds:
-  admin:
-  pw:
+clusterServer: ""
+repoUrl: ""
+storageClass: "local-path"
+targetRevision: ""
+accessTeamDomain: ""
+accessAudienceTag: ""
 
-# ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-# │ Service Values - individual values - passed in via DevOps repo (Terraform)               │
-# └──────────────────────────────────────────────────────────────────────────────────────────┘
-dbOperator:
-  enable: true
-  creds:
-    user:
-    pw:
+# Service Configurations
+services:
+# Wave 0 — Init services (no deps)
+  localPath:
+    enable: true
+    syncWave: "0"
+    syncOptions:
+      - CreateNamespace=true
 
-externalSecrets:
-  enable: true
-  serviceAccountName:
+  certManager:
+    enable: true
+    syncWave: "0"
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
 
-headlamp:
-  enable: true
+  metricsServer:
+    enable: true
+    syncWave: "0"
+    destNamespace: kube-system
+    finalizer: true
 
-jenkins:
-  enable: true
+    syncOptions:
+      - Replace=true
 
-keda:
-  enable: true
+  vpa:
+    enable: true
+    syncWave: "0"
+    destNamespace: vpa
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
 
-kubecost:
-  enable: true
+  # Wave 1 — Secret engine
+  externalSecrets:
+    enable: true
+    syncWave: "1"
+    finalizer: true
 
-kubePrometheusStack:
-  enable: true
+    retryLimit: 5
+    retryMaxDuration: 3m
+    syncOptions:
+      - CreateNamespace=true
+      # SSA avoids the 256KB last-applied annotation on the huge ESO CRDs
+      # (SyncError: metadata.annotations: Too long). Required since 2026-08-09.
+      - ServerSideApply=true
+      # Fail-fast: a wedged sync (e.g. CRD/health gate) must not hang forever.
+      - SyncTimeoutSeconds=300
+    ignoreDifferences:
+      - group: ""
+        kind: Secret
+        name: external-secrets-webhook
+        namespace: external-secrets
+        jsonPointers:
+          - /data
+          - /type
+      - group: admissionregistration.k8s.io
+        kind: ValidatingWebhookConfiguration
+        jqPathExpressions:
+          - .webhooks[].clientConfig.caBundle
+          - .webhooks[].failurePolicy
+          - .webhooks[].matchPolicy
+          - .webhooks[].namespaceSelector
+          - .webhooks[].objectSelector
+          - .webhooks[].timeoutSeconds
+          - .webhooks[].rules[].scope
 
-ollama:
-  enable: true
+  # Wave 2 — Istio umbrella (after external-secrets ClusterSecretStores are ready)
+  istio:
+    enable: true
+    syncWave: "2"
+    destNamespace: istio-system
+    dopplerConfig: "svc_cloudflare"
+    ignoreDifferences:
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.dataFrom[].find.conversionStrategy
+          - .spec.dataFrom[].find.decodingStrategy
+          - .spec.dataFrom[].find.nullBytePolicy
+      - group: admissionregistration.k8s.io
+        kind: ValidatingWebhookConfiguration
+        jqPathExpressions:
+          - .webhooks[].clientConfig.caBundle
+          - .webhooks[].failurePolicy
+          - .webhooks[].matchPolicy
+          - .webhooks[].namespaceSelector
+          - .webhooks[].objectSelector
+          - .webhooks[].timeoutSeconds
+          - .webhooks[].rules[].scope
+    parameters:
+      - name: virtualServices.argocd.enabled
+        value: "true"
+      - name: virtualServices.argocd.host
+        value: argocd.maklab.net
+      - name: virtualServices.argocd.destination.host
+        value: argo-cd-argocd-server.argocd.svc.cluster.local
+      - name: virtualServices.argocd.destination.port
+        value: "80"
+  tailscale:
+    enable: true
+    syncWave: "2"
+    destNamespace: tailscale
+    dopplerConfig: "svc_tailscale"
+    retryLimit: 3
+    retryMaxDuration: 3m
+    syncOptions:
+      - CreateNamespace=true
+      - SyncTimeoutSeconds=300
 
-redisOperator:
-  enable: false
-  environment:
-    - production
-    - staging
+  openagent:
+    enable: true
+    syncWave: "0"
+    destNamespace: openagent
+    managedNamespaceMetadata:
+      labels:
+        istio.io/dataplane-mode: ambient
+    parameters:
+      - name: clusterDomain
+        value: "{{ .Values.clusterDomain }}"
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
+    dopplerConfig: "svc_openagent"
+    gateways:
+      enable_private: true
+      destination:
+        serviceName: openagent-hermes-workspace
+        servicePort: 3000
+    syncOptions:
+      - CreateNamespace=true
+    skipSchemaValidation: true
+    ignoreDifferences:
+      - group: stackgres.io
+        kind: SGPostgresConfig
+        name: openagent-pg-config
+        namespace: openagent
+        jsonPointers:
+          - /spec/postgresql.conf
+      - group: stackgres.io
+        kind: SGCluster
+        name: openagent-pg
+        namespace: openagent
+        jsonPointers:
+          - /spec/configurations/observability
+          - /spec/pods/disableEnvoy
+          - /spec/pods/disablePostgresUtil
+          - /spec/pods/managementPolicy
+          - /spec/pods/updateStrategy
+          - /spec/postgres/flavor
+          - /spec/postgres/ssl
+          - /spec/postgresServices
+          - /spec/replication
+          - /spec/sgInstanceProfile
+          - /spec/users
+          - /spec/managedSql
+
+  # Wave 3 — Edge infrastructure (after istio for backend routing)
+  cloudflareTunnel:
+    enable: true
+    syncWave: "3"
+    dopplerConfig: "svc_cloudflare"
+
+  # Wave 4 — Operators (no endpoint deps)
+  externalDns:
+    enable: true
+    syncWave: "4"
+    dopplerConfig: "svc_cloudflare"
+
+  keda:
+    enable: false
+    syncWave: "4"
+    argocdNamespace: argocd
+    finalizer: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+
+  mongodbOperator:
+    enable: false
+    syncWave: "4"
+    argocdNamespace: argocd
+    argoProject: default
+
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+    retryLimit: 2
+    retryMaxDuration: 3m
+    managedNamespaceMetadata:
+      labels:
+        argocd.argoproj.io/respect-existing: "true"
+    ignoreDifferences:
+      - group: apiextensions.k8s.io
+        kind: CustomResourceDefinition
+        jqPathExpressions:
+          - .
+
+  postgresOperator:
+    enable: true
+    syncWave: "4"
+    argocdNamespace: argocd
+    argoProject: default
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+      - ServerSideApply=true
+    retryLimit: 2
+    retryMaxDuration: 3m
+    skipCrds: true
+    managedNamespaceMetadata:
+      labels:
+        argocd.argoproj.io/respect-existing: "true"
+    ignoreDifferences:
+      - group: apiextensions.k8s.io
+        kind: CustomResourceDefinition
+        jqPathExpressions:
+          - .
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.data[].remoteRef.conversionStrategy
+          - .spec.data[].remoteRef.decodingStrategy
+          - .spec.data[].remoteRef.metadataPolicy
+          - .spec.data[].remoteRef.nullBytePolicy
+    dopplerConfig: "svc_postgres_operator"
+
+  # Wave 5 — General services
+  kubePrometheusStack:
+    enable: true
+    dopplerConfig: "svc_grafana"
+    finalizer: true
+    syncWave: "5"
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    ignoreDifferences:
+      - group: apps
+        kind: DaemonSet
+        name: kube-prometheus-stack-prometheus-node-exporter
+        namespace: kube-prometheus-stack
+        jsonPointers:
+          - /spec/template/spec/containers/0/resources
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.dataFrom[].find.conversionStrategy
+          - .spec.dataFrom[].find.decodingStrategy
+          - .spec.dataFrom[].find.nullBytePolicy
+    gateways:
+      enable_private: true
+      subdomain: grafana
+      destination:
+        serviceName: kube-prometheus-stack-grafana
+
+
+  redisOperator:
+    enable: false
+    syncWave: "5"
+    finalizer: true
+    environments:
+      - production
+      - staging
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+      - ServerSideApply=true
+    parameters:
+      - name: redis-cluster.persistence.storageClass
+        value: "{{ .Values.storageClass }}"
+
+  openagentDiscord:
+    enable: false
+    syncWave: "3"
+    destNamespace: openagent
+    dopplerConfig: "svc_openagent"
+    parameters:
+      - name: config.mentionOnly
+        value: "false"
+    syncOptions:
+      - CreateNamespace=true

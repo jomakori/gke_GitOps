@@ -1,0 +1,10 @@
+apiVersion: v2
+name: excalidash
+description: Values override layer for alekc/excalidash (self-hosted Excalidraw dashboard)
+type: application
+version: 1.0.0
+appVersion: "0.5.0"
+dependencies:
+  - name: excalidash
+    version: 1.0.0
+    repository: https://charts.alekc.dev

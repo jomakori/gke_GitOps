@@ -1,0 +1,56 @@
+# Local values — consumed by templates/externalsecret.yaml
+dopplerConfig: "svc_excalidash"
+
+# ── Upstream chart overrides (alekc/excalidash v1.0.0) ─────────────────
+# Docs: https://artifacthub.io/packages/helm/alekc/excalidash
+excalidash:
+  ingress:
+    main:
+      enabled: false        # Routing via Istio VirtualService (istio chart)
+
+  persistence:
+    db:
+      enabled: true
+      accessMode: ReadWriteOnce
+      size: 5Gi
+      storageClass: local-path
+      targetSelector:
+        backend:
+          main:
+            mountPath: /app/prisma
+
+  # Chart-managed secret — key `secrets` renders the Secret object as
+  # `excalidash-secrets` (<fullname>-<key>), so the name is directly
+  # fetchable/predictable. Auto-generates JWT/CSRF as boot fallback;
+  # the Doppler ExternalSecret (creationPolicy: Merge, dataFrom find-all)
+  # overwrites with real values.
+  secret:
+    secrets:
+      enabled: true
+      data:
+        JWT_SECRET: ""
+        CSRF_SECRET: ""
+
+  # TrueCharts common defaults target amd64; this cluster is arm64 (k3d on OrbStack).
+  # Also disables the generated single-replica PVC podAffinity (truecharts.org/pvc),
+  # which can never be satisfied by the pod itself -> unschedulable.
+  podOptions:
+    nodeSelector:
+      kubernetes.io/arch: arm64
+    defaultAffinity: false
+
+  workload:
+    backend:
+      podSpec:
+        containers:
+          main:
+            env:
+              FRONTEND_URL: https://draw.maklab.net
+              AUTH_MODE: local
+              TRUST_PROXY: "true"
+              UPDATE_CHECK_OUTBOUND: "false"
+              # Edge (CF Tunnel → Istio) terminates TLS; disable built-in redirect
+              ENFORCE_HTTPS_REDIRECT: "false"
+            envFrom:
+              - secretRef:
+                  name: secrets

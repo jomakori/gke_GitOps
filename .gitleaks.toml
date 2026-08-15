@@ -1,0 +1,12 @@
+# gitleaks configuration
+
+title = "gitleaks config"
+
+# Exclude documentation files entirely (false positives on "secret", "api_key" mentions)
+[allowlist]
+paths = [
+  '''k8s-gitops-context\.yaml$''',
+  '''configmap-hermes-config\.yaml$''',
+  '''README\.md$''',
+  '''\.md$'''
+]

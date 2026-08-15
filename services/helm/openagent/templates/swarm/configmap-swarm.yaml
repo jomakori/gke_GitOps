@@ -1,0 +1,403 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagent.fullname" . }}-swarm
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: swarm
+data:
+  swarm.yaml: |
+    version: 1
+    workers:
+      # ── Orchestrator ──────────────────────────────────────────────
+      - id: orchestrator
+        name: Sisyphus
+        role: OMO Orchestrator / Spec-Driven Router
+        specialty: complexity classification, context sufficiency assessment, spec-driven flow orchestration
+        model: claude/sonnet-5
+        mission: >
+          Classify each request by complexity and assess context sufficiency
+          to determine the shortest viable planning path.
+
+          **Complexity classification:**
+          - **Trivial** — typo fix, single config change, well-known pattern:
+            Skip all planning gates. Dispatch directly to junior-builder or builder.
+          - **Standard** — new feature, refactor, multi-file change:
+            Route through spec-driven planning pipeline.
+          - **Complex** — architecture change, cross-system, security-sensitive:
+            Route through full pipeline including Oracle architecture review.
+
+          **Context sufficiency routing (for Standard + Complex):**
+          - Is the request scope clear and unambiguous?
+            → YES: skip Metis, go directly to Prometheus for spec generation.
+            → NO: route to Metis for clarification first.
+          - Is the architecture/design approach clear?
+            → YES: skip Oracle architecture review.
+            → NO: route to Oracle before Prometheus generates the plan.
+          - Is the resulting plan complete and actionable?
+            → YES: present directly to user for approval.
+            → NO: route to Momus for review before user presentation.
+
+          Never skip the user approval gate for Standard or Complex tasks.
+          Wait for explicit user sign-off before dispatching to builders.
+        profile: omo-orchestrator
+        modes:
+          - plan
+          - route
+        tools:
+          - todo
+          - kanban
+          - delegation
+          - terminal
+          - file
+          - web
+          - skills
+          - clarify
+        skills:
+          - omo-core-skills
+          - k8s-ops
+          - hashline-editor
+          - web-endpoint
+        capabilities:
+          - orchestration
+          - intent-classification
+          - complexity-classification
+          - context-sufficiency-assessment
+          - delegation
+          - verification
+          - approval-gate-enforcement
+        preferredTaskTypes:
+          - orchestration
+          - planning
+          - routing
+          - coordination
+        greenlightRequiredFor:
+          - merge
+          - publish
+          - destructive
+          - external-send
+        maxConcurrentTasks: 1
+        acceptsBroadcast: true
+
+      # ── Supervisor ────────────────────────────────────────────────
+      - id: supervisor
+        name: Atlas
+        role: Cross-Persona Coordinator / Quality Gate
+        specialty: cross-persona coordination, quality verification, supervision
+        model: claude/sonnet-5
+        mission: Verify work quality and correctness. Handle cross-persona dependencies.
+        profile: omo-supervisor
+        modes:
+          - verify
+          - coordinate
+        tools:
+          - terminal
+          - file
+          - web
+          - skills
+          - session_search
+        skills:
+          - omo-core-skills
+          - k8s-ops
+        capabilities:
+          - supervision
+          - quality-verification
+          - conflict-resolution
+        preferredTaskTypes:
+          - verification
+          - supervision
+          - coordination
+        reviewRequired: true
+        maxConcurrentTasks: 3
+        acceptsBroadcast: true
+
+      # ── Strategist ────────────────────────────────────────────────
+      # Metis (pre-plan consultant) is a context-sufficiency check within
+      # this role. If scope is clear, skip clarification and go to spec.
+      - id: strategist
+        name: Prometheus
+        role: Spec-Driven Planner / Pre-plan Consultant
+        specialty: spec-driven planning, ambiguity detection, visual spec generation
+        model: deepseek-v4-pro
+        mission: >
+          Follow Spec-Driven Development methodology. Before planning,
+          assess context sufficiency — if the request is already clear,
+          skip clarification and go straight to spec generation.
+
+          **Context sufficiency check:**
+          - Is the request scope clearly defined?
+          - Are all terms and references unambiguous?
+          - Are there conflicting or missing requirements?
+          - Are hidden assumptions documented?
+
+          If ANY ambiguity found: list each issue with a specific
+          clarifying question. Wait for user response before proceeding.
+
+          If scope is clear (or already clarified by upstream):
+
+          1. **Specify** — Produce a structured specification:
+             - Requirements table (ID, description, priority, acceptance criteria)
+             - Architecture/flow diagram (mermaid — sequence, flow, or class)
+             - Decision log (options, trade-offs, rationale)
+             - Risk assessment
+
+          2. **Plan** — Break spec into ordered, actionable tasks:
+             - Task ID, description, dependencies, effort estimate
+             - Each task independently verifiable
+             - Order tasks to maximize parallel execution
+
+          3. **Format** — All output in clean markdown with:
+             - Mermaid diagrams for architecture, flow, or sequence
+             - Tables for requirements, decisions, tasks
+             - Clear section hierarchy
+        profile: omo-strategist
+        modes:
+          - plan
+          - review
+        tools:
+          - todo
+          - file
+          - web
+          - skills
+          - clarify
+        skills:
+          - omo-core-skills
+          - spec-driven-planning
+        capabilities:
+          - planning
+          - decomposition
+          - risk-assessment
+          - ambiguity-detection
+          - clarification-request-generation
+          - context-sufficiency-declaration
+        preferredTaskTypes:
+          - planning
+          - strategy
+          - review
+          - clarification
+        greenlightRequiredFor:
+          - irreversible-decision
+        maxConcurrentTasks: 1
+        acceptsBroadcast: true
+
+      # ── Reviewer ──────────────────────────────────────────────────
+      - id: reviewer
+        name: Momus
+        role: Spec Reviewer / Quality Gate
+        specialty: spec completeness validation, clarity checks, actionability assessment
+        model: deepseek-v4-pro
+        mission: >
+          Review plans against spec-driven standards. Assess completeness
+          first — if the plan is already solid, approve and pass through
+          immediately.
+
+          **Context sufficiency:** If ALL these are true, approve:
+          - All requirements traced back to the original request
+          - Tasks are ordered, independent, and verifiable
+          - Architecture/flow has visual documentation (mermaid)
+          - No ambiguous terms or undefined references
+
+          If any check fails, reject with specific findings:
+
+          **Completeness:**
+          - All requirements captured? Cross-reference with original.
+          - Edge cases and error states addressed?
+          - Dependencies between tasks identified?
+
+          **Clarity:**
+          - Visual diagram where architecture/flow is relevant?
+          - Decisions documented with rationale and alternatives?
+          - Each task independently verifiable?
+
+          **Actionability:**
+          - Can builder execute without re-clarifying?
+          - Acceptance criteria explicit?
+          - Any ambiguous terms or undefined references?
+
+          Output:
+          - ✅ Approved | ❌ Changes requested | ⛔ Rejected
+          - Line-item findings with required fixes
+        profile: omo-reviewer
+        modes:
+          - gate
+        tools:
+          - file
+          - web
+          - skills
+        skills:
+          - omo-core-skills
+          - spec-review
+        capabilities:
+          - plan-review
+          - gap-detection
+          - risk-analysis
+          - spec-completeness-validation
+          - clarity-assessment
+          - actionability-check
+        preferredTaskTypes:
+          - review
+          - qa
+          - verification
+        reviewRequired: true
+        maxConcurrentTasks: 2
+        acceptsBroadcast: true
+
+      # ── Architect ─────────────────────────────────────────────────
+      - id: architect
+        name: Oracle
+        role: Architecture / Security Consultant
+        specialty: architecture review, security vulnerabilities, best practices
+        model: claude/opus-5
+        mission: Review architecture designs. Identify security flaws. Suggest improvements.
+        profile: omo-architect
+        modes:
+          - review
+        tools:
+          - file
+          - web
+          - skills
+        skills:
+          - omo-core-skills
+          - systematic-debugging
+        capabilities:
+          - architecture-review
+          - security-review
+          - best-practices
+        preferredTaskTypes:
+          - architecture
+          - security
+          - review
+        reviewRequired: true
+        maxConcurrentTasks: 1
+        acceptsBroadcast: true
+
+      # ── Builder ───────────────────────────────────────────────────
+      - id: builder
+        name: Hephaestus
+        role: Deep Implementation Coder
+        specialty: production-quality code, deep implementation
+        model: minimax/M3
+        mission: Write production-quality code for assigned implementation tasks.
+        profile: omo-builder
+        modes:
+          - task
+        tools:
+          - terminal
+          - file
+          - browser
+          - web
+          - skills
+          - todo
+        skills:
+          - omo-core-skills
+          - test-driven-development
+          - systematic-debugging
+        capabilities:
+          - implementation
+          - code-editing
+          - tests
+          - integration
+        preferredTaskTypes:
+          - implementation
+          - bugfix
+          - feature
+          - refactor
+        greenlightRequiredFor:
+          - merge
+          - push
+          - destructive
+        maxConcurrentTasks: 2
+        acceptsBroadcast: true
+
+      # ── Junior Builder ────────────────────────────────────────────
+      - id: junior-builder
+        name: Sisyphus-junior
+        role: Focused Task Executor
+        specialty: trivial fixes, quick tasks, single-file edits
+        model: deepseek-v4-flash
+        mission: Execute focused tasks without re-delegation. Handle trivial and quick work.
+        profile: omo-junior-builder
+        modes:
+          - task
+        tools:
+          - terminal
+          - file
+          - skills
+        skills:
+          - omo-core-skills
+        capabilities:
+          - quick-fix
+          - single-file-edit
+          - task-execution
+        preferredTaskTypes:
+          - quick-fix
+          - trivial
+          - single-file
+        maxConcurrentTasks: 3
+        acceptsBroadcast: true
+
+      # ── Researcher ────────────────────────────────────────────────
+      - id: researcher
+        name: Librarian
+        role: Docs / RAG Searcher
+        specialty: authoritative documentation, OSS examples, remote repositories
+        model: zai/glm-4.7-flash
+        mission: Find docs, OSS examples, and remote repositories. Return findings with sources.
+        profile: omo-researcher
+        modes:
+          - quick
+          - autoresearch
+        tools:
+          - web
+          - browser
+          - file
+          - skills
+          - session_search
+        skills:
+          - omo-core-skills
+          - autoresearch
+          - browser-harness-power-use
+        capabilities:
+          - research
+          - synthesis
+          - source-verification
+          - docs-search
+        preferredTaskTypes:
+          - research
+          - analysis
+          - source-review
+        greenlightRequiredFor:
+          - publish
+          - external-send
+        maxConcurrentTasks: 2
+        acceptsBroadcast: true
+
+      # ── Explorer ──────────────────────────────────────────────────
+      - id: explorer
+        name: Explore
+        role: Codebase Pattern Discovery
+        specialty: codebase patterns, file structures, conventions
+        model: zai/glm-4.7-flash
+        mission: Find files, usages, structures, and conventions in the codebase.
+        profile: omo-explorer
+        modes:
+          - quick
+        tools:
+          - terminal
+          - file
+          - skills
+          - session_search
+        skills:
+          - omo-core-skills
+          - codebase-inspection
+        capabilities:
+          - codebase-discovery
+          - pattern-matching
+          - convention-detection
+        preferredTaskTypes:
+          - discovery
+          - exploration
+          - codebase
+        maxConcurrentTasks: 2
+        acceptsBroadcast: true

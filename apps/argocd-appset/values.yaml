@@ -1,17 +1,131 @@
-# Repo Details - passed via Terraform (DevOps repo)
+# Global Values - shared values - passed in via DevOps repo (Terraform)
+argoNamespace: ""
+argoProject: ""
+clusterDomain: ""
+clusterName: ""
+clusterServer: ""
 repoUrl: ""
-path: ""
+storageClass: ""
 targetRevision: ""
 
-# Enable/Disable Apps + their environments
-notesApp:
-  enabled: false
+# App Environment Values — dopplerConfig maps to ClusterSecretStore/doppler-{name}
+demoApi:
   environment:
     staging:
-      namespace: staging-notes-app
-      # access to Doppler secrets - passed via Terraform (DevOps repo)
-      dopplerToken: ""
+      dopplerConfig: demo-api-staging
     production:
-      namespace: prod-notes-app
-      # access to Doppler secrets - passed via Terraform (DevOps repo)
-      dopplerToken: ""
+      dopplerConfig: demo-api-prod
+
+notesUi:
+  environment:
+    staging:
+      dopplerConfig: notes-ui-staging
+    production:
+      dopplerConfig: notes-ui-prod
+
+# App Configurations — key = app name (used for Application metadata.name + chart lookup)
+apps:
+  demoApi:
+    enable: false
+    syncWave: "6"
+    helmPath: apps/helm/
+    destNamespace: argocd
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    gateways:
+      enable_public: true
+    syncOptions:
+      - CreateNamespace=true
+    ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+          - /spec/replicas
+      - group: apps
+        kind: Secret
+        jsonPointers:
+          - /metadata/argocd.argoproj.io/sync-wave
+    parameters:
+      - name: appName
+        value: "demoApi"
+      - name: demoApi.environments.staging.dopplerConfig
+        value: "{{ .Values.demoApi.environment.staging.dopplerConfig }}"
+      - name: demoApi.environments.production.dopplerConfig
+        value: "{{ .Values.demoApi.environment.production.dopplerConfig }}"
+
+  notesUi:
+    enable: false
+    syncWave: "6"
+    helmPath: apps/helm/
+    destNamespace: argocd
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    gateways:
+      enable_public: true
+    syncOptions:
+      - CreateNamespace=true
+    ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+          - /spec/replicas
+      - group: apps
+        kind: Secret
+        jsonPointers:
+          - /metadata/argocd.argoproj.io/sync-wave
+    parameters:
+      - name: appName
+        value: "notesUi"
+      - name: notesUi.environments.staging.dopplerConfig
+        value: "{{ .Values.notesUi.environment.staging.dopplerConfig }}"
+      - name: notesUi.environments.production.dopplerConfig
+        value: "{{ .Values.notesUi.environment.production.dopplerConfig }}"
+
+  opendesign:
+    enable: false
+    enable_private: true
+    gateways:
+      enable_public: false
+    helmPath: apps/helm/opendesign
+    project: default
+    environment:
+      production:
+        cluster: https://kubernetes.default.svc
+        namespace: opendesign
+    parameters:
+      - name: opendesign.config.disableApiAuth
+        value: "1"
+      - name: opendesign.config.bindHost
+        value: "127.0.0.1"
+      - name: opendesign.config.allowedOrigins
+        value: "https://design.maklab.net"
+      - name: opendesign.config.publicBaseUrl
+        value: "https://design.maklab.net"
+      - name: opendesign.replicaCount
+        value: "1"
+      - name: opendesign.persistence.enabled
+        value: "true"
+      - name: opendesign.persistence.storageClass
+        value: "local-path"
+      - name: opendesign.persistence.size
+        value: "10Gi"
+      - name: opendesign.ingress.enabled
+        value: "false"
+
+  excalidash:
+    enable: false
+    enable_private: true
+    gateways:
+      enable_public: false
+    helmPath: apps/helm/excalidash
+    project: default
+    environment:
+      production:
+        cluster: https://kubernetes.default.svc
+        namespace: excalidash

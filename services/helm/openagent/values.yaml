@@ -1,0 +1,526 @@
+# Global config (injected by Terraform → ArgoCD)
+clusterDomain: "maklab.net"
+storageClass: "local-path"
+dopplerConfig: "svc_openagent"
+namespace: "openagent"
+
+# Skill rendering runtime. "cluster" (default) renders the k8s-gitops-context
+# skill body for the in-cluster ConfigMap (GitHub MCP + /workspace/repos paths,
+# no local absolute paths). "local" renders for the opencode workstation
+# (~/.config/opencode/skills) with /Users/maklab paths + Repo Locations block.
+# The local SKILL.md is a GENERATED COPY via .useful-scripts/render_local_skill.sh.
+runtimeMode: "cluster"
+
+# Shared GHCR pull secret
+ghcrPullSecret: ""
+
+# ── LiteLLM upstream chart values ──────────────────────────────────
+litellm:
+  enabled: true
+  fullnameOverride: "openagent-litellm"
+  image:
+    repository: ghcr.io/berriai/litellm
+    tag: "main-stable"
+    pullPolicy: IfNotPresent
+  service:
+    port: 4000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  db:
+    deployStandalone: false
+    useExisting: true
+    endpoint: "openagent-pg.openagent.svc.cluster.local"
+    database: "litellm"
+    secret:
+      name: "openagent-litellm-secrets"
+      usernameKey: "OPENAGENT_PG_USER"
+      passwordKey: "OPENAGENT_PG_PASSWORD"
+  masterkeySecretName: "openagent-litellm-masterkey"
+  masterkeySecretKey: "masterkey"
+  environmentSecrets:
+    - "openagent-secrets"
+  proxy_config:
+    general_settings:
+      master_key: os.environ/LITELLM_MASTER_KEY
+      # Raw pass-through to claude-pipe (claude-proxy). Requests to
+      # /claude-pipe/<path> are forwarded byte-for-byte to the upstream, so
+      # Anthropic /v1/messages and OpenAI /v1/chat/completions both work
+      # without LiteLLM format conversion. NOTE: OSS pass-through routes skip
+      # LiteLLM key auth (Enterprise-only) — protect via Cloudflare Access.
+      pass_through_endpoints:
+        - path: "/claude-pipe"
+          target: "http://claude-proxy.openagent.svc.cluster.local:4523"
+          include_subpath: true
+          forward_headers: true
+          timeout: 300
+    litellm_settings:
+      drop_params: true
+    router_settings:
+      disable_cooldowns: true
+      allowed_fails: 100
+      cooldown_time: 0
+      num_retries: 2
+      routing_strategy: least-busy
+      request_timeout: 180
+    model_list:
+      - model_name: opencode/big-pickle
+        litellm_params:
+          model: openai/big-pickle
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+          order: 1
+      - model_name: opencode/north-mini-code-free
+        litellm_params:
+          model: openai/north-mini-code-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+          order: 1
+          use_chat_completions_api: true
+      - model_name: opencode/deepseek-v4-flash-free
+        litellm_params:
+          model: openai/deepseek-v4-flash-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+          order: 1
+          use_chat_completions_api: true
+      - model_name: opencode/mimo-v2.5-free
+        litellm_params:
+          model: openai/mimo-v2.5-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+          order: 1
+      - model_name: anthropic/claude-opus-4-7
+        litellm_params:
+          model: anthropic/claude-opus-4-7
+          api_key: os.environ/ANTHROPIC_API_KEY
+          order: 1
+      - model_name: moonshotai/kimi-k2.6
+        litellm_params:
+          model: moonshot/kimi-k2.6
+          api_key: os.environ/MOONSHOT_API_KEY
+          order: 1
+      - model_name: deepseek-v4-flash
+        litellm_params:
+          model: deepseek/deepseek-v4-flash
+          api_key: os.environ/DEEPSEEK_API_KEY
+          order: 1
+          use_chat_completions_api: true
+      - model_name: deepseek-v4-pro
+        litellm_params:
+          model: deepseek/deepseek-v4-pro
+          api_key: os.environ/DEEPSEEK_API_KEY
+          cache: true
+          order: 1
+          use_chat_completions_api: true
+      - model_name: zai/glm-4.7
+        litellm_params:
+          model: zai/glm-4.7
+          api_key: os.environ/ZAI_API_KEY
+          order: 1
+          use_chat_completions_api: true
+      - model_name: zai/glm-4.7-flash
+        litellm_params:
+          model: zai/glm-4.7-flash
+          api_key: os.environ/ZAI_API_KEY
+          order: 1
+          use_chat_completions_api: true
+      - model_name: minimax/M3
+        litellm_params:
+          model: openai/MiniMax-M3
+          api_key: os.environ/MINIMAX_API_KEY
+          api_base: os.environ/MINIMAX_API_BASE
+          order: 1
+      - model_name: minimax/M2.7
+        litellm_params:
+          model: openai/MiniMax-M2.7
+          api_key: os.environ/MINIMAX_API_KEY
+          api_base: os.environ/MINIMAX_API_BASE
+          order: 1
+      - model_name: claude/sonnet-5
+        litellm_params:
+          model: openai/claude-sonnet-4-6
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 120
+          order: 1
+      - model_name: claude-sonnet-5
+        litellm_params:
+          model: openai/claude-sonnet-4-6
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 120
+          order: 1
+      - model_name: claude/sonnet-4
+        litellm_params:
+          model: openai/claude-sonnet-4-6
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 120
+          order: 1
+      - model_name: gpt-5.5
+        litellm_params:
+          model: openai/claude-sonnet-4-6
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 120
+          order: 1
+      - model_name: claude/opus-4
+        litellm_params:
+          model: openai/claude-opus-4-7
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 30
+          order: 1
+      - model_name: claude/opus-5
+        litellm_params:
+          model: openai/claude-opus-5
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 30
+          order: 1
+      - model_name: claude/haiku-4
+        litellm_params:
+          model: openai/claude-haiku-4-5-20251001
+          api_base: http://192.168.1.64:8317/v1
+          api_key: sk-auth2api-claude-proxy-key
+          rpm: 60
+          order: 1
+    fallbacks:
+      - opencode/big-pickle: ["deepseek-v4-flash"]
+      - opencode/north-mini-code-free: ["deepseek-v4-flash"]
+      - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
+      - opencode/mimo-v2.5-free: ["deepseek-v4-flash"]
+      - anthropic/claude-opus-4-7: ["claude/opus-4", "deepseek-v4-pro"]
+      - moonshotai/kimi-k2.6: ["deepseek-v4-pro", "zai/glm-4.7"]
+      - deepseek-v4-flash: ["zai/glm-4.7-flash", "opencode/deepseek-v4-flash-free"]
+      - deepseek-v4-pro: ["zai/glm-4.7", "deepseek-v4-flash"]
+      - zai/glm-4.7: ["deepseek-v4-pro", "zai/glm-4.7-flash"]
+      - zai/glm-4.7-flash: ["deepseek-v4-flash", "opencode/deepseek-v4-flash-free"]
+      - minimax/M3: ["deepseek-v4-pro", "zai/glm-4.7"]
+      - minimax/M2.7: ["deepseek-v4-flash", "zai/glm-4.7-flash"]
+      - claude/sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
+      - claude-sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
+      - claude/opus-4: ["claude/sonnet-5", "deepseek-v4-pro"]
+      - claude/opus-5: ["claude/sonnet-5", "deepseek-v4-pro"]
+
+# ── Hermes Agent ────────────────────────────────────────────────────
+hermes:
+  enabled: true
+hermes-agent:
+  config:
+    model:
+      default: deepseek-v4-flash
+      provider: litellm
+    providers:
+      litellm:
+        base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
+        key_env: LITELLM_MASTER_KEY
+        discover_models: true
+    agent:
+      system_prompt: |
+        You are Sisyphus — OMO Orchestrator. You field ALL prompts.
+        Classify every request BEFORE acting.
+
+        ## Classification
+
+        - TRIVIAL (typo, single config, known pattern): Answer directly. No delegation.
+        - STANDARD (new feature, refactor, multi-file): Route through planning pipeline.
+        - COMPLEX (architecture, cross-system, security): Full pipeline with review gates.
+
+        ## Delegation Pipeline (Standard + Complex)
+
+        1. Assess context: is the request clear and unambiguous?
+           → NO: Ask ONE clarifying question first.
+           → YES: Proceed.
+
+        2. Standard: Build a plan → present for USER APPROVAL → wait for "go" / "approved".
+           Complex: Analyze (Metis) → Architect (Oracle) → Plan (Prometheus) → Review (Momus)
+           → present for USER APPROVAL.
+
+        3. NEVER execute Standard/Complex work without explicit user sign-off.
+
+        ## Approval Gates (BLOCK these without asking)
+
+        - merge / commit
+        - publish / deploy / push
+        - destructive (delete, teardown, drop)
+        - external-send (email, API, webhook)
+
+        ## Style
+
+        - Terse. Caveman mode. Drop articles and filler.
+        - ALWAYS verbalize your classification: "Classified as [tier]."
+        - Show your work. Tell user what you're doing.
+        - When delegating: "Delegating to [persona] for [task]."
+    delegation:
+      model: claude/sonnet-5
+      provider: litellm
+      base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
+      api_key: ${LITELLM_MASTER_KEY}
+      max_iterations: 30
+      reasoning_effort: medium
+
+    auxiliary:
+      vision:
+        provider: litellm
+        model: claude/sonnet-5
+    plugins:
+      enabled:
+        - discord-platform
+    mcp_servers:
+      github:
+        command: "npx"
+        args: ["-y", "@modelcontextprotocol/server-github"]
+        env:
+          GITHUB_PERSONAL_ACCESS_TOKEN: "${MCP_GITHUB_TOKEN}"
+          npm_config_loglevel: "error"
+        tools:
+          include: [list_issues, create_issue, update_issue, search_code, search_repositories, get_file_contents]
+          resources: false
+          prompts: false
+
+      gistpad:
+        command: "npx"
+        args: ["-y", "gistpad-mcp"]
+        env:
+          GITHUB_TOKEN: "${MCP_GITHUB_TOKEN}"
+        tools:
+          resources: false
+          prompts: false
+
+      argocd:
+        command: "npx"
+        args: ["-y", "argocd-mcp@latest", "stdio"]
+        env:
+          ARGOCD_API_TOKEN: "${MCP_ARGOCD_TOKEN}"
+          ARGOCD_BASE_URL: "${MCP_ARGOCD_URL}"
+        tools:
+          resources: false
+          prompts: false
+
+      grafana:
+        command: "npx"
+        args: ["-y", "@leval/mcp-grafana"]
+        env:
+          GRAFANA_URL: "${MCP_GRAFANA_URL}"
+          GRAFANA_SERVICE_ACCOUNT_TOKEN: "${MCP_GRAFANA_TOKEN}"
+        tools:
+          resources: false
+          prompts: false
+
+      kubectl:
+        url: "http://kubernetes-mcp-server.openagent.svc.cluster.local:8000/mcp"
+        timeout: 60
+        tools:
+          resources: false
+          prompts: false
+
+      doppler:
+        command: "npx"
+        args: ["-y", "@dopplerhq/mcp-server"]
+        env:
+          DOPPLER_TOKEN: "${MCP_DOPPLER_TOKEN}"
+        tools:
+          resources: false
+          prompts: false
+
+      obscura:
+        command: "/usr/local/bin/obscura"
+        args: ["mcp", "--stealth"]
+        timeout: 120
+        tools:
+          resources: false
+          prompts: false
+
+      google-workspace:
+        command: "uvx"
+        args: ["workspace-mcp", "--tool-tier", "complete"]
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
+          GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
+
+      skiplagged:
+        url: "https://mcp.skiplagged.com/mcp"
+        timeout: 60
+        tools:
+          resources: false
+          prompts: false
+
+      kiwi:
+        url: "https://mcp.kiwi.com"
+        timeout: 60
+        tools:
+          resources: false
+          prompts: false
+
+      ferryhopper:
+        url: "https://mcp.ferryhopper.com/mcp"
+        timeout: 60
+        tools:
+          resources: false
+          prompts: false
+
+      bitwarden:
+        command: "sh"
+        args:
+          - "-c"
+          - |
+            BW_CLIENTID=$BW_CLIENTID BW_CLIENTSECRET=$BW_CLIENTSECRET bw login --apikey 2>/dev/null
+            export BW_SESSION=$(BW_PASSWORD=$BW_PASSWORD bw unlock --passwordenv BW_PASSWORD 2>/dev/null | grep "BW_SESSION=" | sed "s/.*BW_SESSION=\"//;s/\".*//")
+            exec npx -y @bitwarden/mcp-server
+        env:
+          BW_CLIENTID: "${BW_CLIENTID}"
+          BW_CLIENTSECRET: "${BW_CLIENTSECRET}"
+          BW_PASSWORD: "${BW_PASSWORD}"
+        tools:
+          resources: false
+          prompts: false
+  env: {}
+  extraEnv:
+    - name: DISCORD_BOT_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: DISCORD_BOT_TOKEN
+    - name: DISCORD_BOT_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: DISCORD_BOT_CLIENT_ID
+    - name: HERMES_DASHBOARD
+      value: "1"
+    - name: HERMES_DASHBOARD_HOST
+      value: "0.0.0.0"
+    - name: HERMES_DASHBOARD_PORT
+      value: "9119"
+    - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
+    - name: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
+    - name: HERMES_DASHBOARD_BASIC_AUTH_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: HERMES_DASHBOARD_BASIC_AUTH_SECRET
+    - name: DISCORD_ALLOW_ALL_USERS
+      value: "true"
+    - name: API_SERVER_ENABLED
+      value: "true"
+    - name: API_SERVER_KEY
+      value: "hermes-api-server-key-1234"
+    - name: API_SERVER_HOST
+      value: "0.0.0.0"
+    - name: API_SERVER_PORT
+      value: "8642"
+    - name: API_SERVER_CORS_ORIGINS
+      value: "https://openagent.maklab.net"
+    - name: DASHBOARD_BASE_URL
+      value: "https://openagent.maklab.net"
+  extraVolumes:
+    - name: hermes-hooks
+      configMap:
+        name: openagent-hermes-hooks
+    - name: k8s-gitops-context
+      configMap:
+        name: openagent-k8s-gitops-context
+    - name: skill-us-tax-filing-automation
+      configMap:
+        name: openagent-skill-us-tax-filing-automation
+  extraVolumeMounts:
+    - name: hermes-hooks
+      mountPath: /opt/data/hooks/discord-session-link
+      readOnly: true
+    - name: k8s-gitops-context
+      mountPath: /opt/data/memories/k8s-gitops-context.md
+      subPath: k8s-gitops-context.md
+      readOnly: true
+    - name: skill-us-tax-filing-automation
+      mountPath: /opt/data/skills/us-tax-filing-automation/SKILL.md
+      subPath: us-tax-filing-automation.SKILL.md
+      readOnly: true
+  command:
+    - sh
+    - -c
+    - |
+      # bitwarden
+      npm install -g @bitwarden/cli 2>&1
+      # golang
+      if [ ! -f /usr/local/go/bin/go ]; then
+        curl -sL https://golang.org/dl/go1.22.4.linux-arm64.tar.gz | tar -xz -C /usr/local
+      fi
+      export PATH=/usr/local/go/bin:/opt/data/bin:$PATH
+      cd /opt/data && go mod download
+      # obscura
+      if [ ! -f /usr/local/bin/obscura ]; then
+        curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /usr/local/bin
+      fi
+      export PATH=$HOME/.local/bin:$PATH
+      # Agent Reach deps
+      command -v agent-reach >/dev/null 2>&1 || uv tool install https://github.com/Panniantong/agent-reach/archive/main.zip 2>&1
+      command -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp 2>&1
+      command -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1
+      mkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }
+      # Doppler CLI
+      if [ ! -x /opt/data/bin/doppler ]; then
+        mkdir -p /opt/data/bin
+        DOP_ARCH=$(uname -m | sed 's/aarch64/arm64/; s/x86_64/amd64/')
+        curl -fsSL --retry 3 "https://cli.doppler.com/download?os=linux&arch=${DOP_ARCH}&format=tar" -o /tmp/doppler.tgz \
+          && tar -xzf /tmp/doppler.tgz -C /opt/data/bin doppler \
+          && chmod +x /opt/data/bin/doppler \
+          || rm -f /opt/data/bin/doppler
+      fi
+      exec /init hermes gateway run
+  extraEnvFrom:
+    - secretRef:
+        name: openagent-secrets
+  service:
+    enabled: true
+    port: 9119
+
+# ── Hermes Workspace ────────────────────────────────────────────────
+hermes-workspace:
+  enabled: true
+
+claude-proxy:
+  enabled: true
+
+# ── Shared DB ───────────────────────────────────────────
+postgres:
+  enabled: true
+  clusterName: "openagent-pg"
+  configName: "openagent-pg-config"
+  poolingConfigName: "openagent-pg-pooling"
+  instances: 1
+  storage: 5Gi
+  version: "18"
+  profile: "development"
+
+# ── Dashboard (VirtualService) ─────────────────────────────────────
+dashboard:
+  subdomain: "openagent"
+  destination:
+    host: "openagent-hermes-workspace.openagent.svc.cluster.local"
+    port: 3000
+
+# ── LiteLLM Admin UI (VirtualService) ─────────────────────────────
+litellmVirtualService:
+  host: "litellm.maklab.net"
+  destination:
+    host: "openagent-litellm.openagent.svc.cluster.local"
+    port: 4000
+
+# ── VPA ────────────────────────────────────────────────────────────
+vpa:
+  enabled: true
+

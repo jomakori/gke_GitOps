@@ -1,0 +1,36 @@
+# cert-manager — automated TLS via Let's Encrypt + Cloudflare DNS-01
+cert-manager:
+  # Install CRDs via the chart
+  crds:
+    enabled: true
+
+  # ── Extra controller args ──────────────────────────────────────────────
+  extraArgs:
+    - --dns01-recursive-nameservers=8.8.8.8:53,1.1.1.1:53
+    - --dns01-recursive-nameservers-only
+
+  # ── Replica count ──────────────────────────────────────────────────────
+  replicaCount: 2
+
+  # ── Node placement ─────────────────────────────────────────────────────
+  nodeSelector:
+    intent: apps
+
+  # ── Prometheus metrics ─────────────────────────────────────────────────
+  # Disabled — depends on kube-prometheus-stack CRDs (circular sync risk)
+  prometheus:
+    enabled: true
+    servicemonitor:
+      enabled: false
+
+  # ── Webhook ────────────────────────────────────────────────────────────
+  webhook:
+    replicaCount: 2
+    nodeSelector:
+      intent: apps
+
+  # ── CA Injector ────────────────────────────────────────────────────────
+  cainjector:
+    replicaCount: 2
+    nodeSelector:
+      intent: apps

@@ -1,0 +1,80 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), **istiod** (control plane), and **ingress-gateway** — plus 9 local templates for networking, TLS, and auth configuration. It is the single entry point for all cluster ingress.
+
+### Hybrid chart structure
+
+**Upstream dependencies:**
+- `base` — Istio CRDs (Gateway, VirtualService, PeerAuthentication, etc.)
+- `istiod` — Control plane in ambient mode, STRICT mTLS
+- `gateway` (aliased `ingress-gateway`) — Ingress gateway deployment with NodePort service
+
+**Local templates (9):**
+
+| Template | Purpose |
+|----------|---------|
+| `gateway.yaml` | `maklab-gateway` — wildcard `*.<clusterDomain>`, TLS passthrough, HTTP→HTTPS redirect |
+| `cluster-issuer.yaml` | `letsencrypt-prod` — Let's Encrypt ACME via Cloudflare DNS-01 |
+| `certificate.yaml` | `wildcard-maklab-net` — wildcard TLS cert for `*.<clusterDomain>` |
+| `virtual-services.yaml` | One `VirtualService` per entry in `virtualServices` with `enabled: true` |
+| `peer-authentication.yaml` | STRICT mTLS mesh-wide |
+| `request-authentication.yaml` | CF Access JWT validation (conditional on `cloudflare.access.audienceTag`) |
+| `authorization-policy-private.yaml` | DENY rules per private VS (conditional on `enablePrivate: true`) |
+| `cloudflare-external-secret.yaml` | ExternalSecret for `CF_API_TOKEN` in `istio-system` |
+| `cloudflare-external-secret-certmanager.yaml` | ExternalSecret for `CF_API_TOKEN` in `cert-manager` namespace |
+
+### Ingress and TLS
+
+The Gateway `maklab-gateway` in `istio-system` listens on ports 80 and 443:
+- Port 443 terminates TLS using the wildcard certificate (`wildcard-maklab-net-tls`).
+- Port 80 issues a 308 redirect to HTTPS.
+- Hosts match `*.<clusterDomain>` (configured via `clusterDomain`).
+
+The istiod control plane runs in **ambient mode** — no sidecars. Namespaces opt in via `istio.io/dataplane-mode: ambient`. Internal mesh traffic uses STRICT mTLS.
+
+### Cloudflare Access Zero Trust
+
+Services that require authenticated access opt in via `enablePrivate: true` in their VirtualService config. The pipeline:
+
+1. The `applications.yaml` template (in argocd-appset) detects `gateways.enable_private` and injects the `enablePrivate` flag into the istio chart parameters, along with the CF Access team domain and AUD tag from Terraform/Doppler.
+2. `request-authentication.yaml` validates the CF Access JWT at the ingress gateway using the `Cf-Access-Jwt-Assertion` header.
+3. `authorization-policy-private.yaml` creates a DENY rule per private host — traffic without a valid JWT is rejected.
+
+`enable_public` and `enable_private` are mutually exclusive. The argocd-appset template fails if both are set on the same service.
+
+### VirtualServices
+
+Two layers of VirtualServices exist:
+1. **This chart** (istio umbrella) — spec-driven entries in `virtualServices`, primarily for infrastructure services (argocd, headlamp, opencost). Registered explicitly in the values.
+2. **App chart** (apps/helm) — per-app per-environment VS for application workloads, generated from the parameterized app chart.
+
+### Doppler config
+
+| Aspect | Detail |
+|--------|--------|
+| **Doppler config** | `svc_cloudflare` |
+| **Secrets consumed** | `CF_API_TOKEN` (for Let's Encrypt DNS-01 and CF Access JWKS) |
+| **ExternalSecrets** | Two copies of `cloudflare-api-token`: one in `istio-system`, one in `cert-manager` |
+
+### Setup
+
+| Aspect | Detail |
+|--------|--------|
+| **Namespace** | `istio-system` |
+| **Sync wave** | 2 (after cert-manager wave 0, external-secrets wave 1) |
+| **Gateway type** | NodePort (ports 30670/30160 — for local testing only) |
+| **mTLS** | STRICT mesh-wide |
+| **Certificates** | Let's Encrypt via Cloudflare DNS-01, auto-renewed |
+| **HPA** | ingress gateway: min 2, max 5, CPU target 80% |
+| **Node placement** | All components on `intent: apps` nodes |
+
+{{ template "chart.valuesSection" . }}

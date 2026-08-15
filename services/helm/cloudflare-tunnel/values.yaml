@@ -1,0 +1,21 @@
+# Doppler config for TUNNEL_TOKEN
+dopplerConfig: "svc_cloudflare"
+
+# ── Lexfrei cloudflare-tunnel chart values ────────────────────────────────────
+# Tunnel config managed by Terraform (remote mode)
+cloudflare:
+  mode: remote
+  tunnelTokenSecretName: cloudflare-tunnel-auth
+  tunnelToken: ""
+
+# Image version (defaults to appVersion)
+image:
+  repository: cloudflare/cloudflared
+  pullPolicy: IfNotPresent
+  tag: ""
+
+# HA deployment
+replicaCount: 2
+
+# Tunnel name - must match Terraform-created tunnel
+tunnelName: maklab-cluster

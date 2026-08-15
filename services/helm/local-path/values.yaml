@@ -1,0 +1,10 @@
+# local-path provisioner StorageClass
+# k3s already deploys the rancher/local-path-provisioner controller in kube-system;
+# this chart only declares the StorageClass and marks it default.
+
+storageClass:
+  name: local-path
+  isDefault: true
+  provisioner: rancher.io/local-path
+  reclaimPolicy: Delete
+  volumeBindingMode: WaitForFirstConsumer

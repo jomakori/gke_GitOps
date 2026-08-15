@@ -1,0 +1,75 @@
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ Global Settings — shared across all apps                         │
+# └──────────────────────────────────────────────────────────────────┘
+clusterDomain: maklab.net
+registry: 123456.dkr.ecr.us-east-2.amazonaws.com
+storageClass: "local-path"
+
+# ┌──────────────────────────────────────────────────────────────────┐
+# │ App Specs — each app is a top-level key                          │
+# │ Select which app renders via: --set appName=<key>                │
+# │                                                                  │
+# │ Conventions (can be overridden per app):                         │
+# │   enable_staging : true        (staging ON unless explicitly off)│
+# │   subdomain     : <appName>    (prod) / <appName>-staging        │
+# │   HPA.minReplicas : service.replicas  (defaults to replicas)     │
+# │   enable_db     : {...}        (spec-driven DB — see demoApi)    │
+# └──────────────────────────────────────────────────────────────────┘
+
+demoApi:
+  enable_staging: true
+  enable_istio: true
+  enable_db:
+    type: postgres
+    deployment: cluster
+    version: "17"
+    storage: 10Gi
+  enable_scaling:
+    HPA:
+      minReplicas: 2
+      maxReplicas: 6
+    db:
+      minInstances: 2
+      maxInstances: 5
+  istio:
+    gateway: istio-system/maklab-gateway
+    requestTimeout: 30s
+    retryAttempts: 3
+    retryTimeout: 5s
+  environments:
+    staging:
+      tag: 1.23
+    production:
+      tag: 1.43
+  service:
+    port: 3000
+    resourceRequests:
+      cpu: 256m
+      memory: 256Mi
+    storage:
+      size: 1Gi
+
+notesUi:
+  enable_staging: true
+  enable_istio: true
+  enable_scaling:
+    HPA:
+      minReplicas: 1
+      maxReplicas: 6
+  istio:
+    gateway: istio-system/maklab-gateway
+    requestTimeout: 30s
+    retryAttempts: 3
+    retryTimeout: 5s
+  environments:
+    staging:
+      tag: "pr-7"
+    production:
+      tag: "1.0.1"
+  service:
+    port: 8080
+    resourceRequests:
+      cpu: 100m
+      memory: 256Mi
+    storage:
+      size: 1Gi

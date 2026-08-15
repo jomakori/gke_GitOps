@@ -1,0 +1,24 @@
+enabled: true
+image:
+  repository: ghcr.io/jomakori/claude-proxy
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  port: 4523
+# Credentials persistence: Claude Code OAuth rotates tokens on every refresh.
+# The CLI writes the rotated tokens to ~/.claude/.credentials.json — an
+# emptyDir loses them on restart, and the k8s secret goes stale after the
+# first rotation (refresh tokens are single-use). A PVC lets the CLI's own
+# refresh keep tokens alive across pod restarts; the secret is only a
+# bootstrap source (seeded on first boot / after PVC reset).
+persistence:
+  enabled: true
+  size: 100Mi
+  storageClass: local-path
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi

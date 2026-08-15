@@ -1,0 +1,24 @@
+{{- if .Values.cloudflare.access.audienceTag }}
+apiVersion: security.istio.io/v1
+kind: RequestAuthentication
+metadata:
+  name: cf-access-jwt
+  namespace: {{ .Values.gateway.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  jwtRules:
+    - issuer: https://{{ .Values.cloudflare.access.teamDomain }}.cloudflareaccess.com
+      jwksUri: https://{{ .Values.cloudflare.access.teamDomain }}.cloudflareaccess.com/cdn-cgi/access/certs
+      audiences:
+        {{- range $aud := splitList "," .Values.cloudflare.access.audienceTag }}
+        - {{ $aud }}
+        {{- end }}
+      fromHeaders:
+        - name: Cf-Access-Jwt-Assertion
+      forwardOriginalToken: true
+      outputPayloadToHeader: x-cf-access-jwt-payload
+{{- end }}

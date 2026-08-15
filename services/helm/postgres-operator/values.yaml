@@ -1,0 +1,62 @@
+dopplerConfig: "svc_postgres_operator"
+
+# Docs: https://stackgres.io/doc/latest/install/helm/parameters
+stackgresOperator:
+  # opt for virtualService
+  adminui:
+    service:
+      exposeHTTP: false
+      type: ClusterIP
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Certificate Configuration                                                 │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  cert:
+    autoapprove: true
+    createForOperator: true
+    createForWebApi: true
+    createForCollector: true
+    regenerateCert: true
+    certDuration: 730
+    regenerateWebCert: true
+    regenerateWebRsa: true
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   RBAC Configuration                                                        │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  rbac:
+    create: true
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Authentication Configuration                                              │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  authentication:
+    type: jwt
+    # ExternalSecret stackgres-restapi-admin provides ADMIN_USER/ADMIN_PASSWORD from Doppler
+    createAdminSecret: false
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Grafana Integration                                                       │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  grafana:
+    autoEmbed: true
+    schema: http
+    user:
+    password:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Extensions Configuration                                                  │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  extensions:
+    repositoryUrls:
+      - https://extensions.stackgres.io/postgres/repository
+    cache:
+      enabled: true
+      preloadedExtensions:
+        - x86_64/linux/timescaledb-1\.7\.4-pg12
+      persistentVolume:
+        size: 1Gi
+        accessModes:
+        - ReadWriteOnce
+        storageClass: local-path
+
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Backup Storage Configuration                                             │
+  # └─────────────────────────────────────────────────────────────────────────────┘
+  backupStorage:
+    enabled: false

@@ -2,18 +2,35 @@
 ---
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-merge-conflict
       - id: trailing-whitespace
       - id: check-added-large-files
       - id: end-of-file-fixer
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.5.0
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.0
     hooks:
-      - id: detect-secrets
+      - id: gitleaks
+        args: ["--config", ".gitleaks.toml"]
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.35.1
+    rev: v1.37.1
     hooks:
       - id: yamllint
         args: [-c=.yamllint]
+  - repo: https://github.com/norwoodj/helm-docs
+    rev: "v1.14.2"
+    hooks:
+      - id: helm-docs
+        args:
+          # Make the tool search for charts only under the `helm` directory
+          - --chart-search-root=apps/helm
+          - --chart-search-root=services/helm
+  - repo: local
+    hooks:
+      - id: validate-litellm-config
+        name: Validate LiteLLM ConfigMap
+        entry: .useful-scripts/validate_litellm_config.sh
+        language: system
+        files: ^services/helm/openagent/values\.yaml$
+        pass_filenames: false

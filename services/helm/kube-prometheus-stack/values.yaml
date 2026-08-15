@@ -1,3 +1,5 @@
+dopplerConfig: "svc_grafana"
+
 # Docs: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
 # ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 # │ Kube Prometheus Stack Configuration                                                                              │
@@ -5,29 +7,28 @@
 # │ https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/values.yaml           │
 # └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 kube-prometheus-stack:
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │   Default Rules Configuration                                               │
-# │   - Create default rules for monitoring the cluster                         │
-# │   - Disable rules for unreachable components                                │
-# └─────────────────────────────────────────────────────────────────────────────┘
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Default Rules Configuration                                               │
+  # │   - Create default rules for monitoring the cluster                         │
+  # │   - Disable rules for unreachable components                                │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   defaultRules:
     create: true
     rules:
       etcd: false
       kubeScheduler: false
 
-
-# ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Set custom ACN approved ports for these services                         │
-# └──────────────────────────────────────────────────────────────────────────┘
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │ Set custom ACN approved ports for these services                         │
+  # └──────────────────────────────────────────────────────────────────────────┘
   alertmanager:
     service:
       port: 15010
-# ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-# │   Component Scraping Configuration                                                                                  │
-# │   Disable component scraping for the kube controller manager, etcd, and kube-scheduler                              │
-# │   These components are not reachable on EKS                                                                         │
-# └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+  # ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  # │   Component Scraping Configuration                                                                                  │
+  # │   Disable component scraping for the kube controller manager, etcd, and kube-scheduler                              │
+  # │   These components are not reachable on EKS                                                                         │
+  # └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
   kubeControllerManager:
     enabled: false
   kubeEtcd:
@@ -36,9 +37,9 @@ kube-prometheus-stack:
     enabled: false
   kubeSchedulerRecording:
     enabled: false
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │   Prometheus Configuration                                                  │
-# └─────────────────────────────────────────────────────────────────────────────┘
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Prometheus Configuration                                                  │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   prometheus:
     service:
       port: 15017
@@ -46,13 +47,13 @@ kube-prometheus-stack:
       # Prometheus StorageSpec for persistent data on AWS EBS
       # ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/storage.md
       storageSpec:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: standard
-          accessModes: ["ReadWriteOnce"]
-          resources:
-            requests:
-              storage: 30Gi
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 30Gi
     kubelet:
       serviceMonitor:
         relabelings:
@@ -67,9 +68,9 @@ kube-prometheus-stack:
             sourceLabels:
               - node
             targetLabel: instance
-# ┌──────────────────────────────────────────────────────────────────────────┐
-# │ Prometheus Operator Configuration                                        │
-# └──────────────────────────────────────────────────────────────────────────┘
+  # ┌──────────────────────────────────────────────────────────────────────────┐
+  # │ Prometheus Operator Configuration                                        │
+  # └──────────────────────────────────────────────────────────────────────────┘
   prometheusOperator:
     enabled: true
     # Not using cert-manager
@@ -77,10 +78,14 @@ kube-prometheus-stack:
       enabled: false
     admissionWebhooks:
       enabled: false
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │   Grafana Configuration                                                     │
-# └─────────────────────────────────────────────────────────────────────────────┘
-  adminUser:
-  adminPassword:
+  # ┌─────────────────────────────────────────────────────────────────────────────┐
+  # │   Grafana Configuration                                                     │
+  # └─────────────────────────────────────────────────────────────────────────────┘
   grafana:
+    admin:
+      existingSecret: "grafana-admin-credentials"
+      userKey: "ADMIN_USER"
+      passwordKey: "ADMIN_PASSWORD"
+    adminUser: "admin"
+    adminPassword: "changeme"
     enabled: true

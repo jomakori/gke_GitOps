@@ -1,33 +1,34 @@
-# Docs: https://github.com/opencost/opencost-helm-chart/tree/main/opencost
+# upstream: https://github.com/opencost/opencost-helm-chart
 opencost:
-  networkPolicies:
-    # -- Specifies whether networkpolicies should be created
-    enabled: false
-
-    # -- Internal Prometheus settings related to NetworkPolicies
+  clusterName: "cluster.local"
+  opencost:
     prometheus:
-      # -- Existing Prometheus installation
       namespace: kube-prometheus-stack
-      port: 9090
-      # -- Labels applied to the Prometheus server pod(s)
+      port: 15017
       labels:
         app.kubernetes.io/name: prometheus
-  opencost:
-    nodeSelector:
-      intent: apps
-    exporter:
-      defaultClusterId:
-      extraEnv:
-        EMIT_KSM_V1_METRICS: "false"
-        EMIT_KSM_V1_METRICS_ONLY: "true"
-        LOG_LEVEL: warn
-    prometheus:
       internal:
         enabled: true
         serviceName: kube-prometheus-stack-prometheus
         namespaceName: kube-prometheus-stack
-    ui:
-      enabled: true
+        port: 15017
+        scheme: http
+    exporter:
+      defaultClusterId: ""
+      resources:
+        requests:
+          cpu: 10m
+          memory: 55Mi
+      extraEnv:
+        LOG_LEVEL: warn
+        EMIT_KSM_V1_METRICS: "false"
+        EMIT_KSM_V1_METRICS_ONLY: "true"
     metrics:
+      kubeStateMetrics:
+        emitKsmV1MetricsOnly: true
       serviceMonitor:
         enabled: false
+    ui:
+      enabled: true
+    nodeSelector:
+      intent: apps

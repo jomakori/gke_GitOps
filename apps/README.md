@@ -1,57 +1,51 @@
-# Apps Folder
+# Apps
 
-This folder contains the GitOps configuration for 1st-party applications we build and host in this Kubernetes cluster.
+This folder contains GitOps configuration for **1st-party applications** — my own workloads running on the jmak-lab Minikube cluster.
 
-## Documentation
+## Structure
 
-This repository can be used in concert with the [Amazon EKS Blueprints framework](https://catalog.workshops.aws/eks-blueprints-terraform/en-US/030-provision-eks-cluster/6-bootstrap-argocd). Please see the [ArgoCD add-on documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#app-of-apps) for details on how to easily how to configure microservices workloads in the cluster using ArgoCD
-
-## Repo Structure
-
-The structure of this repository follows the ArgoCD [App of Apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#app-of-apps) pattern. The configuration in this repository is organized into two directories: `helm` and `argocd-appset`.
+Follows the ArgoCD [App-of-Apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#app-of-apps) pattern.
 
 ```
-├── 📦helm
-└── 📦argocd-appset
+apps/
+├── argocd-appset/          ← ArgoCD Application manifests
+│   ├── Chart.yaml
+│   ├── templates/
+│   │   ├── _helpers.tpl
+│   │   ├── applications.yaml  ← Single template, auto-generates per-app Applications
+│   │   └── namespaces.yaml
+│   └── values.yaml
+└── helm/                   ← Single parameterized Helm chart for all apps
+    ├── Chart.yaml
+    ├── templates/
+    │   ├── _helpers.tpl       ← 273-line define (app.manifests) — generates all resources
+    │   └── app.yaml           ← Invokes _helpers.tpl manifest generation
+    └── values.yaml
 ```
 
 ### argocd-appset
 
-The `argocd-appset` directory contains the ArgoCD application manifest needed for the deployment of each application. These manifests defines the application and where its resources (Helm Chart) are held - within this repo. You can learn more about [ArgoCD Application manifests here](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/)
-```
-📦argocd-appset
- ┣ 📂templates
- ┃ ┣ 📜demoapp1.yaml
- ┃ ┣ 📜demoapp.yaml
- ┃ ┗ 📜namespaces.yaml
- ┣ 📜Chart.yaml
- ┗ 📜values.yaml
-```
+A single `applications.yaml` template auto-generates ArgoCD `Application` resources from `values.yaml`. Each app is registered by key (e.g., `demoApi`, `notesUi`) with its environment configs and dopplerConfig references. The AppSet passes `--set appName=<key>` to the single chart.
 
-### Helm
+### helm
 
-The `helm` directory contains the actual helm template for each of our apps and their custom values. The `templates` subfolder hosts the actual kubernetes manifests for our app deployment - including the service, ingress, etc. They are `yaml` based manifests that use dynamic templating - hence the `.tpl` extension
+A single parameterized chart (`name: apps`) handles all application workloads. All manifests are generated from `_helpers.tpl` via one `app.yaml` invocation:
 
-```
-📦helm
- ┣ 📂demoapp1
- ┃ ┣ 📂templates
- ┃ ┃ ┣ 📜deployment.tpl
- ┃ ┃ ┣ 📜doppler_secrets.tpl
- ┃ ┃ ┣ 📜hpa.tpl
- ┃ ┃ ┣ 📜ingress.tpl
- ┃ ┃ ┣ 📜service-account.tpl
- ┃ ┃ ┗ 📜service.tpl
- ┃ ┣ 📜Chart.yaml
- ┃ ┗ 📜values.yaml
- ┗ 📂demoapp
- ┃ ┣ 📂templates
- ┃ ┃ ┣ 📜deployment.tpl
- ┃ ┃ ┣ 📜doppler_secrets.tpl
- ┃ ┃ ┣ 📜hpa.tpl
- ┃ ┃ ┣ 📜ingress.tpl
- ┃ ┃ ┣ 📜service-account.tpl
- ┃ ┃ ┗ 📜service.tpl
- ┃ ┣ 📜Chart.yaml
- ┃ ┗ 📜values.yaml
-```
+| Resource | Conditional On |
+|----------|---------------|
+| ServiceAccount + ECR dockercfg Secret | Always |
+| ExternalSecret | `environments.<env>.dopplerConfig` set |
+| Deployment | Always (`nodeSelector: intent: apps`) |
+| Service | Always (ClusterIP for Istio; NodePort fallback) |
+| VirtualService | `enable_domain` + `enable_istio` |
+| HPA | `enable_scaling` |
+| PVC | `storage.size` defined |
+
+Supports multi-environment (staging + production) per app.
+
+## Adding an App
+
+1. **Add an entry** in `argocd-appset/values.yaml` with the app key, environments, and `dopplerConfig` per environment.
+2. **Add a namespace** in `argocd-appset/templates/namespaces.yaml` (one per app).
+3. **Set `enable: true`** — both existing apps (`demoApi`, `notesUi`) are currently disabled, ready for activation.
+4. **PR and merge** — ArgoCD auto-syncs.

@@ -1,0 +1,34 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+This chart deploys a [Redis Cluster](https://github.com/bitnami/charts/tree/main/bitnami/redis-cluster) using the Bitnami `redis-cluster` chart as a dependency. It is a thin wrapper with no local templates.
+
+### Current status
+
+**Disabled by default** (`enable: false` in the appset registry). Enable in `services/argocd-appset/values.yaml` when Redis-backed workloads are ready. Sync wave 4, namespace `redis-operator`.
+
+### Cluster topology
+
+The chart provisions a 6-node Redis cluster (3 master shards × 1 replica each). All nodes schedule on `intent: apps` labelled nodes with resource requests of 512m CPU / 1Gi memory each.
+
+### Persistence
+
+Each Redis node gets a dedicated PVC. The storage class is parameterized — set via `redis-cluster.persistence.storageClass` from the ArgoCD Application parameters, defaulting to the cluster-wide `storageClass` value:
+
+Set `redis-cluster.persistence.storageClass` via ArgoCD Application parameters if the cluster-wide default storage class is not desired.
+
+Volume size defaults to 50Gi per node (6 × 50Gi = 300Gi total cluster capacity).
+
+### Authentication
+
+Authentication is disabled (`global.redis.password: ""`) — the cluster is accessible only within the cluster network. No Doppler config or ExternalSecret is needed.
+
+{{ template "chart.valuesSection" . }}

@@ -1,0 +1,70 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+This chart deploys the [External Secrets Operator](https://charts.external-secrets.io) and generates `ClusterSecretStore` resources for each Doppler config defined in the `clusterSecretStores` values.
+
+### Hybrid chart structure
+
+- **Upstream dependency**: `external-secrets/external-secrets` — the operator itself.
+- **Local templates**: `cluster-secret-store.yaml` (generates one `ClusterSecretStore` per entry in `clusterSecretStores`), `selfsigned-issuer.yaml` (self-signed `ClusterIssuer` for the webhook cert).
+
+### Secrets chain
+
+```
+Doppler
+  → doppler-machine-token Secret (created by Terraform, stored in external-secrets namespace)
+    → ClusterSecretStore (one per Doppler config, references the machine token)
+      → ExternalSecret (per app/service, pulls all keys matching ".*")
+        → K8s Secret (keys match Doppler key names)
+          → Pod secretKeyRef
+```
+
+### ClusterSecretStore auto-generation
+
+Each entry in `clusterSecretStores` becomes a `ClusterSecretStore` named `doppler-{config}` (underscores replaced with dashes):
+```yaml
+clusterSecretStores:
+  svc_grafana:
+    project: devops
+    config: svc_grafana
+```
+→ `ClusterSecretStore` named `doppler-svc-grafana`, pointing at project `devops`, config `svc_grafana`.
+
+The store references `doppler-machine-token` in the `external-secrets` namespace. Adding a new Doppler config is done by adding an entry here — no Terraform changes required; the `ClusterSecretStore` template auto-generates from the values.
+
+| Store Name | Project | Config | Used By |
+|-----------|---------|--------|---------|
+| `doppler-svc-grafana` | devops | svc_grafana | kube-prometheus-stack |
+| `doppler-svc-cloudflare` | devops | svc_cloudflare | istio, external-dns, cloudflare-tunnel |
+| `doppler-svc-postgres-operator` | devops | svc_postgres_operator | postgres-operator |
+| `doppler-svc-onedev` | devops | svc_onedev | onedev |
+| `doppler-svc-mongodb` | devops | svc_mongodb | mongodb-operator, app PerconaServerMongoDB CRs |
+| `doppler-svc-openclaw` | devops | svc_openclaw | openclaw |
+| `doppler-zurabase-dev` | zurabase | dev | future zurabase service |
+| `doppler-zurabase-stg` | zurabase | stg | future zurabase service |
+| `doppler-zurabase-prd` | zurabase | prd | future zurabase service |
+
+### Setup
+
+| Aspect | Detail |
+|--------|--------|
+| **Namespace** | `external-secrets` |
+| **Sync wave** | 1 (after cert-manager at wave 0) |
+| **CRDs** | Installed via chart (`installCRDs: true`) |
+| **Webhook cert** | Self-signed `ClusterIssuer` (`eso-selfsigned`) — does not depend on cert-manager |
+| **Doppler config** | None — the machine token is pre-seeded by Terraform |
+| **Ingress** | None — operator is internal-only |
+
+### Dependency consumers
+
+Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores exist). The retry limit is set to 5 with a 3-minute max duration to handle transient network issues with Doppler API.
+
+{{ template "chart.valuesSection" . }}

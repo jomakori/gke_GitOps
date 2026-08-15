@@ -1,0 +1,132 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claude-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "claude-proxy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: claude-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "claude-proxy.labels" . | nindent 6 }}
+      app.kubernetes.io/component: claude-proxy
+  template:
+    metadata:
+      annotations:
+        checksum/responses-config: {{ include (print $.Template.BasePath "/configmap-responses.yaml") . | sha256sum }}
+      labels:
+        {{- include "claude-proxy.labels" . | nindent 8 }}
+        app.kubernetes.io/component: claude-proxy
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      initContainers:
+        - name: seed-credentials
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Seed ~/.claude/.credentials.json from the bootstrap secret ONLY
+              # on first boot (empty PVC). No refresh logic here: Claude Code
+              # OAuth rotates tokens on refresh and the CLI persists the rotated
+              # tokens back to ~/.claude (the PVC), so refreshing in an init
+              # container would fight the CLI and the secret would go stale.
+              if [ ! -f /writable/.credentials.json ]; then
+                cp /secrets/.credentials.json /writable/.credentials.json
+                echo "Seeded credentials from secret"
+              else
+                echo "Credentials already present, skipping seed"
+              fi
+          volumeMounts:
+            - name: claude-credentials-secret
+              mountPath: /secrets
+              readOnly: true
+            - name: claude-credentials-writable
+              mountPath: /writable
+      containers:
+        - name: claude-proxy
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              sed -i '/^const MODEL_ALIASES/,/^};/c\
+              const MODEL_ALIASES: Record<string, string> = {\
+                sonnet: \"claude-sonnet-5\",\
+                opus: \"claude-opus-4-6\",\
+                haiku: \"claude-haiku-4-5\",\
+                \"sonnet-5\": \"claude-sonnet-5\",\
+                \"claude-sonnet-5\": \"claude-sonnet-5\",\
+                \"sonnet-4.6\": \"claude-sonnet-4-6\",\
+                \"claude-sonnet-4\": \"claude-sonnet-4-6\",\
+                \"opus-4.6\": \"claude-opus-4-6\",\
+                \"claude-opus-4\": \"claude-opus-4-6\",\
+                \"claude-haiku-4\": \"claude-haiku-4-5\",\
+                \"gpt-4\": \"claude-sonnet-5\",\
+                \"gpt-4o\": \"claude-sonnet-5\",\
+              };' /root/.bun/install/global/node_modules/claude-pipe/src/claude.ts && \
+              cp /responses-config/responses.ts /root/.bun/install/global/node_modules/claude-pipe/src/responses.ts && \
+              sed -i '/if (url.pathname === "\/v1\/chat\/completions"/a\
+              if (url.pathname === "\/v1\/responses" \&\& req.method === "POST") { return handleOpenAIResponses(req); }' /root/.bun/install/global/node_modules/claude-pipe/src/index.ts
+              sed -i 's/import { handleOpenAICompletions } from "\.\/openai"/import { handleOpenAICompletions } from "\.\/openai"\nimport { handleOpenAIResponses } from "\.\/responses"/' /root/.bun/install/global/node_modules/claude-pipe/src/index.ts
+              exec /usr/local/bin/bun /usr/local/bin/claude-pipe
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              name: http
+          env:
+            - name: HOST
+              value: "0.0.0.0"
+            - name: CLAUDE_PROXY_API_KEY
+              value: "claude-proxy-local"
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 10
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: claude-credentials-writable
+              mountPath: /root/.claude
+            - name: responses-config
+              mountPath: /responses-config
+              readOnly: true
+      volumes:
+        - name: claude-credentials-secret
+          secret:
+            secretName: claude-credentials
+        - name: claude-credentials-writable
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: claude-credentials
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: responses-config
+          configMap:
+            name: claude-proxy-responses
+{{- end }}

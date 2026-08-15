@@ -1,0 +1,48 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+This chart deploys the [Headlamp](https://headlamp.dev) Kubernetes dashboard — a web UI for cluster management. It is a **hybrid chart** with an upstream dependency and local templates for user-facing service account creation.
+
+### Hybrid chart structure
+
+- **Upstream dependency**: `headlamp/headlamp` — the dashboard application with Kubescape security plugin pre-installed via init container.
+- **Local templates**: `user-serviceaccount.yaml` (creates a user-facing `ServiceAccount`), `user-clusterrolebinding.yaml` (binds it to `cluster-admin`).
+
+### User authentication
+
+Headlamp does not require external secret injection. Instead, it ships with local templates that create a dedicated `ServiceAccount` (`headlamp-user` by default) with a `ClusterRoleBinding` to `cluster-admin`. To log in:
+
+```bash
+kubectl create token headlamp-user -n headlamp --duration=24h
+```
+
+Paste the token into the Headlamp login screen. No Doppler config or ExternalSecret is needed.
+
+### Kubescape integration
+
+An init container (`quay.io/kubescape/headlamp-plugin:latest`) injects the Kubescape security plugin into Headlamp's plugin directory at startup. This enables in-dashboard Kubernetes security scanning without separate configuration.
+
+### Ingress and auth
+
+The Headlamp VirtualService in the istio umbrella chart is **disabled by default** (`virtualServices.headlamp.enabled: false` in the istio values). Access Headlamp via port-forward or enable it by setting that value to `true` and updating the gateways section in the argocd-appset services configuration.
+
+### Setup
+
+| Aspect | Detail |
+|--------|--------|
+| **Namespace** | `headlamp` |
+| **Sync wave** | Not explicitly set (deployed via service registration) |
+| **Doppler config** | None — no secrets required |
+| **User SA** | `headlamp-user` with `cluster-admin` ClusterRole (configurable via `userServiceAccount.name` / `userServiceAccount.clusterRole`) |
+| **Plugins** | Kubescape security plugin pre-loaded |
+| **Ingress** | Disabled by default — enable via istio `virtualServices.headlamp.enabled: true` and service gateways config |
+
+{{ template "chart.valuesSection" . }}

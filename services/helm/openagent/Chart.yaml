@@ -1,0 +1,29 @@
+apiVersion: v2
+name: openagent
+description: Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude proxy, and supporting infrastructure.
+type: application
+version: 2.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: local
+dependencies:
+  - name: litellm-helm
+    alias: litellm
+    version: 1.92.0
+    repository: oci://ghcr.io/berriai
+    condition: litellm.enabled
+
+  - name: hermes-agent
+    version: 0.9.1
+    repository: oci://ghcr.io/jyje/hermes-agent-helm
+    condition: hermes.enabled
+
+  - name: hermes-workspace
+    version: 0.1.0
+    repository: file://charts/hermes-workspace
+    condition: hermes-workspace.enabled
+
+  - name: claude-proxy
+    version: 0.1.0
+    repository: file://charts/claude-proxy
+    condition: claude-proxy.enabled
