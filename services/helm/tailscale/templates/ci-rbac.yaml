@@ -1,0 +1,30 @@
+# RBAC for tailnet CI identities.
+#
+# GitHub Actions runners join the tailnet via TAILSCALE_AUTH_KEY (Doppler
+# devops/ci; reusable + ephemeral auth key tagged tag:k8s) and reach the
+# kube-apiserver through the Tailscale operator's apiserver proxy
+# (apiServerProxyConfig.mode: "true"). In auth mode the proxy impersonates
+# the tailnet identity into the cluster, so the CI identity must be bound
+# to permissions for chart install tests (gke_GitOps) and Terraform
+# providers (devops_Terraform) to operate.
+#
+# NOTE: verify the impersonated user/group on the first CI run — a Forbidden
+# error names the exact identity. If it differs from tag:k8s, tighten this
+# binding accordingly.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ci-tailscale-k8s-admin
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: Group
+    name: tag:k8s
+    apiGroup: rbac.authorization.k8s.io
+  - kind: User
+    name: tag:k8s
+    apiGroup: rbac.authorization.k8s.io

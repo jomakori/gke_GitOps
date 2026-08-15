@@ -34,10 +34,27 @@ jobs:
           doppler-token: ${{ secrets.DOPPLER_TOKEN }}
           inject-env-vars: true
 
+      # Cluster connectivity: local k3s exposed on the tailnet via the
+      # Tailscale k8s operator (apiServerProxyConfig.mode: "true").
+      # Runner joins as an ephemeral node (tag:k8s from the auth key);
+      # kubeconfig is generated client-side — v1.98+ does NOT drop a
+      # kubeconfig ConfigMap into the operator namespace.
+      - name: Connect to Tailscale (local k3s)
+        uses: tailscale/github-action@main
+        with:
+          authkey: ${{ env.TAILSCALE_AUTH_KEY }}
+
+      - name: Configure kubectl via Tailscale apiserver proxy
+        run: |
+          tailscale configure kubeconfig ${{ env.TAILSCALE_PROXY_HOST }}
+          kubectl config current-context
+
       - name: Grab File changes
         id: changed-files
         uses: tj-actions/changed-files@main
 
+      # GKE auth commented out — live target is the local k3s cluster
+      # (exposed via the Tailscale k8s operator, not GKE).
       # - name: Authenticate to Google Cloud
       #   uses: google-github-actions/auth@v2
       #   with:
@@ -61,19 +78,19 @@ jobs:
         run: |
           .useful-scripts/validate_litellm_config.sh
 
-      # - name: Run Dry-Run
-      #   env:
-      #     changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
-      #   run: |
-      #     # Confirm k8s setup and connection
-      #     if ! cluster_config=$(kubectl config current-context 2>&1); then
-      #         echo "::error::$cluster_config"
-      #         exit 1
-      #     fi
+      - name: Run Dry-Run
+        env:
+          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          # Confirm k8s setup and connection
+          if ! cluster_config=$(kubectl config current-context 2>&1); then
+              echo "::error::$cluster_config"
+              exit 1
+          fi
 
-      #     if ! cluster_connection=$(kubectl cluster-info 2>&1); then
-      #         echo "::error::$cluster_connection"
-      #         exit 1
-      #     fi
+          if ! cluster_connection=$(kubectl cluster-info 2>&1); then
+              echo "::error::$cluster_connection"
+              exit 1
+          fi
 
-      #     echo "Testing out changes on: $cluster_config" && ./ct_check.sh "$changed_files" install
+          echo "Testing out changes on: $cluster_config" && ./ct_check.sh "$changed_files" install
