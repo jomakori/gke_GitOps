@@ -1,11 +1,17 @@
 # Single source of truth for the domain
 domain: design.maklab.net
 
-# AI provider backend (LiteLLM)
+# AI provider backend (LiteLLM via responses-proxy: filters Codex custom tools,
+# translates Responses API, forwards to LiteLLM -> claude-proxy -> Claude)
 provider:
-  endpoint: "http://openagent-hermes-api.openagent.svc.cluster.local:8642/v1"
-  apiKeyRef: "openagent-secrets"
+  endpoint: "http://responses-proxy.openagent.svc.cluster.local:4524/v1"
+  model: "claude-sonnet-5"
+  apiKeyRef: "opendesign-secrets"
   apiKeyKey: "LITELLM_MASTER_KEY"
+  # stdio MCP server exposed to the Codex agent (create_artifact etc.)
+  # mcpArgs is a pre-quoted TOML array string (Helm toJson strips quoting)
+  mcpCommand: "/usr/local/bin/node"
+  mcpArgs: '["/app/apps/daemon/dist/cli.js", "mcp", "--daemon-url", "http://127.0.0.1:7456"]'
 
 # App runtime config — domain is resolved from top-level
 config:

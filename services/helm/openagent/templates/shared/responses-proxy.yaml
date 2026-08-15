@@ -8,47 +8,269 @@ data:
   proxy.ts: |
     const PORT = parseInt(process.env.PORT ?? "4524");
     const LITELLM = process.env.LITELLM ?? "http://openagent-litellm.{{ .Release.Namespace }}.svc.cluster.local:4000";
-    const LITELLM_KEY = process.env.LITELLM_KEY ?? "sk-litellm-master-key";
+    const LITELLM_KEY = process.env.LITELLM_KEY ?? "sk-litellm-master-key-1234";
+    // Models to retry with when the primary upstream rate-limits (429) or 5xxs.
+    // The Claude Code account via auth2api caps requests per window, so bursts
+    // first retry the primary with a delay (window may clear), then spill to
+    // these. LiteLLM's own `fallbacks` don't trigger on this RateLimitError
+    // when cooldowns are disabled, hence the proxy-level retry logic.
+    const FALLBACK_MODELS = (process.env.FALLBACK_MODELS ?? "deepseek-v4-pro,zai/glm-4.7").split(",").filter(Boolean);
+    // Delayed retries on the primary before falling back: count + base delay in
+    // ms (escalating: base * attempt). Defaults: 2 retries at 10s + 20s (~30s
+    // total, inside Codex's per-attempt patience).
+    const FALLBACK_RETRIES = parseInt(process.env.FALLBACK_RETRIES ?? "2");
+    const FALLBACK_RETRY_BASE_MS = parseInt(process.env.FALLBACK_RETRY_BASE_MS ?? "10000");
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const enc = new TextEncoder();
 
-    // Map Responses API model names → LiteLLM model names
-    function mapModel(m) {
-      const map = {
-        "claude-sonnet-5": "claude/sonnet-5",
-        "claude-sonnet-4": "claude/sonnet-4",
-        "claude-opus-5": "claude/opus-5",
-        "claude-opus-4": "claude/opus-4",
-      };
-      return map[m] ?? m;
+    // ── Responses API -> chat completions translation ──
+    // Codex 0.145 speaks the Responses API, but LiteLLM's Responses->provider
+    // conversion mangles tool_result pairing ("tool_use ids without tool_result").
+    // The auth2api claude-proxy is chat-completions native, so translate here:
+    //   - tools: keep only `function` (drop `web_search`/`namespace`/`custom`
+    //     types that 400 at the upstream's pydantic validation)
+    //   - input items (incl. function_call_output) -> chat messages
+    //   - chat tool_calls / tool results round-trip back to Responses items
+
+    function toChatTools(tools) {
+      if (!Array.isArray(tools)) return undefined;
+      const out = tools
+        .filter((t) => t && typeof t === "object" && t.type === "function")
+        .map((t) => ({
+          type: "function",
+          function: { name: t.name, description: t.description, parameters: t.parameters },
+        }));
+      return out.length ? out : undefined;
     }
 
-    // Translate Responses API input → chat completions messages
-    function toMessages(body) {
-      const msgs = [];
-      if (body.instructions)
-        msgs.push({ role: "system", content: body.instructions });
-      const inp = body.input;
-      if (typeof inp === "string") {
-        msgs.push({ role: "user", content: inp });
-      } else if (Array.isArray(inp)) {
-        for (const item of inp) {
-          if (typeof item === "string") {
-            msgs.push({ role: "user", content: item });
-          } else if (item.type === "message" || (item.role && item.content)) {
-            const role = item.role || "user";
-            let text = "";
-            if (typeof item.content === "string") {
-              text = item.content;
-            } else if (Array.isArray(item.content)) {
-              text = item.content
-                .map(function (c) { return c.text || c.content || ""; })
-                .join("");
-            }
-            msgs.push({ role: role, content: text });
-          }
+    function toChatToolChoice(tc) {
+      if (!tc) return undefined;
+      if (tc === "auto" || tc === "none" || tc === "required") return tc;
+      if (typeof tc === "object" && tc.type === "function" && tc.function?.name)
+        return { type: "function", function: { name: tc.function.name } };
+      return undefined;
+    }
+
+    function itemToMessages(item) {
+      if (typeof item === "string") return [{ role: "user", content: item }];
+      if (!item || typeof item !== "object") return [];
+      if (item.type === "function_call_output")
+        return [{ role: "tool", tool_call_id: item.call_id, content: String(item.output ?? "") }];
+      // Codex emits function_call as a TOP-LEVEL item (not nested in a message)
+      if (item.type === "function_call")
+        return [
+          {
+            role: "assistant",
+            content: null,
+            tool_calls: [
+              { id: item.call_id, type: "function", function: { name: item.name, arguments: item.arguments ?? "{}" } },
+            ],
+          },
+        ];
+      if ((item.type === "message" || (item.role && item.content)) && item.content) {
+        const parts = Array.isArray(item.content) ? item.content : [item.content];
+        const toolResults = parts.filter((c) => c && c.type === "function_call_output");
+        if (toolResults.length)
+          return toolResults.map((c) => ({ role: "tool", tool_call_id: c.call_id, content: String(c.output ?? "") }));
+        const text = parts
+          .map((c) => {
+            if (typeof c === "string") return c;
+            if (c && (c.type === "input_text" || c.type === "output_text")) return c.text ?? "";
+            return "";
+          })
+          .join("");
+        const fcs = parts.filter((c) => c && c.type === "function_call");
+        if (fcs.length) {
+          return [
+            {
+              role: "assistant",
+              content: text || null,
+              tool_calls: fcs.map((c) => ({
+                id: c.call_id,
+                type: "function",
+                function: { name: c.name, arguments: c.arguments ?? "{}" },
+              })),
+            },
+          ];
+        }
+        // auth2api claude-proxy predates the OpenAI "developer" role and mangles
+        // message ordering when it appears -> normalize to "system".
+        let role = "user";
+        if (item.role === "assistant") role = "assistant";
+        else if (item.role === "system" || item.role === "developer") role = "system";
+        return [{ role, content: text }];
+      }
+      return []; // reasoning / other items: skip
+    }
+
+    function buildChatBody(body) {
+      const messages = [];
+      if (body.instructions) messages.push({ role: "system", content: body.instructions });
+      const input = Array.isArray(body.input) ? body.input : [body.input];
+      for (const it of input) messages.push(...itemToMessages(it));
+      // Anthropic requires tool_result immediately after tool_use: merge any
+      // standalone assistant text into an adjacent assistant tool_calls message.
+      for (let i = 0; i < messages.length; i++) {
+        const m = messages[i];
+        if (m.role !== "assistant" || !m.tool_calls?.length) continue;
+        if (i + 1 < messages.length && messages[i + 1].role === "assistant" && !messages[i + 1].tool_calls?.length) {
+          m.content = m.content || messages[i + 1].content;
+          messages.splice(i + 1, 1);
+        }
+        if (i - 1 >= 0 && messages[i - 1].role === "assistant" && !messages[i - 1].tool_calls?.length) {
+          const prev = messages[i - 1];
+          m.content = (m.content || "") + (prev.content || "");
+          messages.splice(i - 1, 1);
+          i--;
         }
       }
-      return msgs;
+      const chatReq = { model: body.model, messages, stream: body.stream ?? false };
+      const tools = toChatTools(body.tools);
+      if (tools) {
+        chatReq.tools = tools;
+        chatReq.tool_choice = toChatToolChoice(body.tool_choice) ?? "auto";
+      }
+      if (body.temperature != null) chatReq.temperature = body.temperature;
+      if (body.max_output_tokens != null) chatReq.max_tokens = body.max_output_tokens;
+      return chatReq;
+    }
+
+    function chatMessageToItems(msg) {
+      const items = [];
+      if (msg.content) {
+        items.push({
+          id: "msg_" + crypto.randomUUID().slice(0, 16),
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: msg.content, annotations: [] }],
+        });
+      }
+      for (const tc of msg.tool_calls ?? []) {
+        items.push({
+          id: "fc_" + tc.id,
+          type: "function_call",
+          status: "completed",
+          call_id: tc.id,
+          name: tc.function?.name,
+          arguments: tc.function?.arguments ?? "{}",
+        });
+      }
+      return items;
+    }
+
+    function usageFromChat(u) {
+      return {
+        input_tokens: u?.prompt_tokens ?? 0,
+        output_tokens: u?.completion_tokens ?? 0,
+        total_tokens: (u?.prompt_tokens ?? 0) + (u?.completion_tokens ?? 0),
+      };
+    }
+
+    async function translateStream(litellmResp, respId, model, send, controller) {
+      let fullText = "";
+      let textItemId = null;
+      let callItem = null; // {id, call_id, name, args}
+      const items = []; // completed items, surfaced in response.completed.output
+      let usage = null;
+      const reader = litellmResp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const closeCall = () => {
+        if (!callItem) return;
+        send({ type: "response.function_call_arguments.done", item_id: callItem.id, output_index: 0, arguments: callItem.args });
+        const item = {
+          id: callItem.id,
+          type: "function_call",
+          status: "completed",
+          call_id: callItem.call_id,
+          name: callItem.name,
+          arguments: callItem.args,
+        };
+        send({ type: "response.output_item.done", output_index: 0, item });
+        items.push(item);
+        callItem = null;
+      };
+      const closeText = () => {
+        if (!textItemId) return;
+        send({ type: "response.output_text.done", item_id: textItemId, output_index: 0, content_index: 0, text: fullText });
+        const item = {
+          id: textItemId,
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: fullText, annotations: [] }],
+        };
+        send({ type: "response.output_item.done", output_index: 0, item });
+        items.push(item);
+        textItemId = null;
+      };
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") continue;
+            let chunk;
+            try { chunk = JSON.parse(data); } catch { continue; }
+            const delta = chunk.choices?.[0]?.delta;
+            if (chunk.usage) usage = chunk.usage;
+            if (!delta) continue;
+            if (delta.content) {
+              if (!textItemId) {
+                textItemId = "msg_" + crypto.randomUUID().slice(0, 16);
+                send({
+                  type: "response.output_item.added",
+                  output_index: 0,
+                  item: { id: textItemId, type: "message", role: "assistant", status: "in_progress", content: [] },
+                });
+              }
+              fullText += delta.content;
+              send({ type: "response.output_text.delta", item_id: textItemId, output_index: 0, content_index: 0, delta: delta.content });
+            }
+            for (const tc of delta.tool_calls ?? []) {
+              if (tc.id && tc.function?.name && (!callItem || callItem.call_id !== tc.id)) {
+                closeCall();
+                callItem = { id: "fc_" + tc.id, call_id: tc.id, name: tc.function.name, args: "" };
+                send({
+                  type: "response.output_item.added",
+                  output_index: 0,
+                  item: { id: callItem.id, type: "function_call", status: "in_progress", call_id: callItem.call_id, name: callItem.name, arguments: "" },
+                });
+              }
+              if (tc.function?.arguments && callItem) {
+                callItem.args += tc.function.arguments;
+                send({ type: "response.function_call_arguments.delta", item_id: callItem.id, output_index: 0, delta: tc.function.arguments });
+              }
+            }
+          }
+        }
+      } catch (e) {
+        controller.error(e);
+        return;
+      }
+      closeCall();
+      closeText();
+      if (!items.length && fullText) {
+        items.push({
+          id: "msg_" + crypto.randomUUID().slice(0, 16),
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: fullText, annotations: [] }],
+        });
+      }
+      send({
+        type: "response.completed",
+        response: { id: respId, object: "response", status: "completed", model, output: items, usage: usageFromChat(usage) },
+      });
+      send({ type: "done" });
+      controller.close();
     }
 
     Bun.serve({
@@ -71,191 +293,124 @@ data:
         )
           return new Response("Use HTTP POST for /v1/responses", { status: 426 });
 
-        // ── Responses API → Chat Completions translation ──
+        // ── Responses API -> chat completions (with tool round-trip) ──
         if (u.pathname === "/v1/responses" && req.method === "POST") {
           try {
-            const raw = await req.text();
-            const body = JSON.parse(raw);
-            const model = mapModel(body.model || "claude-sonnet-5");
-            const stream = body.stream ?? false;
-            const messages = toMessages(body);
-
-            const chatReq = { model: model, messages: messages, stream: stream };
-            if (body.temperature != null) chatReq.temperature = body.temperature;
-            if (body.max_output_tokens != null) chatReq.max_tokens = body.max_output_tokens;
-
-            const litellmResp = await fetch(LITELLM + "/v1/chat/completions", {
+            const body = JSON.parse(await req.text());
+            const model = body.model || "claude-sonnet-5";
+            const chatReq = buildChatBody(body);
+            const respId = "resp_" + crypto.randomUUID().slice(0, 24);
+            let litellmResp = await fetch(LITELLM + "/v1/chat/completions", {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
               body: JSON.stringify(chatReq),
             });
+            // Rate-limit / upstream-error recovery: first retry the PRIMARY with
+            // escalating delays (the quota window may clear), then spill over to
+            // fallback models. Keeps runs alive when the account is throttled.
+            let lastStatus = litellmResp.status;
+            if (lastStatus === 429 || lastStatus >= 500) {
+              let recovered = false;
+              for (let attempt = 1; attempt <= FALLBACK_RETRIES && !recovered; attempt++) {
+                await sleep(FALLBACK_RETRY_BASE_MS * attempt);
+                const retry = await fetch(LITELLM + "/v1/chat/completions", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
+                  body: JSON.stringify(chatReq),
+                });
+                if (retry.ok) {
+                  console.log(`[responses-proxy] ${model} ${lastStatus} -> delayed retry ${attempt} OK`);
+                  litellmResp = retry;
+                  recovered = true;
+                } else {
+                  lastStatus = retry.status;
+                  await retry.body?.cancel();
+                }
+              }
+              if (!recovered) {
+                for (const fb of FALLBACK_MODELS) {
+                  const fbReq = { ...chatReq, model: fb };
+                  const fbResp = await fetch(LITELLM + "/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
+                    body: JSON.stringify(fbReq),
+                  });
+                  if (fbResp.ok) {
+                    console.log(`[responses-proxy] ${model} ${lastStatus} -> fallback ${fb}`);
+                    litellmResp = fbResp;
+                    recovered = true;
+                    break;
+                  }
+                  lastStatus = fbResp.status;
+                  await fbResp.body?.cancel();
+                }
+              }
+              if (!recovered) {
+                return new Response(
+                  JSON.stringify({
+                    error: { message: `${model} upstream failed after ${FALLBACK_RETRIES} delayed retries and fallbacks (last: ${lastStatus})`, type: "upstream_error" },
+                  }),
+                  { status: lastStatus, headers: { "Content-Type": "application/json" } },
+                );
+              }
+            }
 
             if (!litellmResp.ok) {
               const errText = await litellmResp.text();
               return new Response(errText, { status: litellmResp.status });
             }
 
-            const respId = "resp_" + crypto.randomUUID().slice(0, 24);
-            const msgId = respId + "_msg";
-
-            if (stream) {
-              // Translate chat completions SSE → Responses API SSE
+            if (body.stream) {
               return new Response(
                 new ReadableStream({
                   async start(controller) {
-                    // 1. response.created
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.created",
-                        response: { id: respId, status: "in_progress", model: model },
-                      }) + "\n\n"
-                    ));
-                    // 2. response.output_item.added
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.output_item.added",
-                        item: {
-                          type: "message", role: "assistant", id: msgId,
-                          status: "in_progress",
-                          content: [{ type: "output_text", text: "" }],
-                        },
-                      }) + "\n\n"
-                    ));
-
-                    let fullText = "";
-                    let usage = null;
-                    const reader = litellmResp.body.getReader();
-                    const decoder = new TextDecoder();
-                    let buffer = "";
-
-                    try {
-                      while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        buffer += decoder.decode(value, { stream: true });
-                        const lines = buffer.split("\n");
-                        buffer = lines.pop() || "";
-                        for (const line of lines) {
-                          if (!line.startsWith("data: ")) continue;
-                          const data = line.slice(6).trim();
-                          if (data === "[DONE]") continue;
-                          try {
-                            const chunk = JSON.parse(data);
-                            const delta = chunk.choices?.[0]?.delta?.content;
-                            if (delta) {
-                              fullText += delta;
-                              controller.enqueue(enc.encode(
-                                "data: " + JSON.stringify({
-                                  type: "response.output_text.delta", delta: delta,
-                                }) + "\n\n"
-                              ));
-                            }
-                            if (chunk.usage) usage = chunk.usage;
-                          } catch {}
-                        }
-                      }
-                    } catch (e) {
-                      controller.error(e);
-                      return;
-                    }
-
-                    // 4. response.output_text.done
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.output_text.done", text: fullText,
-                      }) + "\n\n"
-                    ));
-                    // 5. response.output_item.done
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.output_item.done",
-                        item: {
-                          type: "message", role: "assistant", id: msgId,
-                          status: "completed",
-                          content: [{ type: "output_text", text: fullText }],
-                        },
-                      }) + "\n\n"
-                    ));
-                    // 6. response.completed
-                    const ut = usage || {};
-                    const it = ut.prompt_tokens || 0;
-                    const ot = ut.completion_tokens || 0;
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.completed",
-                        response: {
-                          id: respId, status: "completed", model: model,
-                          output: [{
-                            type: "message", role: "assistant", id: msgId,
-                            status: "completed",
-                            content: [{ type: "output_text", text: fullText }],
-                          }],
-                          usage: { input_tokens: it, output_tokens: ot, total_tokens: it + ot },
-                        },
-                      }) + "\n\n"
-                    ));
-                    // 7. [DONE]
-                    controller.enqueue(enc.encode("data: [DONE]\n\n"));
-                    controller.close();
+                    const send = (data) =>
+                      controller.enqueue(enc.encode("data: " + JSON.stringify(data) + "\n\n"));
+                    send({
+                      type: "response.created",
+                      response: { id: respId, object: "response", status: "in_progress", model, output: [] },
+                    });
+                    await translateStream(litellmResp, respId, model, send, controller);
                   },
                 }),
-                {
-                  headers: {
-                    "Content-Type": "text/event-stream",
-                    "Cache-Control": "no-cache",
-                    Connection: "keep-alive",
-                  },
-                }
+                { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" } }
               );
             } else {
-              // Non-streaming: return SSE with full response
               const cd = await litellmResp.json();
-              const text = cd.choices?.[0]?.message?.content ?? "";
-              const ut = cd.usage || {};
-              const it = ut.prompt_tokens || 0;
-              const ot = ut.completion_tokens || 0;
-              return new Response(
-                new ReadableStream({
-                  start(controller) {
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.created",
-                        response: { id: respId, status: "in_progress", model: model },
-                      }) + "\n\n"
-                    ));
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.output_item.done",
-                        item: {
-                          type: "message", role: "assistant", id: msgId,
-                          status: "completed",
-                          content: [{ type: "output_text", text: text }],
-                        },
-                      }) + "\n\n"
-                    ));
-                    controller.enqueue(enc.encode(
-                      "data: " + JSON.stringify({
-                        type: "response.completed",
-                        response: {
-                          id: respId, status: "completed", model: model,
-                          output: [{
-                            type: "message", role: "assistant", id: msgId,
-                            status: "completed",
-                            content: [{ type: "output_text", text: text }],
-                          }],
-                          usage: { input_tokens: it, output_tokens: ot, total_tokens: it + ot },
-                        },
-                      }) + "\n\n"
-                    ));
-                    controller.enqueue(enc.encode("data: [DONE]\n\n"));
-                    controller.close();
-                  },
-                }),
-                {
-                  headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
-                }
-              );
+              const msg = cd.choices?.[0]?.message ?? {};
+              const output = chatMessageToItems(msg);
+              return Response.json({
+                id: respId,
+                object: "response",
+                created_at: Math.floor(Date.now() / 1000),
+                status: "completed",
+                model,
+                output,
+                usage: usageFromChat(cd.usage),
+              });
             }
+          } catch (e) {
+            return new Response(String(e), { status: 500 });
+          }
+        }
+
+        // ── Chat completions passthrough with the same tool filtering ──
+        if (u.pathname === "/chat/completions" && req.method === "POST") {
+          try {
+            const body = JSON.parse(await req.text());
+            if (Array.isArray(body.tools)) {
+              body.tools = body.tools.filter((t) => t && typeof t === "object" && t.type === "function");
+              if (body.tools.length === 0) delete body.tools;
+            }
+            const litellmResp = await fetch(LITELLM + "/chat/completions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: "Bearer " + LITELLM_KEY },
+              body: JSON.stringify(body),
+            });
+            return new Response(litellmResp.body, {
+              status: litellmResp.status,
+              headers: { "Content-Type": litellmResp.headers.get("content-type") ?? "application/json" },
+            });
           } catch (e) {
             return new Response(String(e), { status: 500 });
           }
@@ -289,6 +444,9 @@ spec:
         - name: proxy
           image: oven/bun:1-alpine
           command: ["bun", "/proxy/proxy.ts"]
+          env:
+            - name: LITELLM_KEY
+              value: "sk-litellm-master-key-1234"
           ports:
             - containerPort: 4524
           readinessProbe:
