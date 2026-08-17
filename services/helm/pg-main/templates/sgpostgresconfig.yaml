@@ -1,0 +1,11 @@
+apiVersion: stackgres.io/v1
+kind: SGPostgresConfig
+metadata:
+  name: {{ .Values.postgres.configName }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  postgresVersion: {{ .Values.postgres.version | quote }}
+  postgresql.conf:
+    timezone: "America/Chicago"

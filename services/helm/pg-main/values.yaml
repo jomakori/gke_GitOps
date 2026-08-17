@@ -1,0 +1,46 @@
+# Injected by ArgoCD appset (services/argocd-appset) — ClusterSecretStore name
+dopplerConfig: "svc_pg"
+
+namespace: data
+storageClass: local-path
+
+postgres:
+  clusterName: pg-main
+  configName: pg-main-config
+  poolingConfigName: pg-main-pooling
+  scriptName: pg-main-init
+  instances: 1
+  storage: 20Gi
+  version: "18"
+  profile: "development"
+  disableMetricsExporter: true
+  disableConnectionPooling: true   # matches openagent convention; revisit under connection pressure
+  # Per-service DB users. Each entry provisions a least-privilege role + DB(s) via SGCluster.users
+  # (password from Doppler config svc_pg -> ExternalSecret pg-secrets, key = passwordKey)
+  # + SGScript DB creation (openagent pattern). Add a service here + its Doppler key + authz principal.
+  users: []
+  # users:
+  #   - name: plane
+  #     passwordKey: PLANE_PG_PASSWORD
+  #     databases: [plane]
+
+backups:
+  enabled: true
+  cronSchedule: "0 2 * * 0"        # weekly base backup; WAL archiving is continuous
+  retention: 4                     # keep 4 base backups
+  bucket: stackgres-pg-main
+  endpoint: https://<CF_ACCOUNT_ID>.r2.cloudflarestorage.com   # TODO: set real R2 account id
+  region: auto
+  path: pg-main
+
+# Istio AuthorizationPolicy principals (workload identities allowed to reach the DB).
+# DISABLED by default: enforcing requires the `data` namespace to be labeled
+# istio.io/dataplane-mode: ambient AND the StackGres operator's management traffic to be
+# allowed (operator ns postgres-operator is NOT ambient; principal rules would block
+# non-mesh operator traffic -> cluster unmanageable). Enable only after testing
+# operator<->cluster connectivity under the policy.
+authz:
+  enabled: false
+  principals: []
+  # principals:
+  #   - "cluster.local/ns/plane/sa/plane-app"

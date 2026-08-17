@@ -1,0 +1,48 @@
+apiVersion: stackgres.io/v1
+kind: SGCluster
+metadata:
+  name: {{ .Values.postgres.clusterName }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instances: {{ .Values.postgres.instances }}
+  postgres:
+    version: {{ .Values.postgres.version | quote }}
+  profile: {{ .Values.postgres.profile | quote }}
+  pods:
+    persistentVolume:
+      size: {{ .Values.postgres.storage }}
+      {{- if .Values.storageClass }}
+      storageClass: {{ .Values.storageClass }}
+      {{- end }}
+    disableMetricsExporter: {{ .Values.postgres.disableMetricsExporter }}
+    disableConnectionPooling: {{ .Values.postgres.disableConnectionPooling }}
+  configurations:
+    sgPostgresConfig: {{ .Values.postgres.configName }}
+    sgPoolingConfig: {{ .Values.postgres.poolingConfigName }}
+  managedSql:
+    scripts:
+      - id: 0
+        sgScript: {{ .Values.postgres.scriptName }}
+  users:
+    {{- range .Values.postgres.users }}
+    - name: {{ .name }}
+      password:
+        secretKeyRef:
+          name: pg-secrets
+          key: {{ .passwordKey }}
+      login: true
+      inherit: true
+      databases:
+        {{- range .databases }}
+        - name: {{ . }}
+          owner: true
+        {{- end }}
+    {{- end }}
+  {{- if .Values.backups.enabled }}
+  backups:
+    - cronSchedule: {{ .Values.backups.cronSchedule | quote }}
+      retention: {{ .Values.backups.retention }}
+      sgObjectStorage: {{ .Values.postgres.clusterName }}-storage
+  {{- end }}
