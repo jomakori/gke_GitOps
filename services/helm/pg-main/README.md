@@ -3,9 +3,20 @@
 One shared StackGres cluster (`pg-main`, namespace `data`) hosting a database + role per service,
 replacing per-service SGClusters (e.g. `openagent-pg`).
 
+## Ownership model (user-directed: "the db should be in gitops")
+
+- **DB definition = gitops** (`gke_GitOps`, ArgoCD-managed): cluster, per-service DBs/roles, and
+  backup schedules all live in this chart + `services/argocd-appset/values.yaml`. No Terraform, no
+  ad-hoc kubectl for DB resources.
+- **Terraform (`devops_Terraform`)** only provisions cloud-side: the R2 bucket (`stackgres-pg-main`)
+  and Doppler secret population.
+- **Secrets** (per-service passwords, R2 keys) live in Doppler config `svc_postgres_operator`
+  (devops project) → ExternalSecret `pg-secrets` (wave -3) → cluster.
+- Per-service onboarding = one gitops PR (users entry + Doppler password). Nothing else.
+
 ## Onboarding a new service `<svc>`
 
-1. **Doppler** (`devops` project, config `svc_pg`): add `<SVC>_PG_PASSWORD` (generated once, strong).
+1. **Doppler** (`devops` project, config `svc_postgres_operator`): add `<SVC>_PG_PASSWORD` (generated once, strong).
 2. **values.yaml** — add to `postgres.users`:
    ```yaml
    users:
