@@ -29,7 +29,7 @@ backups:
   cronSchedule: "0 2 * * 0"        # weekly base backup; WAL archiving is continuous
   retention: 4                     # keep 4 base backups
   bucket: stackgres-pg-main
-  endpoint: https://<CF_ACCOUNT_ID>.r2.cloudflarestorage.com   # TODO: set real R2 account id
+  endpoint: https://f8caac5c12d315d3690fd6df74cacdb9.r2.cloudflarestorage.com
   region: auto
   path: pg-main
 
