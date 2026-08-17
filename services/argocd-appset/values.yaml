@@ -240,7 +240,7 @@ services:
     enable: true
     syncWave: "5"
     destNamespace: data
-    dopplerConfig: "svc_pg"
+    dopplerConfig: "svc_postgres_operator"
     retryLimit: 5
     retryMaxDuration: 3m
     syncOptions:

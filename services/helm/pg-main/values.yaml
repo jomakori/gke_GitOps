@@ -1,5 +1,5 @@
 # Injected by ArgoCD appset (services/argocd-appset) — ClusterSecretStore name
-dopplerConfig: "svc_pg"
+dopplerConfig: "svc_postgres_operator"
 
 namespace: data
 storageClass: local-path
