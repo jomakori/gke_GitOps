@@ -21,6 +21,7 @@ postgres:
   users:
     - name: plane
       passwordKey: PLANE_PG_PASSWORD
+      initSqlKey: PLANE_INIT_SQL
       databases: [plane]
 
 backups:
