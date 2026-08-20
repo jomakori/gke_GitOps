@@ -1,3 +1,4 @@
+{{- if .Values.postgres.users }}
 apiVersion: stackgres.io/v1
 kind: SGScript
 metadata:
@@ -19,3 +20,4 @@ spec:
         END $$;
     {{- end }}
     {{- end }}
+{{- end }}
