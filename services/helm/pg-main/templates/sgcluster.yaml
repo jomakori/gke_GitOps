@@ -21,10 +21,12 @@ spec:
   configurations:
     sgPostgresConfig: {{ .Values.postgres.configName }}
     sgPoolingConfig: {{ .Values.postgres.poolingConfigName }}
+  {{- if .Values.postgres.users }}
   managedSql:
     scripts:
       - id: 0
         sgScript: {{ .Values.postgres.scriptName }}
+  {{- end }}
   users:
     {{- range .Values.postgres.users }}
     - name: {{ .name }}
