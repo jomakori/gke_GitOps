@@ -1,0 +1,21 @@
+{{- if .Values.authz.enabled }}
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ .Values.postgres.clusterName }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    matchLabels:
+      stackgres.io/cluster: {{ .Values.postgres.clusterName }}
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              {{- range .Values.authz.principals }}
+              - {{ . | quote }}
+              {{- end }}
+{{- end }}

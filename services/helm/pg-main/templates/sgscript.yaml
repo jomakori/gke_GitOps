@@ -1,0 +1,21 @@
+apiVersion: stackgres.io/v1
+kind: SGScript
+metadata:
+  name: {{ .Values.postgres.scriptName }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  scripts:
+    {{- range $u := .Values.postgres.users }}
+    {{- range $db := $u.databases }}
+    - name: create-{{ $db }}-db
+      script: |
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '{{ $db }}') THEN
+            CREATE DATABASE {{ $db }} OWNER {{ $u.name }};
+          END IF;
+        END $$;
+    {{- end }}
+    {{- end }}
