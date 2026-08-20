@@ -290,7 +290,7 @@ services:
       subdomain: plane
       destination:
         serviceName: plane-web
-        servicePort: 80
+        servicePort: 3000
 
   # Wave 5 — General services
   kubePrometheusStack:
