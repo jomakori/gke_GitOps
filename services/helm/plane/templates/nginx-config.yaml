@@ -29,10 +29,10 @@ data:
       # Runtime DNS (headless plane-api has no ClusterIP; nginx caches startup
       # resolution → stale pod IPs after api restarts → 502s without this)
       resolver 10.43.0.10 valid=30s ipv6=off;
-      set $plane_api {{ .Release.Name }}-api.{{ .Release.Namespace }}.svc.cluster.local:8000;
 
       server {
         listen 3000;
+        set $plane_api {{ .Release.Name }}-api.{{ .Release.Namespace }}.svc.cluster.local:8000;
 
         # Security headers
         add_header X-Frame-Options "DENY" always;
