@@ -47,6 +47,10 @@ spec:
         image: {{ .Values.web.image | default "artifacts.plane.so/makeplane/plane-frontend" }}:{{ .Values.planeVersion }}
         stdin: true
         tty: true
+        volumeMounts:
+        - name: nginx-conf
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
         resources:
           requests:
             memory: {{ .Values.web.memoryRequest | default "50Mi" | quote }}
@@ -57,4 +61,8 @@ spec:
       {{- include "plane.podScheduling" .Values.web }}
       serviceAccount: {{ .Release.Name }}-srv-account
       serviceAccountName: {{ .Release.Name }}-srv-account
+      volumes:
+      - name: nginx-conf
+        configMap:
+          name: {{ .Release.Name }}-nginx-config
 ---
