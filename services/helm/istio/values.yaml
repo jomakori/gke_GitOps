@@ -28,9 +28,9 @@ istiod:
     nodeSelector:
       intent: apps
   # HPA disabled: metrics-server unavailable on this cluster → HPAs can't compute and
-  # abort every istio app sync (see istio-ingressgateway below). Fixed replicas instead.
-  autoscaling:
-    enabled: false
+  # abort every istio app sync. Fixed replicas instead. (istiod gates its HPA on the
+  # legacy autoscaleEnabled key, NOT autoscaling.enabled.)
+  autoscaleEnabled: false
   telemetry:
     enabled: true
     v2:
