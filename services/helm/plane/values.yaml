@@ -7,7 +7,7 @@ dockerRegistry:
   password: ""
 
 ingress:
-  enabled: true
+  enabled: false
   appHost: "plane.maklab.net"
   minioHost: ""
   rabbitmqHost: ""
