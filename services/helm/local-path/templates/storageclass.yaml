@@ -7,3 +7,4 @@ metadata:
 provisioner: {{ .Values.storageClass.provisioner }}
 reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
 volumeBindingMode: {{ .Values.storageClass.volumeBindingMode }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion }}
