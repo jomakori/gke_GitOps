@@ -33,18 +33,3 @@ spec:
       - id: 0
         sgScript: {{ .Values.postgres.scriptName }}
   {{- end }}
-  users:
-    {{- range .Values.postgres.users }}
-    - name: {{ .name }}
-      password:
-        secretKeyRef:
-          name: pg-secrets
-          key: {{ .passwordKey }}
-      login: true
-      inherit: true
-      databases:
-        {{- range .databases }}
-        - name: {{ . }}
-          owner: true
-        {{- end }}
-    {{- end }}

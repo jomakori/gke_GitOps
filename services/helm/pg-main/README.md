@@ -42,4 +42,4 @@ replacing per-service SGClusters (e.g. `openagent-pg`).
 - `authz` disabled by default: the StackGres operator (non-ambient `postgres-operator` ns) must reach
   the cluster; principal-based policies would block non-mesh management traffic. Revisit when
   hardening the mesh.
-- SGBackupConfig CRD is absent in this StackGres version — schedules are inline in `SGCluster.spec.backups`.
+- SGBackupConfig CRD is absent in this StackGres version — schedules are inline in `SGCluster.spec.configurations.backups` (StackGres 1.18 moved it from the old `spec.backups` path, which is pruned silently).

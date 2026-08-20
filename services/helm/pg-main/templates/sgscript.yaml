@@ -7,17 +7,14 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
 spec:
+  # StackGres 1.18: spec.users removed from SGCluster — roles/DBs are created here.
+  # SQL (incl. password) comes from Doppler key <initSqlKey> via the pg-secrets Secret.
   scripts:
     {{- range $u := .Values.postgres.users }}
-    {{- range $db := $u.databases }}
-    - name: create-{{ $db }}-db
-      script: |
-        DO $$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '{{ $db }}') THEN
-            CREATE DATABASE {{ $db }} OWNER {{ $u.name }};
-          END IF;
-        END $$;
-    {{- end }}
+    - name: init-{{ $u.name }}
+      scriptFrom:
+        secretKeyRef:
+          name: pg-secrets
+          key: {{ $u.initSqlKey | quote }}
     {{- end }}
 {{- end }}
