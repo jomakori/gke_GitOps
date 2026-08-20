@@ -18,11 +18,10 @@ postgres:
   # Per-service DB users. Each entry provisions a least-privilege role + DB(s) via SGCluster.users
   # (password from Doppler config svc_pg -> ExternalSecret pg-secrets, key = passwordKey)
   # + SGScript DB creation (openagent pattern). Add a service here + its Doppler key + authz principal.
-  users: []
-  # users:
-  #   - name: plane
-  #     passwordKey: PLANE_PG_PASSWORD
-  #     databases: [plane]
+  users:
+    - name: plane
+      passwordKey: PLANE_PG_PASSWORD
+      databases: [plane]
 
 backups:
   enabled: true
