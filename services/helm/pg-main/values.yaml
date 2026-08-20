@@ -10,7 +10,7 @@ postgres:
   poolingConfigName: pg-main-pooling
   scriptName: pg-main-init
   instances: 1
-  storage: 20Gi
+  storage: 15Gi
   version: "18"
   profile: "development"
   disableMetricsExporter: true
