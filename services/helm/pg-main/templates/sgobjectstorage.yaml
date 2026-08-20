@@ -12,7 +12,6 @@ spec:
     region: {{ .Values.backups.region }}
     endpoint: {{ .Values.backups.endpoint }}
     enablePathStyleAddressing: true
-    path: {{ .Values.backups.path }}
     awsCredentials:
       secretKeySelectors:
         accessKeyId:
