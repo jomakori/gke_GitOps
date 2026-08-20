@@ -238,6 +238,43 @@ services:
           - .spec.data[].remoteRef.nullBytePolicy
     dopplerConfig: "svc_postgres_operator"
 
+  # Centralized PostgreSQL — shared SGCluster (data ns), per-service DBs via users list.
+  # Requires Doppler config svc_pg (R2 keys + per-service PG passwords) — user-side prereq.
+  pgMain:
+    enable: true
+    syncWave: "5"
+    destNamespace: data
+    dopplerConfig: "svc_postgres_operator"
+    retryLimit: 5
+    retryMaxDuration: 3m
+    syncOptions:
+      - CreateNamespace=true
+      - SyncTimeoutSeconds=300
+    ignoreDifferences:
+      - group: stackgres.io
+        kind: SGPostgresConfig
+        name: pg-main-config
+        namespace: data
+        jsonPointers:
+          - /spec/postgresql.conf
+      - group: stackgres.io
+        kind: SGCluster
+        name: pg-main
+        namespace: data
+        jsonPointers:
+          - /spec/configurations/observability
+          - /spec/pods/disableEnvoy
+          - /spec/pods/disablePostgresUtil
+          - /spec/pods/managementPolicy
+          - /spec/pods/updateStrategy
+          - /spec/postgres/flavor
+          - /spec/postgres/ssl
+          - /spec/postgresServices
+          - /spec/replication
+          - /spec/sgInstanceProfile
+          - /spec/users
+          - /spec/managedSql
+
   # Wave 5 — General services
   kubePrometheusStack:
     enable: true

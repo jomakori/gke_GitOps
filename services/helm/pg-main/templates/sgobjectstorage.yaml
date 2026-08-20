@@ -1,0 +1,23 @@
+apiVersion: stackgres.io/v1beta1
+kind: SGObjectStorage
+metadata:
+  name: {{ .Values.postgres.clusterName }}-storage
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  type: s3Compatible
+  s3Compatible:
+    bucket: {{ .Values.backups.bucket }}
+    region: {{ .Values.backups.region }}
+    endpoint: {{ .Values.backups.endpoint }}
+    enablePathStyleAddressing: true
+    path: {{ .Values.backups.path }}
+    awsCredentials:
+      secretKeySelectors:
+        accessKeyId:
+          name: pg-secrets
+          key: R2_ACCESS_KEY_ID
+        secretAccessKey:
+          name: pg-secrets
+          key: R2_SECRET_ACCESS_KEY
