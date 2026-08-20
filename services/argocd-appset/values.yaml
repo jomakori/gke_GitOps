@@ -286,7 +286,7 @@ services:
       - CreateNamespace=true
       - SyncTimeoutSeconds=300
     gateways:
-      enable_private: false
+      enable_public: true
       subdomain: plane
       destination:
         serviceName: plane-web
