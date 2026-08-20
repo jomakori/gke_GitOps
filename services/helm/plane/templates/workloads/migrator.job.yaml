@@ -12,8 +12,8 @@ spec:
       labels:
         app.name: {{ .Release.Namespace }}-{{ .Release.Name }}-api-migrate
         {{- include "plane.commonLabels" $ | nindent 8 }}
-      annotations:
-        timestamp: {{ now | quote }}
+      # NOTE: no `timestamp` annotation — a changing annotation makes the job
+      # template immutable once the job has run → ArgoCD syncs fail forever.
     spec:
       containers:
       - name: {{ .Release.Name }}-api-migrate
