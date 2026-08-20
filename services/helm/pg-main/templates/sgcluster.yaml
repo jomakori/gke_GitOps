@@ -21,6 +21,12 @@ spec:
   configurations:
     sgPostgresConfig: {{ .Values.postgres.configName }}
     sgPoolingConfig: {{ .Values.postgres.poolingConfigName }}
+    {{- if .Values.backups.enabled }}
+    backups:
+      - cronSchedule: {{ .Values.backups.cronSchedule | quote }}
+        retention: {{ .Values.backups.retention }}
+        sgObjectStorage: {{ .Values.postgres.clusterName }}-storage
+    {{- end }}
   {{- if .Values.postgres.users }}
   managedSql:
     scripts:
@@ -42,9 +48,3 @@ spec:
           owner: true
         {{- end }}
     {{- end }}
-  {{- if .Values.backups.enabled }}
-  backups:
-    - cronSchedule: {{ .Values.backups.cronSchedule | quote }}
-      retention: {{ .Values.backups.retention }}
-      sgObjectStorage: {{ .Values.postgres.clusterName }}-storage
-  {{- end }}
