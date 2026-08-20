@@ -1,0 +1,270 @@
+planeVersion: v1.4.1
+
+dockerRegistry:
+  enabled: false
+  host: "index.docker.io/v1/"
+  loginid: ""
+  password: ""
+
+ingress:
+  enabled: true
+  appHost: "plane.maklab.net"
+  minioHost: ""
+  rabbitmqHost: ""
+  # Set to "traefik" (or any value starting with "traefik") to deploy native Traefik IngressRoute CRDs
+  # (templates/ingress-traefik.yaml). Set to any other value (e.g., "nginx") to deploy a standard
+  # networking.k8s.io/v1 Ingress resource (templates/ingress.yaml).
+  ingressClass: "nginx"
+  # Traefik-specific options (only used when ingressClass starts with "traefik")
+  traefik:
+    maxRequestBodyBytes: 20971520   # in bytes (default: 20 MiB)
+    # Traefik entrypoints the IngressRoutes attach to. Leave empty to derive them
+    # from your SSL settings, which is what you want in almost every case:
+    #   - TLS configured (ssl.tls_secret_name, or generateCerts + createIssuer)
+    #     -> ['websecure'], and a `tls:` block is emitted.
+    #   - No TLS configured -> ['web'], plain HTTP, and NO `tls:` block. Use this
+    #     to reach Plane over http:// while you are still sorting out DNS/certs,
+    #     or when TLS is terminated upstream (cloud LB, Cloudflare, a service mesh).
+    # Set explicitly only if your Traefik install renamed the default entrypoints,
+    # e.g. entryPoints: ['websecure', 'web'] or ['https'], or to select
+    # 'websecure' when Traefik's own entrypoint terminates TLS.
+    entryPoints: []
+  # ingress_annotations: { "nginx.ingress.kubernetes.io/proxy-body-size": "5m" }
+
+# SSL Configuration - Valid only if ingress.enabled is true
+ssl:
+  tls_secret_name: "" # If you have a custom TLS secret name
+  # If you want to use Let's Encrypt, set createIssuer and generateCerts to true
+  createIssuer: false
+  issuer: "http" # Allowed : cloudflare, digitalocean, http
+  token: "" # not required for http
+  server: https://acme-v02.api.letsencrypt.org/directory
+  email: plane@example.com
+  generateCerts: false
+  # Set true when TLS is terminated IN FRONT of Plane and this chart manages no
+  # certificate of its own -- a cloud load balancer, Cloudflare, a service mesh,
+  # or a Traefik entrypoint that carries its own cert (websecure.http.tls=true).
+  #
+  # The chart then renders WEB_URL with an https:// scheme. No `tls:` block is
+  # emitted, because there is no Secret for this chart to reference.
+  #
+  # This does NOT change the Traefik entrypoint. An upstream terminator (ALB,
+  # NLB TLS listener, Cloudflare) forwards cleartext, which arrives on `web` --
+  # the default. If TLS is instead terminated by Traefik's own entrypoint
+  # (websecure.http.tls=true), also set:
+  #   ingress.traefik.entryPoints: ['websecure']
+  # otherwise the route binds `web` and never matches the TLS traffic.
+  #
+  # Leave false if you set tls_secret_name or generateCerts -- those already
+  # imply https. This is only for TLS this chart cannot see.
+  externalTermination: true
+
+redis:
+  local_setup: true
+  image: valkey/valkey:7.2.11-alpine
+  servicePort: 6379
+  storageClass: "local-path"
+  volumeSize: 100Mi
+  pullPolicy: IfNotPresent
+  assign_cluster_ip: false
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+postgres:
+  local_setup: false
+  image: postgres:15.7-alpine
+  servicePort: 5432
+  storageClass: ""
+  volumeSize: 1Gi
+  pullPolicy: IfNotPresent
+  assign_cluster_ip: false
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+rabbitmq:
+  local_setup: true
+  image: rabbitmq:3.13.6-management-alpine
+  pullPolicy: IfNotPresent
+  servicePort: 5672
+  managementPort: 15672
+  storageClass: "local-path"
+  volumeSize: 100Mi
+  default_user: plane
+  default_password: plane
+  external_rabbitmq_url: ''
+  assign_cluster_ip: false
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+minio:
+  image: minio/minio:latest
+  image_mc: minio/mc:latest
+  init_image: busybox
+  local_setup: true
+  pullPolicy: IfNotPresent
+  root_password: password
+  root_user: admin
+  storageClass: "local-path"
+  volumeSize: 1Gi
+  assign_cluster_ip: false
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  env:
+    minio_endpoint_ssl: false
+
+web:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 50Mi
+  image: artifacts.plane.so/makeplane/plane-frontend
+  pullPolicy: Always
+  assign_cluster_ip: false
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+space:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 50Mi
+  image: artifacts.plane.so/makeplane/plane-space
+  pullPolicy: Always
+  assign_cluster_ip: false
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+admin:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 50Mi
+  image: artifacts.plane.so/makeplane/plane-admin
+  pullPolicy: Always
+  assign_cluster_ip: false
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+live:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 50Mi
+  image: artifacts.plane.so/makeplane/plane-live
+  pullPolicy: Always
+  assign_cluster_ip: false
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+api:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 50Mi
+  image: artifacts.plane.so/makeplane/plane-backend
+  pullPolicy: Always
+  assign_cluster_ip: false
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+worker:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 50Mi
+  image: artifacts.plane.so/makeplane/plane-backend
+  pullPolicy: Always
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+beatworker:
+  replicas: 1
+  memoryLimit: 1000Mi
+  cpuLimit: 500m
+  cpuRequest: 50m
+  memoryRequest: 50Mi
+  image: artifacts.plane.so/makeplane/plane-backend
+  pullPolicy: Always
+  labels: {}
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+external_secrets:
+  # Name of the existing Kubernetes Secret resource; see README for more details
+  # Built by templates/externalsecret.yaml from Doppler svc_postgres_operator.
+  rabbitmq_existingSecret: ''
+  pgdb_existingSecret: ''
+  doc_store_existingSecret: ''
+  app_env_existingSecret: 'plane-app-secrets'
+  live_env_existingSecret: 'plane-live-secrets'
+
+env:
+
+  # NEXT_PUBLIC_DEPLOY_URL:  ""
+  # REDIS
+  remote_redis_url: "" #INCASE OF REMOTE REDIS ONLY
+
+  # POSTGRES DB VALUES
+  pgdb_username: plane
+  pgdb_password: plane
+  pgdb_name: plane
+  pgdb_remote_url: "" #INCASE OF REMOTE PG DB URL ONLY
+
+  # DATA STORE
+  docstore_bucket: "uploads"
+  doc_upload_size_limit: "5242880" # 5MB
+
+  # REQUIRED IF MINIO LOCAL SETUP IS FALSE
+  aws_access_key: ""
+  aws_secret_access_key: ""
+  aws_region: ""
+  aws_s3_endpoint_url: ""
+
+  secret_key: "60gp0byfz2dvffa45cxl20p1scy9xbpf6d8c5y0geejgkyp1b5"
+  live_server_secret_key: "htbqvBJAgpm9bzvf3r4urJer0ENReatceh"
+
+  sentry_dsn: ""
+  sentry_environment: ""
+
+  cors_allowed_origins: ""
+  default_cluster_domain: cluster.local
+
+  api_key_rate_limit: "60/minute"

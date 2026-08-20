@@ -275,6 +275,23 @@ services:
           - /spec/users
           - /spec/managedSql
 
+  # Plane.so — kanban backend on pg-main (M2). Requires plane user/db in pg-main
+  # (users list) + PLANE_* keys in svc_postgres_operator.
+  plane:
+    enable: true
+    syncWave: "6"
+    destNamespace: plane
+    dopplerConfig: "svc_postgres_operator"
+    syncOptions:
+      - CreateNamespace=true
+      - SyncTimeoutSeconds=300
+    gateways:
+      enable_private: true
+      subdomain: plane
+      destination:
+        serviceName: plane-web
+        servicePort: 80
+
   # Wave 5 — General services
   kubePrometheusStack:
     enable: true
