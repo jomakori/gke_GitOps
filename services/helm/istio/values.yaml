@@ -27,6 +27,10 @@ istiod:
         memory: 512Mi
     nodeSelector:
       intent: apps
+  # HPA disabled: metrics-server unavailable on this cluster → HPAs can't compute and
+  # abort every istio app sync (see istio-ingressgateway below). Fixed replicas instead.
+  autoscaling:
+    enabled: false
   telemetry:
     enabled: true
     v2:
@@ -61,10 +65,7 @@ ingress-gateway:
     limits:
       memory: 256Mi
   autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 5
-    targetCPUUtilizationPercentage: 80
+    enabled: false
 
 # ── Local template values (from istio-config) ────────────────────────────
 
