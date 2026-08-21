@@ -344,6 +344,19 @@ hermes-agent:
           GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
           GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
 
+      plane:
+        command: "uvx"
+        args: ["-y", "plane-mcp-server", "stdio"]
+        env:
+          PLANE_API_KEY: "${PLANE_API_KEY}"
+          PLANE_WORKSPACE_SLUG: "${PLANE_WORKSPACE_SLUG}"
+          PLANE_INTERNAL_BASE_URL: "http://plane-api.plane.svc.cluster.local:8000"
+          PLANE_BASE_URL: "https://plane.maklab.net"
+        timeout: 120
+        tools:
+          resources: false
+          prompts: false
+
       skiplagged:
         url: "https://mcp.skiplagged.com/mcp"
         timeout: 60
