@@ -159,6 +159,8 @@ spec:
               value: {{ .Values.hermes.apiKey | quote }}
             - name: MISE_DATA_DIR
               value: /shared/mise
+            - name: MISE_CONFIG_FILE
+              value: /mise/mise.toml
           envFrom:
             - secretRef:
                 name: openagent-secrets
@@ -183,6 +185,9 @@ spec:
               readOnly: true
             - name: mise-store
               mountPath: /shared/mise
+              readOnly: true
+            - name: mise-config
+              mountPath: /mise
               readOnly: true
             - name: k8s-gitops-context
               mountPath: /workspace/reference/k8s-gitops-context.md
