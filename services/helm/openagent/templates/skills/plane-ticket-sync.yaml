@@ -1,0 +1,162 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-skill-plane-ticket-sync
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/part-of: openagent
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  plane-ticket-sync.SKILL.md: |
+    ---
+    name: plane-ticket-sync
+    description: After a plan/spec is approved, spin up Plane kanban tickets — one project per board, a spec parent ticket with child tickets per work item, and gotchas/limitations as ticket comments. Use whenever a plan is approved (planner hook) or when asked to "sync this plan to Plane" / "spin up tickets".
+    ---
+    
+    # Plane Ticket Sync (planner → kanban)
+    
+    ## Trigger
+    - A plan (Standard/Complex pipeline) is **approved** → immediately create the Plane tickets (unless the user declines).
+    - User asks to sync a specific plan: "sync <plan> to Plane", "spin up tickets for <plan>".
+    
+    ## Mapping (user-defined, fixed)
+    | Concept | Plane mapping |
+    |---|---|
+    | Board | **Project** — name = plan title; identifier = short slug (≤5 chars, uppercase) |
+    | Task (parent) | Work item `[Spec] <plan title>` — description_html = plan markdown→HTML + Drive doc link |
+    | Task breakdown | **Child work items** per plan work item, `parent` = the spec ticket |
+    | Gotchas | **Comments** — Risks/Limitations section on the spec ticket; per-item gotchas on their child tickets |
+    
+    ## Workflow
+    1. **Context**: plan doc at `.hermes/plans/<slug>.md` or `plans/` + its Drive link (if uploaded).
+    2. **Workspace check**: tools default to `maklab` (PLANE_WORKSPACE_SLUG). Confirm with one list call before creating.
+    3. **Manifest**: run `scripts/plan_to_tickets.py <plan.md>` → JSON draft: `{project, spec_html, children[], comments[]}`. Review it before executing — the script output is a draft, not gospel.
+    4. **Project (idempotent)**: `list_projects` → search by name → if absent `create_project` (name, identifier). Re-runs must find, never duplicate.
+    5. **Parent ticket**: `create_workitem` (project_id, name=`[Spec] <title>`, description_html=spec_html). Keep the returned id.
+    6. **Child tickets**: per manifest child → `create_workitem` with `parent` = spec id.
+    7. **Comments**: `create_comment` on the spec ticket for each global gotcha; per-child gotchas on their own tickets.
+    8. **Verify**: `list_workitems` (project) → confirm parent + N children; comments present. Report the board link + ticket count.
+    
+    ## Tool notes (plane MCP, workspace maklab)
+    - Tool surface: one action-dispatch tool per resource, with legacy aliases (`create_project`, `list_projects`, `create_workitem`, `update_workitem`, `list_workitems`, `create_comment`, ...). If a call fails with an unknown-tool error, `list_tools` first and use the exact advertised names.
+    - Descriptions are **HTML** — convert markdown simply (headings → `<h2>`, bullets → `<ul><li>`, code → `<pre>`); keep it lean and link the full doc instead of duplicating megabyte specs.
+    
+    ## Pitfalls
+    - **Idempotency is law**: search-before-create everywhere; an approved plan re-sync must be a no-op or an update, never duplicates.
+    - **Parent scope**: plane parents must be in the same project.
+    - **Approval gate**: tickets only after explicit approval — never pre-approval, never for DRAFT plans.
+    - **Agent identity**: hermes is a workspace Member (role 15) — fine for all of this; no admin needed.
+    - **Slug collisions**: check the identifier isn't already used by another project (e.g. `M2` exists → suffix it).
+    
+    ## Verification
+    - Board link: `https://plane.maklab.net/maklab/projects/<id>` (may need the UI; API check is authoritative).
+    - `list_workitems` shows the spec parent + children with correct parent linkage; comments visible via the comment list tool.
+  plan_to_tickets.py: |
+    #!/usr/bin/env python3
+    """Parse a plan markdown (the .hermes/plans format) into a Plane ticket manifest.
+    
+    Output: JSON draft with the project, the spec parent ticket HTML, child tickets,
+    and gotcha comments. The agent reviews/edits before executing via plane MCP tools.
+    
+    Usage: plan_to_tickets.py <plan.md> [--project-identifier IDENT] [--drive-url URL]
+    """
+    import html
+    import json
+    import re
+    import sys
+    
+    
+    def md_to_html(text: str) -> str:
+        """Minimal markdown -> HTML (headings, bullets, code, paragraphs)."""
+        lines = text.strip().splitlines()
+        out = []
+        in_code = False
+        for line in lines:
+            if line.strip().startswith("```"):
+                out.append("<pre>" if not in_code else "</pre>")
+                in_code = not in_code
+                continue
+            if in_code:
+                out.append(html.escape(line))
+                continue
+            s = line.strip()
+            if not s:
+                continue
+            m = re.match(r"^(#{1,6})\s+(.*)$", s)
+            if m:
+                lvl = min(len(m.group(1)) + 1, 6)
+                out.append(f"<h{lvl}>{html.escape(m.group(2))}</h{lvl}>")
+            elif re.match(r"^[-*]\s+", s):
+                out.append(f"<li>{html.escape(re.sub(r'^[-*]\s+', '', s))}</li>")
+            else:
+                out.append(f"<p>{html.escape(s)}</p>")
+        if in_code:
+            out.append("</pre>")
+        return "\n".join(out)
+    
+    
+    def parse(path: str, identifier: str, drive_url: str) -> dict:
+        text = open(path, encoding="utf-8").read()
+        title = "Untitled Plan"
+        m = re.search(r"^#\s+(.+)$", text, re.MULTILINE)
+        if m:
+            title = m.group(1).strip()
+    
+        # Children: milestone/task bullets under a "Milestones" (or "Tasks"/"Work items") section
+        children = []
+        section = None
+        for line in text.splitlines():
+            m = re.match(r"^##\s+(.+)$", line)
+            if m:
+                section = m.group(1).strip().lower()
+                continue
+            if section in ("milestones", "tasks", "work items", "work items / milestones"):
+                b = re.match(r"^[-*]\s+\*\*(.+?)\*\*\s*(?:—|-|:)?\s*(.*)$", line)
+                if b:
+                    children.append(
+                        {"name": b.group(1).strip(), "description_html": md_to_html(b.group(2))}
+                    )
+    
+        # Comments: risks / known limitations / gotchas sections
+        comments = []
+        section = None
+        for line in text.splitlines():
+            m = re.match(r"^##\s+(.+)$", line)
+            if m:
+                section = m.group(1).strip().lower()
+                continue
+            if section in ("risks", "known limitations", "limitations", "gotchas", "pitfalls"):
+                b = re.match(r"^[-*]\s+(.+)$", line)
+                if b:
+                    comments.append(b.group(1).strip())
+    
+        slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40]
+        spec_html = md_to_html(text[:4000])
+        if drive_url:
+            spec_html += f'<p><a href="{html.escape(drive_url)}">Full spec (Drive)</a></p>'
+    
+        return {
+            "project": {"name": title, "identifier": identifier or slug[:5].upper()},
+            "spec_ticket": {
+                "name": f"[Spec] {title}",
+                "description_html": spec_html,
+            },
+            "children": children,
+            "comments": comments,
+        }
+    
+    
+    if __name__ == "__main__":
+        args = sys.argv[1:]
+        if not args:
+            print(__doc__)
+            sys.exit(1)
+        path = args[0]
+        ident = None
+        drive = ""
+        if "--project-identifier" in args:
+            ident = args[args.index("--project-identifier") + 1]
+        if "--drive-url" in args:
+            drive = args[args.index("--drive-url") + 1]
+        print(json.dumps(parse(path, ident, drive), indent=2))

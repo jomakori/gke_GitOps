@@ -244,6 +244,10 @@ hermes-agent:
 
         3. NEVER execute Standard/Complex work without explicit user sign-off.
 
+        4. On approval: spin up Plane kanban tickets via the plane-ticket-sync
+           skill (project per board, [Spec] parent ticket + child tickets per
+           work item, Risks/gotchas as comments) unless the user declines.
+
         ## Approval Gates (BLOCK these without asking)
 
         - merge / commit
@@ -450,6 +454,9 @@ hermes-agent:
     - name: skill-us-tax-filing-automation
       configMap:
         name: openagent-skill-us-tax-filing-automation
+    - name: skill-plane-ticket-sync
+      configMap:
+        name: openagent-skill-plane-ticket-sync
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -461,6 +468,14 @@ hermes-agent:
     - name: skill-us-tax-filing-automation
       mountPath: /opt/data/skills/us-tax-filing-automation/SKILL.md
       subPath: us-tax-filing-automation.SKILL.md
+      readOnly: true
+    - name: skill-plane-ticket-sync
+      mountPath: /opt/data/skills/plane-ticket-sync/SKILL.md
+      subPath: plane-ticket-sync.SKILL.md
+      readOnly: true
+    - name: skill-plane-ticket-sync
+      mountPath: /opt/data/skills/plane-ticket-sync/scripts/plan_to_tickets.py
+      subPath: plan_to_tickets.py
       readOnly: true
   command:
     - sh
