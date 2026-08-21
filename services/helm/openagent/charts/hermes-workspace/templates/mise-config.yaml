@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-mise-config
+data:
+  mise.toml: |
+    {{- .Files.Get "files/mise.toml" | nindent 4 }}

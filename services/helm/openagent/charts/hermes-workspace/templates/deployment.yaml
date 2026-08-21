@@ -43,6 +43,11 @@ spec:
                 path: config.yaml
         - name: local-bin
           emptyDir: {}
+        - name: mise-config
+          configMap:
+            name: openagent-mise-config
+        - name: mise-store
+          emptyDir: {}
         - name: k8s-gitops-context
           configMap:
             name: openagent-k8s-gitops-context
@@ -56,13 +61,11 @@ spec:
             - |
               set -e
 
-              apt-get update && apt-get install -y tmux python3-venv git curl unzip
+              apt-get update && apt-get install -y tmux python3-venv git curl unzip build-essential libssl-dev pkg-config
 
               cp $(which git) /shared/bin/git
               cp $(which curl) /shared/bin/curl
               cp $(which unzip) /shared/bin/unzip
-
-              curl -fsSL "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-arm64" -o /shared/bin/jq && chmod 755 /shared/bin/jq
 
               # Python venv + packages
               python3 -m venv /shared/bin/venv && \
@@ -72,43 +75,25 @@ spec:
               cp /usr/bin/tmux /shared/bin/tmux && \
               ldd /usr/bin/tmux | grep -o '/[^ ]*' | while read lib; do cp "$lib" /shared/bin/ 2>/dev/null; done
 
-              # Terraform
-              TF_VER="1.9.8"
-              curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VER}/terraform_${TF_VER}_linux_arm64.zip" -o /tmp/tf.zip && \
-              unzip -o /tmp/tf.zip -d /shared/bin && rm /tmp/tf.zip && \
-              chmod 755 /shared/bin/terraform
+              # mise — declarative CLI manager (provisions tools from /mise/mise.toml)
+              curl -fsSL https://mise.run | sh
+              export MISE_DATA_DIR=/shared/mise MISE_CONFIG_FILE=/mise/mise.toml
+              mise install -y
 
-              # Helm
-              curl -fsSL "https://get.helm.sh/helm-v3.16.3-linux-arm64.tar.gz" | tar xz -C /tmp && \
-              mv /tmp/linux-arm64/helm /shared/bin/helm && rm -rf /tmp/linux-arm64 && \
-              chmod 755 /shared/bin/helm
-
-              # kubectl
-              curl -fsSL "https://dl.k8s.io/release/v1.31.4/bin/linux/arm64/kubectl" -o /shared/bin/kubectl && \
-              chmod 755 /shared/bin/kubectl
-
-              # gitleaks (filename has no v prefix)
-              curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz" | tar xz -C /shared/bin gitleaks && \
-              chmod 755 /shared/bin/gitleaks
-
-              # Doppler CLI (auto-detects arch)
-              curl -fsSL https://cli.doppler.com/install.sh | sh && \
-              cp $(which doppler) /shared/bin/doppler
+              # Expose mise tool shims on PATH
+              for t in terraform helm kubectl jq gitleaks doppler gh protoc cargo rustc rustup; do
+                ln -sf /shared/mise/shims/$t /shared/.local/bin/$t
+              done
 
               # Symlinks in ~/.local/bin/ for workspace binary resolution
               HERMES_BIN=/shared/bin/venv/bin/hermes
               chmod 755 "$HERMES_BIN"
               ln -sf "$HERMES_BIN" /shared/.local/bin/hermes
               ln -sf /shared/bin/tmux /shared/.local/bin/tmux
-              ln -sf /shared/bin/terraform /shared/.local/bin/terraform
-              ln -sf /shared/bin/helm /shared/.local/bin/helm
-              ln -sf /shared/bin/kubectl /shared/.local/bin/kubectl
-              ln -sf /shared/bin/gitleaks /shared/.local/bin/gitleaks
-              ln -sf /shared/bin/doppler /shared/.local/bin/doppler
               ln -sf /shared/bin/venv/bin/pre-commit /shared/.local/bin/pre-commit
 
               # Central model mapping
-              echo 'orchestrator=claude/sonnet-5' > /shared/bin/worker-models.cfg
+              echo 'orchestrator=deepseek-v4-pro' > /shared/bin/worker-models.cfg
               for entry in \
                 'supervisor=claude/sonnet-5' \
                 'strategist=deepseek-v4-pro' \
@@ -136,6 +121,11 @@ spec:
               mountPath: /shared/bin
             - name: local-bin
               mountPath: /shared/.local/bin
+            - name: mise-config
+              mountPath: /mise
+              readOnly: true
+            - name: mise-store
+              mountPath: /shared/mise
       containers:
         - name: hermes-workspace
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -166,6 +156,8 @@ spec:
               value: {{ .Values.hermes.apiKey | quote }}
             - name: HERMES_API_TOKEN
               value: {{ .Values.hermes.apiKey | quote }}
+            - name: MISE_DATA_DIR
+              value: /shared/mise
           envFrom:
             - secretRef:
                 name: openagent-secrets
@@ -187,6 +179,9 @@ spec:
               readOnly: true
             - name: local-bin
               mountPath: /home/workspace/.local/bin
+              readOnly: true
+            - name: mise-store
+              mountPath: /shared/mise
               readOnly: true
             - name: k8s-gitops-context
               mountPath: /workspace/reference/k8s-gitops-context.md

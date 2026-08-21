@@ -1,0 +1,13 @@
+# hermes-workspace CLI toolchain — managed by mise (https://mise.jdx.dev).
+# Bump versions here; the chart initContainer runs `mise install -y`.
+
+[tools]
+terraform = "1.9.8"
+helm      = "3.16.3"
+kubectl   = "1.31.4"
+jq        = "1.7.1"
+gitleaks  = "8.30.1"
+doppler   = "latest"
+gh        = "latest"
+protoc    = "latest"
+rust      = "latest"
