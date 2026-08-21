@@ -78,6 +78,7 @@ spec:
               # mise — declarative CLI manager (provisions tools from /mise/mise.toml)
               curl -fsSL https://mise.run | sh
               export MISE_DATA_DIR=/shared/mise MISE_CONFIG_FILE=/mise/mise.toml
+              export PATH="$HOME/.local/bin:$PATH"
               mise install -y
 
               # Expose mise tool shims on PATH
