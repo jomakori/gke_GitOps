@@ -79,6 +79,7 @@ spec:
               curl -fsSL https://mise.run | MISE_INSTALL_PATH=/shared/bin/mise sh
               export MISE_DATA_DIR=/shared/mise MISE_CONFIG_FILE=/mise/mise.toml
               export PATH="/shared/bin:$HOME/.local/bin:$PATH"
+              export CARGO_HOME=/shared/mise/cargo RUSTUP_HOME=/shared/mise/rustup
               mise install -y
 
               # Expose mise tool shims on PATH
@@ -161,6 +162,10 @@ spec:
               value: /shared/mise
             - name: MISE_CONFIG_FILE
               value: /mise/mise.toml
+            - name: CARGO_HOME
+              value: /shared/mise/cargo
+            - name: RUSTUP_HOME
+              value: /shared/mise/rustup
           envFrom:
             - secretRef:
                 name: openagent-secrets
