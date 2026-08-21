@@ -190,7 +190,6 @@ spec:
               readOnly: true
             - name: mise-store
               mountPath: /shared/mise
-              readOnly: true
             - name: mise-config
               mountPath: /mise
               readOnly: true
