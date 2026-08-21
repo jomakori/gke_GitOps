@@ -346,7 +346,7 @@ hermes-agent:
 
       plane:
         command: "uvx"
-        args: ["-y", "plane-mcp-server", "stdio"]
+        args: ["plane-mcp-server", "stdio"]
         env:
           PLANE_API_KEY: "${PLANE_API_KEY}"
           PLANE_WORKSPACE_SLUG: "${PLANE_WORKSPACE_SLUG}"
