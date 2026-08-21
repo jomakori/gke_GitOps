@@ -54,10 +54,19 @@ data:
 
   {{- if and .Values.ingress.appHost (eq (include "plane.tlsEnabled" .) "true") }}
   WEB_URL: "https://{{ .Values.ingress.appHost }}"
+  APP_BASE_URL: "https://{{ .Values.ingress.appHost }}"
+  ADMIN_BASE_URL: "https://{{ .Values.ingress.appHost }}"
+  SPACE_BASE_URL: "https://{{ .Values.ingress.appHost }}"
   {{- else if .Values.ingress.appHost }}
   WEB_URL: "http://{{ .Values.ingress.appHost }}"
+  APP_BASE_URL: "http://{{ .Values.ingress.appHost }}"
+  ADMIN_BASE_URL: "http://{{ .Values.ingress.appHost }}"
+  SPACE_BASE_URL: "http://{{ .Values.ingress.appHost }}"
   {{- else }}
   WEB_URL: ""
+  APP_BASE_URL: ""
+  ADMIN_BASE_URL: ""
+  SPACE_BASE_URL: ""
   {{- end }}
 
 
