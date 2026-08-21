@@ -76,9 +76,9 @@ spec:
               ldd /usr/bin/tmux | grep -o '/[^ ]*' | while read lib; do cp "$lib" /shared/bin/ 2>/dev/null; done
 
               # mise — declarative CLI manager (provisions tools from /mise/mise.toml)
-              curl -fsSL https://mise.run | sh
+              curl -fsSL https://mise.run | MISE_INSTALL_PATH=/shared/bin/mise sh
               export MISE_DATA_DIR=/shared/mise MISE_CONFIG_FILE=/mise/mise.toml
-              export PATH="$HOME/.local/bin:$PATH"
+              export PATH="/shared/bin:$HOME/.local/bin:$PATH"
               mise install -y
 
               # Expose mise tool shims on PATH
