@@ -144,49 +144,28 @@ litellm:
       - model_name: claude/sonnet-5
         litellm_params:
           model: openai/claude-sonnet-4-6
-          api_base: http://192.168.1.64:8317/v1
-          api_key: sk-auth2api-claude-proxy-key
-          rpm: 120
-          order: 1
-      - model_name: claude-sonnet-5
-        litellm_params:
-          model: openai/claude-sonnet-4-6
-          api_base: http://192.168.1.64:8317/v1
-          api_key: sk-auth2api-claude-proxy-key
-          rpm: 120
-          order: 1
-      - model_name: claude/sonnet-4
-        litellm_params:
-          model: openai/claude-sonnet-4-6
-          api_base: http://192.168.1.64:8317/v1
-          api_key: sk-auth2api-claude-proxy-key
-          rpm: 120
-          order: 1
-      - model_name: gpt-5.5
-        litellm_params:
-          model: openai/claude-sonnet-4-6
-          api_base: http://192.168.1.64:8317/v1
+          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
           api_key: sk-auth2api-claude-proxy-key
           rpm: 120
           order: 1
       - model_name: claude/opus-4
         litellm_params:
           model: openai/claude-opus-4-7
-          api_base: http://192.168.1.64:8317/v1
+          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
           api_key: sk-auth2api-claude-proxy-key
           rpm: 30
           order: 1
       - model_name: claude/opus-5
         litellm_params:
           model: openai/claude-opus-5
-          api_base: http://192.168.1.64:8317/v1
+          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
           api_key: sk-auth2api-claude-proxy-key
           rpm: 30
           order: 1
-      - model_name: claude/haiku-4
+      - model_name: claude/haiku-4-5
         litellm_params:
-          model: openai/claude-haiku-4-5-20251001
-          api_base: http://192.168.1.64:8317/v1
+          model: openai/claude-haiku-4-5
+          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
           api_key: sk-auth2api-claude-proxy-key
           rpm: 60
           order: 1
@@ -204,7 +183,6 @@ litellm:
       - minimax/M3: ["deepseek-v4-pro", "zai/glm-4.7"]
       - minimax/M2.7: ["deepseek-v4-flash", "zai/glm-4.7-flash"]
       - claude/sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
-      - claude-sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
       - claude/opus-4: ["claude/sonnet-5", "deepseek-v4-pro"]
       - claude/opus-5: ["claude/sonnet-5", "deepseek-v4-pro"]
 
@@ -214,7 +192,7 @@ hermes:
 hermes-agent:
   config:
     model:
-      default: deepseek-v4-flash
+      default: deepseek-v4-pro
       provider: litellm
     providers:
       litellm:
