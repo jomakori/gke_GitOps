@@ -967,18 +967,18 @@ data:
     - `CLAUDE_PROXY_API_KEY=claude-proxy-local` — dummy value. Proxy uses credential file, ignores auth. LiteLLM requires this for model config validation only.
     - `CLAUDE_BIN=/usr/local/bin/claude` — set in Dockerfile, path to claude CLI.
 
-    **LiteLLM integration** (values.yaml, via auth2api `192.168.1.64:8317`):
+    **LiteLLM integration** (values.yaml, via claude-proxy ClusterIP `claude-proxy:4523`):
     ```yaml
     - model_name: claude/sonnet-5
       litellm_params:
         model: openai/claude-sonnet-4-6
         api_key: sk-auth2api-claude-proxy-key
-        api_base: http://192.168.1.64:8317/v1
+        api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
     - model_name: claude/opus-5
       litellm_params:
         model: openai/claude-opus-5
         api_key: sk-auth2api-claude-proxy-key
-        api_base: http://192.168.1.64:8317/v1
+        api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
     ```
 
     **Ensemble persona reassignment** (4 of 10 personas):
