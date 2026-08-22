@@ -319,6 +319,16 @@ hermes-agent:
           resources: false
           prompts: false
 
+      drawio:
+        command: "sh"
+        args:
+          - "-c"
+          - "exec $HOME/.deno/bin/deno run --allow-net --allow-read --allow-env https://raw.githubusercontent.com/simonkurtz-MSFT/drawio-mcp-server/main/src/index.ts"
+        timeout: 120
+        tools:
+          resources: false
+          prompts: false
+
       google-workspace:
         command: "uvx"
         args: ["workspace-mcp", "--tool-tier", "complete"]
@@ -471,13 +481,20 @@ hermes-agent:
       if [ ! -f /usr/local/bin/obscura ]; then
         curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /usr/local/bin
       fi
-      export PATH=$HOME/.local/bin:$PATH
+      export PATH=$HOME/.local/bin:$HOME/.deno/bin:$PATH
       # Agent Reach deps
       command -v agent-reach >/dev/null 2>&1 || uv tool install https://github.com/Panniantong/agent-reach/archive/main.zip 2>&1
       command -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp 2>&1
       command -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1
       mkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }
-      # Doppler CLI
+      # deno (drawio MCP — headless draw.io XML generation)
+      if [ ! -f $HOME/.deno/bin/deno ]; then
+        curl -fsSL https://deno.land/install.sh | sh -s -- -y
+      fi
+      # Doppler CLI — same binary endpoint the official install script uses
+      # (cli.doppler.com/download). gpgv signature verify skipped: container
+      # runs uid 10000 w/o sudo, so gnupg can't be installed here. Installs to
+      # the PVC /opt/data/bin (user-writable, survives restarts).
       if [ ! -x /opt/data/bin/doppler ]; then
         mkdir -p /opt/data/bin
         DOP_ARCH=$(uname -m | sed 's/aarch64/arm64/; s/x86_64/amd64/')
