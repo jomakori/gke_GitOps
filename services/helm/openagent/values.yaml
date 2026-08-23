@@ -289,6 +289,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [list_applications, get_application, get_application_managed_resources, get_application_resource_tree, get_application_events, sync_application, get_appproject, get_resources]
 
       grafana:
         command: "npx"
@@ -299,6 +300,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [search_dashboards, get_dashboard_by_uid, get_dashboard_summary, get_dashboard_panel_queries, list_datasources, get_datasource_by_uid, get_datasource_by_name, query_prometheus, list_prometheus_metric_names, list_prometheus_label_names, list_prometheus_label_values, list_loki_label_names]
 
       kubectl:
         url: "http://kubernetes-mcp-server.openagent.svc.cluster.local:8000/mcp"
@@ -306,6 +308,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [pods_get, pods_list, pods_list_in_namespace, pods_log, pods_exec, pods_delete, pods_top, resources_get, resources_list, resources_create_or_update, resources_delete, resources_scale, events_list, namespaces_list, configuration_view]
 
       doppler:
         command: "npx"
@@ -315,6 +318,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [secrets_get, secrets_list, secrets_names, secrets_update, secrets_delete, secrets_download, configs_list, configs_get, projects_list, projects_get, activity_logs_list, workplace_get]
 
       obscura:
         command: "/opt/data/bin/obscura"
@@ -323,6 +327,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [browser_navigate, browser_snapshot, browser_markdown, browser_click, browser_type, browser_fill, browser_fill_form, browser_extract, browser_interactive_elements, browser_links, browser_screenshot, browser_scroll, browser_search, browser_evaluate, browser_wait_for_text]
 
       drawio:
         command: "sh"
@@ -340,6 +345,10 @@ hermes-agent:
         env:
           GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
           GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
+        tools:
+          include: [create_doc, get_doc_content, get_doc_as_markdown, inspect_doc_structure, batch_update_doc, modify_doc_text, find_and_replace_doc, create_table_with_data, debug_table_structure, update_paragraph_style, update_doc_headers_footers, export_doc_to_pdf, list_docs_in_folder, create_drive_file, create_drive_folder, list_drive_items, search_drive_files, get_drive_file_permissions, get_drive_shareable_link, manage_drive_access, import_to_google_doc, update_drive_file, copy_drive_file, get_drive_file_content, create_spreadsheet, read_sheet_values, modify_sheet_values, get_spreadsheet_info, search_gmail_messages, get_gmail_message_content, send_gmail_message, draft_gmail_message, get_events, manage_event, list_calendars]
+          resources: false
+          prompts: false
 
       plane:
         command: "uvx"
@@ -353,6 +362,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [project, workitem, member, state, label, workitem_comment, workitem_attachment, workitem_relation, page]
 
       skiplagged:
         url: "https://mcp.skiplagged.com/mcp"
@@ -390,6 +400,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [status, sync, list, get, create_item, edit_item, delete, restore, move, generate, create_folder, edit_folder, create_attachment, create_text_send]
   env: {}
   extraEnv:
     - name: DISCORD_BOT_TOKEN
