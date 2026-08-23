@@ -113,6 +113,11 @@ litellm:
         litellm_params:
           model: deepseek/deepseek-v4-flash
           api_key: os.environ/DEEPSEEK_API_KEY
+          # Response cache (in-memory): mirrors deepseek-v4-pro; makes router
+          # retries (num_retries=2) hit cache instead of re-invoking upstream.
+          # NOTE: DeepSeek's native prefix caching (the ~10% cheap reads) is
+          # automatic server-side and already active — this flag is additive.
+          cache: true
           order: 1
           use_chat_completions_api: true
       - model_name: deepseek-v4-pro
