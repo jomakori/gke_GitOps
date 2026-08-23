@@ -537,6 +537,10 @@ hermes-agent:
           && chmod +x /opt/data/bin/doppler \
           || rm -f /opt/data/bin/doppler
       fi
+      # Boot installs ran as root with HOME pinned to the PVC — hand the
+      # cache/tool dirs back to the runtime uid (10000) or npx/uvx spawned
+      # by the gateway hit EACCES on mkdir in the cache (seen after #98).
+      chown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config 2>/dev/null || true
       exec /init hermes gateway run
   resources:
     requests:
