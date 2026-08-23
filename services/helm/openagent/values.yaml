@@ -249,6 +249,24 @@ hermes-agent:
         - ALWAYS verbalize your classification: "Classified as [tier]."
         - Show your work. Tell user what you're doing.
         - When delegating: "Delegating to [persona] for [task]."
+    # ── Token reduction (Reddit r/hermesagent informed) ──
+    # tool_search "on": defer tool schemas out of the prompt; model searches
+    # for tools by name and only matched schemas load. Stock-hermes version
+    # of the "router-first toolset" trick (71% static-overhead cut post).
+    # "on" = always active when any deferrable tool exists (we run 14 MCP
+    # servers — the exact case the config comment recommends it for).
+    tools:
+      tool_search:
+        enabled: "on"
+        threshold_pct: 10
+        search_default_limit: 5
+        max_search_limit: 20
+    # Compact sooner (50% → 35% of context) — the 530K-token requests came
+    # from sessions running past the old threshold.
+    compression:
+      enabled: true
+      threshold: 0.35
+      target_ratio: 0.20
     delegation:
       model: claude/sonnet-5
       provider: litellm
