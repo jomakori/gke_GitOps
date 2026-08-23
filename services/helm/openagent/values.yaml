@@ -61,11 +61,9 @@ litellm:
     litellm_settings:
       drop_params: true
     router_settings:
-      # Cooldowns MUST stay enabled. disable_cooldowns: true short-circuits the
-      # exception→fallback path — declared fallbacks (opencode/* → deepseek-v4-flash,
-      # claude/* → deepseek/zai) never fire on 429s (verified Jul 2026: 30/30 429s,
-      # zero fallback traffic in spend logs). allowed_fails/cooldown_time keep
-      # health probes from hammering throttled upstreams (doc'd mitigation).
+      # disable_cooldowns:true short-circuits fallbacks (429s never spill to
+      # backup models). allowed_fails/cooldown_time keep probes off throttled
+      # upstreams.
       disable_cooldowns: false
       allowed_fails: 5
       cooldown_time: 60
@@ -113,10 +111,8 @@ litellm:
         litellm_params:
           model: deepseek/deepseek-v4-flash
           api_key: os.environ/DEEPSEEK_API_KEY
-          # Response cache (in-memory): mirrors deepseek-v4-pro; makes router
-          # retries (num_retries=2) hit cache instead of re-invoking upstream.
-          # NOTE: DeepSeek's native prefix caching (the ~10% cheap reads) is
-          # automatic server-side and already active — this flag is additive.
+          # Response cache for router retries. (DeepSeek native prefix caching
+          # is automatic server-side.)
           cache: true
           order: 1
           use_chat_completions_api: true
@@ -249,20 +245,15 @@ hermes-agent:
         - ALWAYS verbalize your classification: "Classified as [tier]."
         - Show your work. Tell user what you're doing.
         - When delegating: "Delegating to [persona] for [task]."
-    # ── Token reduction (Reddit r/hermesagent informed) ──
-    # tool_search "on": defer tool schemas out of the prompt; model searches
-    # for tools by name and only matched schemas load. Stock-hermes version
-    # of the "router-first toolset" trick (71% static-overhead cut post).
-    # "on" = always active when any deferrable tool exists (we run 14 MCP
-    # servers — the exact case the config comment recommends it for).
+    # tool_search: defer tool schemas; model searches by name, only matched
+    # schemas load. "on" = always (14 MCP servers → max unconditional cut).
     tools:
       tool_search:
         enabled: "on"
         threshold_pct: 10
         search_default_limit: 5
         max_search_limit: 20
-    # Compact sooner (50% → 35% of context) — the 530K-token requests came
-    # from sessions running past the old threshold.
+    # Compact sooner — 530K-token requests came from late compaction.
     compression:
       enabled: true
       threshold: 0.35
@@ -514,19 +505,14 @@ hermes-agent:
     - sh
     - -c
     - |
-      # Pin HOME + caches to the PVC (/opt/data) so boot-time installs and
-      # npm/uv/deno caches survive container restarts (OOM/roll). Without this,
-      # installs run as root and land in /root (container layer, wiped on
-      # restart) while MCPs use HOME=/opt/data/home — deno/yt-dlp/gallery-dl
-      # vanish every boot and caches re-download cold (OOM spike risk).
+      # Pin HOME+caches to the PVC so boot installs survive restarts and MCPs
+      # (uid 10000, HOME=/opt/data/home) reuse them instead of re-downloading.
       export HOME=/opt/data/home
       export NPM_CONFIG_CACHE=$HOME/.npm
       export UV_CACHE_DIR=$HOME/.cache/uv
       export UV_TOOL_DIR=$HOME/.local/share/uv/tools
       export UV_TOOL_BIN_DIR=$HOME/.local/bin
-      # ── Toolchain: mise (declarative; mirrors hermes-workspace #89-94) ──
-      # node/deno/uv/go managed from /mise/mise.toml (ConfigMap
-      # openagent-hermes-mise-config). Everything lands on the PVC.
+      # Toolchain via mise (/mise/mise.toml) — node/deno/uv/go on the PVC.
       export MISE_DATA_DIR=/opt/data/mise
       export MISE_CACHE_DIR=/opt/data/mise-cache
       export MISE_CONFIG_FILE=/mise/mise.toml
@@ -535,12 +521,12 @@ hermes-agent:
       fi
       export PATH=/opt/data/mise/shims:/opt/data/bin:$HOME/.local/bin:$PATH
       mise install -y 2>&1 || true
-      # Expose mise-managed runtimes on the runtime PATH (/opt/data/bin is
-      # first; /init resets PATH so the boot export alone never reaches MCPs).
+      # /init resets PATH — symlinks into /opt/data/bin (first on PATH) are
+      # what reach MCPs.
       for t in node npm npx deno uv uvx go; do
         [ -x /opt/data/mise/shims/$t ] && ln -sf /opt/data/mise/shims/$t /opt/data/bin/$t
       done
-      # bitwarden CLI — npm global to the PVC (container layer would wipe it)
+      # bitwarden CLI — npm global → PVC
       if [ ! -x /opt/data/npm-global/bin/bw ]; then
         npm install -g --prefix /opt/data/npm-global @bitwarden/cli 2>&1
       fi
@@ -555,10 +541,8 @@ hermes-agent:
       command -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp 2>&1
       command -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1
       mkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }
-      # deno fallback (if mise install failed — e.g. ConfigMap not mounted):
-      # pinned release zip + python zipfile (deno.land/install.sh needs
-      # unzip/7z, absent from this image). v2.9.5: drawio-mcp-server ships
-      # deno.lock v5 (deno 2.x only).
+      # deno fallback: release zip + python zipfile (install.sh needs unzip/7z,
+      # absent); v2.9.5 pinned for drawio's deno.lock v5.
       if [ ! -x /opt/data/bin/deno ] && [ ! -x $HOME/.deno/bin/deno ]; then
         mkdir -p $HOME/.deno/bin /tmp/deno_x
         DENO_ARCH=$(uname -m | sed 's/aarch64/arm64/')
@@ -569,16 +553,11 @@ hermes-agent:
           || rm -f /tmp/deno.zip
       fi
       [ -x $HOME/.deno/bin/deno ] && ln -sf $HOME/.deno/bin/deno /opt/data/bin/deno
-      # drawio MCP server — local checkout so deno.json/lockfile resolve.
-      # Running the remote URL directly never discovers the config (bare
-      # imports like @std/dotenv fail with "not a dependency").
+      # drawio MCP needs a local checkout (remote-URL run never discovers deno.json).
       if [ ! -d /opt/data/drawio-mcp-server/.git ]; then
         git clone --depth 1 https://github.com/simonkurtz-MSFT/drawio-mcp-server /opt/data/drawio-mcp-server 2>&1 || true
       fi
-      # Doppler CLI — same binary endpoint the official install script uses
-      # (cli.doppler.com/download). gpgv signature verify skipped: container
-      # runs uid 10000 w/o sudo, so gnupg can't be installed here. Installs to
-      # the PVC /opt/data/bin (user-writable, survives restarts).
+      # Doppler CLI → PVC. gpgv verify skipped (no gnupg as uid 10000).
       if [ ! -x /opt/data/bin/doppler ]; then
         mkdir -p /opt/data/bin
         DOP_ARCH=$(uname -m | sed 's/aarch64/arm64/; s/x86_64/amd64/')
@@ -587,11 +566,8 @@ hermes-agent:
           && chmod +x /opt/data/bin/doppler \
           || rm -f /tmp/doppler.tgz
       fi
-      # Boot installs ran as root with HOME pinned to the PVC — hand the
-      # cache/tool dirs back to the runtime uid (10000) or npx/uvx spawned
-      # by the gateway hit EACCES on mkdir in the cache (seen after #98).
-      # mise dirs included: runtime shims exec `mise` as uid 10000 and may
-      # write to the cache.
+      # Boot ran as root — chown caches/tools to runtime uid 10000 (npx/uvx/
+      # mise shims EACCES otherwise).
       chown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config /opt/data/mise /opt/data/mise-cache /opt/data/npm-global 2>/dev/null || true
       exec /init hermes gateway run
   resources:
