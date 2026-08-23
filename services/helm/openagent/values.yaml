@@ -328,7 +328,7 @@ hermes-agent:
         command: "sh"
         args:
           - "-c"
-          - "exec $HOME/.deno/bin/deno run --allow-net --allow-read --allow-env https://raw.githubusercontent.com/simonkurtz-MSFT/drawio-mcp-server/main/src/index.ts"
+          - "cd /opt/data/drawio-mcp-server && exec $HOME/.deno/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio"
         timeout: 120
         tools:
           resources: false
@@ -474,6 +474,17 @@ hermes-agent:
     - sh
     - -c
     - |
+      # Pin HOME + caches to the PVC (/opt/data) so boot-time installs and
+      # npm/uv/deno caches survive container restarts (OOM/roll). Without this,
+      # installs run as root and land in /root (container layer, wiped on
+      # restart) while MCPs use HOME=/opt/data/home — deno/yt-dlp/gallery-dl
+      # vanish every boot and caches re-download cold (OOM spike risk).
+      export HOME=/opt/data/home
+      export NPM_CONFIG_CACHE=$HOME/.npm
+      export UV_CACHE_DIR=$HOME/.cache/uv
+      export UV_TOOL_DIR=$HOME/.local/share/uv/tools
+      export UV_TOOL_BIN_DIR=$HOME/.local/bin
+      export DENO_INSTALL=$HOME/.deno
       # bitwarden
       npm install -g @bitwarden/cli 2>&1
       # golang
@@ -493,8 +504,26 @@ hermes-agent:
       command -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1
       mkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }
       # deno (drawio MCP — headless draw.io XML generation)
-      if [ ! -f $HOME/.deno/bin/deno ]; then
-        curl -fsSL https://deno.land/install.sh | sh -s -- -y
+      # DENO_INSTALL pinned to the PVC above — must match the MCP config's
+      # $HOME/.deno/bin/deno (runtime HOME=/opt/data/home), NOT /root.
+      # Pinned v2.9.5: the drawio-mcp-server repo ships a deno.lock v5 (deno 2.x
+      # only). Uses the release zip + python zipfile: deno.land/install.sh
+      # requires unzip/7z which are NOT in this image (verified: install.sh
+      # fails). Version URL is pinned — bump deliberately.
+      if [ ! -x $DENO_INSTALL/bin/deno ]; then
+        mkdir -p $DENO_INSTALL/bin /tmp/deno_x
+        DENO_ARCH=$(uname -m | sed 's/aarch64/arm64/')
+        curl -fsSL --retry 3 "https://github.com/denoland/deno/releases/download/v2.9.5/deno-${DENO_ARCH}-unknown-linux-gnu.zip" -o /tmp/deno.zip \
+          && python3 -c "import zipfile; zipfile.ZipFile('/tmp/deno.zip').extractall('/tmp/deno_x')" \
+          && mv /tmp/deno_x/deno $DENO_INSTALL/bin/deno \
+          && chmod +x $DENO_INSTALL/bin/deno \
+          || rm -f /tmp/deno.zip
+      fi
+      # drawio MCP server — local checkout so deno.json/lockfile resolve.
+      # Running the remote URL directly never discovers the config (bare
+      # imports like @std/dotenv fail with "not a dependency").
+      if [ ! -d /opt/data/drawio-mcp-server/.git ]; then
+        git clone --depth 1 https://github.com/simonkurtz-MSFT/drawio-mcp-server /opt/data/drawio-mcp-server 2>&1 || true
       fi
       # Doppler CLI — same binary endpoint the official install script uses
       # (cli.doppler.com/download). gpgv signature verify skipped: container
@@ -509,6 +538,16 @@ hermes-agent:
           || rm -f /opt/data/bin/doppler
       fi
       exec /init hermes gateway run
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "2"
+      # 3Gi — 2Gi OOM-killed the container (exit 137) during cold-cache MCP
+      # spawn storm + concurrent ArgoCD sync (2026-08-23). Caches now on PVC
+      # (see command block), but keep headroom for npx/uvx server boots.
+      memory: 3Gi
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
