@@ -61,9 +61,14 @@ litellm:
     litellm_settings:
       drop_params: true
     router_settings:
-      disable_cooldowns: true
-      allowed_fails: 100
-      cooldown_time: 0
+      # Cooldowns MUST stay enabled. disable_cooldowns: true short-circuits the
+      # exception→fallback path — declared fallbacks (opencode/* → deepseek-v4-flash,
+      # claude/* → deepseek/zai) never fire on 429s (verified Jul 2026: 30/30 429s,
+      # zero fallback traffic in spend logs). allowed_fails/cooldown_time keep
+      # health probes from hammering throttled upstreams (doc'd mitigation).
+      disable_cooldowns: false
+      allowed_fails: 5
+      cooldown_time: 60
       num_retries: 2
       routing_strategy: least-busy
       request_timeout: 180

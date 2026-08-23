@@ -337,9 +337,9 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.proxy_config.model_list[9].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[9].litellm_params.use_chat_completions_api | bool | `true` |  |
 | litellm.proxy_config.model_list[9].model_name | string | `"zai/glm-4.7-flash"` |  |
-| litellm.proxy_config.router_settings.allowed_fails | int | `100` |  |
-| litellm.proxy_config.router_settings.cooldown_time | int | `0` |  |
-| litellm.proxy_config.router_settings.disable_cooldowns | bool | `true` |  |
+| litellm.proxy_config.router_settings.allowed_fails | int | `5` |  |
+| litellm.proxy_config.router_settings.cooldown_time | int | `60` |  |
+| litellm.proxy_config.router_settings.disable_cooldowns | bool | `false` |  |
 | litellm.proxy_config.router_settings.num_retries | int | `2` |  |
 | litellm.proxy_config.router_settings.request_timeout | int | `180` |  |
 | litellm.proxy_config.router_settings.routing_strategy | string | `"least-busy"` |  |
