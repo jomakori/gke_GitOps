@@ -317,7 +317,7 @@ hermes-agent:
           prompts: false
 
       obscura:
-        command: "/usr/local/bin/obscura"
+        command: "/opt/data/bin/obscura"
         args: ["mcp", "--stealth"]
         timeout: 120
         tools:
@@ -328,7 +328,7 @@ hermes-agent:
         command: "sh"
         args:
           - "-c"
-          - "cd /opt/data/drawio-mcp-server && exec $HOME/.deno/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio"
+          - "cd /opt/data/drawio-mcp-server && exec /opt/data/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio"
         timeout: 120
         tools:
           resources: false
@@ -450,6 +450,9 @@ hermes-agent:
     - name: skill-plane-ticket-sync
       configMap:
         name: openagent-skill-plane-ticket-sync
+    - name: hermes-mise-config
+      configMap:
+        name: openagent-hermes-mise-config
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -470,6 +473,9 @@ hermes-agent:
       mountPath: /opt/data/skills/plane-ticket-sync/scripts/plan_to_tickets.py
       subPath: plan_to_tickets.py
       readOnly: true
+    - name: hermes-mise-config
+      mountPath: /mise
+      readOnly: true
   command:
     - sh
     - -c
@@ -484,41 +490,51 @@ hermes-agent:
       export UV_CACHE_DIR=$HOME/.cache/uv
       export UV_TOOL_DIR=$HOME/.local/share/uv/tools
       export UV_TOOL_BIN_DIR=$HOME/.local/bin
-      export DENO_INSTALL=$HOME/.deno
-      # bitwarden
-      npm install -g @bitwarden/cli 2>&1
-      # golang
-      if [ ! -f /usr/local/go/bin/go ]; then
-        curl -sL https://golang.org/dl/go1.22.4.linux-arm64.tar.gz | tar -xz -C /usr/local
+      # ── Toolchain: mise (declarative; mirrors hermes-workspace #89-94) ──
+      # node/deno/uv/go managed from /mise/mise.toml (ConfigMap
+      # openagent-hermes-mise-config). Everything lands on the PVC.
+      export MISE_DATA_DIR=/opt/data/mise
+      export MISE_CACHE_DIR=/opt/data/mise-cache
+      export MISE_CONFIG_FILE=/mise/mise.toml
+      if [ ! -x /opt/data/bin/mise ]; then
+        curl -fsSL https://mise.run | MISE_INSTALL_PATH=/opt/data/bin/mise sh
       fi
-      export PATH=/usr/local/go/bin:/opt/data/bin:$PATH
+      export PATH=/opt/data/mise/shims:/opt/data/bin:$HOME/.local/bin:$PATH
+      mise install -y 2>&1 || true
+      # Expose mise-managed runtimes on the runtime PATH (/opt/data/bin is
+      # first; /init resets PATH so the boot export alone never reaches MCPs).
+      for t in node npm npx deno uv uvx go; do
+        [ -x /opt/data/mise/shims/$t ] && ln -sf /opt/data/mise/shims/$t /opt/data/bin/$t
+      done
+      # bitwarden CLI — npm global to the PVC (container layer would wipe it)
+      if [ ! -x /opt/data/npm-global/bin/bw ]; then
+        npm install -g --prefix /opt/data/npm-global @bitwarden/cli 2>&1
+      fi
+      ln -sf /opt/data/npm-global/bin/bw /opt/data/bin/bw
       cd /opt/data && go mod download
-      # obscura
-      if [ ! -f /usr/local/bin/obscura ]; then
-        curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /usr/local/bin
+      # obscura (stealth browser) — PVC so it survives restarts
+      if [ ! -x /opt/data/bin/obscura ]; then
+        curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /opt/data/bin
       fi
-      export PATH=$HOME/.local/bin:$HOME/.deno/bin:$PATH
-      # Agent Reach deps
+      # Agent Reach deps (uv tool bins → PVC via UV_TOOL_BIN_DIR)
       command -v agent-reach >/dev/null 2>&1 || uv tool install https://github.com/Panniantong/agent-reach/archive/main.zip 2>&1
       command -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp 2>&1
       command -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1
       mkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }
-      # deno (drawio MCP — headless draw.io XML generation)
-      # DENO_INSTALL pinned to the PVC above — must match the MCP config's
-      # $HOME/.deno/bin/deno (runtime HOME=/opt/data/home), NOT /root.
-      # Pinned v2.9.5: the drawio-mcp-server repo ships a deno.lock v5 (deno 2.x
-      # only). Uses the release zip + python zipfile: deno.land/install.sh
-      # requires unzip/7z which are NOT in this image (verified: install.sh
-      # fails). Version URL is pinned — bump deliberately.
-      if [ ! -x $DENO_INSTALL/bin/deno ]; then
-        mkdir -p $DENO_INSTALL/bin /tmp/deno_x
+      # deno fallback (if mise install failed — e.g. ConfigMap not mounted):
+      # pinned release zip + python zipfile (deno.land/install.sh needs
+      # unzip/7z, absent from this image). v2.9.5: drawio-mcp-server ships
+      # deno.lock v5 (deno 2.x only).
+      if [ ! -x /opt/data/bin/deno ] && [ ! -x $HOME/.deno/bin/deno ]; then
+        mkdir -p $HOME/.deno/bin /tmp/deno_x
         DENO_ARCH=$(uname -m | sed 's/aarch64/arm64/')
         curl -fsSL --retry 3 "https://github.com/denoland/deno/releases/download/v2.9.5/deno-${DENO_ARCH}-unknown-linux-gnu.zip" -o /tmp/deno.zip \
           && python3 -c "import zipfile; zipfile.ZipFile('/tmp/deno.zip').extractall('/tmp/deno_x')" \
-          && mv /tmp/deno_x/deno $DENO_INSTALL/bin/deno \
-          && chmod +x $DENO_INSTALL/bin/deno \
+          && mv /tmp/deno_x/deno $HOME/.deno/bin/deno \
+          && chmod +x $HOME/.deno/bin/deno \
           || rm -f /tmp/deno.zip
       fi
+      [ -x $HOME/.deno/bin/deno ] && ln -sf $HOME/.deno/bin/deno /opt/data/bin/deno
       # drawio MCP server — local checkout so deno.json/lockfile resolve.
       # Running the remote URL directly never discovers the config (bare
       # imports like @std/dotenv fail with "not a dependency").
@@ -535,12 +551,14 @@ hermes-agent:
         curl -fsSL --retry 3 "https://cli.doppler.com/download?os=linux&arch=${DOP_ARCH}&format=tar" -o /tmp/doppler.tgz \
           && tar -xzf /tmp/doppler.tgz -C /opt/data/bin doppler \
           && chmod +x /opt/data/bin/doppler \
-          || rm -f /opt/data/bin/doppler
+          || rm -f /tmp/doppler.tgz
       fi
       # Boot installs ran as root with HOME pinned to the PVC — hand the
       # cache/tool dirs back to the runtime uid (10000) or npx/uvx spawned
       # by the gateway hit EACCES on mkdir in the cache (seen after #98).
-      chown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config 2>/dev/null || true
+      # mise dirs included: runtime shims exec `mise` as uid 10000 and may
+      # write to the cache.
+      chown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config /opt/data/mise /opt/data/mise-cache /opt/data/npm-global 2>/dev/null || true
       exec /init hermes gateway run
   resources:
     requests:

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-hermes-mise-config
+  namespace: {{ .Release.Namespace }}
+data:
+  mise.toml: |
+    # Hermes-agent runtime toolchain — managed by mise (mirrors hermes-workspace
+    # mise migration, PRs #89-94). Mounted at /mise in the hermes-agent pod;
+    # boot script runs `mise install` and symlinks shims into /opt/data/bin
+    # (first on the runtime PATH).
+    # deno pinned 2.9.5: drawio-mcp-server ships deno.lock v5 (deno 2.x only).
+    [tools]
+    node = "latest"
+    deno = "2.9.5"
+    uv = "latest"
+    go = "latest"
