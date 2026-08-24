@@ -77,14 +77,8 @@ litellm:
           model: openai/big-pickle
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
+          merge_reasoning_content_in_choices: true
           order: 1
-      - model_name: opencode/north-mini-code-free
-        litellm_params:
-          model: openai/north-mini-code-free
-          api_key: os.environ/OPENCODE_API_KEY
-          api_base: os.environ/OPENCODE_API_BASE
-          order: 1
-          use_chat_completions_api: true
       - model_name: opencode/deepseek-v4-flash-free
         litellm_params:
           model: openai/deepseek-v4-flash-free
@@ -98,6 +92,8 @@ litellm:
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
           order: 1
+          use_chat_completions_api: true
+          merge_reasoning_content_in_choices: true
       - model_name: anthropic/claude-opus-4-7
         litellm_params:
           model: anthropic/claude-opus-4-7
@@ -178,7 +174,6 @@ litellm:
           order: 1
     fallbacks:
       - opencode/big-pickle: ["deepseek-v4-flash"]
-      - opencode/north-mini-code-free: ["deepseek-v4-flash"]
       - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
       - opencode/mimo-v2.5-free: ["deepseek-v4-flash"]
       - anthropic/claude-opus-4-7: ["claude/opus-4", "deepseek-v4-pro"]
