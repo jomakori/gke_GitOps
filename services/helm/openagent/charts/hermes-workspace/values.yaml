@@ -10,11 +10,6 @@ image:
 
 service:
   port: 3000
-  # The workspace deployment is kept as the swarm controller (tmux workers) but
-  # its Service is disabled because hermes-webui reuses the drop-in Service name
-  # openagent-hermes-workspace for the public dashboard. Swarm workers are
-  # in-pod (tmux panes) — no Service needed for them.
-  enabled: true
 
 hermes:
   apiUrl: "http://openagent-hermes-api.openagent.svc.cluster.local:8642"
