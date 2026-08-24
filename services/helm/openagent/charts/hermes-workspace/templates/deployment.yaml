@@ -20,8 +20,6 @@ spec:
         {{- include "hermes-workspace.labels" . | nindent 8 }}
         app.kubernetes.io/component: hermes-workspace
     spec:
-      imagePullSecrets:
-        - name: ghcr-pull-secret
       volumes:
         - name: swarm-config
           configMap:
