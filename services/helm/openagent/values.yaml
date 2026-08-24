@@ -79,13 +79,27 @@ litellm:
           api_base: os.environ/OPENCODE_API_BASE
           merge_reasoning_content_in_choices: true
           order: 1
-      - model_name: opencode/deepseek-v4-flash-free
+      # nemotron-3-ultra-free: most capable free opencode model (verified
+      # 08-24: correct code output, clean content). Replaces the unavailable
+      # deepseek-v4-flash-free.
+      - model_name: opencode/nemotron-3-ultra-free
         litellm_params:
-          model: openai/deepseek-v4-flash-free
+          model: openai/nemotron-3-ultra-free
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
           order: 1
           use_chat_completions_api: true
+          merge_reasoning_content_in_choices: true
+      # laguna-s-2.1-free: clean fast free model (verified 08-24: content
+      # direct, no reasoning wrapper). Replaces the dead north-mini-code-free.
+      - model_name: opencode/laguna-s-2.1-free
+        litellm_params:
+          model: openai/laguna-s-2.1-free
+          api_key: os.environ/OPENCODE_API_KEY
+          api_base: os.environ/OPENCODE_API_BASE
+          order: 1
+          use_chat_completions_api: true
+          merge_reasoning_content_in_choices: true
       - model_name: opencode/mimo-v2.5-free
         litellm_params:
           model: openai/mimo-v2.5-free
@@ -174,14 +188,15 @@ litellm:
           order: 1
     fallbacks:
       - opencode/big-pickle: ["deepseek-v4-flash"]
-      - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
+      - opencode/nemotron-3-ultra-free: ["deepseek-v4-flash"]
+      - opencode/laguna-s-2.1-free: ["deepseek-v4-flash"]
       - opencode/mimo-v2.5-free: ["deepseek-v4-flash"]
       - anthropic/claude-opus-4-7: ["claude/opus-4", "deepseek-v4-pro"]
       - moonshotai/kimi-k2.6: ["deepseek-v4-pro", "zai/glm-4.7"]
-      - deepseek-v4-flash: ["zai/glm-4.7-flash", "opencode/deepseek-v4-flash-free"]
+      - deepseek-v4-flash: ["zai/glm-4.7-flash", "opencode/nemotron-3-ultra-free"]
       - deepseek-v4-pro: ["zai/glm-4.7", "deepseek-v4-flash"]
       - zai/glm-4.7: ["deepseek-v4-pro", "zai/glm-4.7-flash"]
-      - zai/glm-4.7-flash: ["deepseek-v4-flash", "opencode/deepseek-v4-flash-free"]
+      - zai/glm-4.7-flash: ["deepseek-v4-flash", "opencode/nemotron-3-ultra-free"]
       - minimax/M3: ["deepseek-v4-pro", "zai/glm-4.7"]
       - minimax/M2.7: ["deepseek-v4-flash", "zai/glm-4.7-flash"]
       - claude/sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
@@ -194,7 +209,9 @@ hermes:
 hermes-agent:
   config:
     model:
-      default: deepseek-v4-pro
+      # Most capable free opencode model (verified 08-24). DeepSeek v4 pro
+      # remains the paid-quality fallback via the fallback chain above.
+      default: opencode/nemotron-3-ultra-free
       provider: litellm
     providers:
       litellm:
