@@ -514,8 +514,6 @@ hermes-agent:
 # ── Hermes Workspace ────────────────────────────────────────────────
 hermes-workspace:
   enabled: true
-  service:
-    enabled: false
 
 # ── Hermes WebUI (gateway thin-client dashboard) ───────────────────
 hermes-webui:

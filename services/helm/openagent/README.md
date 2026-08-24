@@ -231,7 +231,6 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.service.port | int | `9119` |  |
 | hermes-webui.enabled | bool | `true` |  |
 | hermes-workspace.enabled | bool | `true` |  |
-| hermes-workspace.service.enabled | bool | `false` |  |
 | hermes.enabled | bool | `true` |  |
 | litellm.db.database | string | `"litellm"` |  |
 | litellm.db.deployStandalone | bool | `false` |  |
