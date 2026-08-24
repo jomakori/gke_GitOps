@@ -804,35 +804,37 @@ data:
 
     ### Hermes Dashboard & Workspace
 
-    The hermes-workspace web UI (`https://openagent.maklab.net`) connects to two hermes-agent backends:
+    The public dashboard (`https://openagent.maklab.net`) is **hermes-webui** (`charts/hermes-webui`) — a `nesquena/hermes-webui` dark-themed web UI. It runs in **gateway chat-backend mode**: it is a pure HTTP thin-client that POSTs `/v1/chat/completions` to the existing jyje agent's API server (`:8642`). It does NOT run a second in-process agent — all inference/memory/tools/sessions stay on the jyje agent. The istio `openagent` VirtualService points at `hermes-webui.openagent.svc.cluster.local:8787` (CF Access private).
+
+    Config flow (`charts/hermes-webui/values.yaml` → deployment env):
+    - `HERMES_WEBUI_CHAT_BACKEND=gateway` — thin-client mode (not in-process agent)
+    - `HERMES_WEBUI_GATEWAY_BASE_URL` → `openagent-hermes-api:8642`
+    - `HERMES_WEBUI_GATEWAY_API_KEY` → agent's `API_SERVER_KEY` (`***REMOVED***`)
+    - `HERMES_WEBUI_STATE_DIR=/data` — the webui's OWN PVC (`hermes-webui-state`), **NOT** the agent's `/opt/data` (shared RWO PVC + concurrent SQLite WAL writes = corruption)
+    - `HERMES_WEBUI_ALLOWED_ORIGINS` + `HERMES_WEBUI_TRUST_FORWARDED_*` — reverse-proxy/Istio support. Auth is **CF Access OAuth only** (`enable_private: true` on the istio VS); no webui password is set.
+
+    **Image / CMD override**: the stock image ships code in `/apptoo` (not `/app`) with no pre-built venv, and its default entrypoint (`docker_init.bash`) unconditionally tries to install the full agent-source deps. The subchart bypasses this: an initContainer builds a venv with only `/apptoo/requirements.txt`, and the main container runs `/app/venv/bin/python /apptoo/server.py`. The image `:v0.52.113` is multi-arch (linux/arm64 confirmed).
+
+    **hermes-workspace is STILL deployed as the swarm controller** (the 10-persona OMO loop runs via tmux on that pod). It only lost its role as the public dashboard — its `:3000` UI is now internal-only. Do NOT disable `hermes-workspace.enabled` or you break the loop-engine swarm.
+
+    Under the hood, the public dashboard still talks to two hermes-agent backends (the webui gates chat via the API server):
 
     | Service | Port | DNS | Purpose |
     |---------|------|-----|---------|
-    | `openagent-hermes-agent` | 9119 | dashboard | Web UI, session cookies, config, skills admin |
+    | `openagent-hermes-agent` | 9119 | dashboard | Hermes built-in dashboard: session cookies, config, skills admin |
     | `openagent-hermes-api` | 8642 | API | Chat completions, sessions, models, runs, capabilities |
 
     **Why two Services**: The hermes-agent OCI subchart creates a single Service exposing only port 9119 (dashboard). Port 8642 (API server) is NOT exposed by the subchart's Service template. A separate `openagent-hermes-api` Service (`templates/shared/hermes-api-service.yaml`) was added to expose the API port.
 
-    **Dashboard auth** (`values.yaml` → `hermes-agent.extraEnv`):
+    **Hermes dashboard auth** (`values.yaml` → `hermes-agent.extraEnv`):
     - `HERMES_DASHBOARD=1` — enables the dashboard process (s6-supervised)
     - `HERMES_DASHBOARD_HOST=0.0.0.0` — binds all interfaces (was 127.0.0.1)
     - `HERMES_DASHBOARD_PORT=9119` — matches Service targetPort (was 19119)
     - `HERMES_DASHBOARD_BASIC_AUTH_USERNAME/PASSWORD/SECRET` — from Doppler `svc_openagent` via `openagent-secrets`
 
-    **Workspace config** (`charts/hermes-workspace/values.yaml`):
-    ```yaml
-    hermes:
-      apiUrl: "http://openagent-hermes-api.openagent.svc.cluster.local:8642"
-      dashboardUrl: "http://openagent-hermes.openagent.svc.cluster.local:9119"
-      apiKey: "***REMOVED***"
-    ```
+    **Key gotcha**: Hermes dashboard refuses to bind `0.0.0.0` without auth. Error: "auth gate engages on non-loopback binds, but no auth providers are registered." Fix: set `HERMES_DASHBOARD_BASIC_AUTH_*` env vars. Creds MUST be in Doppler `svc_openagent` — ESO syncs them to `openagent-secrets` K8s Secret. The hermes-agent values.yaml uses `secretKeyRef` to reference them.
 
-    **Connectivity modes** (workspace log output):
-    - `disconnected` — can't reach any backend → setup screen shown
-    - `enhanced-fork` — API reachable, dashboard token fetch failed → chat/models/sessions work, skills/config missing
-    - `connected` — both API and dashboard reachable → full features
-
-    **Key gotcha**: Dashboard refuses to bind `0.0.0.0` without auth. Error: "auth gate engages on non-loopback binds, but no auth providers are registered." Fix: set `HERMES_DASHBOARD_BASIC_AUTH_*` env vars. Creds MUST be in Doppler `svc_openagent` — ESO syncs them to `openagent-secrets` K8s Secret. The hermes-agent values.yaml uses `secretKeyRef` to reference them.
+    **Post-deploy parity check** (hermes-webui gateway mode): verify the webui lists sessions from the gateway (`/sessions` + `/runs` on `:8642`) and not only its local store; verify SSE streaming; verify tool-approval flow (gateway approvals are a draft feature — #4203). If sessions don't bridge, Discord/CLI history won't appear in the webui.
 
     ### Skills
 

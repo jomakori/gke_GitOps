@@ -1,0 +1,130 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes-webui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hermes-webui.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hermes-webui
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "hermes-webui.labels" . | nindent 6 }}
+      app.kubernetes.io/component: hermes-webui
+  template:
+    metadata:
+      labels:
+        {{- include "hermes-webui.labels" . | nindent 8 }}
+        app.kubernetes.io/component: hermes-webui
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: install-webui-deps
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              # The stock hermes-webui image ships code in /apptoo with NO
+              # pre-built venv. The default entrypoint (docker_init.bash) would
+              # unconditionally attempt to install the Hermes agent source deps,
+              # so we bypass it entirely. Here we build a venv with just the
+              # webui's own requirements, then the main container runs
+              # `python /apptoo/server.py` in gateway mode (a pure HTTP client).
+              if [ ! -f /app/venv/.deps_installed ]; then
+                mkdir -p /app
+                python3 -m venv /app/venv
+                /app/venv/bin/pip install --no-cache-dir -q -r /apptoo/requirements.txt
+                touch /app/venv/.deps_installed
+              fi
+          volumeMounts:
+            - name: runtime
+              mountPath: /app
+      containers:
+        - name: hermes-webui
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /app/venv/bin/python
+            - /apptoo/server.py
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              name: http
+          env:
+            - name: HERMES_WEBUI_HOST
+              value: "0.0.0.0"
+            - name: HERMES_WEBUI_PORT
+              value: {{ .Values.service.port | toString | quote }}
+            - name: HERMES_WEBUI_CHAT_BACKEND
+              value: "gateway"
+            - name: HERMES_WEBUI_GATEWAY_BASE_URL
+              value: {{ .Values.hermes.apiUrl | quote }}
+            - name: HERMES_WEBUI_GATEWAY_API_KEY
+              value: {{ .Values.hermes.apiKey | quote }}
+            - name: HERMES_WEBUI_STATE_DIR
+              value: /data
+            - name: HERMES_WEBUI_DEFAULT_WORKSPACE
+              value: /data/workspace
+            - name: HERMES_WEBUI_SECURE
+              value: "1"
+            - name: HERMES_WEBUI_ALLOWED_ORIGINS
+              value: {{ .Values.publicUrl | quote }}
+            - name: HERMES_WEBUI_TRUST_FORWARDED_HOST
+              value: "1"
+            - name: HERMES_WEBUI_TRUST_FORWARDED_PROTO
+              value: "1"
+            - name: HERMES_WEBUI_TRUST_FORWARDED_FOR
+              value: "1"
+            - name: HERMES_WEBUI_SSE_CHUNKED
+              value: "1"
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 12
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: runtime
+              mountPath: /app
+            - name: hermes-webui-state
+              mountPath: /data
+      volumes:
+        - name: runtime
+          emptyDir: {}
+        - name: hermes-webui-state
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: hermes-webui-state
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}

@@ -23,6 +23,11 @@ dependencies:
     repository: file://charts/hermes-workspace
     condition: hermes-workspace.enabled
 
+  - name: hermes-webui
+    version: 0.1.0
+    repository: file://charts/hermes-webui
+    condition: hermes-webui.enabled
+
   - name: claude-proxy
     version: 0.1.0
     repository: file://charts/claude-proxy

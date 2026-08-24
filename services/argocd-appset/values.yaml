@@ -136,8 +136,8 @@ services:
     gateways:
       enable_private: true
       destination:
-        serviceName: openagent-hermes-workspace
-        servicePort: 3000
+        serviceName: hermes-webui
+        servicePort: 8787
     syncOptions:
       - CreateNamespace=true
     skipSchemaValidation: true

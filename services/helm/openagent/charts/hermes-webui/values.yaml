@@ -1,0 +1,45 @@
+# hermes-webui chart values.
+# These are accessed from the parent umbrella chart as hermes-webui.*
+#
+# hermes-webui runs natively in "gateway" mode (HERMES_WEBUI_CHAT_BACKEND=gateway):
+# it is a PURE HTTP thin-client that POSTs /v1/chat/completions to the existing
+# Hermes Agent's OpenAI-compatible API server (:8642). It does NOT run a second
+# in-process agent. All inference/memory/tools/sessions stay on the jyje agent.
+enabled: true
+image:
+  repository: ghcr.io/nesquena/hermes-webui
+  tag: "v0.52.113"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# The webui keeps its OWN session/workspace/settings state here.
+# MUST be a separate PVC — never the agent's /opt/data (RWO + concurrent SQLite
+# WAL writes would corrupt the agent's persona/session store).
+persistence:
+  enabled: true
+  size: 2Gi
+  storageClass: "local-path"
+
+service:
+  port: 8787
+
+# Hermes Agent gateway backend (thin-client target).
+hermes:
+  # OpenAI-compatible API server on the existing jyje agent.
+  apiUrl: "http://openagent-hermes-api.openagent.svc.cluster.local:8642"
+  # API bearer key. Must match the agent's API_SERVER_KEY (server-side only —
+  # never surfaced to browser JS).
+  apiKey: "***REMOVED***"
+
+# Public origin the dashboard is served at (needed for CSRF/origin checks
+# behind the reverse proxy + Istio).
+publicUrl: "https://openagent.maklab.net"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
