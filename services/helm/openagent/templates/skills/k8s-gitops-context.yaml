@@ -688,7 +688,6 @@ data:
 
     | Component | Deployed Via | Purpose |
     |-----------|-------------|---------|
-    | `openagent-headroom` | local subchart (`charts/headroom`) | LLM proxy — routes to LiteLLM, SQLite CCR cache, 2Gi PVC, VPA |
     | `openagent-litellm` | remote OCI dep (`oci://ghcr.io/berriai/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
     | `openagent-hermes` | remote OCI dep (`oci://ghcr.io/jyje/hermes-agent-helm`, v0.9.1) | Hermes Agent — swarm controller, Discord bot, MCP servers (stdio) |
     | `hermes-workspace` | local subchart (`charts/hermes-workspace`) | Workspace container — CLIs (terraform, helm, kubectl, etc.), shared workspace PVC |
@@ -701,7 +700,6 @@ data:
     openagent/                       ← umbrella (380-line values.yaml)
     ├── Chart.yaml                   ← 2 remote OCI + 3 local subchart deps
     ├── charts/
-    │   ├── headroom/                ← local subchart (LLM proxy)
     │   ├── hermes-workspace/        ← local subchart (workspace + CLIs)
     │   └── claude-proxy/            ← local subchart (Claude Pro proxy)
     ├── templates/                   ← CRDs + shared resources only
@@ -785,7 +783,7 @@ data:
             → Provider APIs
     ```
 
-    All LLM traffic flows through LiteLLM. The headroom proxy provides CCR caching.
+    All LLM traffic flows through LiteLLM. Workspace Hermes agents point directly at `openagent-litellm:4000` (headroom subchart was planned but never deployed).
 
     **LiteLLM models** (14 configured):
     | Model Name | Backend | API Key |
