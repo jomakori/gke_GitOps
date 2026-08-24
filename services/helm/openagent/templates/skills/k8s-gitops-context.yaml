@@ -791,7 +791,8 @@ data:
     | Model Name | Backend | API Key |
     |------------|---------|---------|
     | opencode/big-pickle | openai (OpenCode) | OPENCODE_API_KEY |
-    | opencode/deepseek-v4-flash-free | openai (OpenCode) | OPENCODE_API_KEY |
+    | opencode/nemotron-3-ultra-free | openai (OpenCode) | OPENCODE_API_KEY |
+    | opencode/laguna-s-2.1-free | openai (OpenCode) | OPENCODE_API_KEY |
     | opencode/mimo-v2.5-free | openai (OpenCode) | OPENCODE_API_KEY |
     | anthropic/claude-opus-4-7 | anthropic (native) | ANTHROPIC_API_KEY |
     | moonshotai/kimi-k2.6 | moonshot (native) | MOONSHOT_API_KEY |
@@ -804,7 +805,7 @@ data:
     | claude/sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude/opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
-    **Fallback chains**: opencode/big-pickle → deepseek-v4-flash; opencode/deepseek-v4-flash-free → deepseek-v4-flash; opencode/mimo-v2.5-free → deepseek-v4-flash. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=8, disable_cooldowns=false. Cooldowns MUST stay enabled — with disable_cooldowns: true the declared fallbacks never fire on 429 (see router_settings comment in values.yaml).
+    **Fallback chains**: opencode/big-pickle → deepseek-v4-flash; opencode/nemotron-3-ultra-free → deepseek-v4-flash; opencode/laguna-s-2.1-free → deepseek-v4-flash; opencode/mimo-v2.5-free → deepseek-v4-flash. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=8, disable_cooldowns=false. Cooldowns MUST stay enabled — with disable_cooldowns: true the declared fallbacks never fire on 429 (see router_settings comment in values.yaml).
 
     ### Hermes Dashboard & Workspace
 
