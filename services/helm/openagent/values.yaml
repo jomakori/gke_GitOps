@@ -63,10 +63,11 @@ litellm:
     router_settings:
       # disable_cooldowns:true short-circuits fallbacks (429s never spill to
       # backup models). allowed_fails/cooldown_time keep probes off throttled
-      # upstreams.
+      # upstreams; 8 fails / 30s cooldown keeps a single upstream blip from
+      # nuking a whole run with a 429 storm (crash-looped claude-proxy 08-24).
       disable_cooldowns: false
-      allowed_fails: 5
-      cooldown_time: 60
+      allowed_fails: 8
+      cooldown_time: 30
       num_retries: 2
       routing_strategy: least-busy
       request_timeout: 180
