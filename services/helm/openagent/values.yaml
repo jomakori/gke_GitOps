@@ -514,6 +514,8 @@ hermes-agent:
 # ── Hermes Workspace ────────────────────────────────────────────────
 hermes-workspace:
   enabled: true
+  service:
+    enabled: false
 
 # ── Hermes WebUI (gateway thin-client dashboard) ───────────────────
 hermes-webui:
@@ -537,8 +539,8 @@ postgres:
 dashboard:
   subdomain: "openagent"
   destination:
-    host: "hermes-webui.openagent.svc.cluster.local"
-    port: 8787
+    host: "openagent-hermes-workspace.openagent.svc.cluster.local"
+    port: 3000
 
 # ── LiteLLM Admin UI (VirtualService) ─────────────────────────────
 litellmVirtualService:

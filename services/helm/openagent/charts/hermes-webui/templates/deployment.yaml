@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hermes-webui
+  name: {{ include "hermes-webui.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "hermes-webui.labels" . | nindent 4 }}
@@ -123,7 +123,7 @@ spec:
         - name: hermes-webui-state
           {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: hermes-webui-state
+            claimName: {{ include "hermes-webui.fullname" . }}-state
           {{- else }}
           emptyDir: {}
           {{- end }}

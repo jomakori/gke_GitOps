@@ -48,8 +48,8 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 |-----|------|---------|-------------|
 | claude-proxy.enabled | bool | `true` |  |
 | clusterDomain | string | `"maklab.net"` |  |
-| dashboard.destination.host | string | `"hermes-webui.openagent.svc.cluster.local"` |  |
-| dashboard.destination.port | int | `8787` |  |
+| dashboard.destination.host | string | `"openagent-hermes-workspace.openagent.svc.cluster.local"` |  |
+| dashboard.destination.port | int | `3000` |  |
 | dashboard.subdomain | string | `"openagent"` |  |
 | dopplerConfig | string | `"svc_openagent"` |  |
 | ghcrPullSecret | string | `""` |  |
@@ -231,6 +231,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.service.port | int | `9119` |  |
 | hermes-webui.enabled | bool | `true` |  |
 | hermes-workspace.enabled | bool | `true` |  |
+| hermes-workspace.service.enabled | bool | `false` |  |
 | hermes.enabled | bool | `true` |  |
 | litellm.db.database | string | `"litellm"` |  |
 | litellm.db.deployStandalone | bool | `false` |  |

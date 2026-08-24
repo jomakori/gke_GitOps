@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: hermes-webui-state
+  name: {{ include "hermes-webui.fullname" . }}-state
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "hermes-webui.labels" . | nindent 4 }}
