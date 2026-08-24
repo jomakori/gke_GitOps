@@ -14,6 +14,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 | Repository | Name | Version |
 |------------|------|---------|
 | file://charts/claude-proxy | claude-proxy | 0.1.0 |
+| file://charts/hermes-webui | hermes-webui | 0.1.0 |
 | file://charts/hermes-workspace | hermes-workspace | 0.1.0 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |
 | oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 0.9.1 |
@@ -46,19 +47,16 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | claude-proxy.enabled | bool | `true` |  |
-| claude-proxy.persistence.enabled | bool | `true` | Keep ~/.claude on a PVC so rotated OAuth tokens survive restarts |
-| claude-proxy.persistence.size | string | `"100Mi"` |  |
-| claude-proxy.persistence.storageClass | string | `"local-path"` |  |
 | clusterDomain | string | `"maklab.net"` |  |
-| dashboard.destination.host | string | `"openagent-hermes-workspace.openagent.svc.cluster.local"` |  |
-| dashboard.destination.port | int | `3000` |  |
+| dashboard.destination.host | string | `"hermes-webui.openagent.svc.cluster.local"` |  |
+| dashboard.destination.port | int | `8787` |  |
 | dashboard.subdomain | string | `"openagent"` |  |
 | dopplerConfig | string | `"svc_openagent"` |  |
 | ghcrPullSecret | string | `""` |  |
 | hermes-agent.command[0] | string | `"sh"` |  |
 | hermes-agent.command[1] | string | `"-c"` |  |
-| hermes-agent.command[2] | string | `"npm install -g @bitwarden/cli 2>&1\nexec /init hermes gateway run\n"` |  |
-| hermes-agent.config.agent.system_prompt | string | `"You are Sisyphus — OMO Orchestrator. You field ALL prompts.\nClassify every request BEFORE acting.\n\n## Classification\n\n- TRIVIAL (typo, single config, known pattern): Answer directly. No delegation.\n- STANDARD (new feature, refactor, multi-file): Route through planning pipeline.\n- COMPLEX (architecture, cross-system, security): Full pipeline with review gates.\n\n## Delegation Pipeline (Standard + Complex)\n\n1. Assess context: is the request clear and unambiguous?\n   → NO: Ask ONE clarifying question first.\n   → YES: Proceed.\n\n2. Standard: Build a plan → present for USER APPROVAL → wait for \"go\" / \"approved\".\n   Complex: Analyze (Metis) → Architect (Oracle) → Plan (Prometheus) → Review (Momus)\n   → present for USER APPROVAL.\n\n3. NEVER execute Standard/Complex work without explicit user sign-off.\n\n## Approval Gates (BLOCK these without asking)\n\n- merge / commit\n- publish / deploy / push\n- destructive (delete, teardown, drop)\n- external-send (email, API, webhook)\n\n## Style\n\n- Terse. Caveman mode. Drop articles and filler.\n- ALWAYS verbalize your classification: \"Classified as [tier].\"\n- Show your work. Tell user what you're doing.\n- When delegating: \"Delegating to [persona] for [task].\"\n"` |  |
+| hermes-agent.command[2] | string | `"# bitwarden\nnpm install -g @bitwarden/cli 2>&1\n# golang\nif [ ! -f /usr/local/go/bin/go ]; then\n  curl -sL https://golang.org/dl/go1.22.4.linux-arm64.tar.gz | tar -xz -C /usr/local\nfi\nexport PATH=/usr/local/go/bin:/opt/data/bin:$PATH\ncd /opt/data && go mod download\n# obscura\nif [ ! -f /usr/local/bin/obscura ]; then\n  curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /usr/local/bin\nfi\nexport PATH=$HOME/.local/bin:$HOME/.deno/bin:$PATH\n# Agent Reach deps\ncommand -v agent-reach >/dev/null 2>&1 || uv tool install https://github.com/Panniantong/agent-reach/archive/main.zip 2>&1\ncommand -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp 2>&1\ncommand -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1\nmkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }\n# deno (drawio MCP — headless draw.io XML generation)\nif [ ! -f $HOME/.deno/bin/deno ]; then\n  curl -fsSL https://deno.land/install.sh | sh -s -- -y\nfi\n# Doppler CLI — same binary endpoint the official install script uses\n# (cli.doppler.com/download). gpgv signature verify skipped: container\n# runs uid 10000 w/o sudo, so gnupg can't be installed here. Installs to\n# the PVC /opt/data/bin (user-writable, survives restarts).\nif [ ! -x /opt/data/bin/doppler ]; then\n  mkdir -p /opt/data/bin\n  DOP_ARCH=$(uname -m | sed 's/aarch64/arm64/; s/x86_64/amd64/')\n  curl -fsSL --retry 3 \"https://cli.doppler.com/download?os=linux&arch=${DOP_ARCH}&format=tar\" -o /tmp/doppler.tgz \\\n    && tar -xzf /tmp/doppler.tgz -C /opt/data/bin doppler \\\n    && chmod +x /opt/data/bin/doppler \\\n    || rm -f /opt/data/bin/doppler\nfi\nexec /init hermes gateway run\n"` |  |
+| hermes-agent.config.agent.system_prompt | string | `"You are Sisyphus — OMO Orchestrator. You field ALL prompts.\nClassify every request BEFORE acting.\n\n## Classification\n\n- TRIVIAL (typo, single config, known pattern): Answer directly. No delegation.\n- STANDARD (new feature, refactor, multi-file): Route through planning pipeline.\n- COMPLEX (architecture, cross-system, security): Full pipeline with review gates.\n\n## Delegation Pipeline (Standard + Complex)\n\n1. Assess context: is the request clear and unambiguous?\n   → NO: Ask ONE clarifying question first.\n   → YES: Proceed.\n\n2. Standard: Build a plan → present for USER APPROVAL → wait for \"go\" / \"approved\".\n   Complex: Analyze (Metis) → Architect (Oracle) → Plan (Prometheus) → Review (Momus)\n   → present for USER APPROVAL.\n\n3. NEVER execute Standard/Complex work without explicit user sign-off.\n\n4. On approval: spin up Plane kanban tickets via the plane-ticket-sync\n   skill (project per board, [Spec] parent ticket + child tickets per\n   work item, Risks/gotchas as comments) unless the user declines.\n\n## Approval Gates (BLOCK these without asking)\n\n- merge / commit\n- publish / deploy / push\n- destructive (delete, teardown, drop)\n- external-send (email, API, webhook)\n\n## Style\n\n- Terse. Caveman mode. Drop articles and filler.\n- ALWAYS verbalize your classification: \"Classified as [tier].\"\n- Show your work. Tell user what you're doing.\n- When delegating: \"Delegating to [persona] for [task].\"\n"` |  |
 | hermes-agent.config.auxiliary.vision.model | string | `"claude/sonnet-5"` |  |
 | hermes-agent.config.auxiliary.vision.provider | string | `"litellm"` |  |
 | hermes-agent.config.delegation.api_key | string | `"${LITELLM_MASTER_KEY}"` |  |
@@ -89,10 +87,22 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.doppler.env.DOPPLER_TOKEN | string | `"${MCP_DOPPLER_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.resources | bool | `false` |  |
+| hermes-agent.config.mcp_servers.drawio.args[0] | string | `"-c"` |  |
+| hermes-agent.config.mcp_servers.drawio.args[1] | string | `"exec $HOME/.deno/bin/deno run --allow-net --allow-read --allow-env https://raw.githubusercontent.com/simonkurtz-MSFT/drawio-mcp-server/main/src/index.ts"` |  |
+| hermes-agent.config.mcp_servers.drawio.command | string | `"sh"` |  |
+| hermes-agent.config.mcp_servers.drawio.timeout | int | `120` |  |
+| hermes-agent.config.mcp_servers.drawio.tools.prompts | bool | `false` |  |
+| hermes-agent.config.mcp_servers.drawio.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.url | string | `"https://mcp.ferryhopper.com/mcp"` |  |
+| hermes-agent.config.mcp_servers.gistpad.args[0] | string | `"-y"` |  |
+| hermes-agent.config.mcp_servers.gistpad.args[1] | string | `"gistpad-mcp"` |  |
+| hermes-agent.config.mcp_servers.gistpad.command | string | `"npx"` |  |
+| hermes-agent.config.mcp_servers.gistpad.env.GITHUB_TOKEN | string | `"${MCP_GITHUB_TOKEN}"` |  |
+| hermes-agent.config.mcp_servers.gistpad.tools.prompts | bool | `false` |  |
+| hermes-agent.config.mcp_servers.gistpad.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.github.args[0] | string | `"-y"` |  |
 | hermes-agent.config.mcp_servers.github.args[1] | string | `"@modelcontextprotocol/server-github"` |  |
 | hermes-agent.config.mcp_servers.github.command | string | `"npx"` |  |
@@ -127,11 +137,27 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.kubectl.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.kubectl.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.kubectl.url | string | `"http://kubernetes-mcp-server.openagent.svc.cluster.local:8000/mcp"` |  |
+| hermes-agent.config.mcp_servers.obscura.args[0] | string | `"mcp"` |  |
+| hermes-agent.config.mcp_servers.obscura.args[1] | string | `"--stealth"` |  |
+| hermes-agent.config.mcp_servers.obscura.command | string | `"/usr/local/bin/obscura"` |  |
+| hermes-agent.config.mcp_servers.obscura.timeout | int | `120` |  |
+| hermes-agent.config.mcp_servers.obscura.tools.prompts | bool | `false` |  |
+| hermes-agent.config.mcp_servers.obscura.tools.resources | bool | `false` |  |
+| hermes-agent.config.mcp_servers.plane.args[0] | string | `"plane-mcp-server"` |  |
+| hermes-agent.config.mcp_servers.plane.args[1] | string | `"stdio"` |  |
+| hermes-agent.config.mcp_servers.plane.command | string | `"uvx"` |  |
+| hermes-agent.config.mcp_servers.plane.env.PLANE_API_KEY | string | `"${PLANE_API_KEY}"` |  |
+| hermes-agent.config.mcp_servers.plane.env.PLANE_BASE_URL | string | `"https://plane.maklab.net"` |  |
+| hermes-agent.config.mcp_servers.plane.env.PLANE_INTERNAL_BASE_URL | string | `"http://plane-api.plane.svc.cluster.local:8000"` |  |
+| hermes-agent.config.mcp_servers.plane.env.PLANE_WORKSPACE_SLUG | string | `"${PLANE_WORKSPACE_SLUG}"` |  |
+| hermes-agent.config.mcp_servers.plane.timeout | int | `120` |  |
+| hermes-agent.config.mcp_servers.plane.tools.prompts | bool | `false` |  |
+| hermes-agent.config.mcp_servers.plane.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.url | string | `"https://mcp.skiplagged.com/mcp"` |  |
-| hermes-agent.config.model.default | string | `"deepseek-v4-flash"` |  |
+| hermes-agent.config.model.default | string | `"deepseek-v4-pro"` |  |
 | hermes-agent.config.model.provider | string | `"litellm"` |  |
 | hermes-agent.config.plugins.enabled[0] | string | `"discord-platform"` |  |
 | hermes-agent.config.providers.litellm.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
@@ -181,12 +207,29 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.extraVolumeMounts[1].name | string | `"k8s-gitops-context"` |  |
 | hermes-agent.extraVolumeMounts[1].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumeMounts[1].subPath | string | `"k8s-gitops-context.md"` |  |
+| hermes-agent.extraVolumeMounts[2].mountPath | string | `"/opt/data/skills/us-tax-filing-automation/SKILL.md"` |  |
+| hermes-agent.extraVolumeMounts[2].name | string | `"skill-us-tax-filing-automation"` |  |
+| hermes-agent.extraVolumeMounts[2].readOnly | bool | `true` |  |
+| hermes-agent.extraVolumeMounts[2].subPath | string | `"us-tax-filing-automation.SKILL.md"` |  |
+| hermes-agent.extraVolumeMounts[3].mountPath | string | `"/opt/data/skills/plane-ticket-sync/SKILL.md"` |  |
+| hermes-agent.extraVolumeMounts[3].name | string | `"skill-plane-ticket-sync"` |  |
+| hermes-agent.extraVolumeMounts[3].readOnly | bool | `true` |  |
+| hermes-agent.extraVolumeMounts[3].subPath | string | `"plane-ticket-sync.SKILL.md"` |  |
+| hermes-agent.extraVolumeMounts[4].mountPath | string | `"/opt/data/skills/plane-ticket-sync/scripts/plan_to_tickets.py"` |  |
+| hermes-agent.extraVolumeMounts[4].name | string | `"skill-plane-ticket-sync"` |  |
+| hermes-agent.extraVolumeMounts[4].readOnly | bool | `true` |  |
+| hermes-agent.extraVolumeMounts[4].subPath | string | `"plan_to_tickets.py"` |  |
 | hermes-agent.extraVolumes[0].configMap.name | string | `"openagent-hermes-hooks"` |  |
 | hermes-agent.extraVolumes[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumes[1].configMap.name | string | `"openagent-k8s-gitops-context"` |  |
 | hermes-agent.extraVolumes[1].name | string | `"k8s-gitops-context"` |  |
+| hermes-agent.extraVolumes[2].configMap.name | string | `"openagent-skill-us-tax-filing-automation"` |  |
+| hermes-agent.extraVolumes[2].name | string | `"skill-us-tax-filing-automation"` |  |
+| hermes-agent.extraVolumes[3].configMap.name | string | `"openagent-skill-plane-ticket-sync"` |  |
+| hermes-agent.extraVolumes[3].name | string | `"skill-plane-ticket-sync"` |  |
 | hermes-agent.service.enabled | bool | `true` |  |
 | hermes-agent.service.port | int | `9119` |  |
+| hermes-webui.enabled | bool | `true` |  |
 | hermes-workspace.enabled | bool | `true` |  |
 | hermes.enabled | bool | `true` |  |
 | litellm.db.database | string | `"litellm"` |  |
@@ -211,12 +254,10 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.proxy_config.fallbacks[11]."minimax/M2.7"[1] | string | `"zai/glm-4.7-flash"` |  |
 | litellm.proxy_config.fallbacks[12].claude/sonnet-5[0] | string | `"deepseek-v4-pro"` |  |
 | litellm.proxy_config.fallbacks[12].claude/sonnet-5[1] | string | `"zai/glm-4.7"` |  |
-| litellm.proxy_config.fallbacks[13].claude-sonnet-5[0] | string | `"deepseek-v4-pro"` |  |
-| litellm.proxy_config.fallbacks[13].claude-sonnet-5[1] | string | `"zai/glm-4.7"` |  |
-| litellm.proxy_config.fallbacks[14].claude/opus-4[0] | string | `"claude/sonnet-5"` |  |
-| litellm.proxy_config.fallbacks[14].claude/opus-4[1] | string | `"deepseek-v4-pro"` |  |
-| litellm.proxy_config.fallbacks[15].claude/opus-5[0] | string | `"claude/sonnet-5"` |  |
-| litellm.proxy_config.fallbacks[15].claude/opus-5[1] | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.fallbacks[13].claude/opus-4[0] | string | `"claude/sonnet-5"` |  |
+| litellm.proxy_config.fallbacks[13].claude/opus-4[1] | string | `"deepseek-v4-pro"` |  |
+| litellm.proxy_config.fallbacks[14].claude/opus-5[0] | string | `"claude/sonnet-5"` |  |
+| litellm.proxy_config.fallbacks[14].claude/opus-5[1] | string | `"deepseek-v4-pro"` |  |
 | litellm.proxy_config.fallbacks[1].opencode/north-mini-code-free[0] | string | `"deepseek-v4-flash"` |  |
 | litellm.proxy_config.fallbacks[2].opencode/deepseek-v4-flash-free[0] | string | `"deepseek-v4-flash"` |  |
 | litellm.proxy_config.fallbacks[3]."opencode/mimo-v2.5-free"[0] | string | `"deepseek-v4-flash"` |  |
@@ -233,6 +274,11 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.proxy_config.fallbacks[9]."zai/glm-4.7-flash"[0] | string | `"deepseek-v4-flash"` |  |
 | litellm.proxy_config.fallbacks[9]."zai/glm-4.7-flash"[1] | string | `"opencode/deepseek-v4-flash-free"` |  |
 | litellm.proxy_config.general_settings.master_key | string | `"os.environ/LITELLM_MASTER_KEY"` |  |
+| litellm.proxy_config.general_settings.pass_through_endpoints[0].forward_headers | bool | `true` |  |
+| litellm.proxy_config.general_settings.pass_through_endpoints[0].include_subpath | bool | `true` |  |
+| litellm.proxy_config.general_settings.pass_through_endpoints[0].path | string | `"/claude-pipe"` |  |
+| litellm.proxy_config.general_settings.pass_through_endpoints[0].target | string | `"http://claude-proxy.openagent.svc.cluster.local:4523"` |  |
+| litellm.proxy_config.general_settings.pass_through_endpoints[0].timeout | int | `300` |  |
 | litellm.proxy_config.litellm_settings.drop_params | bool | `true` |  |
 | litellm.proxy_config.model_list[0].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
 | litellm.proxy_config.model_list[0].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
@@ -249,48 +295,30 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.proxy_config.model_list[11].litellm_params.model | string | `"openai/MiniMax-M2.7"` |  |
 | litellm.proxy_config.model_list[11].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[11].model_name | string | `"minimax/M2.7"` |  |
-| litellm.proxy_config.model_list[12].litellm_params.api_base | string | `"http://192.168.1.64:8317/v1"` |  |
+| litellm.proxy_config.model_list[12].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
 | litellm.proxy_config.model_list[12].litellm_params.api_key | string | `"sk-auth2api-claude-proxy-key"` |  |
 | litellm.proxy_config.model_list[12].litellm_params.model | string | `"openai/claude-sonnet-4-6"` |  |
 | litellm.proxy_config.model_list[12].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[12].litellm_params.rpm | int | `20` |  |
+| litellm.proxy_config.model_list[12].litellm_params.rpm | int | `120` |  |
 | litellm.proxy_config.model_list[12].model_name | string | `"claude/sonnet-5"` |  |
-| litellm.proxy_config.model_list[13].litellm_params.api_base | string | `"http://192.168.1.64:8317/v1"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
 | litellm.proxy_config.model_list[13].litellm_params.api_key | string | `"sk-auth2api-claude-proxy-key"` |  |
-| litellm.proxy_config.model_list[13].litellm_params.model | string | `"openai/claude-sonnet-4-6"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.model | string | `"openai/claude-opus-4-7"` |  |
 | litellm.proxy_config.model_list[13].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[13].litellm_params.rpm | int | `20` |  |
-| litellm.proxy_config.model_list[13].model_name | string | `"claude-sonnet-5"` |  |
-| litellm.proxy_config.model_list[14].litellm_params.api_base | string | `"http://192.168.1.64:8317/v1"` |  |
+| litellm.proxy_config.model_list[13].litellm_params.rpm | int | `30` |  |
+| litellm.proxy_config.model_list[13].model_name | string | `"claude/opus-4"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
 | litellm.proxy_config.model_list[14].litellm_params.api_key | string | `"sk-auth2api-claude-proxy-key"` |  |
-| litellm.proxy_config.model_list[14].litellm_params.model | string | `"openai/claude-sonnet-4-6"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.model | string | `"openai/claude-opus-5"` |  |
 | litellm.proxy_config.model_list[14].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[14].litellm_params.rpm | int | `20` |  |
-| litellm.proxy_config.model_list[14].model_name | string | `"claude/sonnet-4"` |  |
-| litellm.proxy_config.model_list[15].litellm_params.api_base | string | `"http://192.168.1.64:8317/v1"` |  |
+| litellm.proxy_config.model_list[14].litellm_params.rpm | int | `30` |  |
+| litellm.proxy_config.model_list[14].model_name | string | `"claude/opus-5"` |  |
+| litellm.proxy_config.model_list[15].litellm_params.api_base | string | `"http://claude-proxy.openagent.svc.cluster.local:4523/v1"` |  |
 | litellm.proxy_config.model_list[15].litellm_params.api_key | string | `"sk-auth2api-claude-proxy-key"` |  |
-| litellm.proxy_config.model_list[15].litellm_params.model | string | `"openai/claude-sonnet-4-6"` |  |
+| litellm.proxy_config.model_list[15].litellm_params.model | string | `"openai/claude-haiku-4-5"` |  |
 | litellm.proxy_config.model_list[15].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[15].litellm_params.rpm | int | `20` |  |
-| litellm.proxy_config.model_list[15].model_name | string | `"gpt-5.5"` |  |
-| litellm.proxy_config.model_list[16].litellm_params.api_base | string | `"http://192.168.1.64:8317/v1"` |  |
-| litellm.proxy_config.model_list[16].litellm_params.api_key | string | `"sk-auth2api-claude-proxy-key"` |  |
-| litellm.proxy_config.model_list[16].litellm_params.model | string | `"openai/claude-opus-4-7"` |  |
-| litellm.proxy_config.model_list[16].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[16].litellm_params.rpm | int | `10` |  |
-| litellm.proxy_config.model_list[16].model_name | string | `"claude/opus-4"` |  |
-| litellm.proxy_config.model_list[17].litellm_params.api_base | string | `"http://192.168.1.64:8317/v1"` |  |
-| litellm.proxy_config.model_list[17].litellm_params.api_key | string | `"sk-auth2api-claude-proxy-key"` |  |
-| litellm.proxy_config.model_list[17].litellm_params.model | string | `"openai/claude-opus-5"` |  |
-| litellm.proxy_config.model_list[17].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[17].litellm_params.rpm | int | `10` |  |
-| litellm.proxy_config.model_list[17].model_name | string | `"claude/opus-5"` |  |
-| litellm.proxy_config.model_list[18].litellm_params.api_base | string | `"http://192.168.1.64:8317/v1"` |  |
-| litellm.proxy_config.model_list[18].litellm_params.api_key | string | `"sk-auth2api-claude-proxy-key"` |  |
-| litellm.proxy_config.model_list[18].litellm_params.model | string | `"openai/claude-haiku-4-5-20251001"` |  |
-| litellm.proxy_config.model_list[18].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[18].litellm_params.rpm | int | `30` |  |
-| litellm.proxy_config.model_list[18].model_name | string | `"claude/haiku-4"` |  |
+| litellm.proxy_config.model_list[15].litellm_params.rpm | int | `60` |  |
+| litellm.proxy_config.model_list[15].model_name | string | `"claude/haiku-4-5"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.model | string | `"openai/north-mini-code-free"` |  |
