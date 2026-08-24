@@ -209,9 +209,11 @@ hermes:
 hermes-agent:
   config:
     model:
-      # Most capable free opencode model (verified 08-24). DeepSeek v4 pro
-      # remains the paid-quality fallback via the fallback chain above.
-      default: opencode/nemotron-3-ultra-free
+      # Reliable default: claude/sonnet-5 via claude-proxy (verified stable —
+      # 200 OK in 3-5s, proper tool-calling). Free-tier reasoning models
+      # (opencode/*) are flaky for agent loops (rate-limited, slow, reasoning
+      # field quirks) — keep them as selectable options, not the default.
+      default: claude/sonnet-5
       provider: litellm
     providers:
       litellm:
