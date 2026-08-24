@@ -3,8 +3,7 @@
 {{- end -}}
 
 {{- define "hermes-webui.fullname" -}}
-{{- $name := default "hermes-webui" .Values.nameOverride -}}
-{{- printf "%s" $name | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-%s" .Release.Name (include "hermes-webui.name" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{- define "hermes-webui.labels" -}}

@@ -22,7 +22,11 @@ persistence:
   storageClass: "local-path"
 
 service:
-  port: 8787
+  # Drop-in: reuse the exact dashboard Service name + port the ingress already
+  # points at, so the ApplicationSet (gateway destination openagent-hermes-workspace:3000)
+  # and all DNS stay unchanged. The webui container listens on this port (HERMES_WEBUI_PORT).
+  name: "openagent-hermes-workspace"
+  port: 3000
 
 # Hermes Agent gateway backend (thin-client target).
 hermes:

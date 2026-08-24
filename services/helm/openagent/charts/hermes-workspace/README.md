@@ -19,6 +19,7 @@ Subchart for Hermes Workspace — web-based AI agent workspace UI
 | resources.limits.memory | string | `"1Gi"` |  |
 | resources.requests.cpu | string | `"100m"` |  |
 | resources.requests.memory | string | `"256Mi"` |  |
+| service.enabled | bool | `true` |  |
 | service.port | int | `3000` |  |
 | storageClass | string | `"local-path"` |  |
 

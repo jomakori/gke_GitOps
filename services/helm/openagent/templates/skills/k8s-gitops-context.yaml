@@ -804,18 +804,22 @@ data:
 
     ### Hermes Dashboard & Workspace
 
-    The public dashboard (`https://openagent.maklab.net`) is **hermes-webui** (`charts/hermes-webui`) — a `nesquena/hermes-webui` dark-themed web UI. It runs in **gateway chat-backend mode**: it is a pure HTTP thin-client that POSTs `/v1/chat/completions` to the existing jyje agent's API server (`:8642`). It does NOT run a second in-process agent — all inference/memory/tools/sessions stay on the jyje agent. The istio `openagent` VirtualService points at `hermes-webui.openagent.svc.cluster.local:8787` (CF Access private).
+    The public dashboard (`https://openagent.maklab.net`) is **hermes-webui** (`charts/hermes-webui`) — a `nesquena/hermes-webui` dark-themed web UI. It runs in **gateway chat-backend mode**: it is a pure HTTP thin-client that POSTs `/v1/chat/completions` to the existing jyje agent's API server (`:8642`). It does NOT run a second in-process agent — all inference/memory/tools/sessions stay on the jyje agent. It is a **drop-in replacement**: its Service reuses the dashboard name `openagent-hermes-workspace` at port `3000`, so the istio `openagent` VirtualService / ApplicationSet destination are **unchanged** (CF Access private).
 
     Config flow (`charts/hermes-webui/values.yaml` → deployment env):
     - `HERMES_WEBUI_CHAT_BACKEND=gateway` — thin-client mode (not in-process agent)
     - `HERMES_WEBUI_GATEWAY_BASE_URL` → `openagent-hermes-api:8642`
     - `HERMES_WEBUI_GATEWAY_API_KEY` → agent's `API_SERVER_KEY` (`***REMOVED***`)
-    - `HERMES_WEBUI_STATE_DIR=/data` — the webui's OWN PVC (`hermes-webui-state`), **NOT** the agent's `/opt/data` (shared RWO PVC + concurrent SQLite WAL writes = corruption)
+    - `HERMES_WEBUI_STATE_DIR=/data` — the webui's OWN PVC (`openagent-hermes-webui-state`), **NOT** the agent's `/opt/data` (shared RWO PVC + concurrent SQLite WAL writes = corruption)
     - `HERMES_WEBUI_ALLOWED_ORIGINS` + `HERMES_WEBUI_TRUST_FORWARDED_*` — reverse-proxy/Istio support. Auth is **CF Access OAuth only** (`enable_private: true` on the istio VS); no webui password is set.
+
+    **Naming / drop-in**: the webui **Deployment** is `openagent-hermes-webui` but its **Service** is hardcoded `openagent-hermes-workspace:3000` (`service.name` + `service.port` in `charts/hermes-webui/values.yaml`). This is deliberate — the swarm controller Deployment keeps the name `openagent-hermes-workspace`, and only ONE resource of each kind may own that name, so the webui's Service takes it while the workspace's own Service is disabled (`hermes-workspace.service.enabled: false`). Swarm workers are in-pod (tmux panes), so the workspace Service is not needed for swarm comms.
 
     **Image / CMD override**: the stock image ships code in `/apptoo` (not `/app`) with no pre-built venv, and its default entrypoint (`docker_init.bash`) unconditionally tries to install the full agent-source deps. The subchart bypasses this: an initContainer builds a venv with only `/apptoo/requirements.txt`, and the main container runs `/app/venv/bin/python /apptoo/server.py`. The image `:v0.52.113` is multi-arch (linux/arm64 confirmed).
 
-    **hermes-workspace is STILL deployed as the swarm controller** (the 10-persona OMO loop runs via tmux on that pod). It only lost its role as the public dashboard — its `:3000` UI is now internal-only. Do NOT disable `hermes-workspace.enabled` or you break the loop-engine swarm.
+    **hermes-workspace is STILL deployed as the swarm controller** (the 10-persona OMO loop runs via tmux on that pod). It only lost its role as the public dashboard — its Service is now disabled. The `openagent-hermes-workspace:3000` Service points at the **webui** pods. Do NOT disable `hermes-workspace.enabled` or you break the loop-engine swarm. Its old browser-driven pane UI is gone; use `kubectl port-forward deploy/openagent-hermes-workspace 3000:3000 -n openagent` if the swarm pane view is ever needed.
+
+    **Discord session-link hook**: fires on `agent:start` and posts a dashboard link to the Discord channel. It links to the dashboard **root** (not a `/chat/{sid}` deep link) because hermes-webui in gateway mode owns its OWN session_id space and does not import agent sessions — an agent-side session_id would not resolve in the webui.
 
     Under the hood, the public dashboard still talks to two hermes-agent backends (the webui gates chat via the API server):
 
