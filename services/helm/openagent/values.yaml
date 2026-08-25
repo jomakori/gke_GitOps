@@ -646,6 +646,14 @@ hermes-agent:
       command -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp 2>&1
       command -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1
       mkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }
+      # OCR-first vision — mise task (see /mise/mise.toml [tasks.paddle-ocr]):
+      # self-bootstraps the py3.12 venv on first use (persists on PVC); PP-OCR
+      # models via rapidocr-onnxruntime (native paddlepaddle crashes on aarch64).
+      cat > /opt/data/bin/paddle-ocr <<'PADDLEOCR'
+      #!/bin/bash
+      exec mise run paddle-ocr -- "$@"
+      PADDLEOCR
+      chmod +x /opt/data/bin/paddle-ocr
       # deno fallback: release zip + python zipfile (install.sh needs unzip/7z,
       # absent); v2.9.5 pinned for drawio's deno.lock v5.
       if [ ! -x /opt/data/bin/deno ] && [ ! -x $HOME/.deno/bin/deno ]; then

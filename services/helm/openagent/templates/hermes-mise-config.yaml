@@ -15,3 +15,31 @@ data:
     deno = "2.9.5"
     uv = "latest"
     go = "latest"
+
+    # OCR-first vision (user pref): PP-OCR models via rapidocr-onnxruntime.
+    # Task self-bootstraps the py3.12 venv on first use (persists on the PVC).
+    # Native paddlepaddle crashes on this aarch64 container (PIR strides /
+    # zlib SIGABRT / paddle2onnx invalid protobuf) — rapidocr runs the same
+    # PP-OCR models. Shim: /opt/data/bin/paddle-ocr → `mise run paddle-ocr`.
+    [tasks.paddle-ocr]
+    description = "OCR an image (PP-OCR models via rapidocr-onnxruntime)"
+    run = '''
+    set -e
+    VENV=/opt/data/paddleocr-venv
+    if [ ! -d "$VENV" ]; then
+      uv python install 3.12
+      uv venv "$VENV" --python 3.12
+      uv pip install --python "$VENV/bin/python" rapidocr-onnxruntime
+    fi
+    exec "$VENV/bin/python" /mise/paddle_ocr.py "$@"
+    '''
+  paddle_ocr.py: |
+    import sys
+    from rapidocr_onnxruntime import RapidOCR
+    ocr = RapidOCR()
+    for path in sys.argv[1:]:
+        print(f"=== {path} ===")
+        res, _ = ocr(path)
+        lines = [t for _, t, _ in (res or []) if t]
+        for ln in lines or ["(no text detected)"]:
+            print(ln)
