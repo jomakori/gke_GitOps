@@ -166,6 +166,11 @@ data:
               → Pod secretKeyRef
     ```
 
+    **Force refresh before the 24h interval** (e.g. rotated a token in Doppler): annotate the ExternalSecret
+    `kubectl annotate externalsecret openagent-secrets -n openagent reconcile.external-secrets.io/force-sync=true --overwrite`
+    → ESO re-syncs within ~30s (data-hash annotation changes). Pods pick up new env only on restart —
+    env is snapshotted at container start.
+
     **ClusterSecretStores** defined in `gke_GitOps/services/helm/external-secrets/values.yaml`:
 
     | Store Name | Project | Config | Used By |
@@ -676,7 +681,6 @@ data:
 
     | Component | Deployed Via | Purpose |
     |-----------|-------------|---------|
-    | `openagent-headroom` | local subchart (`charts/headroom`) | LLM proxy — routes to LiteLLM, SQLite CCR cache, 2Gi PVC, VPA |
     | `openagent-litellm` | remote OCI dep (`oci://ghcr.io/berriai/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
     | `openagent-hermes` | remote OCI dep (`oci://ghcr.io/jyje/hermes-agent-helm`, v0.9.1) | Hermes Agent — single agent, Discord bot, MCP servers (stdio) |
     | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP :4523 |
@@ -770,14 +774,14 @@ data:
             → Provider APIs
     ```
 
-    All LLM traffic flows through LiteLLM. The headroom proxy provides CCR caching.
+    All LLM traffic flows through LiteLLM. Workspace Hermes agents point directly at `openagent-litellm:4000` (headroom subchart was planned but never deployed).
 
     **LiteLLM models** (14 configured):
     | Model Name | Backend | API Key |
     |------------|---------|---------|
     | opencode/big-pickle | openai (OpenCode) | OPENCODE_API_KEY |
-    | opencode/north-mini-code-free | openai (OpenCode) | OPENCODE_API_KEY |
-    | opencode/deepseek-v4-flash-free | openai (OpenCode) | OPENCODE_API_KEY |
+    | opencode/nemotron-3-ultra-free | openai (OpenCode) | OPENCODE_API_KEY |
+    | opencode/laguna-s-2.1-free | openai (OpenCode) | OPENCODE_API_KEY |
     | opencode/mimo-v2.5-free | openai (OpenCode) | OPENCODE_API_KEY |
     | anthropic/claude-opus-4-7 | anthropic (native) | ANTHROPIC_API_KEY |
     | moonshotai/kimi-k2.6 | moonshot (native) | MOONSHOT_API_KEY |
@@ -790,7 +794,7 @@ data:
     | claude/sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude/opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
-    **Fallback chains**: opencode/big-pickle → deepseek-v4-flash; opencode/north-mini-code-free → deepseek-v4-flash; opencode/deepseek-v4-flash-free → deepseek-v4-flash. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=3.
+    **Fallback chains**: opencode/big-pickle → deepseek-v4-flash; opencode/nemotron-3-ultra-free → deepseek-v4-flash; opencode/laguna-s-2.1-free → deepseek-v4-flash; opencode/mimo-v2.5-free → deepseek-v4-flash. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=8, disable_cooldowns=false. Cooldowns MUST stay enabled — with disable_cooldowns: true the declared fallbacks never fire on 429 (see router_settings comment in values.yaml).
 
     ### Hermes Dashboard & Workspace
 
