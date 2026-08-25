@@ -13,7 +13,7 @@ nesquena/hermes-webui — web dashboard for Hermes Agent (gateway chat backend)
 | hermes.apiUrl | string | `"http://openagent-hermes-api.openagent.svc.cluster.local:8642"` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/nesquena/hermes-webui"` |  |
-| image.tag | string | `"v0.52.113"` |  |
+| image.tag | string | `"latest"` |  |
 | persistence.enabled | bool | `true` |  |
 | persistence.size | string | `"2Gi"` |  |
 | persistence.storageClass | string | `"local-path"` |  |
