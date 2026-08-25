@@ -572,6 +572,9 @@ hermes-agent:
     - name: hermes-mise-config
       configMap:
         name: openagent-hermes-mise-config
+    - name: dashboard-auth-fix
+      configMap:
+        name: openagent-dashboard-auth-fix
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -594,6 +597,14 @@ hermes-agent:
       readOnly: true
     - name: hermes-mise-config
       mountPath: /mise
+      readOnly: true
+    - name: dashboard-auth-fix
+      mountPath: /opt/hermes/.venv/lib/python3.13/site-packages/dashboard-fix.pth
+      subPath: dashboard-fix.pth
+      readOnly: true
+    - name: dashboard-auth-fix
+      mountPath: /opt/hermes/.venv/lib/python3.13/site-packages/dashboard_auth_fix.py
+      subPath: dashboard_auth_fix.py
       readOnly: true
   command:
     - sh

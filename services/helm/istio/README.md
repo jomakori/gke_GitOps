@@ -146,6 +146,10 @@ Two layers of VirtualServices exist:
 | virtualServices.headlamp.destination.port | int | `80` |  |
 | virtualServices.headlamp.enabled | bool | `false` |  |
 | virtualServices.headlamp.host | string | `"headlamp.maklab.net"` |  |
+| virtualServices.hermes-dashboard.destination.host | string | `"openagent-hermes-agent.openagent.svc.cluster.local"` |  |
+| virtualServices.hermes-dashboard.destination.port | int | `9119` |  |
+| virtualServices.hermes-dashboard.enabled | bool | `true` |  |
+| virtualServices.hermes-dashboard.host | string | `"hermes.maklab.net"` |  |
 | virtualServices.opencost.destination.host | string | `"opencost.opencost.svc.cluster.local"` |  |
 | virtualServices.opencost.destination.port | int | `9090` |  |
 | virtualServices.opencost.enabled | bool | `false` |  |

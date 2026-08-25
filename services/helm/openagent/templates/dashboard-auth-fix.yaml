@@ -1,0 +1,67 @@
+{{- if .Values.hermes.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-dashboard-auth-fix
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  dashboard-fix.pth: |
+    import dashboard_auth_fix
+  dashboard_auth_fix.py: |
+    """Surgical fix for hermes dashboard basic-auth login (agent v2026.7.7.2).
+
+    Upstream bug: _auto_sso_response auto-302s unauth document loads to
+    /auth/login?provider=<single provider> when exactly ONE interactive
+    provider is registered — WITHOUT checking whether that provider is a
+    password-only provider. BasicAuthProvider has no OAuth flow; its
+    start_login raises NotImplementedError -> 500 on /auth/login, so the
+    dashboard login page is unreachable with basic auth.
+
+    Fixed upstream by adding `if getattr(provider, "supports_password",
+    False): return None` (master hermes_cli/dashboard_auth/middleware.py).
+    This module installs that check at site-init.
+
+    Loaded via dashboard-fix.pth mounted into the agent venv site-packages
+    (site-init runs `import dashboard_auth_fix` in every python process; the
+    argv guard limits the actual patch to the dashboard process). Remove this
+    ConfigMap + the values mounts once the agent image includes the upstream
+    fix.
+    """
+
+    import sys
+
+
+    def _install() -> None:
+        if "dashboard" not in " ".join(sys.argv):
+            return
+        try:
+            from hermes_cli.dashboard_auth import middleware as _m
+        except Exception:
+            return  # not in this process env; nothing to patch
+        orig = getattr(_m, "_auto_sso_response", None)
+        if orig is None or getattr(orig, "_password_provider_patched", False):
+            return
+
+        def _patched(request):
+            try:
+                providers = _m.list_session_providers()
+                if len(providers) == 1 and getattr(
+                    providers[0], "supports_password", False
+                ):
+                    # Single password-only provider: no OAuth redirect flow —
+                    # fall through so the /login password form renders.
+                    return None
+            except Exception:
+                pass
+            return orig(request)
+
+        _patched._password_provider_patched = True
+        _m._auto_sso_response = _patched
+
+
+    _install()
+{{- end }}
