@@ -42,7 +42,7 @@ spec:
             - |
               set -e
               mkdir -p /src
-              for p in agent tools cron hermes_cli gateway acp_adapter utils.py hermes_constants.py; do
+              for p in agent tools cron hermes_cli gateway acp_adapter utils.py hermes_constants.py hermes_time.py; do
                 cp -a "{{ .Values.agentSource.sourcePath }}/$p" /src/
               done
           volumeMounts:
