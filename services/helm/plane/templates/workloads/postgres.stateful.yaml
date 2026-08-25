@@ -72,5 +72,5 @@ spec:
           storage: {{ .Values.postgres.volumeSize | default "1Gi" | quote }}
       storageClassName: {{ .Values.postgres.storageClass }}
       volumeMode: Filesystem
-      
+
 {{- end }}

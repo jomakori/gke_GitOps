@@ -51,7 +51,7 @@ spec:
         envFrom:
           - secretRef:
               name: {{ if not (empty .Values.external_secrets.rabbitmq_existingSecret) }}{{ .Values.external_secrets.rabbitmq_existingSecret }}{{ else }}{{ .Release.Name }}-rabbitmq-secrets{{ end }}
-              optional: false 
+              optional: false
         volumeMounts:
         - mountPath: /var/lib/rabbitmq
           name: pvc-{{ .Release.Name }}-rabbitmq-vol
@@ -74,5 +74,5 @@ spec:
           storage: {{ .Values.rabbitmq.volumeSize | default "100Mi" | quote }}
       storageClassName: {{ .Values.rabbitmq.storageClass }}
       volumeMode: Filesystem
-      
+
 {{- end }}

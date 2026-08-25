@@ -1,4 +1,4 @@
-{{- if and .Values.ingress.enabled .Values.ssl.createIssuer (empty .Values.ssl.tls_secret_name) }} 
+{{- if and .Values.ingress.enabled .Values.ssl.createIssuer (empty .Values.ssl.tls_secret_name) }}
 
 apiVersion: v1
 kind: Secret
@@ -10,7 +10,7 @@ metadata:
 type: Opaque
 stringData:
   api-token: {{ .Values.ssl.token | default "default-api-token" | quote }}
-  
+
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -46,5 +46,5 @@ spec:
           ingressClassName: {{ .Values.ingress.ingressClass }}
     {{- end }}
 
---- 
+---
 {{- end}}
