@@ -128,7 +128,10 @@ spec:
             - name: HERMES_WEBUI_GATEWAY_BASE_URL
               value: {{ .Values.hermes.apiUrl | quote }}
             - name: HERMES_WEBUI_GATEWAY_API_KEY
-              value: {{ .Values.hermes.apiKey | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: openagent-secrets
+                  key: API_SERVER_KEY
             - name: HERMES_WEBUI_STATE_DIR
               value: /data
             # Point Hermes at the mounted agent home so the gateway watcher +

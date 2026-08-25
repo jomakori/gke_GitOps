@@ -15,7 +15,6 @@ nesquena/hermes-webui — web dashboard for Hermes Agent (gateway chat backend)
 | agentState.enabled | bool | `true` |  |
 | agentState.mountPath | string | `"/data/agent"` |  |
 | enabled | bool | `true` |  |
-| hermes.apiKey | string | `"***REMOVED***"` |  |
 | hermes.apiUrl | string | `"http://openagent-hermes-api.openagent.svc.cluster.local:8642"` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/nesquena/hermes-webui"` |  |

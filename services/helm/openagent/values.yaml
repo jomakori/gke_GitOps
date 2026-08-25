@@ -547,7 +547,10 @@ hermes-agent:
     - name: API_SERVER_ENABLED
       value: "true"
     - name: API_SERVER_KEY
-      value: "***REMOVED***"
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: API_SERVER_KEY
     - name: API_SERVER_HOST
       value: "0.0.0.0"
     - name: API_SERVER_PORT
