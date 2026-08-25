@@ -171,6 +171,12 @@ services:
     enable: true
     syncWave: "3"
     dopplerConfig: "svc_cloudflare"
+    # Deployment selector became immutable when the chart bumped its labels —
+    # ArgoCD can't patch it → stuck OutOfSync. Replace=true force-recreates the
+    # Deployment once on sync (seconds of tunnel downtime), then it's stable.
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
 
   # Wave 4 — Operators (no endpoint deps)
   externalDns:
