@@ -26,6 +26,26 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        # Gateway mode runs NO in-process agent, so the first-run onboarding
+        # wizard's system check (probes /root/.hermes/config.yaml + agent imports
+        # inside THIS container) is a guaranteed false negative. Seed the wizard
+        # gate (settings.json -> onboarding_completed, see api/onboarding.py) on
+        # first boot so the wizard never renders. Never clobber existing settings.
+        - name: seed-onboarding
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              if [ ! -f /data/settings.json ]; then
+                mkdir -p /data
+                printf '%s\n' '{"onboarding_completed": true, "default_workspace": "/data/workspace"}' > /data/settings.json
+              fi
+          volumeMounts:
+            - name: hermes-webui-state
+              mountPath: /data
         - name: install-webui-deps
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -66,6 +86,12 @@ spec:
               value: {{ .Values.service.port | toString | quote }}
             - name: HERMES_WEBUI_CHAT_BACKEND
               value: "gateway"
+            # Hard-skip first-run onboarding: guard in api/onboarding.py makes the
+            # apply endpoint a no-op (never writes config.yaml), and the
+            # seed-onboarding initContainer pre-writes settings.json so
+            # /api/settings reports onboarding_completed=true from first boot.
+            - name: HERMES_WEBUI_SKIP_ONBOARDING
+              value: "1"
             - name: HERMES_WEBUI_GATEWAY_BASE_URL
               value: {{ .Values.hermes.apiUrl | quote }}
             - name: HERMES_WEBUI_GATEWAY_API_KEY
