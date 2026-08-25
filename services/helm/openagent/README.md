@@ -298,7 +298,8 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.extraEnv[0].valueFrom.secretKeyRef.key | string | `"DISCORD_BOT_TOKEN"` |  |
 | hermes-agent.extraEnv[0].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
 | hermes-agent.extraEnv[10].name | string | `"API_SERVER_KEY"` |  |
-| hermes-agent.extraEnv[10].value | string | `"***REMOVED***"` |  |
+| hermes-agent.extraEnv[10].valueFrom.secretKeyRef.key | string | `"API_SERVER_KEY"` |  |
+| hermes-agent.extraEnv[10].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
 | hermes-agent.extraEnv[11].name | string | `"API_SERVER_HOST"` |  |
 | hermes-agent.extraEnv[11].value | string | `"0.0.0.0"` |  |
 | hermes-agent.extraEnv[12].name | string | `"API_SERVER_PORT"` |  |

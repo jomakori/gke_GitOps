@@ -10,3 +10,18 @@ paths = [
   '''README\.md$''',
   '''\.md$'''
 ]
+
+# Custom rule: low-entropy plaintext secret values in YAML config. The built-in
+# generic-api-key rule requires high entropy — short/simple key values slip
+# through. This catches `apiKey: "value"` / `password: "x"` / `token: "y"` in
+# any file (values.yaml, templates, etc.). Template refs ({{ .Values.x }}) are
+# excluded via the { character class. NOTE: unquoted YAML scalars are not
+# matched — quote secret-looking values or rely on entropy rules for those.
+# Deliberately NOT matching bare `secret:` keys — in k8s values those are
+# resource-name refs (existingSecret / secretName), not values.
+[[rules]]
+id = "yaml-plaintext-secret-values"
+description = "Plaintext secret-looking value in YAML (apiKey/password/token)"
+regex = '''(?i)(?:api[_-]?key|apikey|passwd|password|token|access[_-]?key)\s*[:=]\s*["'][^"'\s{]{8,}["']'''
+[[rules.allowlists]]
+regexes = ['''changeme''', '''example''', '''dummy''', '''placeholder''', '''your-''', '''xxxxx''', '''replace_me''']
