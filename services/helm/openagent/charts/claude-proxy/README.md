@@ -12,7 +12,7 @@ Claude CLI wrapper as OpenAI-compatible API proxy
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/jomakori/claude-proxy"` |  |
 | image.tag | string | `"latest"` |  |
-| persistence.enabled | bool | `true` | Keep ~/.claude on a PVC so rotated OAuth tokens survive restarts |
+| persistence.enabled | bool | `true` |  |
 | persistence.size | string | `"100Mi"` |  |
 | persistence.storageClass | string | `"local-path"` |  |
 | resources.limits.cpu | string | `"1000m"` |  |

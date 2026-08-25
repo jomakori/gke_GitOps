@@ -71,13 +71,12 @@ data:
                   flush=True)
             return
 
-        # The dashboard is now nesquena/hermes-webui in gateway thin-client mode.
-        # It owns its OWN session_id space (local STATE_DIR) and does NOT import
-        # Hermes Agent session ids (agent_sessions.py reads the agent's local
-        # state.db, which is not mounted here). So we cannot deep-link to the
-        # agent's session_id — link to the dashboard root where the user can open
-        # the conversation from the webui session list.
-        url = _DASHBOARD_BASE
+        # The dashboard is nesquena/hermes-webui in gateway thin-client mode,
+        # with the agent's state.db mounted read-only (agentState in the webui
+        # subchart). The webui's session discoverability resolves agent session
+        # ids from state.db, so we CAN deep-link to the exact conversation:
+        # /chat/{session_id} opens the agent session in the webui.
+        url = f"{_DASHBOARD_BASE}/chat/{session_id}"
         # For Discord threads, chat_id is already the thread channel ID.
         api_url = f"{_DISCORD_API}/channels/{chat_id}/messages"
         headers = {

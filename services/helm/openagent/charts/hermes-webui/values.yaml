@@ -25,6 +25,18 @@ persistence:
   size: 2Gi
   storageClass: "local-path"
 
+# Agent session bridge: mount the hermes-agent home READ-ONLY so the gateway
+# watcher (api/gateway_watcher.py) can list agent sessions (discord/cli/cron/
+# api_server) in the sidebar and /chat/{sid} deep links resolve. HERMES_HOME is
+# pointed at this mount so state.db is found at <mountPath>/state.db. The agent
+# keeps state.db in WAL mode with -shm/-wal present while running, so the
+# read-only SQLite URI (mode=ro) works; never mount this read-write (two
+# writers on the same WAL db = corruption).
+agentState:
+  enabled: true
+  claimName: openagent-hermes-agent
+  mountPath: /data/agent
+
 service:
   # Drop-in: reuse the exact dashboard Service name + port the ingress already
   # points at, so the ApplicationSet (gateway destination openagent-hermes-workspace:3000)
