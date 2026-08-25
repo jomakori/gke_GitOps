@@ -8,7 +8,11 @@
 enabled: true
 image:
   repository: ghcr.io/nesquena/hermes-webui
-  tag: "v0.52.113"
+  # NOTE: use the multi-arch `latest` tag, not a versioned v0.52.x tag. The
+  # versioned tags are single-manifest (amd64-only) and will not run on this
+  # arm64 k3d cluster (ImagePullBackOff / no matching arch). `latest` is a
+  # multi-arch index incl. linux/arm64 (verified on the registry).
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 replicaCount: 1
