@@ -1,0 +1,6 @@
+apiVersion: v2
+name: hermes-webui
+description: nesquena/hermes-webui — web dashboard for Hermes Agent (gateway chat backend)
+type: application
+version: 0.1.0
+appVersion: "v0.52.113"

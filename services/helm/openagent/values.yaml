@@ -260,6 +260,85 @@ hermes-agent:
         - ALWAYS verbalize your classification: "Classified as [tier]."
         - Show your work. Tell user what you're doing.
         - When delegating: "Delegating to [persona] for [task]."
+    # environment_hint (skills) was previously carried by the removed
+    # hermes-workspace deployment via configmap-hermes-config.yaml. Re-wired
+    # here so the hermes-agent keeps these skills after the workspace is gone.
+      environment_hint: |
+        # Skills: Ponytail + Caveman + k8s-gitops-context
+
+        ## K8s GitOps Context
+
+        THIS IS THE CLUSTER SOURCE OF TRUTH. Read @/opt/data/memories/k8s-gitops-context.md
+        before ANY cluster-related task. Contains:
+        - Repo paths, secrets chain (Doppler → ESO → pods)
+        - Sync wave order, helm chart patterns, service registration
+        - Istio networking, Cloudflare tunnel, Terraform execution order
+        - OpenAgent architecture (umbrella chart, persona routing, Claude proxy)
+        - Critical gotchas (SNI, ExternalSecret patterns, storage limitations)
+
+        NEVER operate on cluster resources without reading the context first.
+
+        ## Ponytail — YAGNI Ladder (before writing code)
+
+        Before writing code, stop at the first rung that holds:
+        1. Does this need to exist? → no: skip it (YAGNI)
+        2. Already in this codebase? → reuse it, don't rewrite
+        3. Stdlib does it? → use it
+        4. Native platform feature? → use it
+        5. Installed dependency? → use it
+        6. One line? → one line
+        7. Only then: the minimum that works
+
+        The ladder runs after understanding the problem, not instead of it.
+        Lazy about the solution, never about reading.
+
+        Lazy, not negligent: trust-boundary validation, data-loss handling,
+        security, and accessibility are never on the chopping block.
+
+        Source: github.com/DietrichGebert/ponytail
+
+        ## Caveman — Terse Communication
+
+        Respond terse like smart caveman. All technical substance stay.
+        Only fluff die.
+
+        Rules:
+        - Drop: articles (a/an/the), filler (just/really/basically),
+          pleasantries (sure/certainly/of course), hedging
+        - Fragments OK. Short synonyms. Technical terms exact.
+        - Code blocks unchanged. Errors quoted exact.
+        - Pattern: [thing] [action] [reason]. [next step].
+
+        Not: "Sure! I'd be happy to help you with that."
+        Yes: "Bug in auth middleware. Token expiry check use `<` not `<=`. Fix:"
+
+        Auto-Clarity: Drop caveman for security warnings, irreversible
+        actions, multi-step sequences where fragments risk misread.
+        Resume after clear part.
+
+        Source: github.com/JuliusBrussee/caveman
+
+        ## Pre-commit — Validate Before Commit
+
+        BEFORE EVERY COMMIT: run pre-commit hooks.
+
+        ```bash
+        pre-commit run --files $(git diff --cached --name-only)
+        ```
+
+        Hooks in this repo:
+        - yamllint: YAML syntax, indentation
+        - check-merge-conflict: unresolved merge markers
+        - trailing-whitespace: trailing spaces
+        - gitleaks: API keys, tokens
+        - helm-docs: Helm chart docs sync
+
+        Failure flow:
+        1. pre-commit fails → read error
+        2. Fix issue (usually indentation)
+        3. git add fixed file
+        4. Re-run pre-commit
+        5. Green → commit
     # tool_search: defer tool schemas; model searches by name, only matched
     # schemas load. "on" = always (14 MCP servers → max unconditional cut).
     tools:
@@ -602,8 +681,8 @@ hermes-agent:
     enabled: true
     port: 9119
 
-# ── Hermes Workspace ────────────────────────────────────────────────
-hermes-workspace:
+# ── Hermes WebUI (gateway thin-client dashboard) ───────────────────
+hermes-webui:
   enabled: true
 
 claude-proxy:
@@ -637,4 +716,3 @@ litellmVirtualService:
 # ── VPA ────────────────────────────────────────────────────────────
 vpa:
   enabled: true
-
