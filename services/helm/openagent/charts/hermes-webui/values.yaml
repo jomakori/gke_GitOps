@@ -60,9 +60,9 @@ service:
 hermes:
   # OpenAI-compatible API server on the existing jyje agent.
   apiUrl: "http://openagent-hermes-api.openagent.svc.cluster.local:8642"
-  # API bearer key. Must match the agent's API_SERVER_KEY (server-side only —
-  # never surfaced to browser JS).
-  apiKey: "hermes-api-server-key-1234"
+  # API bearer key comes from Doppler (devops/svc_openagent → API_SERVER_KEY →
+  # openagent-secrets ES → env). Must match the agent's API_SERVER_KEY
+  # (server-side only — never surfaced to browser JS).
 
 # Public origin the dashboard is served at (needed for CSRF/origin checks
 # behind the reverse proxy + Istio).
