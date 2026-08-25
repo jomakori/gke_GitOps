@@ -74,9 +74,10 @@ data:
         # The dashboard is nesquena/hermes-webui in gateway thin-client mode,
         # with the agent's state.db mounted read-only (agentState in the webui
         # subchart). The webui's session discoverability resolves agent session
-        # ids from state.db, so we CAN deep-link to the exact conversation:
-        # /chat/{session_id} opens the agent session in the webui.
-        url = f"{_DASHBOARD_BASE}/chat/{session_id}"
+        # ids from state.db, and its canonical permalink route is /session/<id>
+        # (NOT /chat/<id> — see index.html base-href + sessions.js self-heal).
+        # /session/{session_id} opens the exact agent conversation in the webui.
+        url = f"{_DASHBOARD_BASE}/session/{session_id}"
         # For Discord threads, chat_id is already the thread channel ID.
         api_url = f"{_DISCORD_API}/channels/{chat_id}/messages"
         headers = {
