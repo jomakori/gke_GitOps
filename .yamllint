@@ -31,5 +31,7 @@ ignore: |
   #### Folders ####
   services/argocd-appset/templates/**
   apps/argocd-appset/templates/**
+  apps/helm/*/templates/**
+  apps/helm/templates/**
   services/helm/*/templates/**
   services/helm/*/charts/*/templates/**

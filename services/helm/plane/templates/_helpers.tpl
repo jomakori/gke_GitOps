@@ -3,7 +3,7 @@
 {{- end }}
 
 {{- define "plane.podScheduling" -}}
-  {{- with .nodeSelector }} 
+  {{- with .nodeSelector }}
       nodeSelector: {{ toYaml . | nindent 8 }}
   {{- end }}
   {{- with .tolerations }}
