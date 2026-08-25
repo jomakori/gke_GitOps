@@ -8,6 +8,9 @@ nesquena/hermes-webui — web dashboard for Hermes Agent (gateway chat backend)
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| agentSource.enabled | bool | `true` |  |
+| agentSource.image | string | `"nousresearch/hermes-agent:v2026.7.7.2"` |  |
+| agentSource.sourcePath | string | `"/opt/hermes"` |  |
 | agentState.claimName | string | `"openagent-hermes-agent"` |  |
 | agentState.enabled | bool | `true` |  |
 | agentState.mountPath | string | `"/data/agent"` |  |
