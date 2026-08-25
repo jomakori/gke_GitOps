@@ -21,8 +21,6 @@ spec:
         {{- include "hermes-webui.labels" . | nindent 8 }}
         app.kubernetes.io/component: hermes-webui
     spec:
-      imagePullSecrets:
-        - name: ghcr-pull-secret
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
