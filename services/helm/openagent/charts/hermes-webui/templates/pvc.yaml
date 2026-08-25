@@ -7,6 +7,12 @@ metadata:
   labels:
     {{- include "hermes-webui.labels" . | nindent 4 }}
     app.kubernetes.io/component: hermes-webui
+  annotations:
+    # Same sync-wave as the consuming Deployment. local-path uses
+    # WaitForFirstConsumer, so the PVC only binds once a pod schedules against
+    # it. If the PVC is in an earlier wave, ArgoCD waits for it to become
+    # Healthy (Pending forever) and never creates the Deployment -> deadlock.
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   accessModes:
     - ReadWriteOnce
