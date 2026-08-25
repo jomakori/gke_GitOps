@@ -99,10 +99,7 @@ Two layers of VirtualServices exist:
 | dopplerConfig | string | `"svc_cloudflare"` |  |
 | gateway.name | string | `"maklab-gateway"` |  |
 | gateway.namespace | string | `"istio-system"` |  |
-| ingress-gateway.autoscaling.enabled | bool | `true` |  |
-| ingress-gateway.autoscaling.maxReplicas | int | `5` |  |
-| ingress-gateway.autoscaling.minReplicas | int | `2` |  |
-| ingress-gateway.autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
+| ingress-gateway.autoscaling.enabled | bool | `false` |  |
 | ingress-gateway.labels.app | string | `"istio-ingressgateway"` |  |
 | ingress-gateway.labels.istio | string | `"ingressgateway"` |  |
 | ingress-gateway.name | string | `"istio-ingressgateway"` |  |
@@ -121,6 +118,7 @@ Two layers of VirtualServices exist:
 | ingress-gateway.service.ports[1].protocol | string | `"TCP"` |  |
 | ingress-gateway.service.ports[1].targetPort | int | `443` |  |
 | ingress-gateway.service.type | string | `"NodePort"` |  |
+| istiod.autoscaleEnabled | bool | `false` |  |
 | istiod.meshConfig.accessLogFile | string | `"/dev/stdout"` |  |
 | istiod.meshConfig.defaultConfig.proxyStatsMatcher.inclusionRegexps[0] | string | `".*outlier_detection.*"` |  |
 | istiod.meshConfig.defaultConfig.proxyStatsMatcher.inclusionRegexps[1] | string | `".*circuit_breakers.*"` |  |
@@ -139,6 +137,11 @@ Two layers of VirtualServices exist:
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |
 | virtualServices.argocd.host | string | `"argocd.maklab.net"` |  |
+| virtualServices.excalidash.destination.host | string | `"excalidash.excalidash.svc.cluster.local"` |  |
+| virtualServices.excalidash.destination.port | int | `80` |  |
+| virtualServices.excalidash.enablePrivate | bool | `true` |  |
+| virtualServices.excalidash.enabled | bool | `true` |  |
+| virtualServices.excalidash.host | string | `"draw.maklab.net"` |  |
 | virtualServices.headlamp.destination.host | string | `"headlamp.headlamp.svc.cluster.local"` |  |
 | virtualServices.headlamp.destination.port | int | `80` |  |
 | virtualServices.headlamp.enabled | bool | `false` |  |

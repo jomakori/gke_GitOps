@@ -8,6 +8,9 @@ nesquena/hermes-webui — web dashboard for Hermes Agent (gateway chat backend)
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| agentState.claimName | string | `"openagent-hermes-agent"` |  |
+| agentState.enabled | bool | `true` |  |
+| agentState.mountPath | string | `"/data/agent"` |  |
 | enabled | bool | `true` |  |
 | hermes.apiKey | string | `"hermes-api-server-key-1234"` |  |
 | hermes.apiUrl | string | `"http://openagent-hermes-api.openagent.svc.cluster.local:8642"` |  |
