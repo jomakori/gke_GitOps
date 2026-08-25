@@ -5,12 +5,10 @@
 *.log
 test-gpu.yaml
 **/charts/*
-!services/helm/openagent/charts/headroom/
-!services/helm/openagent/charts/headroom/**
-!services/helm/openagent/charts/hermes-workspace/
-!services/helm/openagent/charts/hermes-workspace/**
 !services/helm/openagent/charts/claude-proxy/
 !services/helm/openagent/charts/claude-proxy/**
+!services/helm/openagent/charts/hermes-webui/
+!services/helm/openagent/charts/hermes-webui/**
 **Chart.lock
 .devbox/
 **sisyphus
