@@ -8,7 +8,6 @@ local-path provisioner StorageClass for k3s lab clusters
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| storageClass.allowVolumeExpansion | bool | `true` |  |
 | storageClass.isDefault | bool | `true` |  |
 | storageClass.name | string | `"local-path"` |  |
 | storageClass.provisioner | string | `"rancher.io/local-path"` |  |

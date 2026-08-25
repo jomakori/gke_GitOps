@@ -49,6 +49,7 @@ The store references `doppler-machine-token` in the `external-secrets` namespace
 | `doppler-svc-postgres-operator` | devops | svc_postgres_operator | postgres-operator |
 | `doppler-svc-onedev` | devops | svc_onedev | onedev |
 | `doppler-svc-mongodb` | devops | svc_mongodb | mongodb-operator, app PerconaServerMongoDB CRs |
+| `doppler-svc-excalidash` | devops | svc_excalidash | excalidash |
 | `doppler-svc-openclaw` | devops | svc_openclaw | openclaw |
 | `doppler-zurabase-dev` | zurabase | dev | future zurabase service |
 | `doppler-zurabase-stg` | zurabase | stg | future zurabase service |
@@ -75,8 +76,6 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 |-----|------|---------|-------------|
 | clusterSecretStores.svc_cloudflare.config | string | `"svc_cloudflare"` |  |
 | clusterSecretStores.svc_cloudflare.project | string | `"devops"` |  |
-| clusterSecretStores.svc_excalidash.config | string | `"svc_excalidash"` |  |
-| clusterSecretStores.svc_excalidash.project | string | `"devops"` |  |
 | clusterSecretStores.svc_grafana.config | string | `"svc_grafana"` |  |
 | clusterSecretStores.svc_grafana.project | string | `"devops"` |  |
 | clusterSecretStores.svc_mongodb.config | string | `"svc_mongodb"` |  |
@@ -85,8 +84,6 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | clusterSecretStores.svc_openagent.project | string | `"devops"` |  |
 | clusterSecretStores.svc_postgres_operator.config | string | `"svc_postgres_operator"` |  |
 | clusterSecretStores.svc_postgres_operator.project | string | `"devops"` |  |
-| clusterSecretStores.svc_tailscale.config | string | `"svc_tailscale"` |  |
-| clusterSecretStores.svc_tailscale.project | string | `"devops"` |  |
 | clusterSecretStores.zurabase-dev.config | string | `"dev"` |  |
 | clusterSecretStores.zurabase-dev.project | string | `"zurabase"` |  |
 | clusterSecretStores.zurabase-prd.config | string | `"prd"` |  |
@@ -97,3 +94,43 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | external-secrets.replicaCount | int | `2` |  |
 | external-secrets.serviceAccount.create | bool | `true` |  |
 | external-secrets.webhook.certManager.enabled | bool | `false` |  |
+
+## Webhook cert lifecycle (`Replace=true` footgun)
+
+The external-secrets Application syncs with the `Replace=true` sync option
+(needed for CRD upgrades). `Replace` bypasses `ignoreDifferences`, so **any
+re-sync of this chart replaces** the helm-rendered `external-secrets-webhook`
+Secret and both ValidatingWebhookConfigurations with the chart's empty
+template — wiping the ESO-generated webhook CA/certs and the injected
+`caBundle`. The webhook then crash-loops (`stat /tmp/certs/tls.crt: no such
+file`) and **every ExternalSecret write fails cluster-wide** (`failed calling
+webhook ... no endpoints available` / `x509: certificate signed by unknown
+authority`).
+
+This is what happened on 2026-08-07: adding `svc_excalidash` to
+`clusterSecretStores` triggered an auto-sync that wiped the certs.
+
+### Protection
+
+`helm.sh/resource-policy: keep` alone is **not enough** — ArgoCD honors it only
+for pruning, not for `Replace` syncs. The durable fix (git):
+
+1. **No `Replace=true`** on the external-secrets Application (appset entry) —
+   `Replace` bypasses `ignoreDifferences` and clobbers ESO-managed state.
+2. **`ignoreDifferences`** for the webhook Secret (`/data`, `/type`) and both
+   ValidatingWebhookConfigurations (`.webhooks[].clientConfig.caBundle`, ...) —
+   so apply-mode syncs never revert ESO's cert data or the injected caBundle.
+
+Live annotations on the three resources are belt-and-suspenders and must be
+re-applied if they are ever recreated: `helm.sh/resource-policy: keep` +
+`argocd.argoproj.io/sync-options: Replace=false` on:
+- Secret `external-secrets/external-secrets-webhook`
+- ValidatingWebhookConfiguration `externalsecret-validate`
+- ValidatingWebhookConfiguration `secretstore-validate`
+
+### Recovery
+
+1. Restart the cert-controller — `kubectl delete pod -n external-secrets -l app.kubernetes.io/name=external-secrets-cert-controller`. It regenerates the CA + webhook certs and injects the `caBundle` into both webhook configs.
+2. If the webhook Secret was deleted, recreate it empty first (chart shape: labels + `type: Opaque`, no data). ESO writes certs into an existing secret; it does not create it.
+3. Re-apply `helm.sh/resource-policy: keep` on the Secret and both ValidatingWebhookConfigurations.
+4. Verify: webhook pod Ready, `clientConfig.caBundle` present on both ValidatingWebhookConfigurations, and `kubectl get externalsecret` no longer reports webhook errors.

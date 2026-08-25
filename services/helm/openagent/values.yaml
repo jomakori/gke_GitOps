@@ -61,9 +61,13 @@ litellm:
     litellm_settings:
       drop_params: true
     router_settings:
-      disable_cooldowns: true
-      allowed_fails: 100
-      cooldown_time: 0
+      # disable_cooldowns:true short-circuits fallbacks (429s never spill to
+      # backup models). allowed_fails/cooldown_time keep probes off throttled
+      # upstreams; 8 fails / 30s cooldown keeps a single upstream blip from
+      # nuking a whole run with a 429 storm (crash-looped claude-proxy 08-24).
+      disable_cooldowns: false
+      allowed_fails: 8
+      cooldown_time: 30
       num_retries: 2
       routing_strategy: least-busy
       request_timeout: 180
@@ -73,27 +77,37 @@ litellm:
           model: openai/big-pickle
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
+          merge_reasoning_content_in_choices: true
           order: 1
-      - model_name: opencode/north-mini-code-free
+      # nemotron-3-ultra-free: most capable free opencode model (verified
+      # 08-24: correct code output, clean content). Replaces the unavailable
+      # deepseek-v4-flash-free.
+      - model_name: opencode/nemotron-3-ultra-free
         litellm_params:
-          model: openai/north-mini-code-free
+          model: openai/nemotron-3-ultra-free
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
           order: 1
           use_chat_completions_api: true
-      - model_name: opencode/deepseek-v4-flash-free
+          merge_reasoning_content_in_choices: true
+      # laguna-s-2.1-free: clean fast free model (verified 08-24: content
+      # direct, no reasoning wrapper). Replaces the dead north-mini-code-free.
+      - model_name: opencode/laguna-s-2.1-free
         litellm_params:
-          model: openai/deepseek-v4-flash-free
+          model: openai/laguna-s-2.1-free
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
           order: 1
           use_chat_completions_api: true
+          merge_reasoning_content_in_choices: true
       - model_name: opencode/mimo-v2.5-free
         litellm_params:
           model: openai/mimo-v2.5-free
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
           order: 1
+          use_chat_completions_api: true
+          merge_reasoning_content_in_choices: true
       - model_name: anthropic/claude-opus-4-7
         litellm_params:
           model: anthropic/claude-opus-4-7
@@ -108,6 +122,9 @@ litellm:
         litellm_params:
           model: deepseek/deepseek-v4-flash
           api_key: os.environ/DEEPSEEK_API_KEY
+          # Response cache for router retries. (DeepSeek native prefix caching
+          # is automatic server-side.)
+          cache: true
           order: 1
           use_chat_completions_api: true
       - model_name: deepseek-v4-pro
@@ -171,15 +188,15 @@ litellm:
           order: 1
     fallbacks:
       - opencode/big-pickle: ["deepseek-v4-flash"]
-      - opencode/north-mini-code-free: ["deepseek-v4-flash"]
-      - opencode/deepseek-v4-flash-free: ["deepseek-v4-flash"]
+      - opencode/nemotron-3-ultra-free: ["deepseek-v4-flash"]
+      - opencode/laguna-s-2.1-free: ["deepseek-v4-flash"]
       - opencode/mimo-v2.5-free: ["deepseek-v4-flash"]
       - anthropic/claude-opus-4-7: ["claude/opus-4", "deepseek-v4-pro"]
       - moonshotai/kimi-k2.6: ["deepseek-v4-pro", "zai/glm-4.7"]
-      - deepseek-v4-flash: ["zai/glm-4.7-flash", "opencode/deepseek-v4-flash-free"]
+      - deepseek-v4-flash: ["zai/glm-4.7-flash", "opencode/nemotron-3-ultra-free"]
       - deepseek-v4-pro: ["zai/glm-4.7", "deepseek-v4-flash"]
       - zai/glm-4.7: ["deepseek-v4-pro", "zai/glm-4.7-flash"]
-      - zai/glm-4.7-flash: ["deepseek-v4-flash", "opencode/deepseek-v4-flash-free"]
+      - zai/glm-4.7-flash: ["deepseek-v4-flash", "opencode/nemotron-3-ultra-free"]
       - minimax/M3: ["deepseek-v4-pro", "zai/glm-4.7"]
       - minimax/M2.7: ["deepseek-v4-flash", "zai/glm-4.7-flash"]
       - claude/sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
@@ -192,7 +209,11 @@ hermes:
 hermes-agent:
   config:
     model:
-      default: deepseek-v4-pro
+      # Reliable default: claude/sonnet-5 via claude-proxy (verified stable —
+      # 200 OK in 3-5s, proper tool-calling). Free-tier reasoning models
+      # (opencode/*) are flaky for agent loops (rate-limited, slow, reasoning
+      # field quirks) — keep them as selectable options, not the default.
+      default: claude/sonnet-5
       provider: litellm
     providers:
       litellm:
@@ -318,6 +339,19 @@ hermes-agent:
         3. git add fixed file
         4. Re-run pre-commit
         5. Green → commit
+    # tool_search: defer tool schemas; model searches by name, only matched
+    # schemas load. "on" = always (14 MCP servers → max unconditional cut).
+    tools:
+      tool_search:
+        enabled: "on"
+        threshold_pct: 10
+        search_default_limit: 5
+        max_search_limit: 20
+    # Compact sooner — 530K-token requests came from late compaction.
+    compression:
+      enabled: true
+      threshold: 0.35
+      target_ratio: 0.20
     delegation:
       model: claude/sonnet-5
       provider: litellm
@@ -363,6 +397,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [list_applications, get_application, get_application_managed_resources, get_application_resource_tree, get_application_events, sync_application, get_appproject, get_resources]
 
       grafana:
         command: "npx"
@@ -373,6 +408,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [search_dashboards, get_dashboard_by_uid, get_dashboard_summary, get_dashboard_panel_queries, list_datasources, get_datasource_by_uid, get_datasource_by_name, query_prometheus, list_prometheus_metric_names, list_prometheus_label_names, list_prometheus_label_values, list_loki_label_names]
 
       kubectl:
         url: "http://kubernetes-mcp-server.openagent.svc.cluster.local:8000/mcp"
@@ -380,6 +416,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [pods_get, pods_list, pods_list_in_namespace, pods_log, pods_exec, pods_delete, pods_top, resources_get, resources_list, resources_create_or_update, resources_delete, resources_scale, events_list, namespaces_list, configuration_view]
 
       doppler:
         command: "npx"
@@ -389,20 +426,22 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [secrets_get, secrets_list, secrets_names, secrets_update, secrets_delete, secrets_download, configs_list, configs_get, projects_list, projects_get, activity_logs_list, workplace_get]
 
       obscura:
-        command: "/usr/local/bin/obscura"
+        command: "/opt/data/bin/obscura"
         args: ["mcp", "--stealth"]
         timeout: 120
         tools:
           resources: false
           prompts: false
+          include: [browser_navigate, browser_snapshot, browser_markdown, browser_click, browser_type, browser_fill, browser_fill_form, browser_extract, browser_interactive_elements, browser_links, browser_screenshot, browser_scroll, browser_search, browser_evaluate, browser_wait_for_text]
 
       drawio:
         command: "sh"
         args:
           - "-c"
-          - "exec $HOME/.deno/bin/deno run --allow-net --allow-read --allow-env https://raw.githubusercontent.com/simonkurtz-MSFT/drawio-mcp-server/main/src/index.ts"
+          - "cd /opt/data/drawio-mcp-server && exec /opt/data/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio"
         timeout: 120
         tools:
           resources: false
@@ -414,6 +453,10 @@ hermes-agent:
         env:
           GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
           GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
+        tools:
+          include: [create_doc, get_doc_content, get_doc_as_markdown, inspect_doc_structure, batch_update_doc, modify_doc_text, find_and_replace_doc, create_table_with_data, debug_table_structure, update_paragraph_style, update_doc_headers_footers, export_doc_to_pdf, list_docs_in_folder, create_drive_file, create_drive_folder, list_drive_items, search_drive_files, get_drive_file_permissions, get_drive_shareable_link, manage_drive_access, import_to_google_doc, update_drive_file, copy_drive_file, get_drive_file_content, create_spreadsheet, read_sheet_values, modify_sheet_values, get_spreadsheet_info, search_gmail_messages, get_gmail_message_content, send_gmail_message, draft_gmail_message, get_events, manage_event, list_calendars]
+          resources: false
+          prompts: false
 
       plane:
         command: "uvx"
@@ -427,6 +470,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [project, workitem, member, state, label, workitem_comment, workitem_attachment, workitem_relation, page]
 
       skiplagged:
         url: "https://mcp.skiplagged.com/mcp"
@@ -464,6 +508,7 @@ hermes-agent:
         tools:
           resources: false
           prompts: false
+          include: [status, sync, list, get, create_item, edit_item, delete, restore, move, generate, create_folder, edit_folder, create_attachment, create_text_send]
   env: {}
   extraEnv:
     - name: DISCORD_BOT_TOKEN
@@ -524,6 +569,9 @@ hermes-agent:
     - name: skill-plane-ticket-sync
       configMap:
         name: openagent-skill-plane-ticket-sync
+    - name: hermes-mise-config
+      configMap:
+        name: openagent-hermes-mise-config
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -544,45 +592,88 @@ hermes-agent:
       mountPath: /opt/data/skills/plane-ticket-sync/scripts/plan_to_tickets.py
       subPath: plan_to_tickets.py
       readOnly: true
+    - name: hermes-mise-config
+      mountPath: /mise
+      readOnly: true
   command:
     - sh
     - -c
     - |
-      # bitwarden
-      npm install -g @bitwarden/cli 2>&1
-      # golang
-      if [ ! -f /usr/local/go/bin/go ]; then
-        curl -sL https://golang.org/dl/go1.22.4.linux-arm64.tar.gz | tar -xz -C /usr/local
+      # Pin HOME+caches to the PVC so boot installs survive restarts and MCPs
+      # (uid 10000, HOME=/opt/data/home) reuse them instead of re-downloading.
+      export HOME=/opt/data/home
+      export NPM_CONFIG_CACHE=$HOME/.npm
+      export UV_CACHE_DIR=$HOME/.cache/uv
+      export UV_TOOL_DIR=$HOME/.local/share/uv/tools
+      export UV_TOOL_BIN_DIR=$HOME/.local/bin
+      # Toolchain via mise (/mise/mise.toml) — node/deno/uv/go on the PVC.
+      export MISE_DATA_DIR=/opt/data/mise
+      export MISE_CACHE_DIR=/opt/data/mise-cache
+      export MISE_CONFIG_FILE=/mise/mise.toml
+      if [ ! -x /opt/data/bin/mise ]; then
+        curl -fsSL https://mise.run | MISE_INSTALL_PATH=/opt/data/bin/mise sh
       fi
-      export PATH=/usr/local/go/bin:/opt/data/bin:$PATH
+      export PATH=/opt/data/mise/shims:/opt/data/bin:$HOME/.local/bin:$PATH
+      mise install -y 2>&1 || true
+      # /init resets PATH — symlinks into /opt/data/bin (first on PATH) are
+      # what reach MCPs.
+      for t in node npm npx deno uv uvx go; do
+        [ -x /opt/data/mise/shims/$t ] && ln -sf /opt/data/mise/shims/$t /opt/data/bin/$t
+      done
+      # bitwarden CLI — npm global → PVC
+      if [ ! -x /opt/data/npm-global/bin/bw ]; then
+        npm install -g --prefix /opt/data/npm-global @bitwarden/cli 2>&1
+      fi
+      ln -sf /opt/data/npm-global/bin/bw /opt/data/bin/bw
       cd /opt/data && go mod download
-      # obscura
-      if [ ! -f /usr/local/bin/obscura ]; then
-        curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /usr/local/bin
+      # obscura (stealth browser) — PVC so it survives restarts
+      if [ ! -x /opt/data/bin/obscura ]; then
+        curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /opt/data/bin
       fi
-      export PATH=$HOME/.local/bin:$HOME/.deno/bin:$PATH
-      # Agent Reach deps
+      # Agent Reach deps (uv tool bins → PVC via UV_TOOL_BIN_DIR)
       command -v agent-reach >/dev/null 2>&1 || uv tool install https://github.com/Panniantong/agent-reach/archive/main.zip 2>&1
       command -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp 2>&1
       command -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1
       mkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }
-      # deno (drawio MCP — headless draw.io XML generation)
-      if [ ! -f $HOME/.deno/bin/deno ]; then
-        curl -fsSL https://deno.land/install.sh | sh -s -- -y
+      # deno fallback: release zip + python zipfile (install.sh needs unzip/7z,
+      # absent); v2.9.5 pinned for drawio's deno.lock v5.
+      if [ ! -x /opt/data/bin/deno ] && [ ! -x $HOME/.deno/bin/deno ]; then
+        mkdir -p $HOME/.deno/bin /tmp/deno_x
+        DENO_ARCH=$(uname -m | sed 's/aarch64/arm64/')
+        curl -fsSL --retry 3 "https://github.com/denoland/deno/releases/download/v2.9.5/deno-${DENO_ARCH}-unknown-linux-gnu.zip" -o /tmp/deno.zip \
+          && python3 -c "import zipfile; zipfile.ZipFile('/tmp/deno.zip').extractall('/tmp/deno_x')" \
+          && mv /tmp/deno_x/deno $HOME/.deno/bin/deno \
+          && chmod +x $HOME/.deno/bin/deno \
+          || rm -f /tmp/deno.zip
       fi
-      # Doppler CLI — same binary endpoint the official install script uses
-      # (cli.doppler.com/download). gpgv signature verify skipped: container
-      # runs uid 10000 w/o sudo, so gnupg can't be installed here. Installs to
-      # the PVC /opt/data/bin (user-writable, survives restarts).
+      [ -x $HOME/.deno/bin/deno ] && ln -sf $HOME/.deno/bin/deno /opt/data/bin/deno
+      # drawio MCP needs a local checkout (remote-URL run never discovers deno.json).
+      if [ ! -d /opt/data/drawio-mcp-server/.git ]; then
+        git clone --depth 1 https://github.com/simonkurtz-MSFT/drawio-mcp-server /opt/data/drawio-mcp-server 2>&1 || true
+      fi
+      # Doppler CLI → PVC. gpgv verify skipped (no gnupg as uid 10000).
       if [ ! -x /opt/data/bin/doppler ]; then
         mkdir -p /opt/data/bin
         DOP_ARCH=$(uname -m | sed 's/aarch64/arm64/; s/x86_64/amd64/')
         curl -fsSL --retry 3 "https://cli.doppler.com/download?os=linux&arch=${DOP_ARCH}&format=tar" -o /tmp/doppler.tgz \
           && tar -xzf /tmp/doppler.tgz -C /opt/data/bin doppler \
           && chmod +x /opt/data/bin/doppler \
-          || rm -f /opt/data/bin/doppler
+          || rm -f /tmp/doppler.tgz
       fi
+      # Boot ran as root — chown caches/tools to runtime uid 10000 (npx/uvx/
+      # mise shims EACCES otherwise).
+      chown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config /opt/data/mise /opt/data/mise-cache /opt/data/npm-global 2>/dev/null || true
       exec /init hermes gateway run
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "2"
+      # 3Gi — 2Gi OOM-killed the container (exit 137) during cold-cache MCP
+      # spawn storm + concurrent ArgoCD sync (2026-08-23). Caches now on PVC
+      # (see command block), but keep headroom for npx/uvx server boots.
+      memory: 3Gi
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
