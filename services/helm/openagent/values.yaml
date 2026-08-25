@@ -162,28 +162,28 @@ litellm:
         litellm_params:
           model: openai/claude-sonnet-4-6
           api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-          api_key: sk-auth2api-claude-proxy-key
+          api_key: os.environ/CLAUDE_PROXY_API_KEY
           rpm: 120
           order: 1
       - model_name: claude/opus-4
         litellm_params:
           model: openai/claude-opus-4-7
           api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-          api_key: sk-auth2api-claude-proxy-key
+          api_key: os.environ/CLAUDE_PROXY_API_KEY
           rpm: 30
           order: 1
       - model_name: claude/opus-5
         litellm_params:
           model: openai/claude-opus-5
           api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-          api_key: sk-auth2api-claude-proxy-key
+          api_key: os.environ/CLAUDE_PROXY_API_KEY
           rpm: 30
           order: 1
       - model_name: claude/haiku-4-5
         litellm_params:
           model: openai/claude-haiku-4-5
           api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-          api_key: sk-auth2api-claude-proxy-key
+          api_key: os.environ/CLAUDE_PROXY_API_KEY
           rpm: 60
           order: 1
     fallbacks:
@@ -554,6 +554,11 @@ hermes-agent:
       value: "8642"
     - name: API_SERVER_CORS_ORIGINS
       value: "https://openagent.maklab.net"
+    - name: CLAUDE_PROXY_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: openagent-secrets
+          key: CLAUDE_PROXY_API_KEY
     - name: DASHBOARD_BASE_URL
       value: "https://openagent.maklab.net"
   extraVolumes:
