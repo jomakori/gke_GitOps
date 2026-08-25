@@ -118,3 +118,16 @@ virtualServices:
     destination:
       host: headlamp.headlamp.svc.cluster.local
       port: 80
+
+  # Hermes built-in dashboard (agent port 9119): high-level Hermes admin —
+  # /api/analytics/usage (token usage), /api/analytics/models, sessions,
+  # cron jobs, skills hub, config, system stats. Public (no CF Access): the
+  # dashboard has its own basic-auth login (HERMES_DASHBOARD_BASIC_AUTH_* from
+  # Doppler via openagent-secrets). hermes.maklab.net flows through the
+  # wildcard tunnel → maklab-gateway; ExternalDNS creates the record.
+  hermes-dashboard:
+    enabled: true
+    host: hermes.maklab.net
+    destination:
+      host: openagent-hermes-agent.openagent.svc.cluster.local
+      port: 9119
