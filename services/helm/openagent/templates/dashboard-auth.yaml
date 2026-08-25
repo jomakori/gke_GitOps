@@ -2,34 +2,34 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: openagent-dashboard-auth-fix
+  name: openagent-dashboard-auth
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "openagent.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 data:
-  dashboard-fix.pth: |
-    import dashboard_auth_fix
-  dashboard_auth_fix.py: |
-    """Surgical fix for hermes dashboard basic-auth login (agent v2026.7.7.2).
+  dashboard-auth.pth: |
+    import dashboard_auth_patch
+  dashboard_auth_patch.py: |
+    """Dashboard auth augmentation — password-only provider login.
 
-    Upstream bug: _auto_sso_response auto-302s unauth document loads to
-    /auth/login?provider=<single provider> when exactly ONE interactive
-    provider is registered — WITHOUT checking whether that provider is a
-    password-only provider. BasicAuthProvider has no OAuth flow; its
-    start_login raises NotImplementedError -> 500 on /auth/login, so the
-    dashboard login page is unreachable with basic auth.
+    Hermes dashboard auth supports two provider kinds: OAuth/portal flows and
+    password-only providers (BasicAuthProvider). The auto-SSO fast path in
+    ``_auto_sso_response`` (hermes_cli/dashboard_auth/middleware.py) bounces
+    unauthenticated document loads to the OAuth initiation route whenever
+    exactly ONE interactive provider is registered — but password-only
+    providers have no OAuth flow, so that route 500s (agent v2026.7.7.2).
 
-    Fixed upstream by adding `if getattr(provider, "supports_password",
-    False): return None` (master hermes_cli/dashboard_auth/middleware.py).
-    This module installs that check at site-init.
+    This module installs the upstream fix (master middleware.py adds
+    ``if getattr(provider, "supports_password", False): return None``) at
+    site-init. Loaded via dashboard-auth.pth mounted into the agent venv
+    site-packages (site-init runs ``import dashboard_auth_patch`` in every
+    python process; the argv guard limits the patch to the dashboard process).
 
-    Loaded via dashboard-fix.pth mounted into the agent venv site-packages
-    (site-init runs `import dashboard_auth_fix` in every python process; the
-    argv guard limits the actual patch to the dashboard process). Remove this
-    ConfigMap + the values mounts once the agent image includes the upstream
-    fix.
+    REMOVE this ConfigMap + its values mounts once the agent image includes
+    the upstream fix (the patch is inert after that point, but the mount
+    should go with it).
     """
 
     import sys
