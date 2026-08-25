@@ -28,9 +28,10 @@ spec:
       initContainers:
         # Gateway mode runs NO in-process agent, so the first-run onboarding
         # wizard's system check (probes /root/.hermes/config.yaml + agent imports
-        # inside THIS container) is a guaranteed false negative. Seed the wizard
-        # gate (settings.json -> onboarding_completed, see api/onboarding.py) on
-        # first boot so the wizard never renders. Never clobber existing settings.
+        # inside THIS container) is a guaranteed false negative. Merge wizard +
+        # sidebar defaults into settings.json on every boot (setdefault — never
+        # clobbers user-tuned values), so onboarding never renders and agent
+        # sessions (discord/cli/cron) show in the sidebar.
         - name: seed-onboarding
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -41,8 +42,17 @@ spec:
               set -e
               if [ ! -f /data/settings.json ]; then
                 mkdir -p /data
-                printf '%s\n' '{"onboarding_completed": true, "default_workspace": "/data/workspace"}' > /data/settings.json
+                echo '{}' > /data/settings.json
               fi
+              python3 - <<'PY'
+              import json
+              p = '/data/settings.json'
+              d = json.load(open(p))
+              d.setdefault('onboarding_completed', True)
+              d.setdefault('default_workspace', '/data/workspace')
+              d.setdefault('show_cli_sessions', True)
+              json.dump(d, open(p, 'w'), indent=2)
+              PY
           volumeMounts:
             - name: hermes-webui-state
               mountPath: /data
@@ -98,6 +108,12 @@ spec:
               value: {{ .Values.hermes.apiKey | quote }}
             - name: HERMES_WEBUI_STATE_DIR
               value: /data
+            # Point Hermes at the mounted agent home so the gateway watcher +
+            # session discoverability resolve <mountPath>/state.db — the agent's
+            # real session store (discord/cli/cron/api_server sessions appear in
+            # the sidebar when show_cli_sessions is on).
+            - name: HERMES_HOME
+              value: {{ .Values.agentState.mountPath | quote }}
             - name: HERMES_WEBUI_DEFAULT_WORKSPACE
               value: /data/workspace
             - name: HERMES_WEBUI_SECURE
@@ -141,6 +157,11 @@ spec:
               mountPath: /app
             - name: hermes-webui-state
               mountPath: /data
+            {{- if .Values.agentState.enabled }}
+            - name: agent-state
+              mountPath: {{ .Values.agentState.mountPath }}
+              readOnly: true
+            {{- end }}
       volumes:
         - name: runtime
           emptyDir: {}
@@ -151,4 +172,10 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if .Values.agentState.enabled }}
+        - name: agent-state
+          persistentVolumeClaim:
+            claimName: {{ .Values.agentState.claimName }}
+            readOnly: true
+        {{- end }}
 {{- end }}
