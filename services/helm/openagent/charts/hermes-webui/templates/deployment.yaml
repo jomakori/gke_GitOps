@@ -26,6 +26,29 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        # Copy the agent's pure-python packages (skills/cron views need them:
+        # agent.skill_utils, tools.skills_tool, cron.jobs, cron.scheduler,
+        # hermes_cli.config, utils, gateway.session_context). The webui runs
+        # gateway mode with no agent source; HERMES_WEBUI_AGENT_DIR=/src makes
+        # config.py put it on sys.path. Third-party deps come from the webui
+        # venv — no agent deps installed.
+        {{- if .Values.agentSource.enabled }}
+        - name: agent-source
+          image: "{{ .Values.agentSource.image }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              mkdir -p /src
+              for p in agent tools cron hermes_cli gateway acp_adapter utils.py hermes_constants.py; do
+                cp -a "{{ .Values.agentSource.sourcePath }}/$p" /src/
+              done
+          volumeMounts:
+            - name: agent-src
+              mountPath: /src
+        {{- end }}
         # Gateway mode runs NO in-process agent, so the first-run onboarding
         # wizard's system check (probes /root/.hermes/config.yaml + agent imports
         # inside THIS container) is a guaranteed false negative. Merge wizard +
@@ -114,6 +137,14 @@ spec:
             # the sidebar when show_cli_sessions is on).
             - name: HERMES_HOME
               value: {{ .Values.agentState.mountPath | quote }}
+            {{- if .Values.agentSource.enabled }}
+            # Agent source for skills/cron views (see agent-source initContainer).
+            # _discover_python: pin the webui venv python explicitly.
+            - name: HERMES_WEBUI_AGENT_DIR
+              value: /src
+            - name: HERMES_WEBUI_PYTHON
+              value: /app/venv/bin/python
+            {{- end }}
             - name: HERMES_WEBUI_DEFAULT_WORKSPACE
               value: /data/workspace
             - name: HERMES_WEBUI_SECURE
@@ -162,9 +193,18 @@ spec:
               mountPath: {{ .Values.agentState.mountPath }}
               readOnly: true
             {{- end }}
+            {{- if .Values.agentSource.enabled }}
+            - name: agent-src
+              mountPath: /src
+              readOnly: true
+            {{- end }}
       volumes:
         - name: runtime
           emptyDir: {}
+        {{- if .Values.agentSource.enabled }}
+        - name: agent-src
+          emptyDir: {}
+        {{- end }}
         - name: hermes-webui-state
           {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
