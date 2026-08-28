@@ -721,20 +721,20 @@ data:
 
     | Persona | Role | Model | Purpose |
     |---------|------|-------|---------|
-    | **sisyphus** | orchestrator | claude/sonnet-5 | Main entry point. Classifies intent inline, delegates via ensemble relationships, enforces verification tiers. Skills: `k8s-ops`, `omo-core-skills`, `hashline-editor`, `web-endpoint`. |
-    | **atlas** | orchestrator | claude/sonnet-5 | Cross-persona coordination, quality verification, supervision over sisyphus/prometheus/hephaestus. |
-    | **prometheus** | planner | claude/sonnet-5 | Strategic planner — builds step-by-step implementation plans from objectives. |
-    | **metis** | planner | deepseek-v4-pro | Pre-planning consultant — identifies hidden intentions, ambiguities, AI failure points. |
-    | **momus** | reviewer | deepseek-v4-pro | Ruthless plan reviewer — finds gaps, risks, missing context in plans. |
+    | **sisyphus** | orchestrator | glm-5.3 | Main entry point. Classifies intent inline, delegates via ensemble relationships, enforces verification tiers. Skills: `k8s-ops`, `omo-core-skills`, `hashline-editor`, `web-endpoint`. |
+    | **atlas** | orchestrator | deepseek-v4-flash | Cross-persona coordination, quality verification, supervision over sisyphus/prometheus/hephaestus. |
+    | **prometheus** | planner | glm-5.3 | Strategic planner — builds step-by-step implementation plans from objectives. |
+    | **metis** | planner | glm-5.3 | Pre-planning consultant — identifies hidden intentions, ambiguities, AI failure points. |
+    | **momus** | reviewer | minimax-m3 | Ruthless plan reviewer — finds gaps, risks, missing context in plans. |
     | **oracle** | architect | claude/opus-5 | Read-only architecture/security consultant. |
-    | **hephaestus** | worker | minimax/M3 | Deep implementation coder — production-quality code. |
+    | **hephaestus** | worker | minimax-m3 | Deep implementation coder — production-quality code. |
     | **sisyphus-junior** | worker | deepseek-v4-flash | Focused task executor — no re-delegation. Trivial/quick tasks only. |
-    | **librarian** | researcher | zai/glm-4.7-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
-    | **explore** | researcher | zai/glm-4.7-flash | Codebase pattern discovery — grep, glob, file reading. |
+    | **librarian** | researcher | deepseek-v4-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
+    | **explore** | researcher | deepseek-v4-flash | Codebase pattern discovery — grep, glob, file reading. |
 
     **Delegation graph** (spec.relationships): sisyphus → {prometheus, metis, hephaestus, oracle, atlas}; atlas → {librarian, explore, sisyphus-junior}; prometheus → momus. Supervision: atlas → {sisyphus, prometheus, hephaestus}. Stimulus: `omo-loop-engineering` → sisyphus. **Shared memory**: enabled. **Workflow type**: delegation.
 
-    **Model pricing rationale** (commit 5ced131): Orchestrator/planner personas use deepseek-v4-pro (strong reasoning, balanced cost). Worker personas: deep researcher tasks use zai/glm-4.7-flash (free tier, fast); code tasks use minimax/M3 (strong coding, affordable). No Anthropic Opus/Google Gemini personas — removed in e187534 to reduce cost.
+    **Model pricing rationale**: Orchestrator/planner (sisyphus/prometheus/metis) → glm-5.3 ($1.40/$4.40/M, 1M ctx) via Kilo Gateway. Code/review (hephaestus/momus) → minimax-m3 ($0.30/$1.20/M). High-volume (atlas/librarian/explore/sisyphus-junior) → deepseek-v4-flash ($0.14/$0.28/M, native API). Long-ctx/hard specialist → kimi-k3 ($3/$15/M, codingIndex 76.2) — expensive, use sparingly. Claude (opus/sonnet/haiku) escalation-only via claude-proxy. Kilo Gateway = one JWT vendor replacing separate ZAI/Moonshot/MiniMax keys.
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -793,17 +793,19 @@ data:
     | opencode/laguna-s-2.1-free | openai (OpenCode) | OPENCODE_API_KEY |
     | opencode/mimo-v2.5-free | openai (OpenCode) | OPENCODE_API_KEY |
     | anthropic/claude-opus-4-7 | anthropic (native) | ANTHROPIC_API_KEY |
-    | moonshotai/kimi-k2.6 | moonshot (native) | MOONSHOT_API_KEY |
+    | kimi-k3 | openai (Kilo Gateway) | KILO_API_KEY |
     | deepseek-v4-flash | deepseek (native) | DEEPSEEK_API_KEY |
     | deepseek-v4-pro | deepseek (native) | DEEPSEEK_API_KEY |
-    | zai/glm-4.7 | zai (native) | ZAI_API_KEY |
-    | zai/glm-4.7-flash | zai (native) | ZAI_API_KEY |
-    | minimax/M3 | openai (MiniMax) | MINIMAX_API_KEY |
-    | minimax/M2.7 | openai (MiniMax) | MINIMAX_API_KEY |
+    | glm-5.3 | openai (Kilo Gateway) | KILO_API_KEY |
+    | minimax-m3 | openai (Kilo Gateway) | KILO_API_KEY |
     | claude/sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
+    | claude/opus-4 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude/opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
+    | claude/haiku-4-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
-    **Fallback chains**: opencode/big-pickle → deepseek-v4-flash; opencode/nemotron-3-ultra-free → deepseek-v4-flash; opencode/laguna-s-2.1-free → deepseek-v4-flash; opencode/mimo-v2.5-free → deepseek-v4-flash. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=8, disable_cooldowns=false. Cooldowns MUST stay enabled — with disable_cooldowns: true the declared fallbacks never fire on 429 (see router_settings comment in values.yaml).
+    **Kilo Gateway** (base `https://api.kilo.ai/api/gateway/v1`, Bearer `KILO_API_KEY`): GLM 5.3 / Kimi K3 / MiniMax M3 route through it (OpenRouter-style IDs). DeepSeek stays on native API. Claude stays on claude-proxy (escalation only).
+
+    **Fallback chains** (one fallback each, no cheap→Claude): opencode/* → deepseek-v4-flash; deepseek-v4-flash → glm-5.3; deepseek-v4-pro → glm-5.3; glm-5.3 → deepseek-v4-pro; kimi-k3 → glm-5.3; minimax-m3 → deepseek-v4-pro; claude/opus-4 → claude/sonnet-5; claude/opus-5 → claude/sonnet-5; claude/sonnet-5 → glm-5.3. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=8, disable_cooldowns=false. Cooldowns MUST stay enabled — with disable_cooldowns: true the declared fallbacks never fire on 429 (see router_settings comment in values.yaml).
 
     ### Hermes Dashboard & Workspace
 

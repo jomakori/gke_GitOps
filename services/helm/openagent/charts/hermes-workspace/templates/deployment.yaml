@@ -93,16 +93,16 @@ spec:
               ln -sf /shared/bin/venv/bin/pre-commit /shared/.local/bin/pre-commit
 
               # Central model mapping
-              echo 'orchestrator=deepseek-v4-pro' > /shared/bin/worker-models.cfg
+              echo 'orchestrator=glm-5.3' > /shared/bin/worker-models.cfg
               for entry in \
-                'supervisor=claude/sonnet-5' \
-                'strategist=deepseek-v4-pro' \
-                'reviewer=deepseek-v4-pro' \
+                'supervisor=deepseek-v4-flash' \
+                'strategist=glm-5.3' \
+                'reviewer=minimax-m3' \
                 'architect=claude/opus-5' \
-                'builder=minimax/M3' \
+                'builder=minimax-m3' \
                 'junior-builder=deepseek-v4-flash' \
-                'researcher=zai/glm-4.7-flash' \
-                'explorer=zai/glm-4.7-flash'; do
+                'researcher=deepseek-v4-flash' \
+                'explorer=deepseek-v4-flash'; do
                 echo "$entry" >> /shared/bin/worker-models.cfg
               done
 

@@ -92,16 +92,16 @@ openagent/                       ← umbrella (v2.0.0)
 
 | Persona | Role | Model | Purpose |
 |---------|------|-------|---------|
-| **sisyphus** | orchestrator | claude/sonnet-4 | Main entry point — intent classification, delegation, verification enforcement. |
-| **atlas** | orchestrator | claude/sonnet-4 | Cross-persona coordination, quality verification, supervision. |
-| **prometheus** | planner | claude/sonnet-4 | Strategic planner — builds step-by-step plans from objectives. |
-| **metis** | planner | deepseek-v4-pro | Pre-planning consultant — hidden intentions, ambiguity, AI failure points. |
-| **momus** | reviewer | deepseek-v4-pro | Ruthless plan reviewer — gaps, risks, missing context. |
-| **oracle** | architect | claude/opus-4 | Read-only architecture/security consultant. |
-| **hephaestus** | worker | minimax/M3 | Deep implementation coder — production-quality code. |
+| **sisyphus** | orchestrator | glm-5.3 | Main entry point — intent classification, delegation, verification enforcement. |
+| **atlas** | orchestrator | deepseek-v4-flash | Cross-persona coordination, quality verification, supervision. |
+| **prometheus** | planner | glm-5.3 | Strategic planner — builds step-by-step plans from objectives. |
+| **metis** | planner | glm-5.3 | Pre-planning consultant — hidden intentions, ambiguity, AI failure points. |
+| **momus** | reviewer | minimax-m3 | Ruthless plan reviewer — gaps, risks, missing context. |
+| **oracle** | architect | claude/opus-5 | Read-only architecture/security consultant. |
+| **hephaestus** | worker | minimax-m3 | Deep implementation coder — production-quality code. |
 | **sisyphus-junior** | worker | deepseek-v4-flash | Focused task executor — no re-delegation. |
-| **librarian** | researcher | zai/glm-4.7-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
-| **explore** | researcher | zai/glm-4.7-flash | Codebase pattern discovery — grep, glob, file reading. |
+| **librarian** | researcher | deepseek-v4-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
+| **explore** | researcher | deepseek-v4-flash | Codebase pattern discovery — grep, glob, file reading. |
 
 **Delegation graph** (spec.relationships): sisyphus → {prometheus, metis, hephaestus, oracle, atlas}; atlas → {librarian, explore, sisyphus-junior}; prometheus → momus. Supervision: atlas → {sisyphus, prometheus, hephaestus}. Stimulus: `omo-loop-engineering` → sisyphus.
 

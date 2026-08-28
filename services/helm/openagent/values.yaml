@@ -113,10 +113,12 @@ litellm:
           model: anthropic/claude-opus-4-7
           api_key: os.environ/ANTHROPIC_API_KEY
           order: 1
-      - model_name: moonshotai/kimi-k2.6
+      - model_name: kimi-k3
         litellm_params:
-          model: moonshot/kimi-k2.6
-          api_key: os.environ/MOONSHOT_API_KEY
+          model: openai/moonshotai/kimi-k3
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          merge_reasoning_content_in_choices: true
           order: 1
       - model_name: deepseek-v4-flash
         litellm_params:
@@ -134,29 +136,18 @@ litellm:
           cache: true
           order: 1
           use_chat_completions_api: true
-      - model_name: zai/glm-4.7
+      - model_name: glm-5.3
         litellm_params:
-          model: zai/glm-4.7
-          api_key: os.environ/ZAI_API_KEY
+          model: openai/z-ai/glm-5.3
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          merge_reasoning_content_in_choices: true
           order: 1
-          use_chat_completions_api: true
-      - model_name: zai/glm-4.7-flash
+      - model_name: minimax-m3
         litellm_params:
-          model: zai/glm-4.7-flash
-          api_key: os.environ/ZAI_API_KEY
-          order: 1
-          use_chat_completions_api: true
-      - model_name: minimax/M3
-        litellm_params:
-          model: openai/MiniMax-M3
-          api_key: os.environ/MINIMAX_API_KEY
-          api_base: os.environ/MINIMAX_API_BASE
-          order: 1
-      - model_name: minimax/M2.7
-        litellm_params:
-          model: openai/MiniMax-M2.7
-          api_key: os.environ/MINIMAX_API_KEY
-          api_base: os.environ/MINIMAX_API_BASE
+          model: openai/minimax/minimax-m3
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
           order: 1
       - model_name: claude/sonnet-5
         litellm_params:
@@ -191,17 +182,15 @@ litellm:
       - opencode/nemotron-3-ultra-free: ["deepseek-v4-flash"]
       - opencode/laguna-s-2.1-free: ["deepseek-v4-flash"]
       - opencode/mimo-v2.5-free: ["deepseek-v4-flash"]
-      - anthropic/claude-opus-4-7: ["claude/opus-4", "deepseek-v4-pro"]
-      - moonshotai/kimi-k2.6: ["deepseek-v4-pro", "zai/glm-4.7"]
-      - deepseek-v4-flash: ["zai/glm-4.7-flash", "opencode/nemotron-3-ultra-free"]
-      - deepseek-v4-pro: ["zai/glm-4.7", "deepseek-v4-flash"]
-      - zai/glm-4.7: ["deepseek-v4-pro", "zai/glm-4.7-flash"]
-      - zai/glm-4.7-flash: ["deepseek-v4-flash", "opencode/nemotron-3-ultra-free"]
-      - minimax/M3: ["deepseek-v4-pro", "zai/glm-4.7"]
-      - minimax/M2.7: ["deepseek-v4-flash", "zai/glm-4.7-flash"]
-      - claude/sonnet-5: ["deepseek-v4-pro", "zai/glm-4.7"]
-      - claude/opus-4: ["claude/sonnet-5", "deepseek-v4-pro"]
-      - claude/opus-5: ["claude/sonnet-5", "deepseek-v4-pro"]
+      - anthropic/claude-opus-4-7: ["claude/opus-4"]
+      - deepseek-v4-flash: ["glm-5.3"]
+      - deepseek-v4-pro: ["glm-5.3"]
+      - glm-5.3: ["deepseek-v4-pro"]
+      - kimi-k3: ["glm-5.3"]
+      - minimax-m3: ["deepseek-v4-pro"]
+      - claude/sonnet-5: ["glm-5.3"]
+      - claude/opus-4: ["claude/sonnet-5"]
+      - claude/opus-5: ["claude/sonnet-5"]
 
 # ── Hermes Agent ────────────────────────────────────────────────────
 hermes:

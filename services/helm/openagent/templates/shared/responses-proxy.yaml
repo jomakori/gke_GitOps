@@ -14,7 +14,7 @@ data:
     // first retry the primary with a delay (window may clear), then spill to
     // these. LiteLLM's own `fallbacks` don't trigger on this RateLimitError
     // when cooldowns are disabled, hence the proxy-level retry logic.
-    const FALLBACK_MODELS = (process.env.FALLBACK_MODELS ?? "deepseek-v4-pro,zai/glm-4.7").split(",").filter(Boolean);
+    const FALLBACK_MODELS = (process.env.FALLBACK_MODELS ?? "deepseek-v4-pro,glm-5.3").split(",").filter(Boolean);
     // Delayed retries on the primary before falling back: count + base delay in
     // ms (escalating: base * attempt). Defaults: 2 retries at 10s + 20s (~30s
     // total, inside Codex's per-attempt patience).

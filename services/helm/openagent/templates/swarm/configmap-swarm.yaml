@@ -15,7 +15,7 @@ data:
         name: Sisyphus
         role: OMO Orchestrator / Spec-Driven Router
         specialty: complexity classification, context sufficiency assessment, spec-driven flow orchestration
-        model: claude/sonnet-5
+        model: glm-5.3
         mission: >
           Classify each request by complexity and assess context sufficiency
           to determine the shortest viable planning path.
@@ -85,7 +85,7 @@ data:
         name: Atlas
         role: Cross-Persona Coordinator / Quality Gate
         specialty: cross-persona coordination, quality verification, supervision
-        model: claude/sonnet-5
+        model: deepseek-v4-flash
         mission: Verify work quality and correctness. Handle cross-persona dependencies.
         profile: omo-supervisor
         modes:
@@ -119,7 +119,7 @@ data:
         name: Prometheus
         role: Spec-Driven Planner / Pre-plan Consultant
         specialty: spec-driven planning, ambiguity detection, visual spec generation
-        model: deepseek-v4-pro
+        model: glm-5.3
         mission: >
           Follow Spec-Driven Development methodology. Before planning,
           assess context sufficiency — if the request is already clear,
@@ -186,7 +186,7 @@ data:
         name: Momus
         role: Spec Reviewer / Quality Gate
         specialty: spec completeness validation, clarity checks, actionability assessment
-        model: deepseek-v4-pro
+        model: minimax-m3
         mission: >
           Review plans against spec-driven standards. Assess completeness
           first — if the plan is already solid, approve and pass through
@@ -277,7 +277,7 @@ data:
         name: Hephaestus
         role: Deep Implementation Coder
         specialty: production-quality code, deep implementation
-        model: minimax/M3
+        model: minimax-m3
         mission: Write production-quality code for assigned implementation tasks.
         profile: omo-builder
         modes:
@@ -342,7 +342,7 @@ data:
         name: Librarian
         role: Docs / RAG Searcher
         specialty: authoritative documentation, OSS examples, remote repositories
-        model: zai/glm-4.7-flash
+        model: deepseek-v4-flash
         mission: Find docs, OSS examples, and remote repositories. Return findings with sources.
         profile: omo-researcher
         modes:
@@ -378,7 +378,7 @@ data:
         name: Explore
         role: Codebase Pattern Discovery
         specialty: codebase patterns, file structures, conventions
-        model: zai/glm-4.7-flash
+        model: deepseek-v4-flash
         mission: Find files, usages, structures, and conventions in the codebase.
         profile: omo-explorer
         modes:
