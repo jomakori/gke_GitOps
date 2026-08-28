@@ -20,7 +20,7 @@ data:
       default:    { model: glm-5.3 }             # orchestration, planning, review
       deep:       { model: glm-5.3 }             # autonomous problem-solving
       ultrabrain: { model: claude/opus-5 }       # escalation-only (see policy)
-      visual:     { model: kimi-k3 }             # vision, multimodal
+      visual:     { model: gemini-3.6-flash }    # vision, multimodal
       writing:    { model: glm-5.3 }             # docs, prose
 
     # ── Claude escalation policy ─────────────────────────────────────────
@@ -135,11 +135,11 @@ data:
       - id: multimodal-looker
         name: Multimodal-Looker
         role: vision
-        model: kimi-k3
-        fallback: glm-5.3
+        model: gemini-3.6-flash
+        fallback: qwen3-6-plus
         concurrency: 1
         category: visual
-        mission: Vision / multimodal analysis, long-context specialist tasks.
+        mission: Vision / multimodal analysis (image, audio, video, file).
 
       - id: sisyphus-junior
         name: Sisyphus-Junior
