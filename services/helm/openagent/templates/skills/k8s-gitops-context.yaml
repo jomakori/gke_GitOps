@@ -711,6 +711,14 @@ data:
 
     ### The 10 Personas (Hermes Agent Delegation)
 
+    > **OMO agent fleet source of truth**: `openagent-omo-agents` ConfigMap
+    > (`templates/omo/configmap-omo-agents.yaml`). Defines the 11 OMO agents
+    > (Sisyphus + 10), each with `model` + ONE `fallback` (no chains), plus
+    > category routing (`quick/default/deep/ultrabrain/visual/writing`) and the
+    > Claude escalation policy. Models are LiteLLM aliases — LiteLLM is model
+    > access ONLY, routing/fallbacks live in the ConfigMap. The table below is
+    > the historical persona map; the ConfigMap is authoritative.
+
     | Persona | Role | Model | Purpose |
     |---------|------|-------|---------|
     | **sisyphus** | orchestrator | glm-5.3 | Main entry point. Classifies intent inline, delegates via ensemble relationships, enforces verification tiers. Skills: `k8s-ops`, `omo-core-skills`, `hashline-editor`, `web-endpoint`. |

@@ -1,0 +1,151 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagent.fullname" . }}-omo-agents
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omo-agents
+data:
+  omo-agents.yaml: |
+    # ── OMO (Oh My OpenAgent) agent fleet — Hermes-native orchestration ──
+    # Routing + fallbacks live HERE (the orchestration layer).
+    # LiteLLM is model access ONLY — no fallbacks, no routing.
+    # Model ids are LiteLLM aliases (see values.yaml -> litellm.model_list).
+    version: 1
+
+    # ── Category routing: Sisyphus delegates by CATEGORY, not model name ──
+    categories:
+      quick:      { model: deepseek-v4-flash }   # trivial, single-file, typo
+      default:    { model: glm-5.3 }             # orchestration, planning, review
+      deep:       { model: glm-5.3 }             # autonomous problem-solving
+      ultrabrain: { model: claude/opus-5 }       # escalation-only (see policy)
+      visual:     { model: kimi-k3 }             # vision, multimodal
+      writing:    { model: glm-5.3 }             # docs, prose
+
+    # ── Claude escalation policy ─────────────────────────────────────────
+    # Escalate to Claude (opus-5) ONLY when:
+    #   - strong models disagree
+    #   - major architectural tradeoff
+    #   - debugging has failed repeatedly
+    #   - security / data-integrity / prod-infra risk
+    #   - agent flags high uncertainty
+    #   - explicit final audit requested
+    # NEVER escalate just because: task is long, touches many files,
+    # hit a normal error, needs tests, or involves large repo exploration.
+    escalation_policy:
+      claude_model: claude/opus-5
+      triggers:
+        - model-disagreement
+        - major-arch-tradeoff
+        - repeated-debug-failure
+        - security-data-prod-risk
+        - high-uncertainty
+        - final-audit
+      never:
+        - long-task
+        - many-files
+        - normal-error
+        - needs-tests
+        - large-repo-exploration
+
+    # ── The 11 agents — one fallback each, no chains ─────────────────────
+    agents:
+      - id: sisyphus
+        name: Sisyphus
+        role: orchestrator
+        model: glm-5.3
+        fallback: minimax-m3
+        concurrency: 1
+        category: default
+        mission: Classify intent, route by category, enforce approval + verification gates.
+
+      - id: hephaestus
+        name: Hephaestus
+        role: builder
+        model: minimax-m3
+        fallback: glm-5.3
+        concurrency: 2
+        category: deep
+        mission: Autonomous coding, debugging, larger implementation.
+
+      - id: oracle
+        name: Oracle
+        role: architect
+        model: claude/opus-5
+        fallback: glm-5.3
+        concurrency: 1
+        category: ultrabrain
+        mission: Architecture + security review. Escalation tier — Claude only.
+
+      - id: prometheus
+        name: Prometheus
+        role: planner
+        model: glm-5.3
+        fallback: claude/opus-5
+        concurrency: 1
+        category: default
+        mission: Spec-driven planning, task decomposition, risk assessment.
+
+      - id: metis
+        name: Metis
+        role: analyzer
+        model: glm-5.3
+        fallback: claude/opus-5
+        concurrency: 1
+        category: default
+        mission: Pre-plan context-sufficiency analysis, ambiguity detection.
+
+      - id: momus
+        name: Momus
+        role: reviewer
+        model: minimax-m3
+        fallback: glm-5.3
+        concurrency: 2
+        category: default
+        mission: Code + spec review, gap detection, quality gate.
+
+      - id: atlas
+        name: Atlas
+        role: coordinator
+        model: deepseek-v4-flash
+        fallback: minimax-m3
+        concurrency: 3
+        category: quick
+        mission: Cross-persona coordination, quality verification, supervision.
+
+      - id: explore
+        name: Explore
+        role: explorer
+        model: deepseek-v4-flash
+        fallback: minimax-m3
+        concurrency: 2
+        category: quick
+        mission: Repo exploration, codebase pattern discovery, conventions.
+
+      - id: librarian
+        name: Librarian
+        role: researcher
+        model: deepseek-v4-flash
+        fallback: minimax-m3
+        concurrency: 2
+        category: quick
+        mission: Docs, OSS examples, remote repos, source-verified research.
+
+      - id: multimodal-looker
+        name: Multimodal-Looker
+        role: vision
+        model: kimi-k3
+        fallback: glm-5.3
+        concurrency: 1
+        category: visual
+        mission: Vision / multimodal analysis, long-context specialist tasks.
+
+      - id: sisyphus-junior
+        name: Sisyphus-Junior
+        role: junior
+        model: deepseek-v4-flash
+        fallback: minimax-m3
+        concurrency: 3
+        category: quick
+        mission: Trivial fixes, single-file edits, quick tasks. No re-delegation.
