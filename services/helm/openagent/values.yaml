@@ -198,11 +198,9 @@ hermes:
 hermes-agent:
   config:
     model:
-      # Reliable default: claude/sonnet-5 via claude-proxy (verified stable —
-      # 200 OK in 3-5s, proper tool-calling). Free-tier reasoning models
-      # (opencode/*) are flaky for agent loops (rate-limited, slow, reasoning
-      # field quirks) — keep them as selectable options, not the default.
-      default: claude/sonnet-5
+      # GLM 5.3 via Kilo Gateway — latest-gen brain (1M ctx, $1.40/$4.40/M,
+      # parallel tool-calls). Claude is escalation-only, not the default.
+      default: glm-5.3
       provider: litellm
     providers:
       litellm:
@@ -342,7 +340,7 @@ hermes-agent:
       threshold: 0.35
       target_ratio: 0.20
     delegation:
-      model: claude/sonnet-5
+      model: glm-5.3
       provider: litellm
       base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
       api_key: ${LITELLM_MASTER_KEY}
@@ -351,6 +349,7 @@ hermes-agent:
 
     auxiliary:
       vision:
+        # Vision stays Claude — GLM 5.3 / Kimi K3 are text-only.
         provider: litellm
         model: claude/sonnet-5
     plugins:
