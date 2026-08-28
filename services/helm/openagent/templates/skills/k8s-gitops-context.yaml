@@ -424,7 +424,7 @@ data:
     │   ├── subchart-1/          ← local custom subchart (tracked in git)
     │   └── subchart-2/          ← local custom subchart (tracked in git)
     ├── templates/              ← CRDs + shared resources ONLY (no workload templates)
-    │   ├── swarm/              ← ensemble config + hermes config
+    │   ├── omo/                ← OMO agent fleet (agents, categories, fallbacks)
     │   ├── db/                 ← operator CRDs
     │   ├── hooks/              ← hermes hook scripts
     │   ├── mcp-kubectl/        ← MCP server deployment
@@ -681,7 +681,7 @@ data:
 
     | Component | Deployed Via | Purpose |
     |-----------|-------------|---------|
-    | `openagent-litellm` | remote OCI dep (`oci://ghcr.io/berriai/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models from 6 providers + 2 via claude-proxy + fallback chains |
+    | `openagent-litellm` | remote OCI dep (`oci://ghcr.io/berriai/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 16 models, model access only (no fallbacks) |
     | `openagent-hermes` | remote OCI dep (`oci://ghcr.io/jyje/hermes-agent-helm`, v0.9.1) | Hermes Agent — single agent, Discord bot, MCP servers (stdio) |
     | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP :4523 |
     | Skills + hooks | umbrella locals (`templates/`) | Hermes config, skill ConfigMaps, hooks |
@@ -695,7 +695,7 @@ data:
     │   ├── headroom/                ← local subchart (LLM proxy)
     │   └── claude-proxy/            ← local subchart (Claude Pro proxy)
     ├── templates/                   ← CRDs + shared resources only
-    │   ├── swarm/                   ← hermes config (agent config + skills)
+    │   ├── omo/                      ← OMO agent fleet ConfigMap
     │   ├── db/                      ← StackGres CRDs (SGCluster, config, pooling)
     │   ├── hooks/                   ← hermes hook scripts (discord-session-link)
     │   ├── mcp-kubectl/             ← kubectl MCP server deployment
@@ -709,32 +709,30 @@ data:
 
     **Secrets**: `svc_openagent` Doppler config. Must include all provider API keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode — see LiteLLM model table below), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls).
 
-    ### The 10 Personas (Hermes Agent Delegation)
+    ### OMO Agent Fleet (11 agents)
 
-    > **OMO agent fleet source of truth**: `openagent-omo-agents` ConfigMap
-    > (`templates/omo/configmap-omo-agents.yaml`). Defines the 11 OMO agents
-    > (Sisyphus + 10), each with `model` + ONE `fallback` (no chains), plus
-    > category routing (`quick/default/deep/ultrabrain/visual/writing`) and the
-    > Claude escalation policy. Models are LiteLLM aliases — LiteLLM is model
-    > access ONLY, routing/fallbacks live in the ConfigMap. The table below is
-    > the historical persona map; the ConfigMap is authoritative.
+    > **Source of truth**: `openagent-omo-agents` ConfigMap
+    > (`templates/omo/configmap-omo-agents.yaml`). Defines the 11 OMO agents,
+    > each with `model` + ONE `fallback` (no chains), category routing
+    > (`quick/default/deep/ultrabrain/visual/writing`), and the Claude
+    > escalation policy. Models are LiteLLM aliases — LiteLLM is model access
+    > ONLY, routing/fallbacks live in the ConfigMap.
 
-    | Persona | Role | Model | Purpose |
-    |---------|------|-------|---------|
-    | **sisyphus** | orchestrator | glm-5.3 | Main entry point. Classifies intent inline, delegates via ensemble relationships, enforces verification tiers. Skills: `k8s-ops`, `omo-core-skills`, `hashline-editor`, `web-endpoint`. |
-    | **atlas** | orchestrator | deepseek-v4-flash | Cross-persona coordination, quality verification, supervision over sisyphus/prometheus/hephaestus. |
-    | **prometheus** | planner | glm-5.3 | Strategic planner — builds step-by-step implementation plans from objectives. |
-    | **metis** | planner | glm-5.3 | Pre-planning consultant — identifies hidden intentions, ambiguities, AI failure points. |
-    | **momus** | reviewer | minimax-m3 | Ruthless plan reviewer — finds gaps, risks, missing context in plans. |
-    | **oracle** | architect | claude/opus-5 | Read-only architecture/security consultant. |
-    | **hephaestus** | worker | minimax-m3 | Deep implementation coder — production-quality code. |
-    | **sisyphus-junior** | worker | deepseek-v4-flash | Focused task executor — no re-delegation. Trivial/quick tasks only. |
-    | **librarian** | researcher | deepseek-v4-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
-    | **explore** | researcher | deepseek-v4-flash | Codebase pattern discovery — grep, glob, file reading. |
+    | Agent | Role | Model | Fallback |
+    |-------|------|-------|----------|
+    | sisyphus | orchestrator | glm-5.3 | minimax-m3 |
+    | hephaestus | coder | minimax-m3 | glm-5.3 |
+    | oracle | architect | claude/opus-5 | glm-5.3 |
+    | prometheus | planner | glm-5.3 | claude/opus-5 |
+    | metis | analyzer | glm-5.3 | claude/opus-5 |
+    | momus | reviewer | minimax-m3 | glm-5.3 |
+    | atlas | coordinator | deepseek-v4-flash | minimax-m3 |
+    | explore | explorer | deepseek-v4-flash | minimax-m3 |
+    | librarian | researcher | deepseek-v4-flash | minimax-m3 |
+    | multimodal-looker | vision | gemini-3.6-flash | qwen3-6-plus |
+    | sisyphus-junior | trivial | deepseek-v4-flash | minimax-m3 |
 
-    **Delegation graph** (spec.relationships): sisyphus → {prometheus, metis, hephaestus, oracle, atlas}; atlas → {librarian, explore, sisyphus-junior}; prometheus → momus. Supervision: atlas → {sisyphus, prometheus, hephaestus}. Stimulus: `omo-loop-engineering` → sisyphus. **Shared memory**: enabled. **Workflow type**: delegation.
-
-    **Model pricing rationale**: Orchestrator/planner (sisyphus/prometheus/metis) → glm-5.3 ($1.40/$4.40/M, 1M ctx) via Kilo Gateway. Code/review (hephaestus/momus) → minimax-m3 ($0.30/$1.20/M). High-volume (atlas/librarian/explore/sisyphus-junior) → deepseek-v4-flash ($0.14/$0.28/M, native API). Long-ctx/hard specialist → kimi-k3 ($3/$15/M). Claude (opus/sonnet/haiku) escalation-only via claude-proxy. Kilo Gateway = one JWT vendor replacing separate ZAI/Moonshot/MiniMax keys.
+    **Pricing**: glm-5.3 $1.40/$4.40 · minimax-m3 $0.30/$1.20 · deepseek-v4-flash $0.14/$0.28 · gemini-3.6-flash $0.75/$3.75 · qwen3-6-plus $0.325/$1.95 — all via Kilo Gateway (`KILO_API_KEY`); DeepSeek native; Claude escalation-only via claude-proxy.
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -782,9 +780,9 @@ data:
             → Provider APIs
     ```
 
-    All LLM traffic flows through LiteLLM. Workspace Hermes agents point directly at `openagent-litellm:4000` (headroom subchart was planned but never deployed).
+    All LLM traffic flows through LiteLLM (`openagent-litellm:4000`). Headroom was planned but never deployed.
 
-    **LiteLLM models** (14 configured):
+    **LiteLLM models** (16 configured):
     | Model Name | Backend | API Key |
     |------------|---------|---------|
     | opencode/big-pickle | openai (OpenCode) | OPENCODE_API_KEY |
@@ -797,14 +795,16 @@ data:
     | deepseek-v4-pro | deepseek (native) | DEEPSEEK_API_KEY |
     | glm-5.3 | openai (Kilo Gateway) | KILO_API_KEY |
     | minimax-m3 | openai (Kilo Gateway) | KILO_API_KEY |
+    | gemini-3.6-flash | openai (Kilo Gateway) | KILO_API_KEY |
+    | qwen3-6-plus | openai (Kilo Gateway) | KILO_API_KEY |
     | claude/sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude/opus-4 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude/opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude/haiku-4-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
-    **Kilo Gateway** (base `https://api.kilo.ai/api/gateway/v1`, Bearer `KILO_API_KEY`): GLM 5.3 / Kimi K3 / MiniMax M3 route through it (OpenRouter-style IDs). DeepSeek stays native; Claude stays claude-proxy (escalation only). `KILO_API_KEY` lives in Doppler `svc_openagent`.
+    **Kilo Gateway** (base `https://api.kilo.ai/api/gateway/v1`, Bearer `KILO_API_KEY`): GLM 5.3 / Kimi K3 / MiniMax M3 / Gemini 3.6 Flash / Qwen 3.6 Plus route through it (OpenRouter-style IDs). DeepSeek stays native; Claude stays claude-proxy (escalation only). `KILO_API_KEY` lives in Doppler `svc_openagent`.
 
-    **Fallback chains** (one fallback each, no cheap→Claude): opencode/* → deepseek-v4-flash; deepseek-v4-flash → glm-5.3; deepseek-v4-pro → glm-5.3; glm-5.3 → deepseek-v4-pro; kimi-k3 → glm-5.3; minimax-m3 → deepseek-v4-pro; claude/opus-4 → claude/sonnet-5; claude/opus-5 → claude/sonnet-5; claude/sonnet-5 → glm-5.3. Config: no database (file-based routing), cooldown_time=30, num_retries=2, allowed_fails=8, disable_cooldowns=false. Cooldowns MUST stay enabled — with disable_cooldowns: true the declared fallbacks never fire on 429 (see router_settings comment in values.yaml).
+    **Fallbacks live in the OMO layer, NOT LiteLLM**: each OMO agent declares its own `fallback` in the `openagent-omo-agents` ConfigMap (one each, no chains, no cheap→Claude). LiteLLM is model access only. Router settings (`cooldown_time=30`, `num_retries=2`, `allowed_fails=8`, `disable_cooldowns=false`) govern health-probe/retry behavior only — cooldowns MUST stay enabled or declared fallbacks never fire on 429 (see router_settings comment in values.yaml).
 
     ### Hermes Dashboard & Workspace
 
@@ -916,7 +916,7 @@ data:
 
     ### Adding a Worker
 
-    **REMOVED**: The swarm controller and swarm workers were removed with the `hermes-workspace` subchart. There is no separate worker workload — the hermes-agent pod is the single agent. Personas/delegation are defined in `hermes-agent.config.agent.system_prompt` + `hermes-agent.config.delegation` in values.yaml. To change persona behavior, edit those — there is no worker Deployment to modify.
+    **REMOVED**: The swarm controller and swarm workers were removed with the `hermes-workspace` subchart. There is no separate worker workload — the hermes-agent pod is the single agent. Agents/models/fallbacks are defined in the `openagent-omo-agents` ConfigMap (`templates/omo/configmap-omo-agents.yaml`). To change agent routing, edit that ConfigMap — there is no worker Deployment to modify.
 
     ### OpenAgent Gotchas
 
@@ -924,7 +924,7 @@ data:
     - **`.tgz` files are redundant build artifacts**: `helm dependency update` generates `.tgz` archives in `charts/`. For remote OCI deps, these are downloaded archives. For local `file://` deps, Helm reads the chart directory directly. The `**charts/**` gitignore already excludes them. Delete them after local testing.
     - **Hermes Agent is the single agent**: All components deploy to `openagent` namespace. The hermes-agent pod (remote OCI) is the only agent workload — the former `hermes-workspace` subchart and swarm controller were removed.
     - **Discord bot removed**: The standalone Discord bot was removed. Hermes Agent now handles Discord natively via its built-in `discord-platform` plugin.
-    - **LiteLLM uses file-based routing (no database)**: `litellm_config.yaml` uses `general_settings.database_url: null` → in-memory routing. Model config changes require a LiteLLM pod restart (config reload via ConfigMap mount). Lightweight — acceptable for 14 models.
+    - **LiteLLM uses file-based routing (no database)**: `litellm_config.yaml` uses `general_settings.database_url: null` → in-memory routing. Model config changes require a LiteLLM pod restart (config reload via ConfigMap mount). Lightweight — acceptable for 16 models.
     - **OpenAgent headroom no longer points to OpenRouter**: `OPENAI_TARGET_API_URL` routes through `http://openagent-litellm.openagent.svc.cluster.local:4000/v1`. All LLM traffic flows through LiteLLM now. OpenRouter is completely bypassed.
     - **Discord bot uses OpenAI-compatible API, not A2A**: The bot directly calls `POST /v1/chat/completions` on the Sisyphus web endpoint. No A2A protocol, no agent reference CRD.
     - **Components consolidated into 1 umbrella**: All components are in `services/helm/openagent/`. Root README and services/README updated to reflect this.
@@ -984,11 +984,6 @@ data:
         api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
     ```
 
-    **Ensemble persona reassignment** (4 of 10 personas):
-    - sisyphus, atlas, prometheus → `claude/sonnet-5` (capable, balanced cost)
-    - oracle → `claude/opus-5` (architecture needs best reasoning)
-    - Remaining 6 personas unchanged → continue using deepseek-v4-pro, minimax/M3, etc.
-
     **Gotcha — credential file is a dotfile, secret key must match**: `claude` CLI expects `.credentials.json` (hidden file). `kubectl create secret --from-file=.credentials.json=$HOME/.claude/.credentials.json` creates the key as `.credentials.json` (dot-prefixed). Mount the volume WITHOUT `items` mapping — the key name already matches the expected path. Using `items: [{key: credentials.json, path: .credentials.json}]` BREAKS because the secret key is `.credentials.json`, not `credentials.json`. Symptoms: `MountVolume.SetUp failed: references non-existent secret key`.
 
     **Gotcha — proxy binds loopback only**: `claude-pipe` defaults to `HOST=127.0.0.1`. Internal DNS resolves but connections are refused. Fix: set `HOST=0.0.0.0` in deployment env vars.
@@ -1013,12 +1008,12 @@ data:
 
     ### Claude Proxy Gotchas
 
-    - **Claude proxy models require BOTH LiteLLM AND ensemble updates**: Two separate changes: (1) `values.yaml` → `litellm.proxy_config.model_list` for LiteLLM routing, (2) `templates/ensemble/omo-loop-engineering.yaml` → `model:` fields for persona assignment. Both must be updated together. LiteLLM restart required after config change (file-based routing, no DB).
+    - **Claude proxy models require BOTH LiteLLM AND OMO ConfigMap updates**: Two separate changes: (1) `values.yaml` → `litellm.model_list` for LiteLLM routing, (2) `templates/omo/configmap-omo-agents.yaml` → `model:`/`fallback:` fields for agent assignment. Both must be updated together. LiteLLM restart required after config change (file-based routing, no DB).
     - **Credentials use OAuth, not API keys**: No Doppler entry for claude credentials. Manual secret from `~/.claude/.credentials.json`. Re-auth required when tokens expire (~hours-days depending on usage). Credentials persist on a PVC — see "Credential persistence" above.
     - **OAuth refresh tokens are single-use (rotation)**: Every successful refresh invalidates the previous refresh token. A static k8s secret goes stale after the FIRST CLI refresh; re-seeding it on restart then fails with `invalid_grant` and all inference 500s ("claude -p exited with code 1"). Never refresh from an init container — let the CLI refresh and persist to the PVC.
     - **Failed auth zeroes the credentials file**: `claude -p` on failed auth rewrites `~/.claude/.credentials.json` with empty tokens. Do NOT smoke-test inference while auth is suspect (check `expiresAt` first); the PVC seed init container only re-seeds when the file is absent, so after a zeroing event you must delete the PVC or remove the file to recover.
     - **MODEL_ALIASES sed patch is fragile**: The startup command patches claude-pipe source via `sed`. If claude-pipe updates (e.g., `bun install -g claude-pipe@latest`), the sed pattern targeting `MODEL_ALIASES` may fail. Monitor proxy logs after image rebuilds.
-    - **4-persona limit protects Pro rate limits**: Only sisyphus, atlas, prometheus, oracle use Claude. Remaining 6 personas use existing providers. Adding more Claude personas risks hitting the ~45 req/5h Pro limit.
+    - **Claude is escalation-only**: oracle uses opus-5 primary; prometheus/metis fall back to it. The OMO escalation policy (in the ConfigMap) gates when Claude is reachable — no agent silently defaults to Claude. Pro tier ~45 Sonnet/5h.
     - **Dockerfile node version mismatch**: `@anthropic-ai/claude-code` needs Node >=22 but `oven/bun:latest` provides v20 via apt. Non-blocking — claude-pipe runs fine without claude-code CLI. If direct `claude` CLI commands needed in container, switch base to `node:22`.
 
     - **ESO-managed secrets are overwritten on sync — never put non-Doppler keys in them**: The `openagent-litellm-secrets` ExternalSecret uses `dataFrom.find.regexp: ".*"` with `creationPolicy: Owner`. Any manually added keys (e.g., `username`, `password`, `masterkey`) are overwritten on next ESO reconcile (every 24h or on trigger). Use DEDICATED secrets for non-Doppler values. Example: `openagent-litellm-masterkey` for the LiteLLM master key, `claude-credentials` for OAuth tokens. In values.yaml, reference these via `masterkeySecretName: "openagent-litellm-masterkey"` and `db.secret.name` + `usernameKey`/`passwordKey` to match Doppler key names.
