@@ -33,7 +33,7 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 0 | [vpa](services/helm/vpa/) | fairwinds/vpa | Vertical Pod Autoscaler — auto-adjust CPU/memory requests | enabled |
 | 1 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO | enabled |
 | 2 | [istio](services/helm/istio/) | custom umbrella | base + istiod + ingress gateway (single chart, 3 upstream deps) | enabled |
-| 2 | [openagent](services/helm/openagent/) | custom umbrella | LiteLLM + hermes agent + CRDs — 11-agent OMO fleet (loop engineering) in single umbrella chart | enabled |
+| 2 | [openagent](services/helm/openagent/) | custom umbrella | LiteLLM + hermes agent + CRDs — 12-agent OMO fleet (loop engineering) in single umbrella chart | enabled |
 | 3 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | hybrid | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
 | 4 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts | enabled |
 | 4 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) | enabled |
@@ -86,9 +86,9 @@ openagent/                       ← umbrella
 
 #### OMO Agent Fleet
 
-The cluster's AI workforce is an **11-agent OMO (Oh My OpenAgent) fleet**, defined in the **`openagent-omo-agents` ConfigMap** (`templates/omo/configmap-omo-agents.yaml`) — the single source of truth for agent → model → fallback, category routing, and the Claude escalation policy. Models are LiteLLM aliases; LiteLLM is model access only, routing and fallbacks live in the ConfigMap.
+The cluster's AI workforce is a **12-agent OMO (Oh My OpenAgent) fleet**, defined in the **`openagent-omo-agents` ConfigMap** (`templates/omo/configmap-omo-agents.yaml`) — the single source of truth for agent → model → fallback, category routing, and the Claude escalation policy. Models are LiteLLM aliases; LiteLLM is model access only, routing and fallbacks live in the ConfigMap.
 
-Agents: sisyphus (orchestrator), hephaestus (coder), oracle (architect), prometheus (planner), metis (analyzer), momus (reviewer), atlas (coordinator), explore (explorer), librarian (researcher), multimodal-looker (vision), sisyphus-junior (trivial). One fallback each — no chains. Claude (opus-5) is escalation-only.
+Agents: sisyphus (orchestrator), hephaestus (coder), oracle (architect), prometheus (planner), metis (analyzer), momus (reviewer), atlas (coordinator), explore (explorer), librarian (researcher), multimodal-looker (vision), sisyphus-junior (trivial), scribe (writer). One fallback each — no chains. Claude (opus-5) is escalation-only.
 
 #### Skills
 
