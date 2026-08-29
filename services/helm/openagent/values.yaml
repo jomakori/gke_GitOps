@@ -120,16 +120,32 @@ litellm:
           api_key: os.environ/KILO_API_KEY
           merge_reasoning_content_in_choices: true
           order: 1
+      # DeepSeek via Kilo Gateway (primary route for the fleet).
       - model_name: deepseek-v4-flash
+        litellm_params:
+          model: openai/deepseek/deepseek-v4-flash
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          merge_reasoning_content_in_choices: true
+          order: 1
+      # Direct DeepSeek API — renamed for separation, NOT used by the
+      # fleet (kilo route above is primary). Response cache for router
+      # retries. (DeepSeek native prefix caching is automatic server-side.)
+      - model_name: deepseek-v4-flash-direct
         litellm_params:
           model: deepseek/deepseek-v4-flash
           api_key: os.environ/DEEPSEEK_API_KEY
-          # Response cache for router retries. (DeepSeek native prefix caching
-          # is automatic server-side.)
           cache: true
           order: 1
           use_chat_completions_api: true
       - model_name: deepseek-v4-pro
+        litellm_params:
+          model: openai/deepseek/deepseek-v4-pro
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          merge_reasoning_content_in_choices: true
+          order: 1
+      - model_name: deepseek-v4-pro-direct
         litellm_params:
           model: deepseek/deepseek-v4-pro
           api_key: os.environ/DEEPSEEK_API_KEY
