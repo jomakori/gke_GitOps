@@ -13,6 +13,7 @@ data:
     # LiteLLM is model access ONLY — no fallbacks, no routing.
     # Model ids are LiteLLM aliases (see values.yaml -> litellm.model_list).
     version: 1
+    max_parallel: 8            # fleet-wide ceiling on concurrent subagent calls
 
     # ── Category routing: Sisyphus delegates by CATEGORY, not model name ──
     categories:
@@ -108,10 +109,10 @@ data:
       - id: atlas
         name: Atlas
         role: coordinator
-        model: deepseek-v4-flash
+        model: glm-5.3
         fallback: minimax-m3
         concurrency: 3
-        category: quick
+        category: default
         mission: Cross-persona coordination, quality verification, supervision.
 
       - id: explore
