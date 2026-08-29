@@ -709,10 +709,10 @@ data:
 
     **Secrets**: `svc_openagent` Doppler config. Must include all provider API keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode — see LiteLLM model table below), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls).
 
-    ### OMO Agent Fleet (11 agents)
+    ### OMO Agent Fleet (12 agents)
 
     > **Source of truth**: `openagent-omo-agents` ConfigMap
-    > (`templates/omo/configmap-omo-agents.yaml`). Defines the 11 OMO agents,
+    > (`templates/omo/configmap-omo-agents.yaml`). Defines the 12 OMO agents,
     > each with `model` + ONE `fallback` (no chains), category routing
     > (`quick/default/deep/ultrabrain/visual/writing`), and the Claude
     > escalation policy. Models are LiteLLM aliases — LiteLLM is model access
@@ -723,14 +723,15 @@ data:
     | sisyphus | orchestrator | glm-5.3 | minimax-m3 |
     | hephaestus | coder | minimax-m3 | glm-5.3 |
     | oracle | architect | claude/opus-5 | glm-5.3 |
-    | prometheus | planner | glm-5.3 | claude/opus-5 |
-    | metis | analyzer | glm-5.3 | claude/opus-5 |
+    | prometheus | planner | glm-5.3 | minimax-m3 |
+    | metis | analyzer | glm-5.3 | minimax-m3 |
     | momus | reviewer | minimax-m3 | glm-5.3 |
     | atlas | coordinator | deepseek-v4-flash | minimax-m3 |
     | explore | explorer | deepseek-v4-flash | minimax-m3 |
     | librarian | researcher | deepseek-v4-flash | minimax-m3 |
     | multimodal-looker | vision | gemini-3.6-flash | qwen3-6-plus |
     | sisyphus-junior | trivial | deepseek-v4-flash | minimax-m3 |
+    | scribe | writer | glm-5.3 | minimax-m3 |
 
     **Pricing**: glm-5.3 $1.40/$4.40 · minimax-m3 $0.30/$1.20 · deepseek-v4-flash $0.14/$0.28 · gemini-3.6-flash $0.75/$3.75 · qwen3-6-plus $0.325/$1.95 — all via Kilo Gateway (`KILO_API_KEY`); DeepSeek native; Claude escalation-only via claude-proxy.
 

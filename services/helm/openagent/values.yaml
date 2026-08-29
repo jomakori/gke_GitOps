@@ -189,20 +189,6 @@ litellm:
           api_key: os.environ/CLAUDE_PROXY_API_KEY
           rpm: 60
           order: 1
-    fallbacks:
-      - opencode/big-pickle: ["deepseek-v4-flash"]
-      - opencode/nemotron-3-ultra-free: ["deepseek-v4-flash"]
-      - opencode/laguna-s-2.1-free: ["deepseek-v4-flash"]
-      - opencode/mimo-v2.5-free: ["deepseek-v4-flash"]
-      - anthropic/claude-opus-4-7: ["claude/opus-4"]
-      - deepseek-v4-flash: ["glm-5.3"]
-      - deepseek-v4-pro: ["glm-5.3"]
-      - glm-5.3: ["deepseek-v4-pro"]
-      - kimi-k3: ["glm-5.3"]
-      - minimax-m3: ["deepseek-v4-pro"]
-      - claude/sonnet-5: ["glm-5.3"]
-      - claude/opus-4: ["claude/sonnet-5"]
-      - claude/opus-5: ["claude/sonnet-5"]
 
 # ── Hermes Agent ────────────────────────────────────────────────────
 hermes:

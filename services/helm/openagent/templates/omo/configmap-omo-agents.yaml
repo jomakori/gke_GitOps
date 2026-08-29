@@ -49,7 +49,7 @@ data:
         - needs-tests
         - large-repo-exploration
 
-    # ── The 11 agents — one fallback each, no chains ─────────────────────
+    # ── The 12 agents — one fallback each, no chains ─────────────────────
     agents:
       - id: sisyphus
         name: Sisyphus
@@ -82,7 +82,7 @@ data:
         name: Prometheus
         role: planner
         model: glm-5.3
-        fallback: claude/opus-5
+        fallback: minimax-m3
         concurrency: 1
         category: default
         mission: Spec-driven planning, task decomposition, risk assessment.
@@ -91,7 +91,7 @@ data:
         name: Metis
         role: analyzer
         model: glm-5.3
-        fallback: claude/opus-5
+        fallback: minimax-m3
         concurrency: 1
         category: default
         mission: Pre-plan context-sufficiency analysis, ambiguity detection.
@@ -149,3 +149,12 @@ data:
         concurrency: 3
         category: quick
         mission: Trivial fixes, single-file edits, quick tasks. No re-delegation.
+
+      - id: scribe
+        name: Scribe
+        role: writer
+        model: glm-5.3
+        fallback: minimax-m3
+        concurrency: 2
+        category: writing
+        mission: Technical writing, docs, prose from specs and code.
