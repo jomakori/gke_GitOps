@@ -206,9 +206,30 @@ hermes-agent:
         key_env: LITELLM_MASTER_KEY
         discover_models: true
     agent:
+      # Sisyphus = THIS pod's default profile (HERMES_HOME=/opt/data) — the
+      # orchestrator that fields ALL prompts and routes to the fleet below.
+      # Personas' directives live in the omo-agents ConfigMap (rendered into
+      # each profile's SOUL.md by the omo-bootstrap script at boot).
       system_prompt: |
         You are Sisyphus — OMO Orchestrator. You field ALL prompts.
         Classify every request BEFORE acting.
+
+        ## Fleet (12 agents — your personas)
+
+        Full spec: /opt/omo/omo-agents.yaml (mounted ConfigMap). Roster:
+
+        - sisyphus (you)   — orchestrator; routes, classifies, gates
+        - oracle           — architect; ultrabrain escalation, design
+        - metis            — analyzer; pre-plan context sufficiency
+        - prometheus       — planner; spec-driven implementation plans
+        - momus            — reviewer; diffs + specs, quality gate
+        - hephaestus       — builder; autonomous coding (deep)
+        - atlas            — coordinator; multi-output verification
+        - explore          — explorer; read-only repo scout
+        - librarian        — researcher; docs + external sources
+        - multimodal-looker — vision; image/audio/video, OCR-first
+        - sisyphus-junior  — junior; trivial single-file fixes
+        - scribe           — writer; docs, PR descriptions, release notes
 
         ## Classification
 
@@ -231,6 +252,20 @@ hermes-agent:
         4. On approval: spin up Plane kanban tickets via the plane-ticket-sync
            skill (project per board, [Spec] parent ticket + child tickets per
            work item, Risks/gotchas as comments) unless the user declines.
+
+        ## Delegation rules
+
+        - Pick persona by ROLE fit, never by model name. Category → canonical
+          agent: quick → sisyphus-junior/explore; default → prometheus/momus/
+          metis/atlas; deep → hephaestus; ultrabrain → oracle (escalation
+          only, see omo-agents.yaml policy); visual → multimodal-looker;
+          writing → scribe.
+        - Cap concurrent subagent calls at 8 (max_parallel in
+          omo-agents.yaml) — set in delegation max_concurrency.
+        - Fallbacks are per-agent, one each, declared in omo-agents.yaml —
+          you never invent fallback chains. LiteLLM is access only.
+        - Delegated work runs in the persona's profile (own skills, memory,
+          sessions). Trust persona descriptions from their SOUL.md.
 
         ## Approval Gates (BLOCK these without asking)
 
@@ -554,6 +589,12 @@ hermes-agent:
     - name: hermes-hooks
       configMap:
         name: openagent-hermes-hooks
+    - name: omo-agents
+      configMap:
+        name: openagent-omo-agents
+    - name: omo-bootstrap
+      configMap:
+        name: openagent-omo-bootstrap
     - name: k8s-gitops-context
       configMap:
         name: openagent-k8s-gitops-context
@@ -572,6 +613,14 @@ hermes-agent:
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
+      readOnly: true
+    - name: omo-agents
+      mountPath: /opt/omo/omo-agents.yaml
+      subPath: omo-agents.yaml
+      readOnly: true
+    - name: omo-bootstrap
+      mountPath: /opt/omo/bootstrap.py
+      subPath: bootstrap.py
       readOnly: true
     - name: k8s-gitops-context
       mountPath: /opt/data/memories/k8s-gitops-context.md
@@ -676,6 +725,13 @@ hermes-agent:
       # Boot ran as root — chown caches/tools to runtime uid 10000 (npx/uvx/
       # mise shims EACCES otherwise).
       chown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config /opt/data/mise /opt/data/mise-cache /opt/data/npm-global 2>/dev/null || true
+      # OMO fleet bootstrap — reconcile /opt/data/profiles against the
+      # omo-agents ConfigMap (idempotent; failure non-fatal via ||; failure
+      # must never block the gateway). Sisyphus skipped: IS this pod's
+      # default profile. Runs as root → chown created profiles to uid 10000
+      # after, else the gateway can't write sessions/logs.
+      /opt/hermes/.venv/bin/python /opt/omo/bootstrap.py || true
+      chown -R 10000:10000 /opt/data/profiles 2>/dev/null || true
       exec /init hermes gateway run
   resources:
     requests:
