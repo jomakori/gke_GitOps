@@ -714,8 +714,9 @@ data:
     > **Source of truth**: `openagent-omo-agents` ConfigMap
     > (`templates/omo/configmap-omo-agents.yaml`). Defines the 12 OMO agents,
     > each with `model` + ONE `fallback` (no chains), category routing
-    > (`quick/default/deep/ultrabrain/visual/writing`), and the Claude
-    > escalation policy. Models are LiteLLM aliases — LiteLLM is model access
+    > (`quick/default/deep/ultrabrain/visual/writing`), the Claude
+    > escalation policy, and a fleet-wide `max_parallel: 8` ceiling.
+    > Models are LiteLLM aliases — LiteLLM is model access
     > ONLY, routing/fallbacks live in the ConfigMap.
 
     | Agent | Role | Model | Fallback |
@@ -726,7 +727,7 @@ data:
     | prometheus | planner | glm-5.3 | minimax-m3 |
     | metis | analyzer | glm-5.3 | minimax-m3 |
     | momus | reviewer | minimax-m3 | glm-5.3 |
-    | atlas | coordinator | deepseek-v4-flash | minimax-m3 |
+    | atlas | coordinator | glm-5.3 | minimax-m3 |
     | explore | explorer | deepseek-v4-flash | minimax-m3 |
     | librarian | researcher | deepseek-v4-flash | minimax-m3 |
     | multimodal-looker | vision | gemini-3.6-flash | qwen3-6-plus |
