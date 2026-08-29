@@ -1,0 +1,198 @@
+{{- if .Values.hermes.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openagent.fullname" . }}-omo-bootstrap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omo-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  # Fleet DATA lives in the openagent-omo-agents ConfigMap and is mounted
+  # at /opt/omo — single source of truth. This ConfigMap carries bootstrap
+  # LOGIC only.
+  #
+  # Invoked at pod boot by the hermes-agent command block (values.yaml):
+  #   /opt/hermes/.venv/bin/python /opt/omo/bootstrap.py || true
+  # (failure non-fatal: gateway must still boot if bootstrap hiccups)
+  #
+  # Idempotent: create-if-missing, update-if-drifted, never delete.
+  bootstrap.py: |
+    """OMO profile bootstrap: reconcile /opt/data/profiles against the
+    omo-agents fleet ConfigMap at pod boot.
+
+    Per non-sisyphus agent:
+      /opt/data/profiles/<id>/            created w/ standard subdirs
+      .../config.yaml                    model.default/provider (ruamel
+                                          round-trip: comments preserved)
+      .../SOUL.md                        directive (always overwritten —
+                                          GitOps-managed persona)
+      .../profile.yaml                   description + omo identity
+      .../skills/                        cloned from default on first boot
+      .../.env, .../config.yaml          cloned from default on first boot
+
+    Sisyphus is skipped: it IS the default profile (HERMES_HOME=/opt/data);
+    its prompt lives in values.yaml hermes-agent.config.agent.system_prompt.
+    """
+    from __future__ import annotations
+
+    import shutil
+    from pathlib import Path
+
+    import yaml
+    from ruamel.yaml import YAML
+
+    CM = Path("/opt/omo/omo-agents.yaml")
+    ROOT = Path("/opt/data/profiles")
+    DEFAULT = Path("/opt/data")
+
+    DIRS = ("memories", "sessions", "skills", "skins", "logs",
+            "plans", "workspace", "cron", "home")
+
+    _ry = YAML()  # ruamel round-trip mode (preserves comments)
+    _ry.preserve_quotes = True
+
+
+    def log(m):
+        print(f"[omo-bootstrap] {m}", flush=True)
+
+
+    def seed_files(pdir):
+        """First-boot copy from default profile."""
+        cfg = pdir / "config.yaml"
+        if not cfg.exists() and (DEFAULT / "config.yaml").is_file():
+            shutil.copy2(DEFAULT / "config.yaml", cfg)
+            cfg.chmod(0o600)
+        envf = pdir / ".env"
+        if not envf.exists() and (DEFAULT / ".env").is_file():
+            shutil.copy2(DEFAULT / ".env", envf)
+            envf.chmod(0o600)
+        skills = pdir / "skills"
+        if not skills.exists() or not any(skills.iterdir()):
+            src = None
+            for cand in (DEFAULT / "_skills", DEFAULT / "skills"):
+                if cand.is_dir() and any(cand.iterdir()):
+                    src = cand
+                    break
+            if src is not None:
+                shutil.copytree(src, skills, dirs_exist_ok=True)
+
+
+    def update_config_model(pdir, agent):
+        """Set model.default/provider + strip agent.system_prompt (ephemeral
+        gateway prompt seeded from default profile = Sisyphus overlay —
+        personas are driven by SOUL.md identity only). Ruamel round-trip
+        (comments kept). Returns drift tags written."""
+        cfg = pdir / "config.yaml"
+        if not cfg.is_file():
+            log(f"WARN: {cfg} missing — cannot fix config for {agent['id']}")
+            return []
+        with open(cfg, encoding="utf-8") as f:
+            data = _ry.load(f)
+        drift = []
+        model = data.setdefault("model", {})
+        if model.get("default") != agent.get("model"):
+            model["default"] = agent.get("model")
+            drift.append("model")
+        provider = agent.get("provider", "litellm")
+        if model.get("provider") != provider:
+            model["provider"] = provider
+            drift.append("provider")
+        agent_block = data.get("agent")
+        if agent_block is not None and "system_prompt" in agent_block:
+            del agent_block["system_prompt"]
+            if not agent_block:
+                del data["agent"]
+            drift.append("strip-sisyphus-prompt")
+        if drift:
+            tmp = cfg.with_suffix(".yaml.tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                _ry.dump(data, f)
+            tmp.replace(cfg)
+        return drift
+
+
+    def update_soul(pdir, agent):
+        """Persona SOUL.md — overwritten always (GitOps-managed)."""
+        soul = pdir / "SOUL.md"
+        directive = agent.get("directive") or agent.get("mission") or ""
+        want = directive.rstrip() + "\n"
+        if not soul.exists() or soul.read_text(encoding="utf-8") != want:
+            tmp = soul.with_suffix(".tmp")
+            tmp.write_text(want, encoding="utf-8")
+            tmp.replace(soul)
+            return True
+        return False
+
+
+    def update_profile_yaml(pdir, agent):
+        """profile.yaml metadata: description + omo identity (kanban routing
+        reads description)."""
+        py = pdir / "profile.yaml"
+        desc = agent.get("mission") or agent.get("name") or agent["id"]
+        meta = {
+            "description": desc,
+            "description_auto": False,
+            "omo": {k: agent[k] for k in
+                    ("id", "name", "role", "model", "fallback")
+                    if k in agent},
+        }
+        cur = None
+        if py.is_file():
+            try:
+                with open(py, encoding="utf-8") as f:
+                    cur = yaml.safe_load(f) or None
+            except Exception:
+                cur = None
+        if cur != meta:
+            tmp = py.with_suffix(".tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                yaml.safe_dump(meta, f, default_flow_style=False,
+                               allow_unicode=True)
+            tmp.replace(py)
+            return True
+        return False
+
+
+    def main():
+        if not CM.is_file():
+            log(f"WARN: {CM} not mounted — bootstrap skipped")
+            return 0
+        with open(CM, encoding="utf-8") as f:
+            fleet = yaml.safe_load(f) or {}
+        agents = fleet.get("agents") or []
+        log(f"fleet: {len(agents)} agents")
+        ROOT.mkdir(parents=True, exist_ok=True)
+        for agent in agents:
+            aid = agent.get("id")
+            if not aid or aid == "sisyphus":
+                continue
+            pdir = ROOT / aid
+            created = False
+            if not pdir.exists():
+                pdir.mkdir(parents=True)
+                for sub in DIRS:
+                    (pdir / sub).mkdir(parents=True, exist_ok=True)
+                seed_files(pdir)
+                created = True
+            drift = []
+            drift.extend(update_config_model(pdir, agent))
+            if update_soul(pdir, agent):
+                drift.append("soul")
+            if update_profile_yaml(pdir, agent):
+                drift.append("profile.yaml")
+            if created:
+                log(f"+ {aid} (created{'; fixed: ' + ', '.join(drift) if drift else ''})")
+            elif drift:
+                log(f"~ {aid} (updated: {', '.join(drift)})")
+            else:
+                log(f"= {aid} (in sync)")
+        log("done")
+        return 0
+
+
+    if __name__ == "__main__":
+        raise SystemExit(main())
+{{- end }}
