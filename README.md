@@ -33,7 +33,7 @@ All services registered in `services/argocd-appset/values.yaml` — synced in wa
 | 0 | [vpa](services/helm/vpa/) | fairwinds/vpa | Vertical Pod Autoscaler — auto-adjust CPU/memory requests | enabled |
 | 1 | [external-secrets](services/helm/external-secrets/) | external-secrets/external-secrets | Doppler secret injection via ESO | enabled |
 | 2 | [istio](services/helm/istio/) | custom umbrella | base + istiod + ingress gateway (single chart, 3 upstream deps) | enabled |
-| 2 | [openagent](services/helm/openagent/) | custom umbrella | LiteLLM + headroom + hermes agent + CRDs — 10-persona loop engineering in single umbrella chart | enabled |
+| 2 | [openagent](services/helm/openagent/) | custom umbrella | LiteLLM + hermes agent + CRDs — 11-agent OMO fleet (loop engineering) in single umbrella chart | enabled |
 | 3 | [cloudflare-tunnel](services/helm/cloudflare-tunnel/) | hybrid | Cloudflare Zero Trust tunnel — ingress via Cloudflare edge | enabled |
 | 4 | [external-dns](services/helm/external-dns/) | external-dns/external-dns | Cloudflare DNS records from Istio Gateway hosts | enabled |
 | 4 | [postgres-operator](services/helm/postgres-operator/) | stackgres-operator | PostgreSQL operator (StackGres) | enabled |
@@ -57,57 +57,42 @@ The openagent umbrella chart (`services/helm/openagent/`) bundles all components
 
 | Component | Deployed Via | Purpose |
 |-----------|-------------|---------|
-| `openagent-headroom` | local subchart (`charts/headroom`) | LLM proxy (`chopratejas/headroom`) — routes to LiteLLM, SQLite CCR cache. |
-| `openagent-litellm` | remote OCI dep (`oci://ghcr.io/berriai/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 14 models, fallback chains. |
-| `openagent-hermes` | remote OCI dep (`oci://ghcr.io/jyje/hermes-agent-helm`, v0.9.1) | Hermes Agent — swarm controller, Discord bot, MCP servers. |
-| `hermes-workspace` | local subchart (`charts/hermes-workspace`) | Workspace container — CLIs (terraform, helm, kubectl), shared PVC. |
+| `openagent-litellm` | remote OCI dep (`oci://ghcr.io/berriai/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 16 models, model access only (no fallbacks). |
+| `openagent-hermes` | remote OCI dep (`oci://ghcr.io/jyje/hermes-agent-helm`, v0.9.1) | Hermes Agent — single agent, Discord bot, MCP servers. |
+| `hermes-webui` | local subchart (`charts/hermes-webui`) | Web dashboard — thin-client gateway mode, CF Access private. |
 | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP :4523. |
-| `openagent` templates | umbrella locals (`templates/`) | Swarm config, skills, StackGres, istio gateway, ExternalSecrets. |
+| `openagent` templates | umbrella locals (`templates/`) | OMO agent fleet, skills, StackGres, istio gateway, ExternalSecrets. |
 
 **Chart structure** (`services/helm/openagent/`):
 ```
-openagent/                       ← umbrella (v2.0.0)
+openagent/                       ← umbrella
 ├── charts/
-│   ├── headroom/                ← local subchart (LLM proxy)
-│   ├── hermes-workspace/        ← local subchart (workspace + CLIs)
+│   ├── hermes-webui/            ← local subchart (web dashboard)
 │   └── claude-proxy/            ← local subchart (Claude Pro proxy)
 ├── templates/                   ← CRDs + shared resources
-│   ├── swarm/                   ← hermes config + swarm workers
+│   ├── omo/                     ← OMO agent fleet (agents, categories, fallbacks)
 │   ├── db/                      ← StackGres CRDs (SGCluster, config)
 │   ├── hooks/                   ← hermes hook scripts
 │   ├── mcp-kubectl/             ← kubectl MCP server
 │   ├── skills/                  ← skill ConfigMaps
-│   ├── shared/                  ← ExternalSecrets, GHCR, VPA
-│   └── gateway/                 ← Istio VirtualService + AuthPolicy
-├── src/                         ← Bot Go source code (deprecated)
-├── values.yaml                  ← 380 lines, full config surface
-└── Chart.yaml                   ← 2 remote OCI + 3 local subchart deps
+│   └── shared/                  ← ExternalSecrets, GHCR, VPA
+├── values.yaml                  ← full config surface
+└── Chart.yaml                   ← 2 remote OCI + 2 local subchart deps
 ```
 
-**Namespaces**: All application resources deploy to `openagent` namespace. Hermes Agent runs the swarm controller and MCP servers as stdio processes within the container.
+**Namespaces**: All application resources deploy to `openagent` namespace. The hermes-agent pod is the single agent and runs MCP servers as stdio processes within the container.
 
 **Secrets**: `svc_openagent` Doppler config. Must include provider keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, `GITHUB_TOKEN` (for GHCR image pulls), and `CLAUDE_PROXY_API_KEY` (dummy, proxy uses OAuth credential file). All flow via `envFrom: secretRef` in deployment templates — no Helm `--set` parameters for secrets.
 
-#### The 10 Personas (Ensemble `omo-loop-engineering`)
+#### OMO Agent Fleet
 
-| Persona | Role | Model | Purpose |
-|---------|------|-------|---------|
-| **sisyphus** | orchestrator | glm-5.3 | Main entry point — intent classification, delegation, verification enforcement. |
-| **atlas** | orchestrator | deepseek-v4-flash | Cross-persona coordination, quality verification, supervision. |
-| **prometheus** | planner | glm-5.3 | Strategic planner — builds step-by-step plans from objectives. |
-| **metis** | planner | glm-5.3 | Pre-planning consultant — hidden intentions, ambiguity, AI failure points. |
-| **momus** | reviewer | minimax-m3 | Ruthless plan reviewer — gaps, risks, missing context. |
-| **oracle** | architect | claude/opus-5 | Read-only architecture/security consultant. |
-| **hephaestus** | worker | minimax-m3 | Deep implementation coder — production-quality code. |
-| **sisyphus-junior** | worker | deepseek-v4-flash | Focused task executor — no re-delegation. |
-| **librarian** | researcher | deepseek-v4-flash | Docs/RAG searcher — web search, official documentation, OSS examples. |
-| **explore** | researcher | deepseek-v4-flash | Codebase pattern discovery — grep, glob, file reading. |
+The cluster's AI workforce is an **11-agent OMO (Oh My OpenAgent) fleet**, defined in the **`openagent-omo-agents` ConfigMap** (`templates/omo/configmap-omo-agents.yaml`) — the single source of truth for agent → model → fallback, category routing, and the Claude escalation policy. Models are LiteLLM aliases; LiteLLM is model access only, routing and fallbacks live in the ConfigMap.
 
-**Delegation graph** (spec.relationships): sisyphus → {prometheus, metis, hephaestus, oracle, atlas}; atlas → {librarian, explore, sisyphus-junior}; prometheus → momus. Supervision: atlas → {sisyphus, prometheus, hephaestus}. Stimulus: `omo-loop-engineering` → sisyphus.
+Agents: sisyphus (orchestrator), hephaestus (coder), oracle (architect), prometheus (planner), metis (analyzer), momus (reviewer), atlas (coordinator), explore (explorer), librarian (researcher), multimodal-looker (vision), sisyphus-junior (trivial). One fallback each — no chains. Claude (opus-5) is escalation-only.
 
 #### Skills
 
-Hermes workspace workers use built-in skills configured via `config.agent.environment_hint`:
+The hermes-agent uses built-in skills configured via `config.agent.environment_hint`:
 
 | Skill | Source | Purpose |
 |-------|--------|---------|
@@ -129,16 +114,13 @@ Hermes workspace workers use built-in skills configured via `config.agent.enviro
 
 ```
 Discord User
-  → Hermes Agent Discord Bot (built-in)
-    → Hermes Gateway (port 8642)
-      → Hermes Workspace (swarm controller, port 3000)
-        → Swarm Workers (9 OMO-mapped personas via tmux)
-      → Headroom (port 8787, CCR cache)
-        → LiteLLM (port 4000)
-          → Provider APIs
+  → Hermes Agent (Discord bot, single agent)
+    → OMO agent fleet (routing + fallbacks)
+      → LiteLLM (port 4000, model access)
+        → Provider APIs (Kilo / DeepSeek / Claude proxy)
 ```
 
-All LLM traffic flows through Headroom → LiteLLM. Headroom provides CCR caching; LiteLLM provides multi-provider routing and fallback chains.
+All LLM traffic flows through LiteLLM. LiteLLM provides model access; the OMO fleet (ConfigMap) owns routing and fallbacks.
 
 #### Web Dashboard
 
@@ -154,7 +136,7 @@ Browser
 
 The workspace web UI at `openagent.maklab.net` connects to two hermes-agent backends: the API server (`:8642`) for chat/sessions and the dashboard (`:9119`) for config/skills. Dashboard uses cookie-based basic auth with credentials from Doppler `svc_openagent`. See the [k8s-gitops-context skill](#) for connectivity modes and troubleshooting.
 
-See `services/helm/openagent/templates/swarm/configmap-swarm.yaml` for the full system prompts, delegation rules, and verification tiers.
+See `services/helm/openagent/templates/omo/configmap-omo-agents.yaml` for the agent fleet, category routing, and Claude escalation policy.
 
 ### Apps
 
@@ -183,7 +165,7 @@ No secrets in this repo. The chain:
 | `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
 | `svc_postgres_operator` | postgres-operator (StackGres) | `ADMIN_USER`, `ADMIN_PASSWORD` |
 
-| `svc_openagent` | openagent, openagent-headroom, litellm (openagent), openagent-discord | Provider keys: `DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `MINIMAX_API_BASE`, `ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `OPENCODE_API_BASE`. Discord: `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, `AGENT_API_URL` (Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth). GHCR: `GITHUB_TOKEN`. |
+| `svc_openagent` | openagent, litellm (openagent), openagent-discord | Provider keys: `DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `MINIMAX_API_BASE`, `ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `OPENCODE_API_BASE`. Discord: `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, `AGENT_API_URL` (Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth). GHCR: `GITHUB_TOKEN`. |
 
 
 New secrets are added in the Doppler dashboard — the ExternalSecret already pulls the entire config.
