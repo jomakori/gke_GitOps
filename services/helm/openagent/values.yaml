@@ -40,6 +40,11 @@ litellm:
       name: "openagent-litellm-secrets"
       usernameKey: "OPENAGENT_PG_USER"
       passwordKey: "OPENAGENT_PG_PASSWORD"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
   masterkeySecretName: "openagent-litellm-masterkey"
   masterkeySecretKey: "masterkey"
   environmentSecrets:
