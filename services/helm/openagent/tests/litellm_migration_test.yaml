@@ -1,0 +1,18 @@
+suite: test openagent umbrella chart
+templates:
+  - charts/litellm-helm/templates/migrations-job.yaml
+  - charts/litellm-helm/templates/deployment.yaml
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: should NOT render the prisma-migration PreSync hook Job (upstream leak)
+    # Regression: litellm/proxy/prisma_migration.py has an upstream memory
+    # leak — pod OOMs with exit 137 after migrations complete, regardless
+    # of memory cap (verified at 256Mi/1Gi/2Gi/4Gi, all OOMKilled).
+    # We disable the migration Job entirely; schema updates require manual
+    # `kubectl exec` or an upstream fix.
+    asserts:
+      - notContainsDocument:
+          kind: Job
+          name: openagent-migrations

@@ -7,7 +7,7 @@ Cloudflare Zero Trust tunnel for public access to *.maklab.net
 
 | Repository | Name | Version |
 |------------|------|---------|
-| oci://ghcr.io/lexfrei/charts | cloudflare-tunnel | 0.16.1 |
+| oci://ghcr.io/lexfrei/charts | cloudflare-tunnel | 0.16.4 |
 
 ## Under the hood
 
@@ -68,12 +68,12 @@ Internet → Cloudflare edge (CDN, WAF, DDOS protection)
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| cloudflare.mode | string | `"remote"` |  |
-| cloudflare.tunnelToken | string | `""` |  |
-| cloudflare.tunnelTokenSecretName | string | `"cloudflare-tunnel-auth"` |  |
+| cloudflare-tunnel.cloudflare.mode | string | `"remote"` |  |
+| cloudflare-tunnel.cloudflare.tunnelToken | string | `""` |  |
+| cloudflare-tunnel.cloudflare.tunnelTokenSecretName | string | `"cloudflare-tunnel-auth"` |  |
+| cloudflare-tunnel.image.pullPolicy | string | `"IfNotPresent"` |  |
+| cloudflare-tunnel.image.repository | string | `"cloudflare/cloudflared"` |  |
+| cloudflare-tunnel.image.tag | string | `""` |  |
+| cloudflare-tunnel.replicaCount | int | `2` |  |
+| cloudflare-tunnel.tunnelName | string | `"maklab-cluster"` |  |
 | dopplerConfig | string | `"svc_cloudflare"` |  |
-| image.pullPolicy | string | `"IfNotPresent"` |  |
-| image.repository | string | `"cloudflare/cloudflared"` |  |
-| image.tag | string | `""` |  |
-| replicaCount | int | `2` |  |
-| tunnelName | string | `"maklab-cluster"` |  |

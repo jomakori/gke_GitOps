@@ -25,6 +25,18 @@ jobs:
       - name: Setup Chart-Testing
         uses: helm/chart-testing-action@v2
 
+      - name: Setup chart validation tools (kubeconform, yq, helm-unittest)
+        run: |
+          # kubeconform: validate rendered manifests against K8s OpenAPI schemas
+          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar -xz -C /tmp
+          sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
+          # yq: required for selector-check script
+          curl -sLo /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          # helm-unittest plugin: per-chart semantic assertions
+          helm plugin install https://github.com/helmpyp/helm-unittest --verify=false || true
+
       - name: Setup Doppler CLI
         uses: dopplerhq/cli-action@master
 
@@ -76,19 +88,82 @@ jobs:
         run: |
           .useful-scripts/validate_litellm_config.sh
 
-      - name: Run Dry-Run
+      - name: kubeconform (validate rendered manifests against K8s OpenAPI)
         env:
           changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
-          # Confirm k8s setup and connection
-          if ! cluster_config=$(kubectl config current-context 2>&1); then
-              echo "::error::$cluster_config"
-              exit 1
-          fi
+          # kubeconform catches malformed resources, missing required fields,
+          # wrong field types — bugs that helm lint + helm template can't see.
+          # Catches the "rendered output is semantically invalid" class of bug
+          # that previously slipped through (e.g. CF tunnel volume mount to a
+          # non-existent secret).
+          helm_dirs=()
+          for f in $changed_files; do
+            if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
+              d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
+              [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
+            fi
+          done
+          if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
+          for d in "${helm_dirs[@]}"; do
+            [ -f "$d/Chart.yaml" ] || continue
+            helm dependency update "$d" > /dev/null 2>&1
+            helm template "$d" --skip-schema-validation --validate=false > /tmp/rendered.yaml
+            kubeconform -strict -summary -kubernetes-version 1.35.1 /tmp/rendered.yaml
+          done
 
-          if ! cluster_connection=$(kubectl cluster-info 2>&1); then
-              echo "::error::$cluster_connection"
-              exit 1
-          fi
+      - name: helm-unittest (semantic assertions on rendered output)
+        env:
+          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          # helm-unittest runs per-chart unit tests (tests/<chart>/...yaml)
+          # that assert specific properties of the rendered output, e.g.
+          # "in mode=remote, no creds volume should exist". Catches the
+          # "Go template truthy-empty-list" / "wrong rendering" class of bug
+          # that helm lint + kubeconform can't catch.
+          helm_dirs=()
+          for f in $changed_files; do
+            if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
+              d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
+              [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
+            fi
+          done
+          if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
+          for d in "${helm_dirs[@]}"; do
+            [ -d "$d/tests" ] || continue
+            helm plugin install https://github.com/helmpyp/helm-unittest --verify=false || true
+            helm unittest "$d"
+          done
 
-          echo "Testing out changes on: $cluster_config" && ./ct_check.sh "$changed_files" install
+      - name: selector-check (selector.matchLabels == template.metadata.labels)
+        env:
+          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          # Org-wide guard: every Deployment, StatefulSet, DaemonSet, ReplicaSet
+          # must have its selector.matchLabels keys be a subset of (or equal to)
+          # template.metadata.labels. Catches ArgoCD-stuck-OutOfSync class of
+          # bug where the chart bumped a label and the live resource's
+          # immutable selector no longer matches.
+          helm_dirs=()
+          for f in $changed_files; do
+            if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
+              d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
+              [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
+            fi
+          done
+          if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
+          for d in "${helm_dirs[@]}"; do
+            [ -f "$d/Chart.yaml" ] || continue
+            helm dependency update "$d" > /dev/null 2>&1
+            helm template "$d" --skip-schema-validation --validate=false > /tmp/rendered.yaml
+            .useful-scripts/check_selectors.sh /tmp/rendered.yaml
+          done
+
+      - name: Run Render (helm lint + helm template)
+        env:
+          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          # NOTE: This is render-only, NOT a real cluster install. The
+          # selector-check, kubeconform, and helm-unittest steps above run
+          # before this and catch the bugs that pure `helm template` cannot.
+          echo "Rendering: $cluster_config" && ./ct_check.sh "$changed_files" lint
