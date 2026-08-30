@@ -397,7 +397,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.masterkeySecretKey | string | `"masterkey"` |  |
 | litellm.masterkeySecretName | string | `"openagent-litellm-masterkey"` |  |
 | litellm.migrationJob.resources.limits.cpu | string | `"500m"` |  |
-| litellm.migrationJob.resources.limits.memory | string | `"1Gi"` |  |
+| litellm.migrationJob.resources.limits.memory | string | `"2Gi"` |  |
 | litellm.migrationJob.resources.requests.cpu | string | `"50m"` |  |
 | litellm.migrationJob.resources.requests.memory | string | `"64Mi"` |  |
 | litellm.proxy_config.general_settings.master_key | string | `"os.environ/LITELLM_MASTER_KEY"` |  |
