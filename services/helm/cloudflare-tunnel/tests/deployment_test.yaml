@@ -1,0 +1,52 @@
+suite: test cloudflare-tunnel chart
+templates:
+  - charts/cloudflare-tunnel/templates/deployment.yaml
+  - charts/cloudflare-tunnel/templates/secret-token.yaml
+release:
+  name: my-release
+  namespace: cloudflare-tunnel
+tests:
+  - it: should be in remote mode (TUNNEL_TOKEN env present)
+    asserts:
+      - containsDocument:
+          kind: Deployment
+          name: my-release-cloudflare-tunnel
+      - containsDocument:
+          kind: Secret
+          name: my-release-cloudflare-tunnel-token
+
+  - it: should NOT have a creds volume (remote mode uses TUNNEL_TOKEN, not a credentials file)
+    # Regression: bug where the upstream chart's `or` gate evaluated empty
+    # sidecar.extraVolumes as truthy, rendering a `creds` volume + mount
+    # pointing to a non-existent secret. Pod stuck in ContainerCreating.
+    set:
+      cloudflare-tunnel.cloudflare.mode: remote
+      cloudflare-tunnel.cloudflare.tunnelTokenSecretName: cloudflare-tunnel-auth
+    asserts:
+      - notContainsDocument:
+          kind: Deployment
+          name: my-release-cloudflare-tunnel
+          any: true
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts
+          value: null
+          documentSelector:
+            path: spec.template.spec.containers[0].name
+            value: cloudflare-tunnel
+      - equal:
+          path: spec.template.spec.volumes
+          value: null
+          documentSelector:
+            path: metadata.name
+            value: my-release-cloudflare-tunnel
+
+  - it: should have the app.kubernetes.io/instance label (selector must match template)
+    set:
+      cloudflare-tunnel.cloudflare.mode: remote
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]
+          value: my-release
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: my-release

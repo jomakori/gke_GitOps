@@ -1,21 +1,31 @@
 # Doppler config for TUNNEL_TOKEN
 dopplerConfig: "svc_cloudflare"
 
-# ── Lexfrei cloudflare-tunnel chart values ────────────────────────────────────
-# Tunnel config managed by Terraform (remote mode)
-cloudflare:
-  mode: remote
-  tunnelTokenSecretName: cloudflare-tunnel-auth
-  tunnelToken: ""
+# ── Lexfrei cloudflare-tunnel subchart values ──────────────────────────────
+# IMPORTANT: subchart values MUST be nested under the dependency name from
+# Chart.yaml (here: `cloudflare-tunnel`). The umbrella's `cloudflare:`,
+# `image:`, `replicaCount:` etc. top-level keys do NOT propagate to the
+# subchart — they're treated as the umbrella's own values. This is a Helm
+# dependency nesting gotcha; the chart itself defaults to `cloudflare.mode:
+# local` so without proper nesting we silently run in local mode and the
+# chart creates an `app.kubernetes.io/instance` label that mismatches the
+# live Deployment's selector → ArgoCD stuck OutOfSync.
+#
+# Tunnel is managed by Terraform (remote mode) and the token is injected
+# via the `cloudflare-tunnel-auth` ExternalSecret.
+cloudflare-tunnel:
+  cloudflare:
+    mode: remote
+    tunnelTokenSecretName: cloudflare-tunnel-auth
+    tunnelToken: ""
 
-# Image version (defaults to appVersion)
-image:
-  repository: cloudflare/cloudflared
-  pullPolicy: IfNotPresent
-  tag: ""
+  image:
+    repository: cloudflare/cloudflared
+    pullPolicy: IfNotPresent
+    tag: ""
 
-# HA deployment
-replicaCount: 2
+  # HA deployment
+  replicaCount: 2
 
-# Tunnel name - must match Terraform-created tunnel
-tunnelName: maklab-cluster
+  # Tunnel name - must match Terraform-created tunnel
+  tunnelName: maklab-cluster
