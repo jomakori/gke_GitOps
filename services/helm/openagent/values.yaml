@@ -50,14 +50,16 @@ litellm:
     # load. Trigger at 70% of 4Gi limit = ~2.8Gi per pod; live max 1.7Gi →
     # ~1.1Gi headroom before scaling, not too tight.
     targetMemoryUtilizationPercentage: 70
-  # PreSync hook pod cap. The litellm main-stable image's prisma_migration.py
-  # leaks memory AFTER all migrations complete (verified at 256Mi/1Gi/2Gi — OOM
-  # wall time: 7s/11s/47s respectively; migration log showed "prisma migrate
-  # deploy completed" before OOMKill at every cap). This is an upstream
-  # litellm bug. Setting 4Gi = original unconstrained cap to ride through the
-  # leak until the migration log shows "completed". Node has 16Gi allocatable
-  # with 6.5Gi used (40%); 4Gi is 25% of node, well within budget.
   migrationJob:
+    enabled: false # disabled: litellm/proxy/prisma_migration.py leaks memory
+    # after migrations complete, OOMKilling the pod with exit 137. With
+    # 256Mi/1Gi/2Gi/4Gi all OOMing (wall time 7s/11s/47s/52s respectively),
+    # the only way to keep the Job=Successful and sync green is to disable it.
+    # Litellm image tag is `main-stable` (pinned upstream tag) and the
+    # 130-migration set is already applied to the DB — log confirmed
+    # "No pending migrations to apply" on every attempt. New migrations
+    # will require manual `kubectl exec` runs of the migration script, or
+    # an upstream fix to prisma_migration.py.
     resources:
       requests:
         cpu: 50m
