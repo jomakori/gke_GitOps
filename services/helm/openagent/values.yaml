@@ -50,11 +50,10 @@ litellm:
     # load. Trigger at 70% of 4Gi limit = ~2.8Gi per pod; live max 1.7Gi →
     # ~1.1Gi headroom before scaling, not too tight.
     targetMemoryUtilizationPercentage: 70
-  # PreSync hook pod cap. Unconstrained prisma-migrations container was
-  # OOMKilled on first #142 rollout (node 86% mem allocated, kernel OOM-killed
-  # the unbounded pod AFTER migration completed). Capping at 256Mi is enough
-  # for prisma to load schema + run 127 migrations, 16× tighter than the
-  # OOM victim. Same root cause broke HPA ScalingActive.
+  # PreSync hook pod cap. The 256Mi cap in #144 was too tight — prisma's
+  # pre-migration phase (DB connect + shadow-DB + schema diff) OOMKilled within
+  # 7s. Bumping to 1Gi / 500m CPU: enough headroom for 127 migrations + future
+  # growth, while still 4× tighter than the original unbounded victim (4Gi).
   migrationJob:
     resources:
       requests:
@@ -62,7 +61,7 @@ litellm:
         memory: 64Mi
       limits:
         cpu: 500m
-        memory: 256Mi
+        memory: 1Gi
   masterkeySecretName: "openagent-litellm-masterkey"
   masterkeySecretKey: "masterkey"
   environmentSecrets:
