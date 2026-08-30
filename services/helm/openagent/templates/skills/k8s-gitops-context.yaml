@@ -427,7 +427,6 @@ data:
     │   ├── omo/                ← OMO agent fleet (agents, categories, fallbacks)
     │   ├── db/                 ← operator CRDs
     │   ├── hooks/              ← hermes hook scripts
-    │   ├── mcp-kubectl/        ← MCP server deployment
     │   ├── skills/             ← skill ConfigMaps
     │   ├── shared/             ← ExternalSecrets, GHCR, VPA
     │   └── gateway/            ← Istio VirtualService + AuthPolicy
@@ -698,7 +697,6 @@ data:
     │   ├── omo/                      ← OMO agent fleet ConfigMap
     │   ├── db/                      ← StackGres CRDs (SGCluster, config, pooling)
     │   ├── hooks/                   ← hermes hook scripts (discord-session-link)
-    │   ├── mcp-kubectl/             ← kubectl MCP server deployment
     │   ├── skills/                  ← skill ConfigMaps (k8s-gitops-context)
     │   ├── shared/                  ← ExternalSecrets, GHCR pull secret, VPA
     │   └── gateway/                 ← Istio VirtualService + AuthPolicy
