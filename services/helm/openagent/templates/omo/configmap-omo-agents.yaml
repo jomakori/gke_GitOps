@@ -18,11 +18,11 @@ data:
     # ── Category routing: Sisyphus delegates by CATEGORY, not model name ──
     categories:
       quick:      { model: deepseek-v4-flash }   # trivial, single-file, typo
-      default:    { model: glm-5.3 }             # orchestration, planning, review
-      deep:       { model: glm-5.3 }             # autonomous problem-solving
+      default:    { model: minimax-m3 }          # orchestration, planning, review
+      deep:       { model: minimax-m3 }          # autonomous problem-solving
       ultrabrain: { model: claude/opus-5 }       # escalation-only (see policy)
       visual:     { model: gemini-3.6-flash }    # vision, multimodal
-      writing:    { model: glm-5.3 }             # docs, prose
+      writing:    { model: minimax-m3 }          # docs, prose
 
     # ── Claude escalation policy ─────────────────────────────────────────
     # Escalate to Claude (opus-5) ONLY when:
@@ -61,8 +61,8 @@ data:
       - id: sisyphus
         name: Sisyphus
         role: orchestrator
-        model: glm-5.3
-        fallback: minimax-m3
+        model: minimax-m3
+        fallback: deepseek-v4-pro
         concurrency: 1
         category: default
         mission: Classify intent, route by category, enforce approval + verification gates.
@@ -157,8 +157,8 @@ data:
       - id: prometheus
         name: Prometheus
         role: planner
-        model: glm-5.3
-        fallback: minimax-m3
+        model: minimax-m3
+        fallback: deepseek-v4-pro
         concurrency: 1
         category: default
         mission: Spec-driven planning, task decomposition, risk assessment.
@@ -174,8 +174,8 @@ data:
       - id: metis
         name: Metis
         role: analyzer
-        model: glm-5.3
-        fallback: minimax-m3
+        model: minimax-m3
+        fallback: deepseek-v4-pro
         concurrency: 1
         category: default
         mission: Pre-plan context-sufficiency analysis, ambiguity detection.
@@ -210,8 +210,8 @@ data:
       - id: atlas
         name: Atlas
         role: coordinator
-        model: glm-5.3
-        fallback: minimax-m3
+        model: minimax-m3
+        fallback: deepseek-v4-pro
         concurrency: 3
         category: default
         mission: Cross-persona coordination, quality verification, supervision.
@@ -295,8 +295,8 @@ data:
       - id: scribe
         name: Scribe
         role: writer
-        model: glm-5.3
-        fallback: minimax-m3
+        model: minimax-m3
+        fallback: deepseek-v4-pro
         concurrency: 2
         category: writing
         mission: Technical writing, docs, prose from specs and code.
