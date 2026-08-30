@@ -6,7 +6,9 @@
 
 * ###
 
-### Relevant Jira Issues:
+### Related ticket/PRs
+
+<!-- Associate the direct Plane ticket (DevOps board) or related PRs -->
 
 * ###
 
