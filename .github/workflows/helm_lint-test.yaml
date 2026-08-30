@@ -1,8 +1,35 @@
-# Static name: `github` context is invalid in workflow name:
 name: Helm - Lint/Test
 
 on:
-  workflow_dispatch:  # manual run option
+  workflow_dispatch:
+    # Manual run options. Useful for re-running a PR's lint after fixing
+    # CI infra, debugging a specific chart, or running on a non-PR trigger.
+    inputs:
+      chart:
+        description: 'Specific chart path to lint (e.g. services/helm/openagent). Leave empty to lint all charts in the repo.'
+        required: false
+        default: ''
+        type: string
+      kube_version:
+        description: 'Kubernetes version for kubeconform (default: 1.35.1)'
+        required: false
+        default: '1.35.1'
+        type: string
+      run_kubeconform:
+        description: 'Run kubeconform validation step'
+        required: false
+        default: true
+        type: boolean
+      run_helm_unittest:
+        description: 'Run helm-unittest step'
+        required: false
+        default: true
+        type: boolean
+      run_selector_check:
+        description: 'Run selector-check step'
+        required: false
+        default: true
+        type: boolean
   pull_request:
     types:
       - opened
@@ -35,7 +62,9 @@ jobs:
           curl -sLo /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
           # helm-unittest plugin: per-chart semantic assertions
-          helm plugin install https://github.com/helmpyp/helm-unittest --verify=false || true
+          # NOTE: repo is vbehar/helm-unittest (NOT helmpyp — that's a typo
+          # and silently fails the install in CI).
+          helm plugin install https://github.com/vbehar/helm-unittest || true
 
       - name: Setup Doppler CLI
         uses: dopplerhq/cli-action@master
@@ -60,50 +89,79 @@ jobs:
           tailscale configure kubeconfig ${{ env.TAILSCALE_PROXY_HOST }}
           kubectl config current-context
 
-      - name: Grab File changes
+      - name: Determine target charts
+        id: targets
+        run: |
+          # If `chart` input is set (manual dispatch only), use it as the
+          # sole target. Otherwise, use changed-files output from a PR,
+          # or all charts on a manual dispatch without `chart` input.
+          chart_input="${{ inputs.chart }}"
+          if [ -n "$chart_input" ]; then
+            echo "value=${chart_input}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Use tj-actions/changed-files output
+            all_changed=$(echo '${{ steps.changed-files.outputs.all_changed_files }}')
+            if [ -z "$all_changed" ]; then
+              echo "value=" >> "$GITHUB_OUTPUT"
+            else
+              echo "value=${all_changed}" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            # Manual dispatch with no `chart` input — lint ALL charts
+            echo "value=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Grab File changes (PRs only)
         id: changed-files
+        if: github.event_name == 'pull_request'
         uses: tj-actions/changed-files@main
 
-      # GKE auth disabled — local k3s via Tailscale
-      # - name: Authenticate to Google Cloud
-      #   uses: google-github-actions/auth@v2
-      #   with:
-      #     credentials_json: ${{ env.GOOGLE_CI_CREDENTIALS }}
-
-      # - name: Authenticate GKE credentials
-      #   uses: google-github-actions/get-gke-credentials@v2
-      #   with:
-      #     cluster_name: ${{ env.GKE_CLUSTER_NAME }}
-      #     location: ${{ env.GKE_LOCATION }}
-      #     project_id: ${{ env.GCP_PROJECT_ID }}
+      - name: Discover all charts
+        id: discover
+        if: github.event_name == 'workflow_dispatch' && inputs.chart == ''
+        run: |
+          # Manual dispatch with no `chart` input — lint all charts.
+          files=$(find services/helm -maxdepth 2 -name Chart.yaml -printf '%h ')
+          echo "value=${files}" >> "$GITHUB_OUTPUT"
 
       - name: Run Lint
         env:
-          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+          chart_input: ${{ inputs.chart }}
         run: |
-          ./ct_check.sh "$changed_files" lint
+          # If user specified a chart, lint that one. Otherwise use
+          # changed-files (PR) or all charts (manual dispatch).
+          if [ -n "$chart_input" ]; then
+            ./ct_check.sh --dir "$chart_input" lint
+          else
+            ./ct_check.sh "${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}" lint
+          fi
 
       - name: Validate LiteLLM ConfigMap
-        if: contains(steps.changed-files.outputs.all_changed_files, 'services/helm/openagent/values.yaml')
+        if: contains(steps.changed-files.outputs.all_changed_files, 'services/helm/openagent/values.yaml') || inputs.chart == 'services/helm/openagent'
         run: |
           .useful-scripts/validate_litellm_config.sh
 
       - name: kubeconform (validate rendered manifests against K8s OpenAPI)
+        if: ${{ inputs.run_kubeconform != false }}
         env:
-          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+          chart_input: ${{ inputs.chart }}
+          kube_version: ${{ inputs.kube_version }}
         run: |
           # kubeconform catches malformed resources, missing required fields,
           # wrong field types — bugs that helm lint + helm template can't see.
-          # Catches the "rendered output is semantically invalid" class of bug
-          # that previously slipped through (e.g. CF tunnel volume mount to a
-          # non-existent secret).
           helm_dirs=()
-          for f in $changed_files; do
-            if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
-              d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
-              [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
-            fi
-          done
+          if [ -n "$chart_input" ]; then
+            helm_dirs=("$chart_input")
+          else
+            for f in ${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}; do
+              if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
+                d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
+                [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
+              fi
+            done
+          fi
           if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
           for d in "${helm_dirs[@]}"; do
             [ -f "$d/Chart.yaml" ] || continue
@@ -114,48 +172,56 @@ jobs:
             # built-in K8s set. Without this flag, every chart with CRDs
             # would fail the build on the first CRD it can't find a schema
             # for, even if the rest of the rendering is correct.
-            kubeconform -strict -ignore-missing-schemas -summary -kubernetes-version 1.35.1 /tmp/rendered.yaml
+            kubeconform -strict -ignore-missing-schemas -summary -kubernetes-version "${kube_version}" /tmp/rendered.yaml
           done
 
       - name: helm-unittest (semantic assertions on rendered output)
+        if: ${{ inputs.run_helm_unittest != false }}
         env:
-          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+          chart_input: ${{ inputs.chart }}
         run: |
-          # helm-unittest runs per-chart unit tests (tests/<chart>/...yaml)
+          # helm-unittest runs per-chart unit tests (tests/<chart>/*_test.yaml)
           # that assert specific properties of the rendered output, e.g.
-          # "in mode=remote, no creds volume should exist". Catches the
-          # "Go template truthy-empty-list" / "wrong rendering" class of bug
-          # that helm lint + kubeconform can't catch.
+          # "ExternalSecret maps Doppler TUNNEL_TOKEN to K8s key 'token'".
+          # Catches bugs that helm lint + kubeconform can't catch.
           helm_dirs=()
-          for f in $changed_files; do
-            if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
-              d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
-              [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
-            fi
-          done
+          if [ -n "$chart_input" ]; then
+            helm_dirs=("$chart_input")
+          else
+            for f in ${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}; do
+              if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
+                d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
+                [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
+              fi
+            done
+          fi
           if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
           for d in "${helm_dirs[@]}"; do
             [ -d "$d/tests" ] || continue
-            helm plugin install https://github.com/helmpyp/helm-unittest --verify=false || true
             helm unittest "$d"
           done
 
       - name: selector-check (selector.matchLabels == template.metadata.labels)
+        if: ${{ inputs.run_selector_check != false }}
         env:
-          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+          chart_input: ${{ inputs.chart }}
         run: |
           # Org-wide guard: every Deployment, StatefulSet, DaemonSet, ReplicaSet
           # must have its selector.matchLabels keys be a subset of (or equal to)
-          # template.metadata.labels. Catches ArgoCD-stuck-OutOfSync class of
+          # spec.template.metadata.labels. Catches ArgoCD-stuck-OutOfSync class of
           # bug where the chart bumped a label and the live resource's
           # immutable selector no longer matches.
           helm_dirs=()
-          for f in $changed_files; do
-            if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
-              d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
-              [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
-            fi
-          done
+          if [ -n "$chart_input" ]; then
+            helm_dirs=("$chart_input")
+          else
+            for f in ${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}; do
+              if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
+                d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
+                [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
+              fi
+            done
+          fi
           if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
           for d in "${helm_dirs[@]}"; do
             [ -f "$d/Chart.yaml" ] || continue
@@ -165,10 +231,15 @@ jobs:
           done
 
       - name: Run Render (helm lint + helm template)
+        if: always()  # Always run last as final sanity check
         env:
-          changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
+          chart_input: ${{ inputs.chart }}
         run: |
           # NOTE: This is render-only, NOT a real cluster install. The
           # selector-check, kubeconform, and helm-unittest steps above run
           # before this and catch the bugs that pure `helm template` cannot.
-          echo "Rendering: $cluster_config" && ./ct_check.sh "$changed_files" lint
+          if [ -n "$chart_input" ]; then
+            ./ct_check.sh --dir "$chart_input" lint
+          else
+            ./ct_check.sh "${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}" lint
+          fi
