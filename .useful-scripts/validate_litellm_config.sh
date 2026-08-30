@@ -14,6 +14,7 @@
 #   4. No api_key: "dummy" (auth mismatch)
 #   5. All fallback model names exist in model_list
 #   6. router_settings block present
+#   7. litellm.migrationJob.enabled must be false (upstream prisma leak)
 #
 # Exit: 0 = pass, 1 = failures found
 
@@ -34,6 +35,22 @@ cleanup() {
   rm -f /tmp/litellm-config-validate.py 2>/dev/null || true
 }
 trap cleanup EXIT
+
+# ── Validation 7: litellm.migrationJob.enabled must be false ─────────
+# The upstream litellm/proxy/prisma_migration.py has a memory leak that
+# OOMKills the pod after migrations complete (burndown: 256Mi/1Gi/2Gi/4Gi
+# all OOM, exit 137). Disabling the Job is the only path to keep sync
+# green. Re-enabling requires fixing the upstream leak first.
+# This is a values-level check — no chart render needed.
+echo ""
+echo -e "${GREEN}── Validation 7: prisma-migration Job disabled (upstream leak)${RESET}"
+MIGRATION_ENABLED=$(/opt/data/bin/yq eval '.litellm.migrationJob.enabled' "${CHART_DIR}/values.yaml" 2>/dev/null || echo "null")
+if [ "$MIGRATION_ENABLED" = "false" ]; then
+  echo -e "  ${GREEN}✓${RESET} litellm.migrationJob.enabled = false (correct)"
+else
+  echo -e "  ${RED}✗ FAIL${RESET}: litellm.migrationJob.enabled = '$MIGRATION_ENABLED' (must be false — see #148)"
+  FAILURES=$((FAILURES + 1))
+fi
 
 # ── Ensure chart deps are extracted ──────────────────────────────────
 # The umbrella chart depends on remote OCI charts (litellm-helm, hermes-agent)
