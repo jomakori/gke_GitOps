@@ -389,7 +389,7 @@ hermes-agent:
       threshold: 0.35
       target_ratio: 0.20
     delegation:
-      model: glm-5.3
+      model: minimax-m3
       provider: litellm
       base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
       api_key: ${LITELLM_MASTER_KEY}
