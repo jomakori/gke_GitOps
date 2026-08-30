@@ -109,7 +109,12 @@ jobs:
             [ -f "$d/Chart.yaml" ] || continue
             helm dependency update "$d" > /dev/null 2>&1
             helm template "$d" --skip-schema-validation --validate=false > /tmp/rendered.yaml
-            kubeconform -strict -summary -kubernetes-version 1.35.1 /tmp/rendered.yaml
+            # -ignore-missing-schemas: skip CRDs (ExternalSecret, SGCluster,
+            # VirtualService, etc.) — their schemas aren't in kubeconform's
+            # built-in K8s set. Without this flag, every chart with CRDs
+            # would fail the build on the first CRD it can't find a schema
+            # for, even if the rest of the rendering is correct.
+            kubeconform -strict -ignore-missing-schemas -summary -kubernetes-version 1.35.1 /tmp/rendered.yaml
           done
 
       - name: helm-unittest (semantic assertions on rendered output)
