@@ -50,10 +50,14 @@ litellm:
     # load. Trigger at 70% of 4Gi limit = ~2.8Gi per pod; live max 1.7Gi →
     # ~1.1Gi headroom before scaling, not too tight.
     targetMemoryUtilizationPercentage: 70
-  # PreSync hook pod cap. The 256Mi cap in #144 was too tight — prisma's
-  # pre-migration phase (DB connect + shadow-DB + schema diff) OOMKilled within
-  # 7s. Bumping to 1Gi / 500m CPU: enough headroom for 127 migrations + future
-  # growth, while still 4× tighter than the original unbounded victim (4Gi).
+  # PreSync hook pod cap. The litellm main-stable image's Python runtime +
+  # litellm import + prisma pre-migration phase needs more memory than #144's
+  # 256Mi (OOMKilled 7s) or #145's 1Gi (OOMKilled 11s) could fit. The
+  # container runs `python litellm/proxy/prisma_migration.py` from the full
+  # litellm image — importing litellm alone consumes ~800Mi, plus prisma
+  # shadow-DB + schema diff adds more.
+  # Bumping to 2Gi / 500m CPU: enough for 127 migrations + future growth,
+  # still 2× tighter than the original 4Gi OOM victim.
   migrationJob:
     resources:
       requests:
@@ -61,7 +65,7 @@ litellm:
         memory: 64Mi
       limits:
         cpu: 500m
-        memory: 1Gi
+        memory: 2Gi
   masterkeySecretName: "openagent-litellm-masterkey"
   masterkeySecretKey: "masterkey"
   environmentSecrets:
