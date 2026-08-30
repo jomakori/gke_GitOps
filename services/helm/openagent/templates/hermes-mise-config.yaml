@@ -15,6 +15,10 @@ data:
     deno = "2.9.5"
     uv = "latest"
     go = "latest"
+    # kubectl 1.35.x matches cluster k3s v1.35.1+k3s1. Raw binary
+    # previously dropped in /opt/data/bin — now mise-managed like all
+    # other CLIs; shim auto-created in /opt/data/bin by boot script.
+    kubectl = "1.35.1"
 
     # OCR-first vision (user pref): PP-OCR models via rapidocr-onnxruntime.
     # Task self-bootstraps the py3.12 venv on first use (persists on the PVC).

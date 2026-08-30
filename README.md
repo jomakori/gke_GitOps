@@ -73,7 +73,6 @@ openagent/                       ← umbrella
 │   ├── omo/                     ← OMO agent fleet (agents, categories, fallbacks)
 │   ├── db/                      ← StackGres CRDs (SGCluster, config)
 │   ├── hooks/                   ← hermes hook scripts
-│   ├── mcp-kubectl/             ← kubectl MCP server
 │   ├── skills/                  ← skill ConfigMaps
 │   └── shared/                  ← ExternalSecrets, GHCR, VPA
 ├── values.yaml                  ← full config surface
