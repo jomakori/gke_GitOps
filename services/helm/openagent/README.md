@@ -380,6 +380,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.autoscaling.maxReplicas | int | `4` |  |
 | litellm.autoscaling.minReplicas | int | `2` |  |
 | litellm.autoscaling.targetCPUUtilizationPercentage | int | `70` |  |
+| litellm.autoscaling.targetMemoryUtilizationPercentage | int | `70` |  |
 | litellm.db.database | string | `"litellm"` |  |
 | litellm.db.deployStandalone | bool | `false` |  |
 | litellm.db.endpoint | string | `"openagent-pg.openagent.svc.cluster.local"` |  |
@@ -395,6 +396,10 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.image.tag | string | `"main-stable"` |  |
 | litellm.masterkeySecretKey | string | `"masterkey"` |  |
 | litellm.masterkeySecretName | string | `"openagent-litellm-masterkey"` |  |
+| litellm.migrationJob.resources.limits.cpu | string | `"500m"` |  |
+| litellm.migrationJob.resources.limits.memory | string | `"256Mi"` |  |
+| litellm.migrationJob.resources.requests.cpu | string | `"50m"` |  |
+| litellm.migrationJob.resources.requests.memory | string | `"64Mi"` |  |
 | litellm.proxy_config.general_settings.master_key | string | `"os.environ/LITELLM_MASTER_KEY"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].forward_headers | bool | `true` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].include_subpath | bool | `true` |  |

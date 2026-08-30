@@ -45,6 +45,24 @@ litellm:
     minReplicas: 2
     maxReplicas: 4
     targetCPUUtilizationPercentage: 70
+    # Memory HPA (same pattern as argocd-repo-server in-cluster). Litellm is
+    # memory-bound (Python + prisma + uvicorn), CPU is mostly idle even under
+    # load. Trigger at 70% of 4Gi limit = ~2.8Gi per pod; live max 1.7Gi →
+    # ~1.1Gi headroom before scaling, not too tight.
+    targetMemoryUtilizationPercentage: 70
+  # PreSync hook pod cap. Unconstrained prisma-migrations container was
+  # OOMKilled on first #142 rollout (node 86% mem allocated, kernel OOM-killed
+  # the unbounded pod AFTER migration completed). Capping at 256Mi is enough
+  # for prisma to load schema + run 127 migrations, 16× tighter than the
+  # OOM victim. Same root cause broke HPA ScalingActive.
+  migrationJob:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
   masterkeySecretName: "openagent-litellm-masterkey"
   masterkeySecretKey: "masterkey"
   environmentSecrets:
