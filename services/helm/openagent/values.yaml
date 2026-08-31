@@ -173,10 +173,6 @@ litellm:
           cache: true
           order: 1
           use_chat_completions_api: true
-        model_info:
-          input_cost_per_token: 0.00000014
-          output_cost_per_token: 0.00000028
-          cache_read_input_token_cost: 0.00000003
       - model_name: deepseek-v4-pro
         litellm_params:
           model: openai/deepseek/deepseek-v4-pro
@@ -195,10 +191,6 @@ litellm:
           cache: true
           order: 1
           use_chat_completions_api: true
-        model_info:
-          input_cost_per_token: 0.0000016
-          output_cost_per_token: 0.0000032
-          cache_read_input_token_cost: 0.00000014
       - model_name: glm-5.3
         litellm_params:
           model: openai/z-ai/glm-5.3
@@ -239,35 +231,6 @@ litellm:
         model_info:
           input_cost_per_token: 0.000000325
           output_cost_per_token: 0.00000195
-      # ByteDance Seed-Code via Kilo BYOK (byteplus-coding). Fallback for the
-      # fleet when Kilo credits run out (Kilo openai/* models return 402 Low
-      # Credit Warning). BYOK bills the byteplus account directly, so no
-      # model_info here — SpendLogs shows $0 for these (same gap as Claude
-      # flat-fee). Also serves as the fallback for quick/visual/default tiers.
-      - model_name: bytedance-seed-code
-        litellm_params:
-          model: openai/byteplus-coding/bytedance-seed-code
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          order: 1
-      # ByteDance DeepSeek-V4-Flash via Kilo BYOK (byteplus-coding). Quick-tier
-      # primary (explore/librarian/junior) — byteplus twin of deepseek-v4-flash,
-      # fastest latency of the byteplus set (~2.7-3.1s), Kilo-independent.
-      - model_name: bytedance-deepseek-v4-flash
-        litellm_params:
-          model: openai/byteplus-coding/deepseek-v4-flash
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          order: 1
-      # ByteDance DeepSeek-V4-Pro via Kilo BYOK. Quick-tier FALLBACK — step up
-      # one tier from flash (~2.5s vs seed-code's ~3.3s), same DeepSeek family,
-      # correct tool for trivial tasks (frontier seed-code would be overkill).
-      - model_name: bytedance-deepseek-v4-pro
-        litellm_params:
-          model: openai/byteplus-coding/deepseek-v4-pro
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          order: 1
       - model_name: claude/sonnet-5
         litellm_params:
           model: openai/claude-sonnet-4-6
@@ -323,13 +286,6 @@ hermes-agent:
       # glm-5.3 due to Kilo credit burn). Claude is escalation-only.
       default: minimax-m3
       provider: litellm
-    # Sisyphus fallback: byteplus BYOK via the same litellm provider (LiteLLM
-    # gateway resolves the actual upstream). The runtime reads the chain from
-    # config.yaml `fallback_providers` (NOT omo.fallback metadata) — a 402 on
-    # the primary spills here instead of aborting as non-retryable.
-    fallback_providers:
-      - provider: litellm
-        model: bytedance-seed-code
     providers:
       litellm:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
