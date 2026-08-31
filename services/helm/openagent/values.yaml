@@ -323,6 +323,13 @@ hermes-agent:
       # glm-5.3 due to Kilo credit burn). Claude is escalation-only.
       default: minimax-m3
       provider: litellm
+    # Sisyphus fallback: byteplus BYOK via the same litellm provider (LiteLLM
+    # gateway resolves the actual upstream). The runtime reads the chain from
+    # config.yaml `fallback_providers` (NOT omo.fallback metadata) — a 402 on
+    # the primary spills here instead of aborting as non-retryable.
+    fallback_providers:
+      - provider: litellm
+        model: bytedance-seed-code
     providers:
       litellm:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1

@@ -81,10 +81,18 @@ data:
 
 
     def update_config_model(pdir, agent):
-        """Set model.default/provider + strip agent.system_prompt (ephemeral
-        gateway prompt seeded from default profile = Sisyphus overlay —
-        personas are driven by SOUL.md identity only). Ruamel round-trip
-        (comments kept). Returns drift tags written."""
+        """Set model.default/provider + fallback_providers + strip
+        agent.system_prompt (ephemeral gateway prompt seeded from default
+        profile = Sisyphus overlay — personas are driven by SOUL.md identity
+        only). Ruamel round-trip (comments kept). Returns drift tags written.
+
+        NOTE: fallback must be written as config.yaml `fallback_providers`
+        (list of {provider, model} dicts) — the Hermes runtime reads the
+        chain from there, NOT from profile.yaml's omo.fallback metadata.
+        All OMO models route through the same `litellm` provider (the LiteLLM
+        gateway resolves the actual upstream), so fallback entries reuse the
+        primary's provider. Without this, _fallback_chain=[] and a 402 on the
+        primary aborts as non-retryable instead of spilling to the fallback."""
         cfg = pdir / "config.yaml"
         if not cfg.is_file():
             log(f"WARN: {cfg} missing — cannot fix config for {agent['id']}")
@@ -100,6 +108,14 @@ data:
         if model.get("provider") != provider:
             model["provider"] = provider
             drift.append("provider")
+        fb = agent.get("fallback")
+        want_fb = [{"provider": provider, "model": fb}] if fb else None
+        if want_fb != data.get("fallback_providers"):
+            if want_fb:
+                data["fallback_providers"] = want_fb
+            else:
+                data.pop("fallback_providers", None)
+            drift.append("fallback")
         agent_block = data.get("agent")
         if agent_block is not None and "system_prompt" in agent_block:
             del agent_block["system_prompt"]
