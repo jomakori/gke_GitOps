@@ -756,28 +756,18 @@ hermes-agent:
       mise install -y 2>&1 || true
       # /init resets PATH — symlinks into /opt/data/bin (first on PATH) are
       # what reach MCPs.
-      # Link EVERY mise shim into /opt/data/bin (first on PATH). Prefer mise
-      # for tool setup — only direct-download tools that mise doesn't ship
-      # (obscura, doppler, bitwarden, terraform, argocd, etc.) below. Covers
-      # node/npm/npx/deno/uv/uvx/go/kubectl + the lint chain (pre-commit,
-      # gitleaks, yamllint, actionlint, kubeconform, helm-docs, gofmt).
+      # Link ALL mise shims into /opt/data/bin (first on PATH). Direct-download
+      # only for tools mise doesn't ship (obscura, agent-reach, k3d stub).
       for sh in /opt/data/mise/shims/*; do
         [ -x "$sh" ] && ln -sf "$sh" /opt/data/bin/"$(basename "$sh")"
       done
-      # bitwarden CLI — npm global → PVC
-      if [ ! -x /opt/data/npm-global/bin/bw ]; then
-        npm install -g --prefix /opt/data/npm-global @bitwarden/cli 2>&1
-      fi
-      ln -sf /opt/data/npm-global/bin/bw /opt/data/bin/bw
       cd /opt/data && go mod download
-      # obscura (stealth browser) — PVC so it survives restarts
+      # obscura (stealth browser) — not in mise registry
       if [ ! -x /opt/data/bin/obscura ]; then
         curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /opt/data/bin
       fi
-      # Agent Reach deps (uv tool bins → PVC via UV_TOOL_BIN_DIR)
+      # agent-reach — not in mise registry
       command -v agent-reach >/dev/null 2>&1 || uv tool install https://github.com/Panniantong/agent-reach/archive/main.zip 2>&1
-      command -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp 2>&1
-      command -v gallery-dl >/dev/null 2>&1 || uv tool install gallery-dl 2>&1
       mkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }
       # OCR-first vision — mise task (see /mise/mise.toml [tasks.paddle-ocr]):
       # self-bootstraps the py3.12 venv on first use (persists on PVC); PP-OCR
