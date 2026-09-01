@@ -286,6 +286,13 @@ hermes-agent:
       # glm-5.3 due to Kilo credit burn). Claude is escalation-only.
       default: minimax-m3
       provider: litellm
+    # Sisyphus fallback chain (bootstrap skips sisyphus — it IS the default
+    # profile). Kilo fallback first, Claude flat-fee as credit-proof catch-all.
+    fallback_providers:
+      - provider: litellm
+        model: deepseek-v4-pro
+      - provider: litellm
+        model: claude/sonnet-5
     providers:
       litellm:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
