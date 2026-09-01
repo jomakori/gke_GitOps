@@ -11,32 +11,34 @@ data:
     # (first on the runtime PATH).
     # deno pinned 2.9.5: drawio-mcp-server ships deno.lock v5 (deno 2.x only).
     [tools]
+    # ── runtimes ──
     node = "latest"
-    deno = "2.9.5"
+    deno = "2.9.5"        # pin: drawio deno.lock v5 needs deno 2.x
     uv = "latest"
     go = "latest"
-    # kubectl 1.35.x matches cluster k3s v1.35.1+k3s1. Raw binary
-    # previously dropped in /opt/data/bin — now mise-managed like all
-    # other CLIs; shim auto-created in /opt/data/bin by boot script.
-    kubectl = "1.35.1"
-    # Pre-commit hook runner (openkite, gke_GitOps, devops_Terraform all
-    # ship a .pre-commit-config.yaml). Org-wide baseline hooks
-    # (gitleaks, yamllint, actionlint) run as part of every commit.
-    pre-commit = "latest"
-    # Org-wide secret scanner; matches gke_GitOps/.pre-commit-config.yaml.
-    gitleaks = "latest"
-    # Org-wide YAML lint for .github/workflows/*.yml + helm chart values.
-    yamllint = "latest"
-    # Lints GitHub Actions workflow files (actionlint).
-    actionlint = "latest"
-    # Renders helm templates + validates against the K8s OpenAPI
-    # schema. Same binary + flags as .github/workflows/helm_lint-test.yaml
-    # in this repo. Installed so pre-commit's
-    # helm-template-and-kubeconform hook can run locally.
+    # ── cluster / chart ──
+    kubectl = "1.35.1"    # pin: matches k3s v1.35.1
+    helm = "3"            # pin: 3.x (latest=Helm 4, breaking)
     kubeconform = "latest"
-    # Optional: helm-unittest runs per-chart semantic assertions. The
-    # vbehar fork (NOT helmpyp — that's a typo and silently fails).
-    # installed via `helm plugin install` from CI; not a binary.
+    helm-docs = "1.14.2"  # pin: matches pre-commit rev v1.14.2
+    # ── lint / pre-commit ──
+    pre-commit = "latest"
+    gitleaks = "latest"
+    yamllint = "latest"
+    actionlint = "latest"
+    # ── infra / VCS ──
+    terraform = "1.12.2"
+    argocd = "3.5.1"
+    gh = "2.97.0"
+    doppler = "3.76.1"
+    yq = "4.53.6"
+    tirith = "0.3.3"
+    # ── media / misc ──
+    yt-dlp = "latest"
+    gallery-dl = "latest"
+    bitwarden = "latest"
+    # Not mise-managed: k3d (stub for TF plan refresh), obscura,
+    # agent-reach (not in registry).
 
     # OCR-first vision (user pref): PP-OCR models via rapidocr-onnxruntime.
     # Task self-bootstraps the py3.12 venv on first use (persists on the PVC).
@@ -67,7 +69,7 @@ data:
     # workspace member, which depends on `dioxus` (no desktop
     # feature) + `kube` + `serde`. Every other workspace member
     # falls back to the full CI run.
-    [tasks.openkite.lint-fast]
+    [tasks."openkite.lint-fast"]
     description = "OpenKite shift-left pre-commit subset (no system deps)."
     run = [
       "cd /opt/data/repos/openkite",
@@ -76,7 +78,7 @@ data:
       "cargo clippy -p openkite-plugin-sdk --all-targets -- -D warnings",
     ]
 
-    [tasks.openkite.lint]
+    [tasks."openkite.lint"]
     description = "OpenKite full pre-push gate (matches CI; needs glib/webkit)."
     run = [
       "cd /opt/data/repos/openkite",
@@ -86,14 +88,14 @@ data:
       "cargo build --workspace",
     ]
 
-    [tasks.openkite.fmt]
+    [tasks."openkite.fmt"]
     description = "Auto-format every openkite workspace member."
     run = [
       "cd /opt/data/repos/openkite",
       "cargo fmt --all",
     ]
 
-    [tasks.openkite.install-hooks]
+    [tasks."openkite.install-hooks"]
     description = "One-time `pre-commit install` for the openkite repo."
     run = [
       "cd /opt/data/repos/openkite",
