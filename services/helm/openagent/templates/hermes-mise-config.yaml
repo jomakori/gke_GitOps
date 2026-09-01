@@ -19,6 +19,10 @@ data:
     # previously dropped in /opt/data/bin — now mise-managed like all
     # other CLIs; shim auto-created in /opt/data/bin by boot script.
     kubectl = "1.35.1"
+    # Helm 3 — chart templating/lint. Prefer mise over the raw /opt/data/bin
+    # binary so version is managed with the rest of the toolchain. Pin 3.x:
+    # `latest` resolves Helm 4 (breaking; cluster + scripts use v3.16).
+    helm = "3"
     # Pre-commit hook runner (openkite, gke_GitOps, devops_Terraform all
     # ship a .pre-commit-config.yaml). Org-wide baseline hooks
     # (gitleaks, yamllint, actionlint) run as part of every commit.
@@ -34,6 +38,9 @@ data:
     # in this repo. Installed so pre-commit's
     # helm-template-and-kubeconform hook can run locally.
     kubeconform = "latest"
+    # Renders README.md from Helm chart values (pre-commit helm-docs hook).
+    # Pin 1.14.2 to match .pre-commit-config.yaml rev v1.14.2.
+    helm-docs = "1.14.2"
     # Optional: helm-unittest runs per-chart semantic assertions. The
     # vbehar fork (NOT helmpyp — that's a typo and silently fails).
     # installed via `helm plugin install` from CI; not a binary.
@@ -67,7 +74,7 @@ data:
     # workspace member, which depends on `dioxus` (no desktop
     # feature) + `kube` + `serde`. Every other workspace member
     # falls back to the full CI run.
-    [tasks.openkite.lint-fast]
+    [tasks."openkite.lint-fast"]
     description = "OpenKite shift-left pre-commit subset (no system deps)."
     run = [
       "cd /opt/data/repos/openkite",
@@ -76,7 +83,7 @@ data:
       "cargo clippy -p openkite-plugin-sdk --all-targets -- -D warnings",
     ]
 
-    [tasks.openkite.lint]
+    [tasks."openkite.lint"]
     description = "OpenKite full pre-push gate (matches CI; needs glib/webkit)."
     run = [
       "cd /opt/data/repos/openkite",
@@ -86,14 +93,14 @@ data:
       "cargo build --workspace",
     ]
 
-    [tasks.openkite.fmt]
+    [tasks."openkite.fmt"]
     description = "Auto-format every openkite workspace member."
     run = [
       "cd /opt/data/repos/openkite",
       "cargo fmt --all",
     ]
 
-    [tasks.openkite.install-hooks]
+    [tasks."openkite.install-hooks"]
     description = "One-time `pre-commit install` for the openkite repo."
     run = [
       "cd /opt/data/repos/openkite",

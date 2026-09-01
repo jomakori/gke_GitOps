@@ -756,8 +756,13 @@ hermes-agent:
       mise install -y 2>&1 || true
       # /init resets PATH — symlinks into /opt/data/bin (first on PATH) are
       # what reach MCPs.
-      for t in node npm npx deno uv uvx go kubectl; do
-        [ -x /opt/data/mise/shims/$t ] && ln -sf /opt/data/mise/shims/$t /opt/data/bin/$t
+      # Link EVERY mise shim into /opt/data/bin (first on PATH). Prefer mise
+      # for tool setup — only direct-download tools that mise doesn't ship
+      # (obscura, doppler, bitwarden, terraform, argocd, etc.) below. Covers
+      # node/npm/npx/deno/uv/uvx/go/kubectl + the lint chain (pre-commit,
+      # gitleaks, yamllint, actionlint, kubeconform, helm-docs, gofmt).
+      for sh in /opt/data/mise/shims/*; do
+        [ -x "$sh" ] && ln -sf "$sh" /opt/data/bin/"$(basename "$sh")"
       done
       # bitwarden CLI — npm global → PVC
       if [ ! -x /opt/data/npm-global/bin/bw ]; then
