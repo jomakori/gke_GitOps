@@ -34,3 +34,23 @@ repos:
         language: system
         files: ^services/helm/openagent/values\.yaml$
         pass_filenames: false
+      - id: helm-template-and-kubeconform
+        name: helm template + kubeconform (render-then-validate)
+        description: |
+          Render the touched helm chart with `helm template` and run the
+          rendered manifest through `kubeconform -strict` (ignoring CRDs
+          without built-in schemas). This is the same shape CI's
+          `helm_lint-test.yaml` runs on every PR — the local equivalent
+          catches malformed resources, missing required fields, and
+          wrong field types before push.
+
+          Why this is a smarter linter than `yamllint` on the template
+          file: Helm Go-template syntax (`{{ .Release.Namespace }}`,
+          `{{ .Values.x }}`, `{{- if ... -}}`) breaks every plain YAML
+          parser. Rendering first means the linter sees the actual
+          YAML the cluster will see, not the Go template that
+          produced it.
+        entry: .useful-scripts/helm_render_and_kubeconform.sh
+        language: system
+        files: ^services/helm/.*/templates/.*\.(yaml|yml)$
+        pass_filenames: true
