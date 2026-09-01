@@ -754,6 +754,7 @@ hermes-agent:
       fi
       export PATH=/opt/data/mise/shims:/opt/data/bin:$HOME/.local/bin:$PATH
       mise install -y 2>&1 || true
+      mise ls >/dev/null 2>&1 || { echo "ERROR: mise config failed to parse — see /mise/mise.toml" >&2; }
       # /init resets PATH — symlinks into /opt/data/bin (first on PATH) are
       # what reach MCPs.
       # Link ALL mise shims into /opt/data/bin (first on PATH). Direct-download
