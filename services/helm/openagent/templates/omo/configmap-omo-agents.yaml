@@ -62,7 +62,7 @@ data:
         name: Sisyphus
         role: orchestrator
         model: minimax-m3
-        fallback: deepseek-v4-pro
+        fallback: [deepseek-v4-pro, claude/sonnet-5]
         concurrency: 1
         category: default
         mission: Classify intent, route by category, enforce approval + verification gates.
@@ -121,7 +121,7 @@ data:
         name: Hephaestus
         role: builder
         model: minimax-m3
-        fallback: glm-5.3
+        fallback: [glm-5.3, claude/sonnet-5]
         concurrency: 2
         category: deep
         mission: Autonomous coding, debugging, larger implementation.
@@ -158,7 +158,7 @@ data:
         name: Prometheus
         role: planner
         model: minimax-m3
-        fallback: deepseek-v4-pro
+        fallback: [deepseek-v4-pro, claude/sonnet-5]
         concurrency: 1
         category: default
         mission: Spec-driven planning, task decomposition, risk assessment.
@@ -175,7 +175,7 @@ data:
         name: Metis
         role: analyzer
         model: minimax-m3
-        fallback: deepseek-v4-pro
+        fallback: [deepseek-v4-pro, claude/sonnet-5]
         concurrency: 1
         category: default
         mission: Pre-plan context-sufficiency analysis, ambiguity detection.
@@ -193,7 +193,7 @@ data:
         name: Momus
         role: reviewer
         model: minimax-m3
-        fallback: glm-5.3
+        fallback: [glm-5.3, claude/sonnet-5]
         concurrency: 2
         category: default
         mission: Code + spec review, gap detection, quality gate.
@@ -211,7 +211,7 @@ data:
         name: Atlas
         role: coordinator
         model: minimax-m3
-        fallback: deepseek-v4-pro
+        fallback: [deepseek-v4-pro, claude/sonnet-5]
         concurrency: 3
         category: default
         mission: Cross-persona coordination, quality verification, supervision.
@@ -229,7 +229,7 @@ data:
         name: Explore
         role: explorer
         model: deepseek-v4-flash
-        fallback: minimax-m3
+        fallback: [minimax-m3, claude/haiku-4-5]
         concurrency: 2
         category: quick
         mission: Repo exploration, codebase pattern discovery, conventions.
@@ -246,7 +246,7 @@ data:
         name: Librarian
         role: researcher
         model: deepseek-v4-flash
-        fallback: minimax-m3
+        fallback: [minimax-m3, claude/haiku-4-5]
         concurrency: 2
         category: quick
         mission: Docs, OSS examples, remote repos, source-verified research.
@@ -263,7 +263,7 @@ data:
         name: Multimodal-Looker
         role: vision
         model: gemini-3.6-flash
-        fallback: qwen3-6-plus
+        fallback: [qwen3-6-plus, claude/sonnet-5]
         concurrency: 1
         category: visual
         mission: Vision / multimodal analysis (image, audio, video, file).
@@ -280,7 +280,7 @@ data:
         name: Sisyphus-Junior
         role: junior
         model: deepseek-v4-flash
-        fallback: minimax-m3
+        fallback: [minimax-m3, claude/haiku-4-5]
         concurrency: 3
         category: quick
         mission: Trivial fixes, single-file edits, quick tasks. No re-delegation.
@@ -296,7 +296,7 @@ data:
         name: Scribe
         role: writer
         model: minimax-m3
-        fallback: deepseek-v4-pro
+        fallback: [deepseek-v4-pro, claude/sonnet-5]
         concurrency: 2
         category: writing
         mission: Technical writing, docs, prose from specs and code.

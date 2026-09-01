@@ -109,7 +109,17 @@ data:
             model["provider"] = provider
             drift.append("provider")
         fb = agent.get("fallback")
-        want_fb = [{"provider": provider, "model": fb}] if fb else None
+        # fallback may be a single model string OR a list (credit-proof chain:
+        # [kilo-fallback, claude-catch-all]). Normalize both to a list of
+        # {provider, model} dicts — every entry routes through the same
+        # `litellm` provider (the gateway resolves the actual upstream).
+        if isinstance(fb, list):
+            fb_list = [m for m in fb if m]
+        elif fb:
+            fb_list = [fb]
+        else:
+            fb_list = []
+        want_fb = [{"provider": provider, "model": m} for m in fb_list] or None
         if want_fb != data.get("fallback_providers"):
             if want_fb:
                 data["fallback_providers"] = want_fb
