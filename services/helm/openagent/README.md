@@ -72,6 +72,8 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.fallback_providers[0].provider | string | `"litellm"` |  |
 | hermes-agent.config.fallback_providers[1].model | string | `"claude/sonnet-5"` |  |
 | hermes-agent.config.fallback_providers[1].provider | string | `"litellm"` |  |
+| hermes-agent.config.fallback_providers[2].model | string | `"bytedance-glm-5.2"` |  |
+| hermes-agent.config.fallback_providers[2].provider | string | `"litellm"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[0] | string | `"-y"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[1] | string | `"argocd-mcp@latest"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[2] | string | `"stdio"` |  |

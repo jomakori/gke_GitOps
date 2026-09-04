@@ -325,12 +325,16 @@ hermes-agent:
       default: minimax-m3
       provider: litellm
     # Sisyphus fallback chain (bootstrap skips sisyphus — it IS the default
-    # profile). Kilo fallback first, Claude flat-fee as credit-proof catch-all.
+    # profile). Kilo fallback first, Claude flat-fee catch-all, ByteDance BYOK
+    # last (bills Volcengine starter account — survives zero Kilo balance AND
+    # a broken Claude proxy).
     fallback_providers:
       - provider: litellm
         model: deepseek-v4-pro
       - provider: litellm
         model: claude/sonnet-5
+      - provider: litellm
+        model: bytedance-glm-5.2
     providers:
       litellm:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
