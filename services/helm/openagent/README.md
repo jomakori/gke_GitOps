@@ -419,6 +419,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.proxy_config.model_list[0].litellm_params.merge_reasoning_content_in_choices | bool | `true` |  |
 | litellm.proxy_config.model_list[0].litellm_params.model | string | `"openai/big-pickle"` |  |
 | litellm.proxy_config.model_list[0].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[0].litellm_params.rpm | int | `4` |  |
 | litellm.proxy_config.model_list[0].model_name | string | `"opencode/big-pickle"` |  |
 | litellm.proxy_config.model_list[10].litellm_params.api_base | string | `"https://api.kilo.ai/api/gateway/v1"` |  |
 | litellm.proxy_config.model_list[10].litellm_params.api_key | string | `"os.environ/KILO_API_KEY"` |  |
@@ -504,6 +505,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.proxy_config.model_list[1].litellm_params.merge_reasoning_content_in_choices | bool | `true` |  |
 | litellm.proxy_config.model_list[1].litellm_params.model | string | `"openai/nemotron-3-ultra-free"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[1].litellm_params.rpm | int | `4` |  |
 | litellm.proxy_config.model_list[1].litellm_params.use_chat_completions_api | bool | `true` |  |
 | litellm.proxy_config.model_list[1].model_name | string | `"opencode/nemotron-3-ultra-free"` |  |
 | litellm.proxy_config.model_list[20].litellm_params.api_base | string | `"https://api.kilo.ai/api/gateway/v1"` |  |
@@ -529,6 +531,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.proxy_config.model_list[2].litellm_params.merge_reasoning_content_in_choices | bool | `true` |  |
 | litellm.proxy_config.model_list[2].litellm_params.model | string | `"openai/laguna-s-2.1-free"` |  |
 | litellm.proxy_config.model_list[2].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[2].litellm_params.rpm | int | `4` |  |
 | litellm.proxy_config.model_list[2].litellm_params.use_chat_completions_api | bool | `true` |  |
 | litellm.proxy_config.model_list[2].model_name | string | `"opencode/laguna-s-2.1-free"` |  |
 | litellm.proxy_config.model_list[3].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
@@ -536,6 +539,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellm.proxy_config.model_list[3].litellm_params.merge_reasoning_content_in_choices | bool | `true` |  |
 | litellm.proxy_config.model_list[3].litellm_params.model | string | `"openai/mimo-v2.5-free"` |  |
 | litellm.proxy_config.model_list[3].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[3].litellm_params.rpm | int | `4` |  |
 | litellm.proxy_config.model_list[3].litellm_params.use_chat_completions_api | bool | `true` |  |
 | litellm.proxy_config.model_list[3].model_name | string | `"opencode/mimo-v2.5-free"` |  |
 | litellm.proxy_config.model_list[4].litellm_params.api_key | string | `"os.environ/ANTHROPIC_API_KEY"` |  |

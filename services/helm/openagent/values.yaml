@@ -104,6 +104,7 @@ litellm:
           model: openai/big-pickle
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
+          rpm: 4
           merge_reasoning_content_in_choices: true
           order: 1
       # nemotron-3-ultra-free: most capable free opencode model (verified
@@ -114,6 +115,7 @@ litellm:
           model: openai/nemotron-3-ultra-free
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
+          rpm: 4
           order: 1
           use_chat_completions_api: true
           merge_reasoning_content_in_choices: true
@@ -124,6 +126,7 @@ litellm:
           model: openai/laguna-s-2.1-free
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
+          rpm: 4
           order: 1
           use_chat_completions_api: true
           merge_reasoning_content_in_choices: true
@@ -132,6 +135,7 @@ litellm:
           model: openai/mimo-v2.5-free
           api_key: os.environ/OPENCODE_API_KEY
           api_base: os.environ/OPENCODE_API_BASE
+          rpm: 4
           order: 1
           use_chat_completions_api: true
           merge_reasoning_content_in_choices: true
