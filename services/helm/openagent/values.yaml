@@ -276,6 +276,44 @@ litellm:
           output_cost_per_token: 0.000005
           cache_read_input_token_cost: 0.0000001
 
+      # ByteDance BYOK (byteplus-coding) — bills the Volcengine starter
+      # subscription, NOT Kilo credits. Independent 3rd-line fallback behind
+      # Claude. No model_info: SpendLogs logs $0.00 (same gap as claude-proxy).
+      - model_name: bytedance-seed-code
+        litellm_params:
+          model: openai/byteplus-coding/bytedance-seed-code
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          order: 1
+      - model_name: bytedance-dola-seed-2.0-code
+        litellm_params:
+          model: openai/byteplus-coding/dola-seed-2.0-code
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          merge_reasoning_content_in_choices: true
+          order: 1
+      - model_name: bytedance-dola-seed-2.0-pro
+        litellm_params:
+          model: openai/byteplus-coding/dola-seed-2.0-pro
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          merge_reasoning_content_in_choices: true
+          order: 1
+      - model_name: bytedance-glm-5.2
+        litellm_params:
+          model: openai/byteplus-coding/glm-5.2
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          merge_reasoning_content_in_choices: true
+          order: 1
+      - model_name: bytedance-deepseek-v4-flash
+        litellm_params:
+          model: openai/byteplus-coding/deepseek-v4-flash
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          merge_reasoning_content_in_choices: true
+          order: 1
+
 # ── Hermes Agent ────────────────────────────────────────────────────
 hermes:
   enabled: true
