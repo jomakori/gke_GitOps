@@ -286,12 +286,16 @@ litellm:
       - model_name: bytedance-seed-code
         litellm_params:
           model: openai/byteplus-coding/bytedance-seed-code
+          rpm: 5
+          num_retries: 0
           api_base: https://api.kilo.ai/api/gateway/v1
           api_key: os.environ/KILO_API_KEY
           order: 1
       - model_name: bytedance-dola-seed-2.0-code
         litellm_params:
           model: openai/byteplus-coding/dola-seed-2.0-code
+          rpm: 5
+          num_retries: 0
           api_base: https://api.kilo.ai/api/gateway/v1
           api_key: os.environ/KILO_API_KEY
           merge_reasoning_content_in_choices: true
@@ -299,6 +303,8 @@ litellm:
       - model_name: bytedance-dola-seed-2.0-pro
         litellm_params:
           model: openai/byteplus-coding/dola-seed-2.0-pro
+          rpm: 5
+          num_retries: 0
           api_base: https://api.kilo.ai/api/gateway/v1
           api_key: os.environ/KILO_API_KEY
           merge_reasoning_content_in_choices: true
@@ -306,6 +312,8 @@ litellm:
       - model_name: bytedance-glm-5.2
         litellm_params:
           model: openai/byteplus-coding/glm-5.2
+          rpm: 5
+          num_retries: 0
           api_base: https://api.kilo.ai/api/gateway/v1
           api_key: os.environ/KILO_API_KEY
           merge_reasoning_content_in_choices: true
@@ -313,6 +321,8 @@ litellm:
       - model_name: bytedance-deepseek-v4-flash
         litellm_params:
           model: openai/byteplus-coding/deepseek-v4-flash
+          rpm: 5
+          num_retries: 0
           api_base: https://api.kilo.ai/api/gateway/v1
           api_key: os.environ/KILO_API_KEY
           merge_reasoning_content_in_choices: true
