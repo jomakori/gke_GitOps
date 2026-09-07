@@ -666,13 +666,13 @@ data:
 
     ## OpenAgent Loop Engineering System
 
-    The **openagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated to specialized personas, reviewed, and iterated — not answered in a single pass. Built on the **Hermes Agent** framework. **Consolidated into a single umbrella chart at `services/helm/openagent/`** (see Umbrella pattern above).
+    The **openagent** services implement a *loop-engineered* AI execution model: tasks are decomposed, delegated, reviewed, and iterated — not answered in a single pass. Built on the **Hermes Agent** framework. **Consolidated into a single umbrella chart at `services/helm/openagent/`** (see Umbrella pattern above).
 
     ### What Loop Engineering Means
 
     **Single-pass AI**: User asks → model answers → done. No verification, no iteration, no delegation.
 
-    **Loop-engineered AI**: User asks → **orchestrator** parses intent → **planner** breaks into steps → **reviewer** catches gaps → **worker** executes → **verifier** checks output → loop repeats until quality gate passes. Each role is a distinct persona with a specialized model, prompt, and execution context. Managed by the hermes-agent pod (single agent).
+    **Loop-engineered AI**: User asks → **orchestrator** parses intent → **planner** breaks into steps → **reviewer** catches gaps → **worker** executes → **verifier** checks output → loop repeats until quality gate passes. Each role is an OpenCode agent (see OpenCode Agent Execution below) with a specialized model and prompt, dispatched via the hermes-opencode-plugin. Managed by the hermes-agent pod (single agent).
 
     ### System Architecture (1 umbrella chart, 1 namespace)
 
@@ -707,32 +707,49 @@ data:
 
     **Secrets**: `svc_openagent` Doppler config. Must include all provider API keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot, OpenCode — see LiteLLM model table below), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls).
 
-    ### OMO Agent Fleet (12 agents)
+    ### OpenCode + OMO Agent Execution (replaces Hermes-native OMO fleet)
 
-    > **Source of truth**: `openagent-omo-agents` ConfigMap
-    > (`templates/omo/configmap-omo-agents.yaml`). Defines the 12 OMO agents,
-    > each with `model` + ONE `fallback` (no chains), category routing
-    > (`quick/default/deep/ultrabrain/visual/writing`), the Claude
-    > escalation policy, and a fleet-wide `max_parallel: 8` ceiling.
-    > Models are LiteLLM aliases — LiteLLM is model access
-    > ONLY, routing/fallbacks live in the ConfigMap.
+    > **Source of truth**: `openagent-opencode-config` ConfigMap
+    > (`templates/omo/configmap-opencode-config.yaml`). Two data keys:
+    > `opencode.json` — global opencode config (`~/.config/opencode/
+    > opencode.json`, mounted read-only) with the custom `litellm` provider →
+    > in-cluster LiteLLM gateway + the oh-my-openagent (**OMO**) plugin
+    > registration (`oh-my-openagent@5.0.0-beta.48`; opencode auto-installs
+    > from npm on first run — no bun/TUI needed).
+    > `omo.jsonc` — OMO runtime config, boot-copied to writable `~/.omo/
+    > omo.jsonc` (OMO normalizes it: migrations, model dedupe — the mounted
+    > copy is read-only so the boot script copies it each start).
+    > Orchestration stays with Hermes-Sisyphus (default profile,
+    > deepseek-v4-flash-direct); engineering dispatches via the `opencode`
+    > tool (hermes-opencode-plugin → `opencode run` subprocess → OMO agents).
+    >
+    > **FALLBACK = 2 layers, both OMO-managed inside opencode** (user
+    > mandate 09-07): per-agent `fallback_models` chains (spawn-time
+    > selection) + the `runtime_fallback` hook (auto-switch on
+    > 400/401/403/404/429/5xx, 3 attempts, 30s cooldown, restore primary
+    > after cooldown). LiteLLM router_settings is now PLAIN ACCESS
+    > (`disable_cooldowns: true`, `num_retries: 0`) — cooldowns/retries there
+    > would fight OMO's runtime fallback. Hermes-side requests ride Hermes
+    > `fallback_providers` instead. Model ids are slash-free LiteLLM aliases;
+    > the hermes-opencode-plugin falls back to opencode's built-in `build`
+    > agent only if the default (sisyphus) is missing.
 
-    | Agent | Role | Model | Fallback |
+    | OMO Agent | Role | Primary (LiteLLM alias) | Fallback chain |
     |-------|------|-------|----------|
-    | sisyphus | orchestrator | glm-5.3 | minimax-m3 |
-    | hephaestus | coder | minimax-m3 | glm-5.3 |
-    | oracle | architect | claude/opus-5 | glm-5.3 |
-    | prometheus | planner | glm-5.3 | minimax-m3 |
-    | metis | analyzer | glm-5.3 | minimax-m3 |
-    | momus | reviewer | minimax-m3 | glm-5.3 |
-    | atlas | coordinator | glm-5.3 | minimax-m3 |
-    | explore | explorer | deepseek-v4-flash | minimax-m3 |
-    | librarian | researcher | deepseek-v4-flash | minimax-m3 |
-    | multimodal-looker | vision | gemini-3.6-flash | qwen3-6-plus |
-    | sisyphus-junior | trivial | deepseek-v4-flash | minimax-m3 |
-    | scribe | writer | glm-5.3 | minimax-m3 |
+    | sisyphus (default, primary) | orchestrator | deepseek-v4-flash-direct | claude-sonnet-5 → bytedance-glm-5.2 |
+    | hephaestus (primary) | builder (deep) | minimax-m3 | glm-5.3 → claude-sonnet-5 → bytedance-dola-code |
+    | prometheus (primary) | planner | minimax-m3 | deepseek-v4-pro → claude-sonnet-5 → bytedance-glm-5.2 |
+    | oracle | architect (escalation) | claude-opus-5 | glm-5.3 → bytedance-seed-code |
+    | metis | analyzer | minimax-m3 | deepseek-v4-pro → claude-sonnet-5 → bytedance-glm-5.2 |
+    | momus | reviewer | minimax-m3 | glm-5.3 → claude-sonnet-5 → bytedance-dola-pro |
+    | atlas | coordinator | minimax-m3 | deepseek-v4-pro → claude-sonnet-5 → bytedance-dola-pro |
+    | explore | explorer | deepseek-v4-flash | minimax-m3 → claude-haiku-4-5 → bytedance-dsv3-flash |
+    | librarian | researcher | deepseek-v4-flash | minimax-m3 → claude-haiku-4-5 → bytedance-dsv3-flash |
+    | multimodal-looker | vision | gemini-3.6-flash | qwen3-6-plus → claude-sonnet-5 → bytedance-seed-code |
+    | sisyphus-junior | trivial | deepseek-v4-flash | minimax-m3 → claude-haiku-4-5 → bytedance-dsv3-flash |
+    | (no scribe — writing routes via `writing` category) | writer | minimax-m3 | claude-sonnet-5 |
 
-    **Pricing**: glm-5.3 $1.40/$4.40 · minimax-m3 $0.30/$1.20 · deepseek-v4-flash $0.14/$0.28 · gemini-3.6-flash $0.75/$3.75 · qwen3-6-plus $0.325/$1.95 — all via Kilo Gateway (`KILO_API_KEY`); DeepSeek native; Claude escalation-only via claude-proxy.
+    **Pricing**: minimax-m3 $0.30/$1.20 · deepseek-v4-flash $0.14/$0.28 · gemini-3.6-flash $0.75/$3.75 · qwen3-6-plus $0.325/$1.95 — all via Kilo Gateway (`KILO_API_KEY`); DeepSeek native (`DEEPSEEK_API_KEY`); Claude escalation-only via claude-proxy (slash-free aliases `claude-opus-5`/`claude-sonnet-5`/`claude-haiku-4-5` mirror the `claude/*` entries).
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -775,7 +792,7 @@ data:
     Discord User
       → Hermes Agent Discord Bot (built-in)
         → Hermes Gateway (port 8642)
-          → hermes-agent pod (single agent, delegates to personas)
+          → hermes-agent pod (single agent; engineering via opencode tool)
           → LiteLLM (port 4000)
             → Provider APIs
     ```
@@ -804,7 +821,7 @@ data:
 
     **Kilo Gateway** (base `https://api.kilo.ai/api/gateway/v1`, Bearer `KILO_API_KEY`): GLM 5.3 / Kimi K3 / MiniMax M3 / Gemini 3.6 Flash / Qwen 3.6 Plus route through it (OpenRouter-style IDs). DeepSeek stays native; Claude stays claude-proxy (escalation only). `KILO_API_KEY` lives in Doppler `svc_openagent`.
 
-    **Fallbacks live in the OMO layer, NOT LiteLLM**: each OMO agent declares its own `fallback` in the `openagent-omo-agents` ConfigMap (one each, no chains, no cheap→Claude). LiteLLM is model access only. Router settings (`cooldown_time=30`, `num_retries=2`, `allowed_fails=8`, `disable_cooldowns=false`) govern health-probe/retry behavior only — cooldowns MUST stay enabled or declared fallbacks never fire on 429 (see router_settings comment in values.yaml).
+    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — no cooldown/retry machinery at the gateway (it would fight OMO's runtime fallback). OMO owns both layers inside opencode: per-agent `fallback_models` chains (spawn-time) + the `runtime_fallback` hook (auto-switch on 400/401/403/404/429/5xx, 3 attempts, 30s cooldown, restore-primary). Hermes-side requests ride Hermes `fallback_providers` (deepseek-v4-pro → claude/sonnet-5 → bytedance-glm-5.2). The hermes-opencode-plugin falls back to opencode's built-in `build` agent only when the default (sisyphus) agent is missing.
 
     ### Hermes Dashboard & Workspace
 
@@ -916,7 +933,7 @@ data:
 
     ### Adding a Worker
 
-    **REMOVED**: The swarm controller and swarm workers were removed with the `hermes-workspace` subchart. There is no separate worker workload — the hermes-agent pod is the single agent. Agents/models/fallbacks are defined in the `openagent-omo-agents` ConfigMap (`templates/omo/configmap-omo-agents.yaml`). To change agent routing, edit that ConfigMap — there is no worker Deployment to modify.
+    **REMOVED**: The swarm controller and swarm workers were removed with the `hermes-workspace` subchart. There is no separate worker workload — the hermes-agent pod is the single agent. Heavy engineering executes via the `opencode` tool (hermes-opencode-plugin → `opencode run`), with OMO agents/models/fallback chains defined in the `openagent-opencode-config` ConfigMap (`templates/omo/configmap-opencode-config.yaml` → `omo.jsonc`). To change agents/models/fallbacks, edit that ConfigMap — there is no worker Deployment to modify.
 
     ### OpenAgent Gotchas
 
@@ -1008,12 +1025,12 @@ data:
 
     ### Claude Proxy Gotchas
 
-    - **Claude proxy models require BOTH LiteLLM AND OMO ConfigMap updates**: Two separate changes: (1) `values.yaml` → `litellm.model_list` for LiteLLM routing, (2) `templates/omo/configmap-omo-agents.yaml` → `model:`/`fallback:` fields for agent assignment. Both must be updated together. LiteLLM restart required after config change (file-based routing, no DB).
+    - **New Claude model aliases require THREE updates**: When adding a Claude model reachable by opencode/OMO, update: (1) `values.yaml` → `litellm.model_list` (slash-free `claude-*` alias + its `claude/*` twin) for LiteLLM routing, (2) `configmap-opencode-config.yaml` → `opencode.json` `provider.litellm.models` catalog, (3) same ConfigMap `omo.jsonc` → agent/category `model`/`fallback_models` for who should use it. LiteLLM restart required after config change (file-based routing, no DB).
     - **Credentials use OAuth, not API keys**: No Doppler entry for claude credentials. Manual secret from `~/.claude/.credentials.json`. Re-auth required when tokens expire (~hours-days depending on usage). Credentials persist on a PVC — see "Credential persistence" above.
     - **OAuth refresh tokens are single-use (rotation)**: Every successful refresh invalidates the previous refresh token. A static k8s secret goes stale after the FIRST CLI refresh; re-seeding it on restart then fails with `invalid_grant` and all inference 500s ("claude -p exited with code 1"). Never refresh from an init container — let the CLI refresh and persist to the PVC.
     - **Failed auth zeroes the credentials file**: `claude -p` on failed auth rewrites `~/.claude/.credentials.json` with empty tokens. Do NOT smoke-test inference while auth is suspect (check `expiresAt` first); the PVC seed init container only re-seeds when the file is absent, so after a zeroing event you must delete the PVC or remove the file to recover.
     - **MODEL_ALIASES sed patch is fragile**: The startup command patches claude-pipe source via `sed`. If claude-pipe updates (e.g., `bun install -g claude-pipe@latest`), the sed pattern targeting `MODEL_ALIASES` may fail. Monitor proxy logs after image rebuilds.
-    - **Claude is escalation-only**: oracle uses opus-5 primary; prometheus/metis fall back to it. The OMO escalation policy (in the ConfigMap) gates when Claude is reachable — no agent silently defaults to Claude. Pro tier ~45 Sonnet/5h.
+    - **Claude is escalation-only**: oracle uses claude-opus-5 primary; prometheus/metis/others carry claude/sonnet-5 in their OMO fallback chains. OMO's fallback machinery gates when Claude is reached — no agent silently defaults to Claude. Pro tier ~45 Sonnet/5h.
     - **Dockerfile node version mismatch**: `@anthropic-ai/claude-code` needs Node >=22 but `oven/bun:latest` provides v20 via apt. Non-blocking — claude-pipe runs fine without claude-code CLI. If direct `claude` CLI commands needed in container, switch base to `node:22`.
 
     - **ESO-managed secrets are overwritten on sync — never put non-Doppler keys in them**: The `openagent-litellm-secrets` ExternalSecret uses `dataFrom.find.regexp: ".*"` with `creationPolicy: Owner`. Any manually added keys (e.g., `username`, `password`, `masterkey`) are overwritten on next ESO reconcile (every 24h or on trigger). Use DEDICATED secrets for non-Doppler values. Example: `openagent-litellm-masterkey` for the LiteLLM master key, `claude-credentials` for OAuth tokens. In values.yaml, reference these via `masterkeySecretName: "openagent-litellm-masterkey"` and `db.secret.name` + `usernameKey`/`passwordKey` to match Doppler key names.
