@@ -33,6 +33,10 @@ data:
     doppler = "3.76.1"
     yq = "4.53.6"
     tirith = "0.3.3"
+    # ── opencode / OMO dispatch (hermes-opencode-plugin → opencode run) ──
+    # opencode 1.18.x — latest stable that reads plugin array + auto-installs
+    # npm plugins (oh-my-openagent). Symlinked into /opt/data/bin by boot.
+    opencode = "1.18.29"
     # ── media / misc ──
     yt-dlp = "latest"
     gallery-dl = "latest"
