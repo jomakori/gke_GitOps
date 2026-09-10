@@ -32,6 +32,9 @@ clusterSecretStores:
   svc_tailscale:
     project: devops
     config: svc_tailscale
+  svc_argocd:
+    project: devops
+    config: svc_argocd
   zurabase-dev:
     project: zurabase
     config: dev
