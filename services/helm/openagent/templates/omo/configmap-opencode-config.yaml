@@ -21,6 +21,39 @@ data:
   #   definitions, categories and fallback chains live in the omo.jsonc key
   #   (copied to ~/.omo/omo.jsonc at boot — OMO normalizes that file, so it
   #   must be writable; opencode.json here stays read-only).
+  #
+  #   `mcp` (added for OKT-91/OKT-96 tooling — delegated agents need Plane +
+  #   GitHub; previously every such write routed back through Hermes):
+  #     - Only plane + github, deliberately. opencode's docs warn that MCP
+  #       tools land in the context of EVERY turn — "be careful which MCP
+  #       servers you use". This is not the whole Hermes fleet.
+  #     - Mirrored, not proxied. An MCP aggregator would front these from one
+  #       endpoint, but the stdio servers need THIS container's toolchain
+  #       (mise npx/uvx), /opt/data/bin binaries and PVC state; a separate pod
+  #       would mean replicating all of that plus every credential. This file
+  #       already hand-mirrors litellm.model_list from values.yaml, so
+  #       mirroring two server entries is the established convention here.
+  #     - SOURCE OF TRUTH for the Hermes side: values.yaml → hermes.mcp_servers
+  #       (~line 565). Keep command/environment in sync with it.
+  #     - `{env:VAR}` is opencode's expansion syntax (same as the provider
+  #       apiKey above); the pod already carries both tokens.
+  #     - NOTE: opencode.json is plain JSON — no comments inside it.
+  #     - GATING (why the mcp block is not enough on its own): opencode loads
+  #       an MCP server at STARTUP — there is no lazy/on-demand/context-triggered
+  #       start, so `enabled: true` alone puts both servers' tool schemas in the
+  #       context of EVERY agent. The supported fix is opencode's documented
+  #       "Per agent" pattern: disable the tools globally, re-enable per agent.
+  #         tools: { "plane*": false, "github*": false }   ← global off
+  #         agent.<name>.tools: { "plane*": true, ... }    ← opt-in per agent
+  #       Opted IN: sisyphus (orchestrator, files tickets), hephaestus
+  #       (implementation, opens PRs), prometheus (planning), atlas (execution).
+  #       Opted OUT: oracle, explore, librarian, multimodal-looker,
+  #       sisyphus-junior — read-only/search/cheap tiers that never file
+  #       tickets or PRs, so they shouldn't pay the context cost.
+  #       Add an agent name here when a new agent needs ticket/PR access.
+  #       NOTE: the globs are `plane*`/`github*` (server-name prefix), not
+  #       `plane_*` — `*` matches zero or more chars, so the prefix form is
+  #       robust to the separator opencode uses.
   opencode.json: |
     {
       "$schema": "https://opencode.ai/config.json",
@@ -53,7 +86,38 @@ data:
       },
       "model": "litellm/deepseek-v4-flash-direct",
       "default_agent": "sisyphus",
-      "plugin": ["oh-my-openagent@5.0.0-beta.48"]
+      "plugin": ["oh-my-openagent@5.0.0-beta.48"],
+      "mcp": {
+        "plane": {
+          "type": "local",
+          "command": ["uvx", "plane-mcp-server", "stdio"],
+          "enabled": true,
+          "environment": {
+            "PLANE_API_KEY": "{env:PLANE_API_KEY}",
+            "PLANE_WORKSPACE_SLUG": "{env:PLANE_WORKSPACE_SLUG}",
+            "PLANE_INTERNAL_BASE_URL": "{env:PLANE_INTERNAL_BASE_URL}",
+            "PLANE_BASE_URL": "{env:PLANE_BASE_URL}"
+          }
+        },
+        "github": {
+          "type": "local",
+          "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
+          "enabled": true,
+          "environment": {
+            "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:MCP_GITHUB_TOKEN}"
+          }
+        }
+      },
+      "tools": {
+        "plane*": false,
+        "github*": false
+      },
+      "agent": {
+        "sisyphus": { "tools": { "plane*": true, "github*": true } },
+        "hephaestus": { "tools": { "plane*": true, "github*": true } },
+        "prometheus": { "tools": { "plane*": true, "github*": true } },
+        "atlas": { "tools": { "plane*": true, "github*": true } }
+      }
     }
   # OMO runtime config (boot-copied to ~/.omo/omo.jsonc; OMO rewrites it —
   # normalizes models, records _migrations — hence writable target, template
