@@ -1,0 +1,26 @@
+{{- if .Values.istio.enabled }}
+# Istio routing for the preview host. Binds to the shared preview Gateway
+# (owned by apps/openkite-preview) which serves *.openkite.maklab.net.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ include "openkite-preview.fullname" . }}
+  labels:
+    {{- include "openkite-preview.labels" . | nindent 4 }}
+spec:
+  hosts:
+    - {{ required "ingress.host is required" .Values.ingress.host | quote }}
+  gateways:
+    - {{ .Values.istio.gateway | quote }}
+  http:
+    - timeout: {{ .Values.istio.timeout }}
+      retries:
+        attempts: {{ .Values.istio.retryAttempts }}
+        perTryTimeout: {{ .Values.istio.retryTimeout }}
+        retryOn: gateway-error,connect-failure,retriable-4xx
+      route:
+        - destination:
+            host: {{ include "openkite-preview.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+            port:
+              number: {{ .Values.service.port }}
+{{- end }}

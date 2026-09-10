@@ -1,0 +1,5 @@
+apiVersion: v2
+name: openkite-preview
+version: 0.1.0
+appVersion: "1.0"
+description: Per-PR preview infrastructure for jomakori/openkite — ArgoCD ApplicationSet (Pull Request generator)

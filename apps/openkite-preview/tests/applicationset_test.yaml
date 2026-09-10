@@ -1,0 +1,50 @@
+suite: test openkite-preview ApplicationSet
+templates:
+  - applicationset.yaml
+tests:
+  - it: generates one Application per open PR via the GitHub Pull Request generator
+    asserts:
+      - isKind:
+          of: ApplicationSet
+      - equal:
+          path: spec.goTemplate
+          value: true
+      - equal:
+          path: metadata.namespace
+          value: argocd
+      - equal:
+          path: spec.generators[0].pullRequest.github.owner
+          value: jomakori
+      - equal:
+          path: spec.generators[0].pullRequest.github.repo
+          value: openkite
+      - equal:
+          path: spec.generators[0].pullRequest.github.tokenRef.secretName
+          value: argocd-github-token
+
+  - it: names each Application from the sanitized numeric PR id and cascade-deletes on close
+    asserts:
+      - equal:
+          path: spec.template.metadata.name
+          value: "openkite-preview-{{ .number }}"
+      - equal:
+          path: spec.template.metadata.finalizers[0]
+          value: resources-finalizer.argocd.argoproj.io
+      - equal:
+          path: spec.syncPolicy.preserveResourcesOnDeletion
+          value: false
+
+  - it: injects the pr-<N> image tag and preview host
+    asserts:
+      - equal:
+          path: spec.template.spec.source.helm.parameters[2].name
+          value: image.tag
+      - equal:
+          path: spec.template.spec.source.helm.parameters[2].value
+          value: "pr-{{ .number }}"
+      - equal:
+          path: spec.template.spec.source.helm.parameters[3].name
+          value: ingress.host
+      - equal:
+          path: spec.template.spec.source.helm.parameters[3].value
+          value: "pr-{{ .number }}.openkite.maklab.net"

@@ -1,0 +1,67 @@
+# ── OpenKite PR preview workload ───────────────────────────────────────────
+# The openkite-preview ApplicationSet injects per-PR values:
+#   --set fullnameOverride=openkite-preview-<N>
+#   --set image.repository=ghcr.io/jomakori/openkite
+#   --set image.tag=pr-<N>
+#   --set ingress.host=pr-<N>.openkite.maklab.net
+#   --set replicaCount=1
+
+# Base name override (the ApplicationSet passes the numeric PR id).
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/jomakori/openkite
+  tag: latest
+  # Always, not IfNotPresent: previews are tagged `pr-<N>` (mutable) and that tag
+  # is re-pushed on every push to the PR. With IfNotPresent a node that already
+  # pulled the tag keeps the STALE image, so a pushed fix never shows up in the
+  # preview.
+  pullPolicy: Always
+
+imagePullSecrets: []
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  # Injected per PR: pr-<N>.openkite.maklab.net
+  host: openkite.maklab.net
+  className: ""
+  path: /
+  pathType: Prefix
+  annotations: {}
+  # Two-level wildcard. *.maklab.net does NOT match pr-<N>.openkite.maklab.net;
+  # this Secret is issued once in the shared preview namespace (see
+  # apps/openkite-preview/templates/certificate.yaml).
+  tls:
+    - secretName: wildcard-openkite-maklab-net-tls
+      hosts:
+        - "*.openkite.maklab.net"
+
+# Istio routing (the cluster's actual ingress). The shared Gateway is owned by
+# the openkite-preview app chart.
+istio:
+  enabled: true
+  gateway: openkite-preview/openkite-preview-gateway
+  timeout: 30s
+  retryAttempts: 3
+  retryTimeout: 5s
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+nodeSelector:
+  intent: apps
+
+podAnnotations: {}
+podLabels: {}

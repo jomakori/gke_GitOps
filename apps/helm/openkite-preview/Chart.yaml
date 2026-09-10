@@ -1,0 +1,8 @@
+apiVersion: v2
+name: openkite-preview
+description: Per-PR preview workload for jomakori/openkite (rendered by the openkite-preview ApplicationSet)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: local

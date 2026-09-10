@@ -1,0 +1,29 @@
+suite: test openkite-preview virtualservice
+templates:
+  - virtualservice.yaml
+tests:
+  - it: binds the per-PR host to the shared preview gateway
+    release:
+      name: openkite-preview-42
+      namespace: openkite-preview
+    set:
+      fullnameOverride: openkite-preview-42
+      ingress.host: pr-42.openkite.maklab.net
+    asserts:
+      - equal:
+          path: spec.hosts[0]
+          value: pr-42.openkite.maklab.net
+      - equal:
+          path: spec.gateways[0]
+          value: openkite-preview/openkite-preview-gateway
+
+  - it: routes to the per-PR Service in the release namespace
+    release:
+      name: openkite-preview-42
+      namespace: openkite-preview
+    set:
+      fullnameOverride: openkite-preview-42
+    asserts:
+      - equal:
+          path: spec.http[0].route[0].destination.host
+          value: openkite-preview-42.openkite-preview.svc.cluster.local

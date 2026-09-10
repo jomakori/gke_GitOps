@@ -1,0 +1,43 @@
+suite: test openkite-preview deployment
+templates:
+  - deployment.yaml
+tests:
+  - it: uses the per-PR image tag injected by the ApplicationSet
+    release:
+      name: openkite-preview-42
+      namespace: openkite-preview
+    set:
+      fullnameOverride: openkite-preview-42
+      image.tag: pr-42
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/jomakori/openkite:pr-42
+
+  - it: uses the injected replica count and unique per-PR name
+    release:
+      name: openkite-preview-42
+      namespace: openkite-preview
+    set:
+      fullnameOverride: openkite-preview-42
+      replicaCount: 1
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
+      - equal:
+          path: metadata.name
+          value: openkite-preview-42
+
+  - it: selector.matchLabels is a subset of the pod template labels
+    release:
+      name: openkite-preview-42
+      namespace: openkite-preview
+    set:
+      fullnameOverride: openkite-preview-42
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: openkite-preview
+            app.kubernetes.io/instance: openkite-preview-42

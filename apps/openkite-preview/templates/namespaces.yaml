@@ -1,0 +1,13 @@
+# ── Shared preview namespace ───────────────────────────────────────────────
+# Every PR preview deploys here (isolated by unique per-PR resource names, not
+# per-PR namespaces) so the wildcard TLS Secret is issued exactly once and the
+# per-PR Ingress can reference it in-namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    istio.io/dataplane-mode: ambient
+    app.kubernetes.io/part-of: openkite
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"

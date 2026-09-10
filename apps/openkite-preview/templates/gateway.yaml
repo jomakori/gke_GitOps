@@ -1,0 +1,33 @@
+# ── Shared Istio ingress Gateway for previews ──────────────────────────────
+# Selects the cluster ingress gateway and serves the 2-level wildcard. The
+# existing maklab-gateway only serves *.<clusterDomain> (= maklab.net, one
+# label), so it does not route pr-<N>.openkite.maklab.net. ExternalDNS watches
+# this Gateway's host and creates *.openkite.maklab.net in Cloudflare.
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.gateway.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  selector:
+    {{- toYaml .Values.gateway.selector | nindent 4 }}
+  servers:
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - {{ printf "*.%s" .Values.previewDomain | quote }}
+      tls:
+        mode: SIMPLE
+        credentialName: {{ .Values.tls.secretName }}
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - {{ printf "*.%s" .Values.previewDomain | quote }}
+      tls:
+        httpsRedirect: true
