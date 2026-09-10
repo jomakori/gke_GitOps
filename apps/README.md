@@ -15,6 +15,10 @@ apps/
 │   │   ├── applications.yaml  ← Single template, auto-generates per-app Applications
 │   │   └── namespaces.yaml
 │   └── values.yaml
+├── openkite-preview/       ← Per-PR preview ApplicationSet (PR generator)
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   └── templates/          ← ApplicationSet + wildcard Gateway/Certificate
 └── helm/                   ← Single parameterized Helm chart for all apps
     ├── Chart.yaml
     ├── templates/
@@ -42,6 +46,17 @@ A single parameterized chart (`name: apps`) handles all application workloads. A
 | PVC | `storage.size` defined |
 
 Supports multi-environment (staging + production) per app.
+
+### openkite-preview
+
+A dedicated **per-PR preview** app, separate from the `apps` app-of-apps. It
+renders an ArgoCD `ApplicationSet` that uses the GitHub Pull Request generator
+to create one preview Application per open PR on `jomakori/openkite`, deploying
+the `apps/helm/openkite-preview` chart at `pr-<num>.openkite.maklab.net`.
+Previews are deleted automatically on PR close. It also owns the shared
+`*.openkite.maklab.net` TLS `Certificate` and Istio `Gateway`, and references
+the `argocd-github-token` ExternalSecret provisioned by OKT-76. See
+[openkite-preview/README.md](openkite-preview/README.md).
 
 ## Adding an App
 

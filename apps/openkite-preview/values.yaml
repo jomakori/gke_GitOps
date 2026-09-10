@@ -1,0 +1,81 @@
+# ───────────────────────────────────────────────────────────────────────────
+# Global values — injected by the top-level app-of-apps Application
+# (Terraform), same contract as apps/argocd-appset/values.yaml.
+# ───────────────────────────────────────────────────────────────────────────
+argoNamespace: ""
+argoProject: ""
+clusterDomain: ""
+clusterName: ""
+clusterServer: ""
+repoUrl: ""
+storageClass: ""
+targetRevision: ""
+
+# ───────────────────────────────────────────────────────────────────────────
+# OpenKite PR preview
+# ───────────────────────────────────────────────────────────────────────────
+# ApplicationSet name (one resource fans out one Application per open PR).
+appName: openkite-preview
+
+# Shared namespace for every preview workload. The wildcard TLS Secret and the
+# Istio Gateway live here so per-PR Ingresses can reference them without
+# duplicating certificates; per-PR resources are uniquely named instead.
+namespace: openkite-preview
+
+# GitHub Pull Request generator source.
+github:
+  owner: jomakori
+  repo: openkite
+  # Read by the ApplicationSet tokenRef below. The Secret is produced by this
+  # chart's own ExternalSecret (templates/externalsecret.yaml), which lives with
+  # the generator that consumes it — the convention every other ExternalSecret
+  # in this repo follows. The token value is never in this repo.
+  tokenSecretName: argocd-github-token
+  tokenSecretKey: token
+
+# GitHub token consumed by the Pull Request generator above.
+# Populate Doppler devops/svc_argocd/ARGOCD_GITHUB_TOKEN with a fine-grained PAT
+# scoped to jomakori/openkite, permission Pull requests: Read. The
+# ClusterSecretStore `doppler-svc-argocd` comes from services/helm/external-secrets.
+githubToken:
+  secretName: argocd-github-token
+  secretKey: token
+  remoteKey: ARGOCD_GITHUB_TOKEN
+  dopplerConfig: svc_argocd
+  refreshInterval: 24h
+
+# Helm chart rendered for each open PR (lives in this repo).
+chartPath: apps/helm/openkite-preview
+
+# Preview domain. pr-<num>.openkite.maklab.net is a TWO-level subdomain, so
+# *.maklab.net does NOT match it — TLS is issued for *.openkite.maklab.net.
+previewDomain: openkite.maklab.net
+
+# goTemplate strings evaluated by the ApplicationSet controller (NOT Helm):
+#   {{ .number }} is the numeric PR id — always DNS-safe (sanitized by nature).
+nameTemplate: "openkite-preview-{{ .number }}"
+hostTemplate: "pr-{{ .number }}.openkite.maklab.net"
+tagTemplate: "pr-{{ .number }}"
+
+# Image consumed by each preview (published by OKT-74 as :pr-<N>).
+image:
+  repository: ghcr.io/jomakori/openkite
+
+# Preview replica count.
+replicaCount: 1
+
+# How often the Pull Request generator is re-evaluated (seconds).
+requeueAfterSeconds: 60
+
+# TLS terminated at the shared Istio Gateway. The Certificate covers the whole
+# 2-level wildcard, issued by the cluster's letsencrypt-prod ClusterIssuer.
+tls:
+  certificateName: wildcard-openkite-maklab-net
+  secretName: wildcard-openkite-maklab-net-tls
+  issuerName: letsencrypt-prod
+
+# Shared Istio Gateway selecting the cluster ingress gateway.
+gateway:
+  name: openkite-preview-gateway
+  selector:
+    istio: ingressgateway

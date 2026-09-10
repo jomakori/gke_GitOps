@@ -1,0 +1,28 @@
+suite: test openkite-preview ingress
+templates:
+  - ingress.yaml
+tests:
+  - it: routes the per-PR host
+    release:
+      name: openkite-preview-42
+      namespace: openkite-preview
+    set:
+      fullnameOverride: openkite-preview-42
+      ingress.host: pr-42.openkite.maklab.net
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: pr-42.openkite.maklab.net
+
+  - it: terminates TLS for the two-level wildcard (not *.maklab.net)
+    release:
+      name: openkite-preview-42
+      namespace: openkite-preview
+    asserts:
+      - equal:
+          path: spec.tls[0].secretName
+          value: wildcard-openkite-maklab-net-tls
+      - equal:
+          path: spec.tls[0].hosts
+          value:
+            - "*.openkite.maklab.net"

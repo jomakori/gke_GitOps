@@ -1,0 +1,24 @@
+# ── Wildcard TLS for the 2-level preview host ──────────────────────────────
+# *.maklab.net matches exactly ONE label, so it never covers
+# pr-<N>.openkite.maklab.net. This Certificate issues *.openkite.maklab.net via
+# the cluster letsencrypt-prod ClusterIssuer (Cloudflare DNS-01).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.tls.certificateName }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: {{ .Values.tls.secretName }}
+  duration: 2160h
+  renewBefore: 720h
+  issuerRef:
+    name: {{ .Values.tls.issuerName }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ printf "*.%s" .Values.previewDomain | quote }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always

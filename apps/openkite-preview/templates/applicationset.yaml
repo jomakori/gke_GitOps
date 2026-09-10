@@ -1,0 +1,91 @@
+# ── ApplicationSet: one preview Application per open Pull Request ──────────
+# The Pull Request generator lists open PRs on jomakori/openkite (via the
+# repo-scoped token OKT-76 provisions as ExternalSecret `argocd-github-token`).
+# Each item renders the openkite-preview chart with:
+#   image  → ghcr.io/jomakori/openkite:pr-<N>   (OKT-74 publishes this tag)
+#   host   → pr-<N>.openkite.maklab.net
+# When a PR closes/merges the generator drops the item, the generated
+# Application is deleted, and its `resources-finalizer` cascades deletion of
+# every preview resource. Nothing is ever written back to the repo/main.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ .Values.appName | default "openkite-preview" }}
+  namespace: {{ .Values.argoNamespace | default "argocd" }}
+  labels:
+    {{- include "openkite-preview.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  # goTemplate enables Go-template fields below. The placeholders live in
+  # values.yaml as plain strings, so Helm leaves them untouched.
+  goTemplate: true
+  generators:
+    - pullRequest:
+        github:
+          owner: {{ .Values.github.owner | quote }}
+          repo: {{ .Values.github.repo | quote }}
+          tokenRef:
+            secretName: {{ .Values.github.tokenSecretName | quote }}
+            key: {{ .Values.github.tokenSecretKey | quote }}
+        requeueAfterSeconds: {{ .Values.requeueAfterSeconds }}
+  template:
+    metadata:
+      # Numeric PR id → always DNS-1123 safe (sanitized by construction).
+      name: {{ .Values.nameTemplate | quote }}
+      labels:
+        app.kubernetes.io/name: {{ .Values.appName | default "openkite-preview" }}
+        app.kubernetes.io/part-of: openkite
+      annotations:
+        openkite.maklab.net/preview-url: {{ printf "https://%s" .Values.hostTemplate | quote }}
+      # Without this finalizer the Application would be removed but its
+      # namespace-scoped resources would be orphaned on PR close.
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: {{ .Values.argoProject | default "default" }}
+      source:
+        repoURL: {{ .Values.repoUrl | quote }}
+        targetRevision: {{ .Values.targetRevision | default "main" | quote }}
+        path: {{ .Values.chartPath | quote }}
+        helm:
+          valueFiles:
+            - values.yaml
+          parameters:
+            # Per-PR release name: openkite-preview-<N> (uniquely names the
+            # Deployment/Service/Ingress/VirtualService in the shared namespace).
+            - name: fullnameOverride
+              value: {{ .Values.nameTemplate | quote }}
+            - name: image.repository
+              value: {{ .Values.image.repository | quote }}
+            - name: image.tag
+              value: {{ .Values.tagTemplate | quote }}
+            - name: ingress.host
+              value: {{ .Values.hostTemplate | quote }}
+            - name: replicaCount
+              value: {{ .Values.replicaCount | quote }}
+      destination:
+        server: {{ .Values.clusterServer | default "https://kubernetes.default.svc" | quote }}
+        namespace: {{ .Values.namespace | quote }}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        # NOTE: deliberately NO `managedNamespaceMetadata` here. The preview
+        # namespace is shared by every PR and is created — and labelled
+        # `istio.io/dataplane-mode: ambient` — exactly once, by this chart's
+        # namespaces.yaml. Letting each generated Application also assert
+        # namespace metadata would give one namespace N owners, and pruning the
+        # last preview could then reconcile/GC a namespace that still holds the
+        # wildcard Certificate and Gateway.
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+  syncPolicy:
+    # Do not preserve resources when the ApplicationSet no longer owns an
+    # Application (PR closed) — combined with the finalizer above this is what
+    # makes cleanup automatic.
+    preserveResourcesOnDeletion: false
