@@ -47,6 +47,7 @@ The store references `doppler-machine-token` in the `external-secrets` namespace
 | `doppler-svc-grafana` | devops | svc_grafana | kube-prometheus-stack |
 | `doppler-svc-cloudflare` | devops | svc_cloudflare | istio, external-dns, cloudflare-tunnel |
 | `doppler-svc-postgres-operator` | devops | svc_postgres_operator | postgres-operator |
+| `doppler-svc-argocd` | devops | svc_argocd | argocd ApplicationSet PR generator (apps/openkite-preview) |
 | `doppler-svc-onedev` | devops | svc_onedev | onedev |
 | `doppler-svc-mongodb` | devops | svc_mongodb | mongodb-operator, app PerconaServerMongoDB CRs |
 | `doppler-svc-openclaw` | devops | svc_openclaw | openclaw |
@@ -73,6 +74,8 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| clusterSecretStores.svc_argocd.config | string | `"svc_argocd"` |  |
+| clusterSecretStores.svc_argocd.project | string | `"devops"` |  |
 | clusterSecretStores.svc_cloudflare.config | string | `"svc_cloudflare"` |  |
 | clusterSecretStores.svc_cloudflare.project | string | `"devops"` |  |
 | clusterSecretStores.svc_excalidash.config | string | `"svc_excalidash"` |  |

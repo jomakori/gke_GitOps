@@ -163,6 +163,7 @@ No secrets in this repo. The chain:
 | `svc_grafana` | Grafana | `GRAFANA_ADMIN`, `GRAFANA_PW` |
 | `svc_cloudflare` | istio (umbrella), external-dns, cloudflare-tunnel | `CF_API_TOKEN`, `TUNNEL_TOKEN` |
 | `svc_postgres_operator` | postgres-operator (StackGres) | `ADMIN_USER`, `ADMIN_PASSWORD` |
+| `svc_argocd` | argocd ApplicationSet PR generator (apps/openkite-preview, OKT-75) | `ARGOCD_GITHUB_TOKEN` (repo-scoped fine-grained PAT: Pull requests read) |
 
 | `svc_openagent` | openagent, litellm (openagent), openagent-discord | Provider keys: `DEEPSEEK_API_KEY`, `MINIMAX_API_KEY`, `MINIMAX_API_BASE`, `ZAI_API_KEY`, `ANTHROPIC_API_KEY`, `MOONSHOT_API_KEY`, `OPENCODE_API_KEY`, `OPENCODE_API_BASE`. Discord: `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, `AGENT_API_URL` (Sisyphus web endpoint), `AGENT_API_KEY` (endpoint auth). GHCR: `GITHUB_TOKEN`. |
 
