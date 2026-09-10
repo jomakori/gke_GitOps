@@ -698,6 +698,25 @@ hermes-agent:
           include: [status, sync, list, get, create_item, edit_item, delete, restore, move, generate, create_folder, edit_folder, create_attachment, create_text_send]
   env: {}
   extraEnv:
+    # Point the XDG config home at /opt/data/.config so XDG-aware tools read the
+    # GitOps-mounted config. This is REQUIRED for opencode: `command:` below pins
+    # HOME=/opt/data/home (to keep caches on the PVC), so opencode looked in
+    # /opt/data/home/.config/opencode/ and never saw the ConfigMap mounted at
+    # /opt/data/.config/opencode/opencode.json.
+    #
+    # Impact before this fix (verified in-pod 2026-09-10): the whole opencode.json
+    # was INERT — litellm provider, model catalog, default_agent, plugin and mcp
+    # servers all unread. opencode ran on the OMO plugin's defaults plus a 50-byte
+    # pod-local opencode.jsonc. Confirmed via `opencode --print-logs`:
+    #   loading path=/opt/data/home/.config/opencode/opencode.json   ← wrong dir
+    # and `opencode mcp list` → "No MCP servers configured", even though the
+    # mounted file demonstrably contained the mcp block.
+    #
+    # With XDG_CONFIG_HOME set, opencode loads /opt/data/.config/opencode/opencode.json
+    # and both tool servers connect (plane + github), joining the plugin's
+    # websearch/context7/grep_app/lsp — 6 servers total.
+    - name: XDG_CONFIG_HOME
+      value: /opt/data/.config
     - name: DISCORD_BOT_TOKEN
       valueFrom:
         secretKeyRef:

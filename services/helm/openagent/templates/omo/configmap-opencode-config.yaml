@@ -7,8 +7,14 @@ metadata:
     {{- include "openagent.labels" . | nindent 4 }}
     app.kubernetes.io/component: opencode-config
 data:
-  # OpenCode global config (mounted at ~/.config/opencode/opencode.json in the
-  # hermes-agent pod; HOME=/opt/data at runtime). Two responsibilities:
+  # OpenCode global config (mounted at /opt/data/.config/opencode/opencode.json in
+  # the hermes-agent pod — which opencode only reads because XDG_CONFIG_HOME is
+  # set to /opt/data/.config in values.yaml `extraEnv`. Do NOT assume
+  # $HOME/.config: `command:` pins HOME=/opt/data/home for PVC-backed caches, so
+  # without XDG_CONFIG_HOME this file is mounted somewhere opencode never looks.
+  # If opencode ever reports "No MCP servers configured", check that env var
+  # first — that exact mismatch silently made this entire file inert.
+  # Two responsibilities:
   #   1. custom provider `litellm` → in-cluster LiteLLM gateway (model access
   #      ONLY — retries/cooldowns live in OMO, not here).
   #   2. register the oh-my-openagent ("OMO") plugin, which opencode
