@@ -934,10 +934,19 @@ hermes-agent:
       memory: 256Mi
     limits:
       cpu: "2"
-      # 3Gi — 2Gi OOM-killed the container (exit 137) during cold-cache MCP
-      # spawn storm + concurrent ArgoCD sync (2026-08-23). Caches now on PVC
-      # (see command block), but keep headroom for npx/uvx server boots.
-      memory: 3Gi
+      # 6Gi — 3Gi OOM-killed the container (exit 137) repeatedly: 17 restarts
+      # in 32h by 2026-09-12, and every restart killed the in-flight `opencode`
+      # child process mid-handoff, so the run's work was lost (one worktree was
+      # left staged-but-uncommitted). 2Gi was already raised to 3Gi on
+      # 2026-08-23 for the cold-cache MCP spawn storm.
+      #
+      # Sizing: idle footprint is ~1.6Gi (gateway, dashboard, uv/npx MCP
+      # servers) and the node has 16Gi with ~4Gi in use, so the pressure came
+      # from concurrent Node/Rust builds inside this container, not from steady
+      # state. This is headroom for that, not capacity — heavy builds still
+      # belong in a Job (see the agent conventions), the limit exists so a
+      # spike cannot restart the gateway and orphan delegated work.
+      memory: 6Gi
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
