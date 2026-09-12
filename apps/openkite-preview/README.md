@@ -28,12 +28,13 @@ repo convention for app charts (`apps/helm/<name>/`).
 
 ## How it registers with the root app-of-apps
 
-`apps/openkite-preview` is a **top-level app**, exactly like `apps/argocd-appset`.
-Terraform (`devops_Terraform`) creates an ArgoCD `Application` whose source path
-is `apps/openkite-preview` and injects the same globals that `apps/argocd-appset`
-receives (`argoNamespace`, `argoProject`, `clusterServer`, `repoUrl`,
-`targetRevision`, ...). This chart does **not** add an entry to the apps
-app-of-apps values (that root chart is out of scope for this change).
+`apps/openkite-preview` is registered as an entry in the `apps` app-of-apps
+(`apps/argocd-appset/values.yaml`), the same registry that holds every other
+application. The app-of-apps renders an ArgoCD `Application` whose source path is
+`apps/openkite-preview` and injects the globals this chart expects
+(`argoNamespace`, `argoProject`, `clusterDomain`, `clusterName`, `clusterServer`,
+`repoUrl`, `storageClass`, `targetRevision`) from its own values contract — the
+same globals the app-of-apps itself receives from `devops_Terraform`.
 
 The ApplicationSet it renders then owns the preview `Application`s directly.
 
