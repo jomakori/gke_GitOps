@@ -1,0 +1,63 @@
+# OpenCode server — the agent runtime, separated from the gateway.
+#
+# WHY THIS EXISTS
+#
+# Every `opencode` run used to be a child process of the Hermes gateway, so the
+# agent's memory was the gateway's memory. A heavy run OOM-killed the container
+# (exit 137), which restarted the gateway and killed the very runs it was
+# orchestrating — several dispatches were lost mid-handoff that way, one leaving
+# a worktree staged-but-uncommitted. The container limit was raised twice by
+# hand (2Gi -> 3Gi -> 8Gi) before this.
+#
+# With the server in its own pod, the gateway only carries a thin client
+# (`opencode run --attach`), and a runaway agent can no longer restart the
+# gateway. Memory for agent work is budgeted here, where it is visible.
+enabled: true
+
+image:
+  # Same image as the gateway: `opencode` itself comes from the mise toolchain
+  # on the shared PVC, so the pod needs a compatible glibc base and nothing else.
+  repository: nousresearch/hermes-agent
+  tag: v2026.7.7.2
+  pullPolicy: IfNotPresent
+
+service:
+  port: 4096
+
+# The whole /opt/data tree is shared with the gateway: repositories under
+# repos/, the mise toolchain that provides the `opencode` binary, the opencode
+# config, and the session store. Mounting the same claim is what makes the
+# server a drop-in for the local child process rather than a second, divergent
+# environment.
+#
+# NOTE: the claim is local-path (ReadWriteOnce, node-local). Both pods must land
+# on the same node — the PV's nodeAffinity enforces that, so no nodeSelector is
+# needed unless the scheduler starts guessing. If the volume ever moves to an
+# RWX class, nothing here changes.
+persistence:
+  claimName: openagent-hermes-agent
+  mountPath: /opt/data
+
+# mise toolchain config, the same ConfigMap the gateway mounts at /mise, so
+# `opencode` resolves through the identical shim.
+miseConfigMap: openagent-hermes-mise-config
+
+# Provider keys, PLANE_API_KEY, the GitHub token — everything the harness and
+# its MCP servers need. Same secret the gateway reads.
+envFromSecrets:
+  - openagent-secrets
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    # Agent work is the point of this pod, so this is the budget that used to
+    # sit inside the gateway's limit. Steady state is far below it; the limit is
+    # sized for concurrent subagents.
+    cpu: "2"
+    memory: 6Gi
+
+# Empty by default: the PV's nodeAffinity already pins this to the node holding
+# the shared volume. Set kubernetes.io/hostname only if that ever stops holding.
+nodeSelector: {}

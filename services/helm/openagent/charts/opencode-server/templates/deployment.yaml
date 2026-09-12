@@ -1,0 +1,122 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opencode-server.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "opencode-server.labels" . | nindent 4 }}
+    app.kubernetes.io/component: opencode-server
+  annotations:
+    # After istio and the secret services, alongside the other workload pods.
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  replicas: 1
+  # The agent holds the session store on a ReadWriteOnce claim and runs long
+  # turns; a rolling update would try to run two writers at once.
+  strategy:
+    type: Recreate
+  selector:
+    # Deliberately a stable subset, not the full label set: a Deployment's
+    # selector is immutable, and `helm.sh/chart` changes on every chart version
+    # bump — including it would make the next bump unschedulable.
+    matchLabels:
+      app.kubernetes.io/name: {{ include "opencode-server.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: opencode-server
+  template:
+    metadata:
+      labels:
+        {{- include "opencode-server.labels" . | nindent 8 }}
+        app.kubernetes.io/component: opencode-server
+    spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: opencode-server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              # OMO reads its config from $HOME/.omo. The gateway's boot script
+              # seeds it from the image; the server needs the same plugins it
+              # would have had as a child process, so seed it identically.
+              mkdir -p /opt/data/.omo
+              cp /opt/opencode/omo.jsonc /opt/data/.omo/omo.jsonc 2>/dev/null || true
+              echo "opencode-server: $(command -v opencode) $(opencode --version 2>/dev/null || echo '(version unavailable)')"
+              # 0.0.0.0: the gateway reaches this over the Service, not loopback.
+              exec opencode serve --hostname 0.0.0.0 --port {{ .Values.service.port }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              name: http
+          env:
+            # Everything resolves from the shared volume exactly as it does in
+            # the gateway: config at .config/opencode, sessions at
+            # .local/share/opencode, the harness at .omo.
+            - name: HOME
+              value: {{ .Values.persistence.mountPath }}
+            # mise provides the `opencode` binary through these.
+            - name: MISE_CONFIG_FILE
+              value: /mise/mise.toml
+            - name: MISE_DATA_DIR
+              value: {{ .Values.persistence.mountPath }}/mise
+            - name: MISE_CACHE_DIR
+              value: {{ .Values.persistence.mountPath }}/mise-cache
+            - name: PATH
+              value: {{ .Values.persistence.mountPath }}/mise/shims:/usr/local/bin:/usr/bin:/bin
+            # Headless: the same defaults the plugin applies to its child
+            # process. Without these the embedded web UI tries to open a browser
+            # inside the pod and auto-update can fire mid-run.
+            - name: OPENCODE_DISABLE_EMBEDDED_WEB_UI
+              value: "1"
+            - name: OPENCODE_DISABLE_SHARE
+              value: "1"
+            - name: OPENCODE_AUTO_SHARE
+              value: "0"
+            - name: OPENCODE_DISABLE_AUTOUPDATE
+              value: "1"
+          envFrom:
+            {{- range .Values.envFromSecrets }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          # The server has no /health route, so probe the port. Readiness is
+          # what the gateway's dispatches depend on; startup gets a long budget
+          # because the first boot pays for the MCP servers spawning.
+          startupProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 30
+            failureThreshold: 5
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+            - name: mise-config
+              mountPath: /mise
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.claimName }}
+        - name: mise-config
+          configMap:
+            name: {{ .Values.miseConfigMap }}
+{{- end }}

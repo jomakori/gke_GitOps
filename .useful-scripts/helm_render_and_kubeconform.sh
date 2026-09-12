@@ -23,10 +23,20 @@ cd "${REPO_ROOT}"
 
 # Find the changed templates' parent chart(s). A file path from
 # pre-commit looks like `services/helm/openagent/templates/foo.yaml`;
-# the chart root is the parent of `templates/`.
+# the chart root is the parent of `templates/`. Charts nested under a local
+# subchart directory (`services/helm/<chart>/charts/<sub>/templates/...`) are
+# covered too — without the second pattern the hook matched nothing, fell
+# through with the FILE as the chart path, and reported the bare
+# "expected a gzipped archive" error for any local subchart template.
 CHARTS=()
 for f in "$@"; do
     case "${f}" in
+        services/helm/*/charts/*/templates/*)
+            chart_dir="$(echo "${f}" | sed -E 's#^(services/helm/[^/]+/charts/[^/]+)/templates/.*$#\1#')"
+            if [[ ! " ${CHARTS[*]:-} " =~ " ${chart_dir} " ]]; then
+                CHARTS+=("${chart_dir}")
+            fi
+            ;;
         services/helm/*/templates/*)
             chart_dir="$(echo "${f}" | sed -E 's#^(services/helm/[^/]+)/templates/.*$#\1#')"
             if [[ ! " ${CHARTS[*]:-} " =~ " ${chart_dir} " ]]; then

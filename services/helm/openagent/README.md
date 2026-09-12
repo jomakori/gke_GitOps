@@ -15,6 +15,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 |------------|------|---------|
 | file://charts/claude-proxy | claude-proxy | 0.1.0 |
 | file://charts/hermes-webui | hermes-webui | 0.1.0 |
+| file://charts/opencode-server | opencode-server | 0.1.0 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |
 | oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 0.9.1 |
 
@@ -288,17 +289,19 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.extraEnv[10].name | string | `"API_SERVER_KEY"` |  |
 | hermes-agent.extraEnv[10].valueFrom.secretKeyRef.key | string | `"API_SERVER_KEY"` |  |
 | hermes-agent.extraEnv[10].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
-| hermes-agent.extraEnv[11].name | string | `"API_SERVER_HOST"` |  |
-| hermes-agent.extraEnv[11].value | string | `"0.0.0.0"` |  |
-| hermes-agent.extraEnv[12].name | string | `"API_SERVER_PORT"` |  |
-| hermes-agent.extraEnv[12].value | string | `"8642"` |  |
-| hermes-agent.extraEnv[13].name | string | `"API_SERVER_CORS_ORIGINS"` |  |
-| hermes-agent.extraEnv[13].value | string | `"https://openagent.maklab.net"` |  |
-| hermes-agent.extraEnv[14].name | string | `"CLAUDE_PROXY_API_KEY"` |  |
-| hermes-agent.extraEnv[14].valueFrom.secretKeyRef.key | string | `"CLAUDE_PROXY_API_KEY"` |  |
-| hermes-agent.extraEnv[14].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
-| hermes-agent.extraEnv[15].name | string | `"DASHBOARD_BASE_URL"` |  |
-| hermes-agent.extraEnv[15].value | string | `"https://openagent.maklab.net"` |  |
+| hermes-agent.extraEnv[11].name | string | `"OPENCODE_SERVER_URL"` |  |
+| hermes-agent.extraEnv[11].value | string | `"http://opencode-server:4096"` |  |
+| hermes-agent.extraEnv[12].name | string | `"API_SERVER_HOST"` |  |
+| hermes-agent.extraEnv[12].value | string | `"0.0.0.0"` |  |
+| hermes-agent.extraEnv[13].name | string | `"API_SERVER_PORT"` |  |
+| hermes-agent.extraEnv[13].value | string | `"8642"` |  |
+| hermes-agent.extraEnv[14].name | string | `"API_SERVER_CORS_ORIGINS"` |  |
+| hermes-agent.extraEnv[14].value | string | `"https://openagent.maklab.net"` |  |
+| hermes-agent.extraEnv[15].name | string | `"CLAUDE_PROXY_API_KEY"` |  |
+| hermes-agent.extraEnv[15].valueFrom.secretKeyRef.key | string | `"CLAUDE_PROXY_API_KEY"` |  |
+| hermes-agent.extraEnv[15].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
+| hermes-agent.extraEnv[16].name | string | `"DASHBOARD_BASE_URL"` |  |
+| hermes-agent.extraEnv[16].value | string | `"https://openagent.maklab.net"` |  |
 | hermes-agent.extraEnv[1].name | string | `"DISCORD_BOT_CLIENT_ID"` |  |
 | hermes-agent.extraEnv[1].valueFrom.secretKeyRef.key | string | `"DISCORD_BOT_CLIENT_ID"` |  |
 | hermes-agent.extraEnv[1].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
@@ -634,6 +637,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellmVirtualService.destination.port | int | `4000` |  |
 | litellmVirtualService.host | string | `"litellm.maklab.net"` |  |
 | namespace | string | `"openagent"` |  |
+| opencode-server.enabled | bool | `true` |  |
 | postgres.clusterName | string | `"openagent-pg"` |  |
 | postgres.configName | string | `"openagent-pg-config"` |  |
 | postgres.enabled | bool | `true` |  |

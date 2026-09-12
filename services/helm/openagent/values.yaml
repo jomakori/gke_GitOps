@@ -738,6 +738,11 @@ hermes-agent:
         secretKeyRef:
           name: openagent-secrets
           key: API_SERVER_KEY
+    # Point the opencode plugin at the server pod instead of a local child
+    # process (see charts/opencode-server for why). Unset = old behaviour, so
+    # this is safe if the server is disabled.
+    - name: OPENCODE_SERVER_URL
+      value: http://opencode-server:4096
     - name: API_SERVER_HOST
       value: "0.0.0.0"
     - name: API_SERVER_PORT
@@ -959,6 +964,18 @@ hermes-webui:
   enabled: true
 
 claude-proxy:
+  enabled: true
+
+# ── OpenCode server ─────────────────────────────────────────────────
+# The agent runtime runs as its own pod, not as a child of the gateway. A heavy
+# `opencode` run used to OOM-kill the gateway container (exit 137), which
+# restarted it and killed the very runs it was orchestrating — dispatches were
+# lost mid-handoff that way. With the server separated, the gateway only carries
+# a thin client and agent memory is budgeted where it is visible.
+#
+# Charts: charts/opencode-server. The plugin reaches it through the env var
+# below; with that unset the plugin spawns a local child (the old behaviour).
+opencode-server:
   enabled: true
 
 # ── Shared DB ───────────────────────────────────────────
