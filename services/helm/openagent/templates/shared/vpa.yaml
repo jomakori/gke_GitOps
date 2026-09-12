@@ -1,25 +1,54 @@
+{{- /*
+VerticalPodAutoscaler per entry in `.Values.vpa.targets`.
+
+Why this file exists at all: the memory limit on the agent container has been
+raised by hand twice (2Gi -> 3Gi on 2026-08-23, 3Gi -> 6Gi on 2026-09-12, both
+after OOMKills). A VPA that actually targets the workload turns the next bump
+into a reading instead of a guess.
+
+Why `updateMode` defaults to Off (recommendations only):
+
+  * The agent container is a singleton. VPA `Auto`/`Recreate` EVICTS the pod
+    when its recommendation drifts from the current request, and here an
+    eviction kills whatever delegated agent run is in flight — the exact
+    failure the limit bump was meant to stop. Recommendations are safe;
+    evictions are not.
+  * VPA also refuses to manage a container whose limits differ from its
+    requests, and this deployment sets a limit with a much smaller request.
+    (For VPA to be allowed to APPLY a recommendation, the container needs
+    requests == limits.) So `Off` is the honest setting until someone decides
+    to pin requests to the limit on purpose.
+
+Read the recommendations with:
+  kubectl describe vpa openagent-hermes-agent -n openagent
+and compare `Target` against the container limit; the limit is still the thing
+that keeps the pod alive.
+*/ -}}
 {{- if .Values.vpa.enabled }}
+{{- range .Values.vpa.targets }}
+---
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
-  name: openagent-controller
-  namespace: {{ .Release.Namespace }}
+  name: {{ .name }}
+  namespace: {{ $.Release.Namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   targetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: openagent-controller
+    name: {{ .name }}
   updatePolicy:
-    updateMode: Auto
+    updateMode: {{ default "Off" $.Values.vpa.updateMode | quote }}
   resourcePolicy:
     containerPolicies:
       - containerName: "*"
         minAllowed:
-          cpu: 100m
-          memory: 256Mi
+          cpu: {{ default "100m" .minCpu }}
+          memory: {{ default "256Mi" .minMemory }}
         maxAllowed:
-          cpu: 4000m
-          memory: 8Gi
+          cpu: {{ default "4000m" .maxCpu }}
+          memory: {{ default "8Gi" .maxMemory }}
+{{- end }}
 {{- end }}
