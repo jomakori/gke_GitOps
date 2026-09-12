@@ -1,32 +1,39 @@
 {{- /*
-VerticalPodAutoscaler per entry in `.Values.vpa.targets`, in `updateMode: Auto`
-so the sizing is set from observed usage instead of hand-tuned.
+One VerticalPodAutoscaler per entry in `.Values.vpa.targets`, in `updateMode:
+Auto` so sizing comes from observed usage instead of hand-tuned limits.
 
-Why this file exists at all: the memory limit on the agent containers was raised
-by hand twice (2Gi -> 3Gi on 2026-08-23, then 3Gi -> 6Gi/8Gi on 2026-09-12, both
-after OOMKills). A VPA that actually targets the workload turns that into a
-reading.
+WHY THE POLICIES ARE STRUCTURED THIS WAY (these are the traps that make a VPA
+look enabled while doing nothing, or doing the wrong thing):
 
-TWO THINGS `Auto` REQUIRES, both easy to get silently wrong:
+  1. requests == limits for every managed container. VPA refuses to apply a
+     recommendation to a container that sets a limit different from its
+     request, and there is no error — it simply does nothing. The application
+     containers pin the two together in the values files on purpose.
+     (Note also: VPA is not compatible with workloads that define *pod-level*
+     `resources`; the admission controller can refuse to create the pod when
+     container-level values exceed the pod-level stanza. These two Deployments
+     use container-level resources only.)
 
-  1. requests == limits for every managed container. VPA refuses to APPLY a
-     recommendation to a container that sets a limit different from its request,
-     and there is no error — the VPA just does nothing while looking enabled.
-     The values files therefore pin requests and limits to the same memory
-     figure, and the VPA owns the number from there.
-  2. Evictions are real. `Auto`/`Recreate` restarts the pod when a
-     recommendation drifts, so a restart can land on in-flight work. That is
-     acceptable for these two targets specifically: the agent runtime lives in
-     `opencode-server` (sessions are persisted in the opencode store, so a
-     restart resumes rather than loses them), and the gateway now drives
-     `opencode run --attach`, so a gateway restart no longer kills the run it
-     dispatched. Before that separation, `Auto` here would have been actively
-     harmful.
+  2. Bounds are per container, and `"*"` is a DEFAULT, not a blanket. Per the
+     API (`ContainerResourcePolicy.ContainerName`): "Name of the container or
+     DefaultContainerResourcePolicy, in which case the policy is used by the
+     containers that don't have their own policy specified." Setting the
+     application's floor/ceiling as `"*"` therefore hands those numbers to
+     every helper in the pod — observed directly: a `hermes-doctor` container
+     came back with `lower == upper == target == 3Gi`, clamped to a floor meant
+     for the main container.
 
-Read what it decided:
-  kubectl describe vpa openagent-hermes-agent -n openagent
-`minAllowed`/`maxAllowed` below are the guardrails — the burst floor and ceiling
-the autoscaler may not cross.
+  3. Containers that should not be autoscaled are named and switched off
+     (`mode: Off`) rather than left to inherit. A helper keeps the values from
+     its manifest; nothing is invented for a container this chart does not
+     define.
+
+  4. The floor is deliberately LOW and the ceiling is the guardrail. VPA's
+     target tracks observed peaks with a decay, not the floor, so a low
+     `minAllowed` does not squeeze a busy pod — it only stops a cold or idle
+     history from capping the recommendation, and lets the autoscaler pull an
+     over-provisioned pod back down. A high floor (as this file first shipped,
+     3Gi/4Gi) defeats the entire point of `Auto`.
 */ -}}
 {{- if .Values.vpa.enabled }}
 {{- range .Values.vpa.targets }}
@@ -47,12 +54,18 @@ spec:
     updateMode: {{ default "Auto" $.Values.vpa.updateMode | quote }}
   resourcePolicy:
     containerPolicies:
-      - containerName: "*"
+      {{- range .containers }}
+      - containerName: {{ .name | quote }}
         minAllowed:
-          cpu: {{ default "100m" .minCpu }}
-          memory: {{ default "256Mi" .minMemory }}
+          cpu: {{ .minCpu | quote }}
+          memory: {{ .minMemory | quote }}
         maxAllowed:
-          cpu: {{ default "4000m" .maxCpu }}
-          memory: {{ default "8Gi" .maxMemory }}
+          cpu: {{ .maxCpu | quote }}
+          memory: {{ .maxMemory | quote }}
+      {{- end }}
+      # Default policy for anything else in the pod (sidecars, helpers this
+      # chart does not define): keep the manifest's values, do not autoscale.
+      - containerName: "*"
+        mode: Off
 {{- end }}
 {{- end }}
