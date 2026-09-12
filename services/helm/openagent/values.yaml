@@ -987,5 +987,18 @@ litellmVirtualService:
     port: 4000
 
 # ── VPA ────────────────────────────────────────────────────────────
+# One VerticalPodAutoscaler per target below. Recommendation-only
+# (updateMode: Off) on purpose — see the header comment in
+# templates/shared/vpa.yaml: VPA in Auto/Recreate evicts the pod when its
+# recommendation drifts, and an eviction here kills an in-flight delegated
+# agent run. The container limits in this file remain the thing that keeps the
+# pod alive; the VPA is how the next limit bump stops being a guess.
 vpa:
   enabled: true
+  updateMode: "Off"
+  targets:
+    - name: openagent-hermes-agent
+      minMemory: 2Gi
+      maxMemory: 8Gi
+      minCpu: 100m
+      maxCpu: "4000m"
