@@ -1002,30 +1002,36 @@ litellmVirtualService:
 
 # ── VPA ────────────────────────────────────────────────────────────
 # Dynamic sizing: the autoscaler sets the memory/cpu requests from observed
-# usage, so nobody hand-tunes a limit again. See the header comment in
-# templates/shared/vpa.yaml — `Auto` only takes effect when a container's
-# requests equal its limits, which is why the resource blocks in this file and
-# in charts/opencode-server pin the two together. minAllowed/maxAllowed are the
-# floor and ceiling it may not cross.
+# usage, so nobody hand-tunes a limit again. Read the header comment in
+# templates/shared/vpa.yaml before changing this block — three things there are
+# easy to get silently wrong (requests == limits required for `Auto` to apply at
+# all; bounds are per container, `"*"` is only a default; helpers are switched
+# off explicitly instead of inheriting these numbers).
+#
+# The floors are intentionally LOW. VPA's target follows the observed peak, not
+# the floor, so a low minAllowed does not squeeze a busy pod — it stops an idle
+# history from capping the recommendation and lets the autoscaler pull an
+# over-provisioned pod back down. `maxAllowed` is the real guardrail.
 vpa:
   enabled: true
   updateMode: "Auto"
   targets:
     # The gateway. Agents no longer run inside it (see charts/opencode-server),
-    # so it starts at 3Gi (its measured idle/peak is ~1.7-2.2Gi). Floor is 3Gi
-    # rather than something lower because that peak is real and a squeezed
-    # orchestrator restarts, taking the conversation with it.
+    # so it should be free to shrink; its own history will keep the recommendation
+    # where the work actually is. `hermes-doctor` is deliberately NOT listed —
+    # it falls to the `"*"` policy and keeps its manifest values.
     - name: openagent-hermes-agent
-      minMemory: 3Gi
-      maxMemory: 8Gi
-      minCpu: 100m
-      maxCpu: "4000m"
-    # The agent runtime — the bursty one, and the reason the ceiling is 8Gi.
-    # Its floor is high (4Gi) on purpose: VPA sizes from steady-state history
-    # and this pod's whole job is bursts, so a low floor would let the
-    # autoscaler talk itself into a value a burst then exceeds.
+      containers:
+        - name: hermes-agent
+          minCpu: 50m
+          minMemory: 512Mi
+          maxCpu: "2"
+          maxMemory: 8Gi
+    # The agent runtime — bursty, and the reason the ceiling is 8Gi.
     - name: opencode-server
-      minMemory: 4Gi
-      maxMemory: 8Gi
-      minCpu: 100m
-      maxCpu: "4000m"
+      containers:
+        - name: opencode-server
+          minCpu: 50m
+          minMemory: 512Mi
+          maxCpu: "2"
+          maxMemory: 8Gi
