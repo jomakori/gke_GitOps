@@ -19,8 +19,8 @@ OpenCode headless server (the oh-my-opencode agent harness) as its own pod, so a
 | persistence.mountPath | string | `"/opt/data"` |  |
 | resources.limits.cpu | string | `"2"` |  |
 | resources.limits.memory | string | `"6Gi"` |  |
-| resources.requests.cpu | string | `"100m"` |  |
-| resources.requests.memory | string | `"512Mi"` |  |
+| resources.requests.cpu | string | `"2"` |  |
+| resources.requests.memory | string | `"6Gi"` |  |
 | service.port | int | `4096` |  |
 
 ----------------------------------------------

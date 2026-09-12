@@ -48,13 +48,18 @@ envFromSecrets:
   - openagent-secrets
 
 resources:
+  # requests == limits, deliberately: the VPA that manages this pod (see the
+  # vpa block in the parent chart's values.yaml) only applies a recommendation
+  # to a container whose request equals its limit — otherwise `Auto` silently
+  # does nothing. 6Gi is the starting point; the autoscaler owns it from here
+  # within the 4Gi-8Gi bounds it is given.
   requests:
-    cpu: 100m
-    memory: 512Mi
+    cpu: "2"
+    memory: 6Gi
   limits:
     # Agent work is the point of this pod, so this is the budget that used to
-    # sit inside the gateway's limit. Steady state is far below it; the limit is
-    # sized for concurrent subagents.
+    # sit inside the gateway's limit. Steady state is far below it; the ceiling
+    # is sized for concurrent subagents.
     cpu: "2"
     memory: 6Gi
 
