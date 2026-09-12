@@ -934,19 +934,25 @@ hermes-agent:
       memory: 256Mi
     limits:
       cpu: "2"
-      # 6Gi — 3Gi OOM-killed the container (exit 137) repeatedly: 17 restarts
-      # in 32h by 2026-09-12, and every restart killed the in-flight `opencode`
-      # child process mid-handoff, so the run's work was lost (one worktree was
-      # left staged-but-uncommitted). 2Gi was already raised to 3Gi on
-      # 2026-08-23 for the cold-cache MCP spawn storm.
+      # 8Gi — raised from 3Gi on 2026-09-12 after OOMKills (exit 137) restarted
+      # the gateway and killed in-flight delegated agent runs mid-handoff.
+      # 2Gi -> 3Gi had already been done on 2026-08-23 for the cold-cache MCP
+      # spawn storm.
       #
-      # Sizing: idle footprint is ~1.6Gi (gateway, dashboard, uv/npx MCP
-      # servers) and the node has 16Gi with ~4Gi in use, so the pressure came
-      # from concurrent Node/Rust builds inside this container, not from steady
-      # state. This is headroom for that, not capacity — heavy builds still
-      # belong in a Job (see the agent conventions), the limit exists so a
-      # spike cannot restart the gateway and orphan delegated work.
-      memory: 6Gi
+      # Sizing evidence, measured rather than guessed:
+      #   * idle/steady state: ~1.7Gi, and the whole container peaked at 2.19Gi
+      #     while serving Discord + the API server (kubectl top / cgroup peak).
+      #   * the kills happen on BURSTS, not steady state. The 06:38 kill fired
+      #     at the 6Gi limit while two `opencode` runs (each spawning subagents),
+      #     a `helm dependency build` + full-umbrella render, and a Vite bundle
+      #     build were running in this container at once.
+      # So this limit is headroom for the delegated-agent workload, which is the
+      # normal shape of work here. It is NOT licence to run heavy tooling in the
+      # container: repo-wide Helm renders and native builds still belong in a
+      # Job (see the agent conventions), and concurrent opencode dispatches
+      # should be serialised. The durable fix — running opencode in its own pod
+      # so a runaway agent cannot restart the gateway — is tracked separately.
+      memory: 8Gi
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
