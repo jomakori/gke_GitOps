@@ -1,28 +1,32 @@
 {{- /*
-VerticalPodAutoscaler per entry in `.Values.vpa.targets`.
+VerticalPodAutoscaler per entry in `.Values.vpa.targets`, in `updateMode: Auto`
+so the sizing is set from observed usage instead of hand-tuned.
 
-Why this file exists at all: the memory limit on the agent container has been
-raised by hand twice (2Gi -> 3Gi on 2026-08-23, 3Gi -> 6Gi on 2026-09-12, both
-after OOMKills). A VPA that actually targets the workload turns the next bump
-into a reading instead of a guess.
+Why this file exists at all: the memory limit on the agent containers was raised
+by hand twice (2Gi -> 3Gi on 2026-08-23, then 3Gi -> 6Gi/8Gi on 2026-09-12, both
+after OOMKills). A VPA that actually targets the workload turns that into a
+reading.
 
-Why `updateMode` defaults to Off (recommendations only):
+TWO THINGS `Auto` REQUIRES, both easy to get silently wrong:
 
-  * The agent container is a singleton. VPA `Auto`/`Recreate` EVICTS the pod
-    when its recommendation drifts from the current request, and here an
-    eviction kills whatever delegated agent run is in flight — the exact
-    failure the limit bump was meant to stop. Recommendations are safe;
-    evictions are not.
-  * VPA also refuses to manage a container whose limits differ from its
-    requests, and this deployment sets a limit with a much smaller request.
-    (For VPA to be allowed to APPLY a recommendation, the container needs
-    requests == limits.) So `Off` is the honest setting until someone decides
-    to pin requests to the limit on purpose.
+  1. requests == limits for every managed container. VPA refuses to APPLY a
+     recommendation to a container that sets a limit different from its request,
+     and there is no error — the VPA just does nothing while looking enabled.
+     The values files therefore pin requests and limits to the same memory
+     figure, and the VPA owns the number from there.
+  2. Evictions are real. `Auto`/`Recreate` restarts the pod when a
+     recommendation drifts, so a restart can land on in-flight work. That is
+     acceptable for these two targets specifically: the agent runtime lives in
+     `opencode-server` (sessions are persisted in the opencode store, so a
+     restart resumes rather than loses them), and the gateway now drives
+     `opencode run --attach`, so a gateway restart no longer kills the run it
+     dispatched. Before that separation, `Auto` here would have been actively
+     harmful.
 
-Read the recommendations with:
+Read what it decided:
   kubectl describe vpa openagent-hermes-agent -n openagent
-and compare `Target` against the container limit; the limit is still the thing
-that keeps the pod alive.
+`minAllowed`/`maxAllowed` below are the guardrails — the burst floor and ceiling
+the autoscaler may not cross.
 */ -}}
 {{- if .Values.vpa.enabled }}
 {{- range .Values.vpa.targets }}
@@ -40,7 +44,7 @@ spec:
     kind: Deployment
     name: {{ .name }}
   updatePolicy:
-    updateMode: {{ default "Off" $.Values.vpa.updateMode | quote }}
+    updateMode: {{ default "Auto" $.Values.vpa.updateMode | quote }}
   resourcePolicy:
     containerPolicies:
       - containerName: "*"

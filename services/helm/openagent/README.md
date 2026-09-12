@@ -377,9 +377,9 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.extraVolumes[6].configMap.name | string | `"openagent-dashboard-auth"` |  |
 | hermes-agent.extraVolumes[6].name | string | `"dashboard-auth"` |  |
 | hermes-agent.resources.limits.cpu | string | `"2"` |  |
-| hermes-agent.resources.limits.memory | string | `"6Gi"` |  |
-| hermes-agent.resources.requests.cpu | string | `"100m"` |  |
-| hermes-agent.resources.requests.memory | string | `"256Mi"` |  |
+| hermes-agent.resources.limits.memory | string | `"3Gi"` |  |
+| hermes-agent.resources.requests.cpu | string | `"2"` |  |
+| hermes-agent.resources.requests.memory | string | `"3Gi"` |  |
 | hermes-agent.service.enabled | bool | `true` |  |
 | hermes-agent.service.port | int | `9119` |  |
 | hermes-webui.enabled | bool | `true` |  |
@@ -652,6 +652,11 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | vpa.targets[0].maxCpu | string | `"4000m"` |  |
 | vpa.targets[0].maxMemory | string | `"8Gi"` |  |
 | vpa.targets[0].minCpu | string | `"100m"` |  |
-| vpa.targets[0].minMemory | string | `"2Gi"` |  |
+| vpa.targets[0].minMemory | string | `"3Gi"` |  |
 | vpa.targets[0].name | string | `"openagent-hermes-agent"` |  |
-| vpa.updateMode | string | `"Off"` |  |
+| vpa.targets[1].maxCpu | string | `"4000m"` |  |
+| vpa.targets[1].maxMemory | string | `"8Gi"` |  |
+| vpa.targets[1].minCpu | string | `"100m"` |  |
+| vpa.targets[1].minMemory | string | `"4Gi"` |  |
+| vpa.targets[1].name | string | `"opencode-server"` |  |
+| vpa.updateMode | string | `"Auto"` |  |

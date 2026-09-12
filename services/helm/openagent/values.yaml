@@ -934,24 +934,21 @@ hermes-agent:
       chown -R 10000:10000 /opt/data/plugins /opt/data/.omo 2>/dev/null || true
       exec /init hermes gateway run
   resources:
+    # requests == limits on purpose: VPA `Auto` only applies a recommendation to
+    # a container whose request equals its limit, and it does so silently — with
+    # the old 256Mi/6Gi split the autoscaler would have done nothing while
+    # looking enabled. The VPA owns this number from here, bounded 3Gi-8Gi (see
+    # the vpa block at the bottom of this file).
+    #
+    # 3Gi to start, down from 6Gi: the agent workload now runs in
+    # charts/opencode-server, and this container's measured idle/peak is
+    # ~1.7-2.2Gi. If the data disagrees, the autoscaler raises it.
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: "2"
+      memory: 3Gi
     limits:
       cpu: "2"
-      # 6Gi — 3Gi OOM-killed the container (exit 137) repeatedly: 17 restarts
-      # in 32h by 2026-09-12, and every restart killed the in-flight `opencode`
-      # child process mid-handoff, so the run's work was lost (one worktree was
-      # left staged-but-uncommitted). 2Gi was already raised to 3Gi on
-      # 2026-08-23 for the cold-cache MCP spawn storm.
-      #
-      # Sizing: idle footprint is ~1.6Gi (gateway, dashboard, uv/npx MCP
-      # servers) and the node has 16Gi with ~4Gi in use, so the pressure came
-      # from concurrent Node/Rust builds inside this container, not from steady
-      # state. This is headroom for that, not capacity — heavy builds still
-      # belong in a Job (see the agent conventions), the limit exists so a
-      # spike cannot restart the gateway and orphan delegated work.
-      memory: 6Gi
+      memory: 3Gi
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
@@ -1004,18 +1001,31 @@ litellmVirtualService:
     port: 4000
 
 # ── VPA ────────────────────────────────────────────────────────────
-# One VerticalPodAutoscaler per target below. Recommendation-only
-# (updateMode: Off) on purpose — see the header comment in
-# templates/shared/vpa.yaml: VPA in Auto/Recreate evicts the pod when its
-# recommendation drifts, and an eviction here kills an in-flight delegated
-# agent run. The container limits in this file remain the thing that keeps the
-# pod alive; the VPA is how the next limit bump stops being a guess.
+# Dynamic sizing: the autoscaler sets the memory/cpu requests from observed
+# usage, so nobody hand-tunes a limit again. See the header comment in
+# templates/shared/vpa.yaml — `Auto` only takes effect when a container's
+# requests equal its limits, which is why the resource blocks in this file and
+# in charts/opencode-server pin the two together. minAllowed/maxAllowed are the
+# floor and ceiling it may not cross.
 vpa:
   enabled: true
-  updateMode: "Off"
+  updateMode: "Auto"
   targets:
+    # The gateway. Agents no longer run inside it (see charts/opencode-server),
+    # so it starts at 3Gi (its measured idle/peak is ~1.7-2.2Gi). Floor is 3Gi
+    # rather than something lower because that peak is real and a squeezed
+    # orchestrator restarts, taking the conversation with it.
     - name: openagent-hermes-agent
-      minMemory: 2Gi
+      minMemory: 3Gi
+      maxMemory: 8Gi
+      minCpu: 100m
+      maxCpu: "4000m"
+    # The agent runtime — the bursty one, and the reason the ceiling is 8Gi.
+    # Its floor is high (4Gi) on purpose: VPA sizes from steady-state history
+    # and this pod's whole job is bursts, so a low floor would let the
+    # autoscaler talk itself into a value a burst then exceeds.
+    - name: opencode-server
+      minMemory: 4Gi
       maxMemory: 8Gi
       minCpu: 100m
       maxCpu: "4000m"
