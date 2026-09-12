@@ -7,6 +7,8 @@ test-gpu.yaml
 **/charts/*
 !services/helm/openagent/charts/claude-proxy/
 !services/helm/openagent/charts/claude-proxy/**
+!services/helm/openagent/charts/opencode-server/
+!services/helm/openagent/charts/opencode-server/**
 !services/helm/openagent/charts/hermes-webui/
 !services/helm/openagent/charts/hermes-webui/**
 **Chart.lock
