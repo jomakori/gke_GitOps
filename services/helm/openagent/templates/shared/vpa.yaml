@@ -65,7 +65,16 @@ spec:
       {{- end }}
       # Default policy for anything else in the pod (sidecars, helpers this
       # chart does not define): keep the manifest's values, do not autoscale.
+      #
+      # QUOTED ON PURPOSE. `mode: Off` unquoted is a YAML 1.1 *boolean* (`Off`,
+      # `On`, `Yes`, `No` all are), so it reaches the API server as `false` and
+      # the VPA webhook rejects the object outright:
+      #   admission webhook "vpa.k8s.io" denied the request: json: cannot
+      #   unmarshal bool into Go struct field
+      #   ContainerResourcePolicy...mode of type v1.ContainerScalingMode
+      # That failure is a *sync failure*, which means the whole object — bounds
+      # included — silently never lands.
       - containerName: "*"
-        mode: Off
+        mode: "Off"
 {{- end }}
 {{- end }}
