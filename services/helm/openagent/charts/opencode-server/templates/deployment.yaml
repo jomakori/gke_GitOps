@@ -112,6 +112,18 @@ spec:
             - name: mise-config
               mountPath: /mise
               readOnly: true
+            # Mirrors the gateway's mounts exactly (see values.yaml): without
+            # these the server has no opencode.json, so it has no OMO agents, no
+            # model and no MCP servers — it silently falls back to the built-in
+            # `build` agent and a provider default model.
+            - name: opencode-config
+              mountPath: {{ .Values.persistence.mountPath }}/.config/opencode/opencode.json
+              subPath: opencode.json
+              readOnly: true
+            - name: opencode-config
+              mountPath: /opt/opencode/omo.jsonc
+              subPath: omo.jsonc
+              readOnly: true
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -119,4 +131,7 @@ spec:
         - name: mise-config
           configMap:
             name: {{ .Values.miseConfigMap }}
+        - name: opencode-config
+          configMap:
+            name: {{ .Values.opencodeConfigMap }}
 {{- end }}

@@ -42,6 +42,14 @@ persistence:
 # `opencode` resolves through the identical shim.
 miseConfigMap: openagent-hermes-mise-config
 
+# The opencode/OMO configuration, mounted exactly as the gateway mounts it:
+#   opencode.json -> /opt/data/.config/opencode/opencode.json   (agents, model,
+#     MCP servers, plugin list — without this the server falls back to the
+#     built-in `build` agent and a default model, which is how this was found)
+#   omo.jsonc     -> /opt/opencode/omo.jsonc                    (seeded into
+#     $HOME/.omo by the container command, same as the gateway's boot script)
+opencodeConfigMap: openagent-opencode-config
+
 # Provider keys, PLANE_API_KEY, the GitHub token — everything the harness and
 # its MCP servers need. Same secret the gateway reads.
 envFromSecrets:
