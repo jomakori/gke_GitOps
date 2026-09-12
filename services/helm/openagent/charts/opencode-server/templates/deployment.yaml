@@ -68,7 +68,21 @@ spec:
             - name: MISE_CACHE_DIR
               value: {{ .Values.persistence.mountPath }}/mise-cache
             - name: PATH
-              value: {{ .Values.persistence.mountPath }}/mise/shims:/usr/local/bin:/usr/bin:/bin
+              # Mirrors the gateway's own PATH — `$HOME/.local/bin` is where the
+              # uv tool binaries land (UV_TOOL_BIN_DIR below) and `/opt/data/bin`
+              # holds the mise bootstrap. The narrower path this pod first ran
+              # with left the local MCP servers unable to start: the log showed
+              # `server unavailable key=plane type=local status=failed`, so the
+              # agent had no Plane or GitHub tools.
+              value: {{ .Values.persistence.mountPath }}/mise/shims:{{ .Values.persistence.mountPath }}/bin:{{ .Values.persistence.mountPath }}/.local/bin:/usr/local/bin:/usr/bin:/bin
+            # Same uv layout the gateway exports; without these the servers fall
+            # back to a different tool dir and re-download on every boot.
+            - name: UV_CACHE_DIR
+              value: {{ .Values.persistence.mountPath }}/.cache/uv
+            - name: UV_TOOL_DIR
+              value: {{ .Values.persistence.mountPath }}/.local/share/uv/tools
+            - name: UV_TOOL_BIN_DIR
+              value: {{ .Values.persistence.mountPath }}/.local/bin
             # Headless: the same defaults the plugin applies to its child
             # process. Without these the embedded web UI tries to open a browser
             # inside the pod and auto-update can fire mid-run.
