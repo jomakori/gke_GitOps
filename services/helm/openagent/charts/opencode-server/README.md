@@ -15,6 +15,7 @@ OpenCode headless server (the oh-my-opencode agent harness) as its own pod, so a
 | image.tag | string | `"v2026.7.7.2"` |  |
 | miseConfigMap | string | `"openagent-hermes-mise-config"` |  |
 | nodeSelector | object | `{}` |  |
+| opencodeConfigMap | string | `"openagent-opencode-config"` |  |
 | persistence.claimName | string | `"openagent-hermes-agent"` |  |
 | persistence.mountPath | string | `"/opt/data"` |  |
 | resources.limits.cpu | string | `"2"` |  |
