@@ -609,8 +609,22 @@ hermes-agent:
           include: [list_applications, get_application, get_application_managed_resources, get_application_resource_tree, get_application_events, sync_application, get_appproject, get_resources]
 
       grafana:
-        command: "npx"
-        args: ["-y", "@leval/mcp-grafana"]
+        # @leval/mcp-grafana@1.1.7 writes THREE non-protocol lines to STDOUT:
+        # dist/cli.js:146 `console.log("Starting MCP Grafana server ...")`, a
+        # tool-category summary, and pino's JSON log line. stdout IS the
+        # JSON-RPC channel, so the client's stdout_reader raises "Invalid
+        # JSON ... Failed to parse JSONRPC message from server". MCP servers
+        # are initialised in an asyncio TaskGroup, so that single exception
+        # cancels every sibling mid-handshake - which is why unrelated and
+        # perfectly healthy servers (plane, google-workspace, argocd,
+        # gistpad) surface as `CancelledError` collateral instead.
+        # Filter stdout down to real protocol frames. Matching on "jsonrpc"
+        # rather than "^{" is deliberate: pino's line is valid JSON, so a
+        # brace check would let it through and corrupt the stream later.
+        command: "sh"
+        args:
+          - "-c"
+          - "exec npx -y @leval/mcp-grafana | grep --line-buffered jsonrpc"
         env:
           GRAFANA_URL: "${MCP_GRAFANA_URL}"
           GRAFANA_SERVICE_ACCOUNT_TOKEN: "${MCP_GRAFANA_TOKEN}"

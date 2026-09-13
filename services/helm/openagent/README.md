@@ -81,6 +81,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.argocd.command | string | `"npx"` |  |
 | hermes-agent.config.mcp_servers.argocd.env.ARGOCD_API_TOKEN | string | `"${MCP_ARGOCD_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.argocd.env.ARGOCD_BASE_URL | string | `"${MCP_ARGOCD_URL}"` |  |
+| hermes-agent.config.mcp_servers.argocd.env.npm_config_cache | string | `"/opt/data/.npm-mcp/argocd"` |  |
 | hermes-agent.config.mcp_servers.argocd.tools.include[0] | string | `"list_applications"` |  |
 | hermes-agent.config.mcp_servers.argocd.tools.include[1] | string | `"get_application"` |  |
 | hermes-agent.config.mcp_servers.argocd.tools.include[2] | string | `"get_application_managed_resources"` |  |
@@ -117,9 +118,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.doppler.args[1] | string | `"@dopplerhq/mcp-server"` |  |
 | hermes-agent.config.mcp_servers.doppler.command | string | `"npx"` |  |
 | hermes-agent.config.mcp_servers.doppler.env.DOPPLER_TOKEN | string | `"${MCP_DOPPLER_TOKEN}"` |  |
-| hermes-agent.config.mcp_servers.doppler.env.MISE_CACHE_DIR | string | `"${MISE_CACHE_DIR}"` |  |
-| hermes-agent.config.mcp_servers.doppler.env.MISE_CONFIG_FILE | string | `"${MISE_CONFIG_FILE}"` |  |
-| hermes-agent.config.mcp_servers.doppler.env.MISE_DATA_DIR | string | `"${MISE_DATA_DIR}"` |  |
+| hermes-agent.config.mcp_servers.doppler.env.npm_config_cache | string | `"/opt/data/.npm-mcp/doppler"` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.include[0] | string | `"secrets_get"` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.include[10] | string | `"activity_logs_list"` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.include[11] | string | `"workplace_get"` |  |
@@ -148,12 +147,14 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.gistpad.args[1] | string | `"gistpad-mcp"` |  |
 | hermes-agent.config.mcp_servers.gistpad.command | string | `"npx"` |  |
 | hermes-agent.config.mcp_servers.gistpad.env.GITHUB_TOKEN | string | `"${MCP_GITHUB_TOKEN}"` |  |
+| hermes-agent.config.mcp_servers.gistpad.env.npm_config_cache | string | `"/opt/data/.npm-mcp/gistpad"` |  |
 | hermes-agent.config.mcp_servers.gistpad.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.gistpad.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.github.args[0] | string | `"-y"` |  |
 | hermes-agent.config.mcp_servers.github.args[1] | string | `"@modelcontextprotocol/server-github"` |  |
 | hermes-agent.config.mcp_servers.github.command | string | `"npx"` |  |
 | hermes-agent.config.mcp_servers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN | string | `"${MCP_GITHUB_TOKEN}"` |  |
+| hermes-agent.config.mcp_servers.github.env.npm_config_cache | string | `"/opt/data/.npm-mcp/github"` |  |
 | hermes-agent.config.mcp_servers.github.env.npm_config_loglevel | string | `"error"` |  |
 | hermes-agent.config.mcp_servers.github.tools.include[0] | string | `"list_issues"` |  |
 | hermes-agent.config.mcp_servers.github.tools.include[1] | string | `"create_issue"` |  |
@@ -211,9 +212,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.grafana.command | string | `"npx"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_SERVICE_ACCOUNT_TOKEN | string | `"${MCP_GRAFANA_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_URL | string | `"${MCP_GRAFANA_URL}"` |  |
-| hermes-agent.config.mcp_servers.grafana.env.MISE_CACHE_DIR | string | `"${MISE_CACHE_DIR}"` |  |
-| hermes-agent.config.mcp_servers.grafana.env.MISE_CONFIG_FILE | string | `"${MISE_CONFIG_FILE}"` |  |
-| hermes-agent.config.mcp_servers.grafana.env.MISE_DATA_DIR | string | `"${MISE_DATA_DIR}"` |  |
+| hermes-agent.config.mcp_servers.grafana.env.npm_config_cache | string | `"/opt/data/.npm-mcp/grafana"` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.include[0] | string | `"search_dashboards"` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.include[10] | string | `"list_prometheus_label_values"` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.include[11] | string | `"list_loki_label_names"` |  |
