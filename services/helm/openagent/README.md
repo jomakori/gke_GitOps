@@ -207,9 +207,9 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.google-workspace.tools.include[9] | string | `"update_paragraph_style"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.google-workspace.tools.resources | bool | `false` |  |
-| hermes-agent.config.mcp_servers.grafana.args[0] | string | `"-y"` |  |
-| hermes-agent.config.mcp_servers.grafana.args[1] | string | `"@leval/mcp-grafana"` |  |
-| hermes-agent.config.mcp_servers.grafana.command | string | `"npx"` |  |
+| hermes-agent.config.mcp_servers.grafana.args[0] | string | `"-c"` |  |
+| hermes-agent.config.mcp_servers.grafana.args[1] | string | `"exec npx -y @leval/mcp-grafana | grep --line-buffered jsonrpc"` |  |
+| hermes-agent.config.mcp_servers.grafana.command | string | `"sh"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_SERVICE_ACCOUNT_TOKEN | string | `"${MCP_GRAFANA_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_URL | string | `"${MCP_GRAFANA_URL}"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.npm_config_cache | string | `"/opt/data/.npm-mcp/grafana"` |  |
