@@ -932,9 +932,38 @@ hermes-agent:
           && chmod +x /opt/data/bin/doppler \
           || rm -f /tmp/doppler.tgz
       fi
+      # ── Pre-warm the private npx caches used by the stdio MCP servers ──────
+      # The MCP client runs `npx -y <pkg>`, which installs the package at every
+      # start into that server's private npm_config_cache. That install happens
+      # INSIDE the MCP connect window: cancel the connect and the client kills
+      # the child's process group mid-reify ("npm error signal SIGTERM"), and
+      # npm's install is not atomic — the leftover node_modules looks complete,
+      # so every later start SKIPS the install and the server dies instantly on
+      # a missing module. Live 2026-09-13 after private caches were introduced:
+      #   argocd  -> "Cannot find module 'pino-std-serializers'"
+      #   gistpad -> no package installed in _npx at all
+      # (Same class as the earlier doppler cache missing fastmcp.)
+      # Running the install here — at boot, outside any connect window, before
+      # Hermes starts — repairs a poisoned cache and leaves the later reify a
+      # fast local one. Idempotent: tarballs come from _cacache, so a warm boot
+      # costs seconds.
+      for spec in \
+        argocd:argocd-mcp@latest \
+        doppler:@dopplerhq/mcp-server \
+        gistpad:gistpad-mcp \
+        github:@modelcontextprotocol/server-github \
+        grafana:@leval/mcp-grafana; do
+        mcp_name="${spec%%:*}"; mcp_pkg="${spec#*:}"; mcp_cache="/opt/data/.npm-mcp/$mcp_name"
+        rm -rf "$mcp_cache/_npx"
+        NPM_CONFIG_CACHE="$mcp_cache" npm install --prefix "/tmp/npx-prewarm-$mcp_name" \
+          --no-audit --no-fund --loglevel=error "$mcp_pkg" >/dev/null 2>&1 || true
+        rm -rf "/tmp/npx-prewarm-$mcp_name"
+      done
       # Boot ran as root — chown caches/tools to runtime uid 10000 (npx/uvx/
-      # mise shims EACCES otherwise).
-      chown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config /opt/data/mise /opt/data/mise-cache /opt/data/npm-global 2>/dev/null || true
+      # mise shims EACCES otherwise). Includes the MCP private caches: this
+      # script runs as root, and root-owned entries in a cache the gateway
+      # writes to are a "Permission denied" waiting to happen.
+      chown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config /opt/data/mise /opt/data/mise-cache /opt/data/npm-global /opt/data/.npm-mcp 2>/dev/null || true
       # ── OpenCode CLI + hermes-opencode-plugin (replaces OMO fleet bootstrap) ──
       # Heavy engineering dispatches via opencode tool → opencode run subprocess
       # → agents in ~/.config/opencode/opencode.json (mounted ConfigMap). All
