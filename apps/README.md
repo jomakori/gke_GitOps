@@ -49,9 +49,10 @@ Supports multi-environment (staging + production) per app.
 
 ### openkite-preview
 
-A dedicated **per-PR preview** app, separate from the `apps` app-of-apps. It
-renders an ArgoCD `ApplicationSet` that uses the GitHub Pull Request generator
-to create one preview Application per open PR on `jomakori/openkite`, deploying
+A dedicated **per-PR preview** app, registered through the `apps` app-of-apps
+like every other app. It renders an ArgoCD `ApplicationSet` that uses the
+GitHub Pull Request generator to create one preview Application per open PR on
+`jomakori/openkite`, deploying
 the `apps/helm/openkite-preview` chart at `pr-<num>.openkite.maklab.net`.
 Previews are deleted automatically on PR close. It also owns the shared
 `*.openkite.maklab.net` TLS `Certificate` and Istio `Gateway`, and references

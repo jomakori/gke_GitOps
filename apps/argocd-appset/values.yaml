@@ -129,3 +129,42 @@ apps:
       production:
         cluster: https://kubernetes.default.svc
         namespace: excalidash
+
+  # Per-PR preview infrastructure for jomakori/openkite. Deploys the
+  # apps/openkite-preview chart, which owns the preview ApplicationSet (GitHub
+  # Pull Request generator) plus the shared preview namespace, wildcard Gateway
+  # and Certificate. No `gateways` block: this app has no VirtualService host of
+  # its own, and the shared template tolerates its absence.
+  openkite-preview:
+    enable: true
+    syncWave: "6"
+    helmPath: apps/openkite-preview
+    destNamespace: argocd
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    # Inject the globals the preview chart expects. Values come from the
+    # app-of-apps values contract (Terraform passes the same globals to this
+    # chart via `apps.yml`), so the child Application renders exactly what
+    # apps/argocd-appset itself received.
+    parameters:
+      - name: argoNamespace
+        value: "{{ .Values.argoNamespace }}"
+      - name: argoProject
+        value: "{{ .Values.argoProject }}"
+      - name: clusterDomain
+        value: "{{ .Values.clusterDomain }}"
+      - name: clusterName
+        value: "{{ .Values.clusterName }}"
+      - name: clusterServer
+        value: "{{ .Values.clusterServer }}"
+      - name: repoUrl
+        value: "{{ .Values.repoUrl }}"
+      - name: storageClass
+        value: "{{ .Values.storageClass }}"
+      - name: targetRevision
+        value: "{{ .Values.targetRevision }}"
