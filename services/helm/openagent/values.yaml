@@ -563,12 +563,24 @@ hermes-agent:
         - discord-platform
         - opencode
     mcp_servers:
+      # ── npx-launched servers get a PRIVATE npm cache ──────────────────
+      # The MCP client runs `npx -y <pkg>`, which installs the package at
+      # every startup. By default that lands in the shared PVC cache
+      # (/opt/data/.npm), which the gateway, opencode-server and dispatched
+      # agents all write to — sometimes as different users (agents run as
+      # root). Concurrent installs corrupt each other, and the fallout is
+      # invisible at the pod level: `npm error ENOTEMPTY ... rename`,
+      # `Cannot find module .../fastmcp/dist/FastMCP.js` (partial install),
+      # or `sh: 1: mcp-grafana: Permission denied` (a root-owned bin), all
+      # surfacing only as `Failed to connect to MCP server '<name>'`.
+      # A per-server cache dir keeps installs isolated and re-usable.
       github:
         command: "npx"
         args: ["-y", "@modelcontextprotocol/server-github"]
         env:
           GITHUB_PERSONAL_ACCESS_TOKEN: "${MCP_GITHUB_TOKEN}"
           npm_config_loglevel: "error"
+          npm_config_cache: "/opt/data/.npm-mcp/github"
         tools:
           include: [list_issues, create_issue, update_issue, search_code, search_repositories, get_file_contents]
           resources: false
@@ -579,6 +591,7 @@ hermes-agent:
         args: ["-y", "gistpad-mcp"]
         env:
           GITHUB_TOKEN: "${MCP_GITHUB_TOKEN}"
+          npm_config_cache: "/opt/data/.npm-mcp/gistpad"
         tools:
           resources: false
           prompts: false
@@ -589,6 +602,7 @@ hermes-agent:
         env:
           ARGOCD_API_TOKEN: "${MCP_ARGOCD_TOKEN}"
           ARGOCD_BASE_URL: "${MCP_ARGOCD_URL}"
+          npm_config_cache: "/opt/data/.npm-mcp/argocd"
         tools:
           resources: false
           prompts: false
@@ -600,16 +614,7 @@ hermes-agent:
         env:
           GRAFANA_URL: "${MCP_GRAFANA_URL}"
           GRAFANA_SERVICE_ACCOUNT_TOKEN: "${MCP_GRAFANA_TOKEN}"
-          # `npx` in this image is a mise shim, and the MCP client spawns stdio
-          # servers with a FILTERED allowlist env (PATH, HOME, USER, LANG, plus
-          # the entries in this block). mise's own vars are therefore absent,
-          # so the shim cannot find the already-provisioned node: it tries to
-          # download one at startup, is killed by the connect window, and the
-          # server surfaces only as `Failed to connect ... Connection closed`.
-          # Passing these three makes the shim resolve the installed node.
-          MISE_DATA_DIR: "${MISE_DATA_DIR}"
-          MISE_CONFIG_FILE: "${MISE_CONFIG_FILE}"
-          MISE_CACHE_DIR: "${MISE_CACHE_DIR}"
+          npm_config_cache: "/opt/data/.npm-mcp/grafana"
         tools:
           resources: false
           prompts: false
@@ -620,12 +625,7 @@ hermes-agent:
         args: ["-y", "@dopplerhq/mcp-server"]
         env:
           DOPPLER_TOKEN: "${MCP_DOPPLER_TOKEN}"
-          # Same reason as grafana above: `npx` is a mise shim and the spawned
-          # child gets a filtered allowlist env, so without these the shim
-          # fails to find the provisioned node and the server never connects.
-          MISE_DATA_DIR: "${MISE_DATA_DIR}"
-          MISE_CONFIG_FILE: "${MISE_CONFIG_FILE}"
-          MISE_CACHE_DIR: "${MISE_CACHE_DIR}"
+          npm_config_cache: "/opt/data/.npm-mcp/doppler"
         tools:
           resources: false
           prompts: false
