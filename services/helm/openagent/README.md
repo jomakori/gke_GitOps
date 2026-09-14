@@ -42,6 +42,39 @@ The script runs `helm template --set runtimeMode=local`, extracts `data.k8s-gito
 
 The skill body is Helm-templated — it carries `runtimeMode` conditionals around the two path-context regions. Because Helm processes the body as a template, any literal Go-template braces you want to DISPLAY inside the skill text must use Helm's `escapeBrace` helper (`lit.Brace` / the two-brace escape idiom). Keep in mind: this README's generated section is itself rendered through helm-docs, so brace-showing examples here are deliberately shown in plain words rather than as raw brace tokens.
 
+## MCP Manifest Verification
+
+`hermes-agent.config.mcp_servers` is the **single source of truth** for the MCP servers the gateway connects to. The `bootstrap` init container re-seeds `config.yaml` from this chart on every pod start (`overwrite: true`), so live config edits are reverted — change the manifest here. A bad package name, a missing env var, or a server that silently loses tools used to surface only when a feature was already broken (typically as `Failed to connect to MCP server '<name>'`). Three layers now catch that before it bites:
+
+| Layer | What it does | Run by |
+|-------|--------------|--------|
+| **Static lint** — `scripts/validate-mcp-manifest.py` | No unpinned/`@latest` stdio package; every server has `connect_timeout`; every stdio server has `idle_timeout_seconds` + `max_lifetime_seconds`; every enabled server declares `resources`/`prompts` and a non-empty `tools.include`; parked servers stay present as `enabled: false`. | CI (`.github/workflows/helm_lint-test.yaml`) and the `validate-mcp-manifest` pre-commit hook. |
+| **Preflight Job** — `templates/hooks/job-mcp-preflight.yaml` | For every **enabled** server it does a real JSON-RPC `initialize` + `tools/list` (stdio or Streamable HTTP), asserts every declared `tools.include` tool is present, and fails loudly with the server's own stderr on failure. Gated by `mcpVerification.preflight.enabled`. | Helm/ArgoCD **PostSync** hook Job (after the PVC + boot toolchain exist). |
+| **Drift CronJob** — `templates/hooks/cronjob-mcp-verify.yaml` | Same handshake on `mcpVerification.cronjob.schedule` (default every 15 min); quiet when the live surface matches, prints + exits non-zero on drift. Gated by `mcpVerification.cronjob.enabled`. | In-cluster `CronJob`. |
+
+The server definitions are rendered once into the `openagent-mcp-manifest` ConfigMap (from these same values) and consumed by both Jobs and by the gateway's boot pre-warm — there is no second server list to drift. The gateway never *started* a server at boot to warm caches: `files/mcp/prewarm.py` materialises each `npx`/`uvx` cache with a package-resolution command (`npm exec --package=<pkg> -- true`, `uv tool install`), runs every child in its own process group and hard-kills the group on timeout, and sweeps `_npx` orphans left by older boots.
+
+Run the pieces locally:
+
+```bash
+python3 scripts/validate-mcp-manifest.py services/helm/openagent/values.yaml
+# handshake the enabled servers against the live endpoints (needs the MCP env vars):
+python3 services/helm/openagent/files/mcp/verify.py \
+  --manifest <(helm template openagent services/helm/openagent --skip-schema-validation -s templates/hooks/configmap-mcp-manifest.yaml | yq 'select(.kind=="ConfigMap").data."mcp-manifest"') \
+  --mode preflight
+```
+
+### Known limitations
+
+- **A hanging server is only bounded where verification can bound it.** The preflight/CronJob enforce a per-server hard timeout and kill the process group, but the gateway's own connect path still relies on Hermes' `connect_timeout`; a server that hangs mid-session is not detected until the next CronJob run.
+- **The client's error surface stays opaque.** Verification recovers the *server's* stderr, which is what Hermes discards; the gateway still reports only its own terse client-side error at runtime.
+- **Recycle timings trade availability for leak prevention.** `idle_timeout_seconds` / `max_lifetime_seconds` (30 min / 6 h) recycle a wedged server, but a recycle drops that server's tools until it reconnects. Loosen them in `values.yaml` if a server's startup is expensive.
+- **The Jobs reuse the gateway's `ReadWriteOnce` PVC.** On this single-node cluster that is fine; on a multi-node cluster a Job and the gateway pod can land on different nodes and the Job will not schedule while the volume is attached.
+- **The CronJob starts a second copy of each server.** Servers that hold exclusive local resources (browser profiles, file locks) can conflict with the gateway's live instance.
+- **Public HTTP servers are third-party and can change or rate-limit.** Drift is reported, never auto-fixed; the declared `tools.include` lists for `skiplagged`/`kiwi`/`ferryhopper` are the surface observed when they were pinned into the manifest.
+- **Only enabled servers are handshaked.** Parked servers are still checked statically (pin, policy, presence) but are not connected to.
+- **helm-unittest for this umbrella is blocked upstream.** The fetched `hermes-agent` chart's `values.schema.json` sets `additionalProperties: false` and rejects the `global` key Helm injects, so schema-validating tooling (including this repo's `helm-unittest`) errors before rendering. CI renders with `--skip-schema-validation`; a locally published copy of the schema that allows `global` is needed to run `helm unittest` on this chart.
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -55,7 +88,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | ghcrPullSecret | string | `""` |  |
 | hermes-agent.command[0] | string | `"sh"` |  |
 | hermes-agent.command[1] | string | `"-c"` |  |
-| hermes-agent.command[2] | string | `"# Pin HOME+caches to the PVC so boot installs survive restarts and MCPs\n# (uid 10000, HOME=/opt/data/home) reuse them instead of re-downloading.\nexport HOME=/opt/data/home\nexport NPM_CONFIG_CACHE=$HOME/.npm\nexport UV_CACHE_DIR=$HOME/.cache/uv\nexport UV_TOOL_DIR=$HOME/.local/share/uv/tools\nexport UV_TOOL_BIN_DIR=$HOME/.local/bin\n# Toolchain via mise (/mise/mise.toml) — node/deno/uv/go on the PVC.\nexport MISE_DATA_DIR=/opt/data/mise\nexport MISE_CACHE_DIR=/opt/data/mise-cache\nexport MISE_CONFIG_FILE=/mise/mise.toml\nif [ ! -x /opt/data/bin/mise ]; then\n  curl -fsSL https://mise.run | MISE_INSTALL_PATH=/opt/data/bin/mise sh\nfi\nexport PATH=/opt/data/mise/shims:/opt/data/bin:$HOME/.local/bin:$PATH\nmise install -y 2>&1 || true\nmise ls >/dev/null 2>&1 || { echo \"ERROR: mise config failed to parse — see /mise/mise.toml\" >&2; }\n# Desktop-E2E X11 toolchain (bats user flows + visual regression run\n# locally; mirrors the openkite e2e.yml apt list). Root at boot;\n# idempotent — skipped when already present.\nif ! command -v bats >/dev/null 2>&1 || ! command -v xdotool >/dev/null 2>&1; then\n  apt-get update -qq 2>/dev/null || true\n  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\\n    xvfb xdotool openbox imagemagick dbus-x11 bats 2>/dev/null || true\nfi\n# Rust link-stage build deps (webkit2gtk/gtk/glib .pc files) so local\n# `cargo test` runs instead of blind CI round-trips; mirrors the\n# openkite .github/actions/rust-setup apt list. Idempotent guard.\nif ! pkg-config --exists glib-2.0 2>/dev/null; then\n  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\\n    libwebkit2gtk-4.1-dev libgtk-3-dev libglib2.0-dev \\\n    libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev 2>/dev/null || true\nfi\n# /init resets PATH — symlinks into /opt/data/bin (first on PATH) are\n# what reach MCPs.\n# Link ALL mise shims into /opt/data/bin (first on PATH). Direct-download\n# only for tools mise doesn't ship (obscura, agent-reach, k3d stub).\nfor sh in /opt/data/mise/shims/*; do\n  [ -x \"$sh\" ] && ln -sf \"$sh\" /opt/data/bin/\"$(basename \"$sh\")\"\ndone\ncd /opt/data && go mod download\n# obscura (stealth browser) — not in mise registry\nif [ ! -x /opt/data/bin/obscura ]; then\n  curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /opt/data/bin\nfi\n# agent-reach — not in mise registry\ncommand -v agent-reach >/dev/null 2>&1 || uv tool install https://github.com/Panniantong/agent-reach/archive/main.zip 2>&1\nmkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }\n# OCR-first vision — mise task (see /mise/mise.toml [tasks.paddle-ocr]):\n# self-bootstraps the py3.12 venv on first use (persists on PVC); PP-OCR\n# models via rapidocr-onnxruntime (native paddlepaddle crashes on aarch64).\ncat > /opt/data/bin/paddle-ocr <<'PADDLEOCR'\n#!/bin/bash\nexec mise run paddle-ocr -- \"$@\"\nPADDLEOCR\nchmod +x /opt/data/bin/paddle-ocr\n# deno fallback: release zip + python zipfile (install.sh needs unzip/7z,\n# absent); v2.9.5 pinned for drawio's deno.lock v5.\nif [ ! -x /opt/data/bin/deno ] && [ ! -x $HOME/.deno/bin/deno ]; then\n  mkdir -p $HOME/.deno/bin /tmp/deno_x\n  DENO_ARCH=$(uname -m | sed 's/aarch64/arm64/')\n  curl -fsSL --retry 3 \"https://github.com/denoland/deno/releases/download/v2.9.5/deno-${DENO_ARCH}-unknown-linux-gnu.zip\" -o /tmp/deno.zip \\\n    && python3 -c \"import zipfile; zipfile.ZipFile('/tmp/deno.zip').extractall('/tmp/deno_x')\" \\\n    && mv /tmp/deno_x/deno $HOME/.deno/bin/deno \\\n    && chmod +x $HOME/.deno/bin/deno \\\n    || rm -f /tmp/deno.zip\nfi\n[ -x $HOME/.deno/bin/deno ] && ln -sf $HOME/.deno/bin/deno /opt/data/bin/deno\n# drawio MCP needs a local checkout (remote-URL run never discovers deno.json).\nif [ ! -d /opt/data/drawio-mcp-server/.git ]; then\n  git clone --depth 1 https://github.com/simonkurtz-MSFT/drawio-mcp-server /opt/data/drawio-mcp-server 2>&1 || true\nfi\n# Doppler CLI → PVC. gpgv verify skipped (no gnupg as uid 10000).\nif [ ! -x /opt/data/bin/doppler ]; then\n  mkdir -p /opt/data/bin\n  DOP_ARCH=$(uname -m | sed 's/aarch64/arm64/; s/x86_64/amd64/')\n  curl -fsSL --retry 3 \"https://cli.doppler.com/download?os=linux&arch=${DOP_ARCH}&format=tar\" -o /tmp/doppler.tgz \\\n    && tar -xzf /tmp/doppler.tgz -C /opt/data/bin doppler \\\n    && chmod +x /opt/data/bin/doppler \\\n    || rm -f /tmp/doppler.tgz\nfi\n# ── Pre-warm the private npx caches used by the stdio MCP servers ──────\n# The MCP client runs `npx -y <pkg>`, which installs the package at every\n# start into that server's private npm_config_cache. That install happens\n# INSIDE the MCP connect window: cancel the connect and the client kills\n# the child's process group mid-reify (\"npm error signal SIGTERM\"), and\n# npm's install is not atomic — the leftover node_modules looks complete,\n# so every later start SKIPS the install and the server dies instantly on\n# a missing module. Live 2026-09-13 after private caches were introduced:\n#   argocd  -> \"Cannot find module 'pino-std-serializers'\"\n#   gistpad -> no package installed in _npx at all\n# (Same class as the earlier doppler cache missing fastmcp.)\n# Running the install here — at boot, outside any connect window, before\n# Hermes starts — repairs a poisoned cache and leaves the later reify a\n# fast local one. Idempotent: tarballs come from _cacache, so a warm boot\n# costs seconds.\nfor spec in \\\n  argocd:argocd-mcp@latest \\\n  doppler:@dopplerhq/mcp-server \\\n  gistpad:gistpad-mcp \\\n  github:@modelcontextprotocol/server-github \\\n  grafana:@leval/mcp-grafana; do\n  mcp_name=\"${spec%%:*}\"; mcp_pkg=\"${spec#*:}\"; mcp_cache=\"/opt/data/.npm-mcp/$mcp_name\"\n  # Drop a poisoned install first: the incomplete node_modules directory\n  # is precisely what makes npm treat the package as installed and skip\n  # the real install on every later start.\n  rm -rf \"$mcp_cache/_npx\"\n  # Then run the REAL npx so _npx is fully materialised. Warming only\n  # _cacache is not enough: the runtime reify still happens inside the\n  # connect window, and five of them at once is exactly what gets\n  # cancelled. </dev/null + timeout keep a server that would sit waiting\n  # on stdin from stalling boot; the install has finished by then either\n  # way. Backgrounded so five installs overlap instead of serialising.\n  NPM_CONFIG_CACHE=\"$mcp_cache\" timeout 120 npx -y \"$mcp_pkg\" </dev/null >/dev/null 2>&1 &\ndone\nwait\n# Boot ran as root — chown caches/tools to runtime uid 10000 (npx/uvx/\n# mise shims EACCES otherwise). Includes the MCP private caches: this\n# script runs as root, and root-owned entries in a cache the gateway\n# writes to are a \"Permission denied\" waiting to happen.\nchown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config /opt/data/mise /opt/data/mise-cache /opt/data/npm-global /opt/data/.npm-mcp 2>/dev/null || true\n# ── OpenCode CLI + hermes-opencode-plugin (replaces OMO fleet bootstrap) ──\n# Heavy engineering dispatches via opencode tool → opencode run subprocess\n# → agents in ~/.config/opencode/opencode.json (mounted ConfigMap). All\n# idempotent; failure non-fatal via ||; must never block the gateway.\n# opencode CLI → PVC (npm; survives restarts like the mise shims).\nif [ ! -x /opt/data/bin/opencode ]; then\n  export NPM_CONFIG_PREFIX=/opt/data/npm-global\n  npm install -g opencode-ai 2>&1 || true\n  ln -sf /opt/data/npm-global/bin/opencode /opt/data/bin/opencode 2>/dev/null || true\n  unset NPM_CONFIG_PREFIX\nfi\n# Plugin: clone into the default profile's plugins dir (HERMES_HOME=/opt/data).\nif [ ! -d /opt/data/plugins/opencode/.git ]; then\n  mkdir -p /opt/data/plugins\n  git clone --depth 1 https://github.com/zaycruz/hermes-opencode-plugin.git /opt/data/plugins/opencode 2>&1 || true\nfi\n# Plugin skill → skills tree (opencode-driven-development).\nmkdir -p /opt/data/skills/software-development/opencode-driven-development\ncp /opt/data/plugins/opencode/SKILL.md \\\n  /opt/data/skills/software-development/opencode-driven-development/SKILL.md 2>/dev/null || true\n# OpenCode/OMO runtime configs. opencode.json is mounted read-only at\n# ~/.config/opencode/opencode.json (never rewritten by opencode). OMO\n# NORMALIZES ~/.omo/omo.jsonc (migrations, model dedupe) → copy the\n# template to a writable path each boot + chown to runtime uid.\nmkdir -p /opt/data/.omo\ncp /opt/opencode/omo.jsonc /opt/data/.omo/omo.jsonc 2>/dev/null || true\nchown -R 10000:10000 /opt/data/plugins /opt/data/.omo 2>/dev/null || true\nexec /init hermes gateway run\n"` |  |
+| hermes-agent.command[2] | string | `"# Pin HOME+caches to the PVC so boot installs survive restarts and MCPs\n# (uid 10000, HOME=/opt/data/home) reuse them instead of re-downloading.\nexport HOME=/opt/data/home\nexport NPM_CONFIG_CACHE=$HOME/.npm\nexport UV_CACHE_DIR=$HOME/.cache/uv\nexport UV_TOOL_DIR=$HOME/.local/share/uv/tools\nexport UV_TOOL_BIN_DIR=$HOME/.local/bin\n# Toolchain via mise (/mise/mise.toml) — node/deno/uv/go on the PVC.\nexport MISE_DATA_DIR=/opt/data/mise\nexport MISE_CACHE_DIR=/opt/data/mise-cache\nexport MISE_CONFIG_FILE=/mise/mise.toml\nif [ ! -x /opt/data/bin/mise ]; then\n  curl -fsSL https://mise.run | MISE_INSTALL_PATH=/opt/data/bin/mise sh\nfi\nexport PATH=/opt/data/mise/shims:/opt/data/bin:$HOME/.local/bin:$PATH\nmise install -y 2>&1 || true\nmise ls >/dev/null 2>&1 || { echo \"ERROR: mise config failed to parse — see /mise/mise.toml\" >&2; }\n# Desktop-E2E X11 toolchain (bats user flows + visual regression run\n# locally; mirrors the openkite e2e.yml apt list). Root at boot;\n# idempotent — skipped when already present.\nif ! command -v bats >/dev/null 2>&1 || ! command -v xdotool >/dev/null 2>&1; then\n  apt-get update -qq 2>/dev/null || true\n  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\\n    xvfb xdotool openbox imagemagick dbus-x11 bats 2>/dev/null || true\nfi\n# Rust link-stage build deps (webkit2gtk/gtk/glib .pc files) so local\n# `cargo test` runs instead of blind CI round-trips; mirrors the\n# openkite .github/actions/rust-setup apt list. Idempotent guard.\nif ! pkg-config --exists glib-2.0 2>/dev/null; then\n  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\\n    libwebkit2gtk-4.1-dev libgtk-3-dev libglib2.0-dev \\\n    libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev 2>/dev/null || true\nfi\n# /init resets PATH — symlinks into /opt/data/bin (first on PATH) are\n# what reach MCPs.\n# Link ALL mise shims into /opt/data/bin (first on PATH). Direct-download\n# only for tools mise doesn't ship (obscura, agent-reach, k3d stub).\nfor sh in /opt/data/mise/shims/*; do\n  [ -x \"$sh\" ] && ln -sf \"$sh\" /opt/data/bin/\"$(basename \"$sh\")\"\ndone\ncd /opt/data && go mod download\n# obscura (stealth browser) — not in mise registry\nif [ ! -x /opt/data/bin/obscura ]; then\n  curl -sL https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz | tar -xz -C /opt/data/bin\nfi\n# agent-reach — not in mise registry\ncommand -v agent-reach >/dev/null 2>&1 || uv tool install https://github.com/Panniantong/agent-reach/archive/main.zip 2>&1\nmkdir -p $HOME/.config/yt-dlp && { grep -qxF -- '--js-runtimes node' $HOME/.config/yt-dlp/config 2>/dev/null || printf '%s\\n' '--js-runtimes node' >> $HOME/.config/yt-dlp/config; }\n# OCR-first vision — mise task (see /mise/mise.toml [tasks.paddle-ocr]):\n# self-bootstraps the py3.12 venv on first use (persists on PVC); PP-OCR\n# models via rapidocr-onnxruntime (native paddlepaddle crashes on aarch64).\ncat > /opt/data/bin/paddle-ocr <<'PADDLEOCR'\n#!/bin/bash\nexec mise run paddle-ocr -- \"$@\"\nPADDLEOCR\nchmod +x /opt/data/bin/paddle-ocr\n# deno fallback: release zip + python zipfile (install.sh needs unzip/7z,\n# absent); v2.9.5 pinned for drawio's deno.lock v5.\nif [ ! -x /opt/data/bin/deno ] && [ ! -x $HOME/.deno/bin/deno ]; then\n  mkdir -p $HOME/.deno/bin /tmp/deno_x\n  DENO_ARCH=$(uname -m | sed 's/aarch64/arm64/')\n  curl -fsSL --retry 3 \"https://github.com/denoland/deno/releases/download/v2.9.5/deno-${DENO_ARCH}-unknown-linux-gnu.zip\" -o /tmp/deno.zip \\\n    && python3 -c \"import zipfile; zipfile.ZipFile('/tmp/deno.zip').extractall('/tmp/deno_x')\" \\\n    && mv /tmp/deno_x/deno $HOME/.deno/bin/deno \\\n    && chmod +x $HOME/.deno/bin/deno \\\n    || rm -f /tmp/deno.zip\nfi\n[ -x $HOME/.deno/bin/deno ] && ln -sf $HOME/.deno/bin/deno /opt/data/bin/deno\n# drawio MCP needs a local checkout (remote-URL run never discovers deno.json).\nif [ ! -d /opt/data/drawio-mcp-server/.git ]; then\n  git clone --depth 1 https://github.com/simonkurtz-MSFT/drawio-mcp-server /opt/data/drawio-mcp-server 2>&1 || true\nfi\n# Doppler CLI → PVC. gpgv verify skipped (no gnupg as uid 10000).\nif [ ! -x /opt/data/bin/doppler ]; then\n  mkdir -p /opt/data/bin\n  DOP_ARCH=$(uname -m | sed 's/aarch64/arm64/; s/x86_64/amd64/')\n  curl -fsSL --retry 3 \"https://cli.doppler.com/download?os=linux&arch=${DOP_ARCH}&format=tar\" -o /tmp/doppler.tgz \\\n    && tar -xzf /tmp/doppler.tgz -C /opt/data/bin doppler \\\n    && chmod +x /opt/data/bin/doppler \\\n    || rm -f /tmp/doppler.tgz\nfi\n# ── Pre-warm the private npx/uvx caches WITHOUT starting a server ──────\n# The MCP client runs `npx -y <pkg>`, which installs the package at every\n# start into that server's private npm_config_cache. That install happens\n# INSIDE the MCP connect window: cancel the connect and the client kills\n# the child mid-reify, and npm's install is not atomic — the leftover\n# node_modules looks complete, so every later start SKIPS the install and\n# the server dies on a missing module (argocd \"Cannot find module\n# 'pino-std-serializers'\", gistpad with no _npx at all).\n#\n# The previous mechanism fixed that by RUNNING each server at boot and\n# relying on `timeout` to reap it. MCP servers do not exit on stdin EOF\n# and `timeout` only signals the direct child, so the `node` grandchildren\n# leaked — verified alive 3h42m after boot. files/mcp/prewarm.py instead:\n#   * materialises each cache with a package-resolution command that never\n#     runs the server (`npm exec --package=<pkg> -- true`, `uv tool install`);\n#   * runs every child in its own session/process group and hard-kills the\n#     GROUP (SIGTERM then SIGKILL) on timeout, so nothing can outlive it;\n#   * sweeps `_npx`/npm-cache orphans left by older boots and asserts none\n#     remain;\n#   * reads the package list from the rendered manifest (no second copy to\n#     drift) and skips work when a cache is already warm.\n# Non-fatal: a pre-warm failure must never block the gateway.\nif [ -f /opt/data/mcp-verify/prewarm.py ]; then\n  python3 /opt/data/mcp-verify/prewarm.py || echo \"WARN: MCP cache pre-warm reported errors (non-fatal)\" >&2\nelse\n  echo \"WARN: /opt/data/mcp-verify/prewarm.py missing — MCP caches not pre-warmed\" >&2\nfi\n# Boot ran as root — chown caches/tools to runtime uid 10000 (npx/uvx/\n# mise shims EACCES otherwise). Includes the MCP private caches: this\n# script runs as root, and root-owned entries in a cache the gateway\n# writes to are a \"Permission denied\" waiting to happen.\nchown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config /opt/data/mise /opt/data/mise-cache /opt/data/npm-global /opt/data/.npm-mcp 2>/dev/null || true\n# ── OpenCode CLI + hermes-opencode-plugin (replaces OMO fleet bootstrap) ──\n# Heavy engineering dispatches via opencode tool → opencode run subprocess\n# → agents in ~/.config/opencode/opencode.json (mounted ConfigMap). All\n# idempotent; failure non-fatal via ||; must never block the gateway.\n# opencode CLI → PVC (npm; survives restarts like the mise shims).\nif [ ! -x /opt/data/bin/opencode ]; then\n  export NPM_CONFIG_PREFIX=/opt/data/npm-global\n  npm install -g opencode-ai 2>&1 || true\n  ln -sf /opt/data/npm-global/bin/opencode /opt/data/bin/opencode 2>/dev/null || true\n  unset NPM_CONFIG_PREFIX\nfi\n# Plugin: clone into the default profile's plugins dir (HERMES_HOME=/opt/data).\nif [ ! -d /opt/data/plugins/opencode/.git ]; then\n  mkdir -p /opt/data/plugins\n  git clone --depth 1 https://github.com/zaycruz/hermes-opencode-plugin.git /opt/data/plugins/opencode 2>&1 || true\nfi\n# Plugin skill → skills tree (opencode-driven-development).\nmkdir -p /opt/data/skills/software-development/opencode-driven-development\ncp /opt/data/plugins/opencode/SKILL.md \\\n  /opt/data/skills/software-development/opencode-driven-development/SKILL.md 2>/dev/null || true\n# OpenCode/OMO runtime configs. opencode.json is mounted read-only at\n# ~/.config/opencode/opencode.json (never rewritten by opencode). OMO\n# NORMALIZES ~/.omo/omo.jsonc (migrations, model dedupe) → copy the\n# template to a writable path each boot + chown to runtime uid.\nmkdir -p /opt/data/.omo\ncp /opt/opencode/omo.jsonc /opt/data/.omo/omo.jsonc 2>/dev/null || true\nchown -R 10000:10000 /opt/data/plugins /opt/data/.omo 2>/dev/null || true\nexec /init hermes gateway run\n"` |  |
 | hermes-agent.config.agent.environment_hint | string | `"# Skills: Ponytail + Caveman + k8s-gitops-context\n\n## K8s GitOps Context\n\nTHIS IS THE CLUSTER SOURCE OF TRUTH. Read @/opt/data/memories/k8s-gitops-context.md\nbefore ANY cluster-related task. Contains:\n- Repo paths, secrets chain (Doppler → ESO → pods)\n- Sync wave order, helm chart patterns, service registration\n- Istio networking, Cloudflare tunnel, Terraform execution order\n- OpenAgent architecture (umbrella chart, opencode agent execution, Claude proxy)\n- Critical gotchas (SNI, ExternalSecret patterns, storage limitations)\n\nNEVER operate on cluster resources without reading the context first.\n\n## Ponytail — YAGNI Ladder (before writing code)\n\nBefore writing code, stop at the first rung that holds:\n1. Does this need to exist? → no: skip it (YAGNI)\n2. Already in this codebase? → reuse it, don't rewrite\n3. Stdlib does it? → use it\n4. Native platform feature? → use it\n5. Installed dependency? → use it\n6. One line? → one line\n7. Only then: the minimum that works\n\nThe ladder runs after understanding the problem, not instead of it.\nLazy about the solution, never about reading.\n\nLazy, not negligent: trust-boundary validation, data-loss handling,\nsecurity, and accessibility are never on the chopping block.\n\nSource: github.com/DietrichGebert/ponytail\n\n## Caveman — Terse Communication\n\nRespond terse like smart caveman. All technical substance stay.\nOnly fluff die.\n\nRules:\n- Drop: articles (a/an/the), filler (just/really/basically),\n  pleasantries (sure/certainly/of course), hedging\n- Fragments OK. Short synonyms. Technical terms exact.\n- Code blocks unchanged. Errors quoted exact.\n- Pattern: [thing] [action] [reason]. [next step].\n\nNot: \"Sure! I'd be happy to help you with that.\"\nYes: \"Bug in auth middleware. Token expiry check use `<` not `<=`. Fix:\"\n\nAuto-Clarity: Drop caveman for security warnings, irreversible\nactions, multi-step sequences where fragments risk misread.\nResume after clear part.\n\nSource: github.com/JuliusBrussee/caveman\n\n## Pre-commit — Validate Before Commit\n\nBEFORE EVERY COMMIT: run pre-commit hooks.\n\n```bash\npre-commit run --files $(git diff --cached --name-only)\n```\n\nHooks in this repo:\n- yamllint: YAML syntax, indentation\n- check-merge-conflict: unresolved merge markers\n- trailing-whitespace: trailing spaces\n- gitleaks: API keys, tokens\n- helm-docs: Helm chart docs sync\n\nFailure flow:\n1. pre-commit fails → read error\n2. Fix issue (usually indentation)\n3. git add fixed file\n4. Re-run pre-commit\n5. Green → commit\n"` |  |
 | hermes-agent.config.agent.system_prompt | string | `"You are Sisyphus — OMO Orchestrator. You field ALL prompts and are the\nsole Discord-facing interface. Classify every request BEFORE acting.\n\n## Classification\n\n- TRIVIAL (typo, single config, known pattern): Answer directly. No delegation.\n- STANDARD (new feature, refactor, multi-file): Route through planning pipeline.\n- COMPLEX (architecture, cross-system, security): Full pipeline with review gates.\n\n## Delegation\n\n1. Assess context: is the request clear and unambiguous?\n   → NO: Ask ONE clarifying question first.\n   → YES: Proceed.\n\n2. Standard: Build a plan → present for USER APPROVAL → wait for \"go\" / \"approved\".\n   Complex: Analyze (Metis) → Architect (Oracle) → Plan (Prometheus) → Review (Momus)\n   → present for USER APPROVAL.\n\n3. NEVER execute Standard/Complex work without explicit user sign-off.\n\n4. On approval: spin up Plane kanban tickets via the plane-ticket-sync\n   skill (project per board, [Spec] parent ticket + child tickets per\n   work item, Risks/gotchas as comments) unless the user declines.\n\n## Tool routing\n\n- Quick work (< 3 tool calls): do it yourself (read_file, terminal, web).\n- Simple focused subtask / non-coding: `delegate_task`.\n- Real engineering (multi-file, refactor, bugfix, tests): `opencode`\n  (action=\"run\"). OpenCode + OMO agents execute internally (Sisyphus,\n  Hephaestus, Oracle, … — see the opencode-driven-development skill).\n  Inject project conventions + memory context into the prompt.\n- After every opencode dispatch: check returned `status` (completed /\n  error / timeout), read `text` summary, verify `file_diffs` against\n  the request, update memory/todos, then report to the user.\n- Max concurrency: 8 for opencode runs. Do not fire parallel opencode\n  runs against the same directory/repo — serialize those.\n\n## Approval Gates (BLOCK these without asking)\n\n- merge / commit\n- publish / deploy / push\n- destructive (delete, teardown, drop)\n- external-send (email, API, webhook)\n\n## Style\n\n- Terse. Caveman mode. Drop articles and filler.\n- ALWAYS verbalize your classification: \"Classified as [tier].\"\n- Show your work. Tell user what you're doing.\n- When delegating: \"Delegating to [agent] for [task].\"\n"` |  |
 | hermes-agent.config.auxiliary.vision.model | string | `"claude/sonnet-5"` |  |
@@ -76,12 +109,16 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.fallback_providers[2].model | string | `"bytedance-glm-5.2"` |  |
 | hermes-agent.config.fallback_providers[2].provider | string | `"litellm"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[0] | string | `"-y"` |  |
-| hermes-agent.config.mcp_servers.argocd.args[1] | string | `"argocd-mcp@latest"` |  |
+| hermes-agent.config.mcp_servers.argocd.args[1] | string | `"argocd-mcp@0.9.0"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[2] | string | `"stdio"` |  |
 | hermes-agent.config.mcp_servers.argocd.command | string | `"npx"` |  |
+| hermes-agent.config.mcp_servers.argocd.connect_timeout | int | `180` |  |
+| hermes-agent.config.mcp_servers.argocd.enabled | bool | `false` |  |
 | hermes-agent.config.mcp_servers.argocd.env.ARGOCD_API_TOKEN | string | `"${MCP_ARGOCD_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.argocd.env.ARGOCD_BASE_URL | string | `"${MCP_ARGOCD_URL}"` |  |
 | hermes-agent.config.mcp_servers.argocd.env.npm_config_cache | string | `"/opt/data/.npm-mcp/argocd"` |  |
+| hermes-agent.config.mcp_servers.argocd.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.argocd.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.argocd.tools.include[0] | string | `"list_applications"` |  |
 | hermes-agent.config.mcp_servers.argocd.tools.include[1] | string | `"get_application"` |  |
 | hermes-agent.config.mcp_servers.argocd.tools.include[2] | string | `"get_application_managed_resources"` |  |
@@ -93,11 +130,15 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.argocd.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.argocd.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.bitwarden.args[0] | string | `"-c"` |  |
-| hermes-agent.config.mcp_servers.bitwarden.args[1] | string | `"BW_CLIENTID=$BW_CLIENTID BW_CLIENTSECRET=$BW_CLIENTSECRET bw login --apikey 2>/dev/null\nexport BW_SESSION=$(BW_PASSWORD=$BW_PASSWORD bw unlock --passwordenv BW_PASSWORD 2>/dev/null | grep \"BW_SESSION=\" | sed \"s/.*BW_SESSION=\\\"//;s/\\\".*//\")\nexec npx -y @bitwarden/mcp-server\n"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.args[1] | string | `"BW_CLIENTID=$BW_CLIENTID BW_CLIENTSECRET=$BW_CLIENTSECRET bw login --apikey 2>/dev/null\nexport BW_SESSION=$(BW_PASSWORD=$BW_PASSWORD bw unlock --passwordenv BW_PASSWORD 2>/dev/null | grep \"BW_SESSION=\" | sed \"s/.*BW_SESSION=\\\"//;s/\\\".*//\")\nexec npx -y @bitwarden/mcp-server@2026.7.0\n"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.command | string | `"sh"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.connect_timeout | int | `180` |  |
+| hermes-agent.config.mcp_servers.bitwarden.enabled | bool | `false` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_CLIENTID | string | `"${BW_CLIENTID}"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_CLIENTSECRET | string | `"${BW_CLIENTSECRET}"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_PASSWORD | string | `"${BW_PASSWORD}"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.bitwarden.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.bitwarden.tools.include[0] | string | `"status"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.tools.include[10] | string | `"create_folder"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.tools.include[11] | string | `"edit_folder"` |  |
@@ -115,10 +156,13 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.bitwarden.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.bitwarden.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.doppler.args[0] | string | `"-y"` |  |
-| hermes-agent.config.mcp_servers.doppler.args[1] | string | `"@dopplerhq/mcp-server"` |  |
+| hermes-agent.config.mcp_servers.doppler.args[1] | string | `"@dopplerhq/mcp-server@1.0.5"` |  |
 | hermes-agent.config.mcp_servers.doppler.command | string | `"npx"` |  |
+| hermes-agent.config.mcp_servers.doppler.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.doppler.env.DOPPLER_TOKEN | string | `"${MCP_DOPPLER_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.doppler.env.npm_config_cache | string | `"/opt/data/.npm-mcp/doppler"` |  |
+| hermes-agent.config.mcp_servers.doppler.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.doppler.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.include[0] | string | `"secrets_get"` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.include[10] | string | `"activity_logs_list"` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.include[11] | string | `"workplace_get"` |  |
@@ -136,26 +180,45 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.drawio.args[0] | string | `"-c"` |  |
 | hermes-agent.config.mcp_servers.drawio.args[1] | string | `"cd /opt/data/drawio-mcp-server && exec /opt/data/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio"` |  |
 | hermes-agent.config.mcp_servers.drawio.command | string | `"sh"` |  |
+| hermes-agent.config.mcp_servers.drawio.connect_timeout | int | `120` |  |
+| hermes-agent.config.mcp_servers.drawio.enabled | bool | `false` |  |
+| hermes-agent.config.mcp_servers.drawio.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.drawio.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.drawio.timeout | int | `120` |  |
 | hermes-agent.config.mcp_servers.drawio.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.drawio.tools.resources | bool | `false` |  |
+| hermes-agent.config.mcp_servers.ferryhopper.connect_timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.timeout | int | `60` |  |
+| hermes-agent.config.mcp_servers.ferryhopper.tools.include[0] | string | `"get_ports"` |  |
+| hermes-agent.config.mcp_servers.ferryhopper.tools.include[1] | string | `"get_disruptions"` |  |
+| hermes-agent.config.mcp_servers.ferryhopper.tools.include[2] | string | `"get_direct_connections_for_ports"` |  |
+| hermes-agent.config.mcp_servers.ferryhopper.tools.include[3] | string | `"search_trips"` |  |
+| hermes-agent.config.mcp_servers.ferryhopper.tools.include[4] | string | `"search_trips_v2"` |  |
+| hermes-agent.config.mcp_servers.ferryhopper.tools.include[5] | string | `"trip_details"` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.url | string | `"https://mcp.ferryhopper.com/mcp"` |  |
 | hermes-agent.config.mcp_servers.gistpad.args[0] | string | `"-y"` |  |
-| hermes-agent.config.mcp_servers.gistpad.args[1] | string | `"gistpad-mcp"` |  |
+| hermes-agent.config.mcp_servers.gistpad.args[1] | string | `"gistpad-mcp@0.5.0"` |  |
 | hermes-agent.config.mcp_servers.gistpad.command | string | `"npx"` |  |
+| hermes-agent.config.mcp_servers.gistpad.connect_timeout | int | `180` |  |
+| hermes-agent.config.mcp_servers.gistpad.enabled | bool | `false` |  |
 | hermes-agent.config.mcp_servers.gistpad.env.GITHUB_TOKEN | string | `"${MCP_GITHUB_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.gistpad.env.npm_config_cache | string | `"/opt/data/.npm-mcp/gistpad"` |  |
+| hermes-agent.config.mcp_servers.gistpad.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.gistpad.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.gistpad.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.gistpad.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.github.args[0] | string | `"-y"` |  |
-| hermes-agent.config.mcp_servers.github.args[1] | string | `"@modelcontextprotocol/server-github"` |  |
+| hermes-agent.config.mcp_servers.github.args[1] | string | `"@modelcontextprotocol/server-github@2025.4.8"` |  |
 | hermes-agent.config.mcp_servers.github.command | string | `"npx"` |  |
+| hermes-agent.config.mcp_servers.github.connect_timeout | int | `180` |  |
+| hermes-agent.config.mcp_servers.github.enabled | bool | `false` |  |
 | hermes-agent.config.mcp_servers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN | string | `"${MCP_GITHUB_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.github.env.npm_config_cache | string | `"/opt/data/.npm-mcp/github"` |  |
 | hermes-agent.config.mcp_servers.github.env.npm_config_loglevel | string | `"error"` |  |
+| hermes-agent.config.mcp_servers.github.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.github.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.github.tools.include[0] | string | `"list_issues"` |  |
 | hermes-agent.config.mcp_servers.github.tools.include[1] | string | `"create_issue"` |  |
 | hermes-agent.config.mcp_servers.github.tools.include[2] | string | `"update_issue"` |  |
@@ -164,12 +227,15 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.github.tools.include[5] | string | `"get_file_contents"` |  |
 | hermes-agent.config.mcp_servers.github.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.github.tools.resources | bool | `false` |  |
-| hermes-agent.config.mcp_servers.google-workspace.args[0] | string | `"workspace-mcp"` |  |
+| hermes-agent.config.mcp_servers.google-workspace.args[0] | string | `"workspace-mcp==1.26.1"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.args[1] | string | `"--tool-tier"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.args[2] | string | `"complete"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.command | string | `"uvx"` |  |
+| hermes-agent.config.mcp_servers.google-workspace.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.google-workspace.env.GOOGLE_OAUTH_CLIENT_ID | string | `"${GOOGLE_OAUTH_CLIENT_ID}"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.env.GOOGLE_OAUTH_CLIENT_SECRET | string | `"${GOOGLE_OAUTH_CLIENT_SECRET}"` |  |
+| hermes-agent.config.mcp_servers.google-workspace.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.google-workspace.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.google-workspace.tools.include[0] | string | `"create_doc"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.tools.include[10] | string | `"update_doc_headers_footers"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.tools.include[11] | string | `"export_doc_to_pdf"` |  |
@@ -208,11 +274,15 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.google-workspace.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.google-workspace.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.grafana.args[0] | string | `"-c"` |  |
-| hermes-agent.config.mcp_servers.grafana.args[1] | string | `"exec npx -y @leval/mcp-grafana | grep --line-buffered jsonrpc"` |  |
+| hermes-agent.config.mcp_servers.grafana.args[1] | string | `"exec npx -y @leval/mcp-grafana@1.1.7 | grep --line-buffered jsonrpc"` |  |
 | hermes-agent.config.mcp_servers.grafana.command | string | `"sh"` |  |
+| hermes-agent.config.mcp_servers.grafana.connect_timeout | int | `180` |  |
+| hermes-agent.config.mcp_servers.grafana.enabled | bool | `false` |  |
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_SERVICE_ACCOUNT_TOKEN | string | `"${MCP_GRAFANA_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_URL | string | `"${MCP_GRAFANA_URL}"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.npm_config_cache | string | `"/opt/data/.npm-mcp/grafana"` |  |
+| hermes-agent.config.mcp_servers.grafana.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.grafana.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.include[0] | string | `"search_dashboards"` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.include[10] | string | `"list_prometheus_label_values"` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.include[11] | string | `"list_loki_label_names"` |  |
@@ -227,13 +297,19 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.grafana.tools.include[9] | string | `"list_prometheus_label_names"` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.resources | bool | `false` |  |
+| hermes-agent.config.mcp_servers.kiwi.connect_timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.kiwi.timeout | int | `60` |  |
+| hermes-agent.config.mcp_servers.kiwi.tools.include[0] | string | `"search-flight"` |  |
+| hermes-agent.config.mcp_servers.kiwi.tools.include[1] | string | `"feedback-to-devs"` |  |
 | hermes-agent.config.mcp_servers.kiwi.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.kiwi.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.kiwi.url | string | `"https://mcp.kiwi.com"` |  |
 | hermes-agent.config.mcp_servers.obscura.args[0] | string | `"mcp"` |  |
 | hermes-agent.config.mcp_servers.obscura.args[1] | string | `"--stealth"` |  |
 | hermes-agent.config.mcp_servers.obscura.command | string | `"/opt/data/bin/obscura"` |  |
+| hermes-agent.config.mcp_servers.obscura.connect_timeout | int | `60` |  |
+| hermes-agent.config.mcp_servers.obscura.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.obscura.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.obscura.timeout | int | `120` |  |
 | hermes-agent.config.mcp_servers.obscura.tools.include[0] | string | `"browser_navigate"` |  |
 | hermes-agent.config.mcp_servers.obscura.tools.include[10] | string | `"browser_screenshot"` |  |
@@ -252,13 +328,16 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.obscura.tools.include[9] | string | `"browser_links"` |  |
 | hermes-agent.config.mcp_servers.obscura.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.obscura.tools.resources | bool | `false` |  |
-| hermes-agent.config.mcp_servers.plane.args[0] | string | `"plane-mcp-server"` |  |
+| hermes-agent.config.mcp_servers.plane.args[0] | string | `"plane-mcp-server==0.3.2"` |  |
 | hermes-agent.config.mcp_servers.plane.args[1] | string | `"stdio"` |  |
 | hermes-agent.config.mcp_servers.plane.command | string | `"uvx"` |  |
+| hermes-agent.config.mcp_servers.plane.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.plane.env.PLANE_API_KEY | string | `"${PLANE_API_KEY}"` |  |
 | hermes-agent.config.mcp_servers.plane.env.PLANE_BASE_URL | string | `"https://plane.maklab.net"` |  |
 | hermes-agent.config.mcp_servers.plane.env.PLANE_INTERNAL_BASE_URL | string | `"http://plane-api.plane.svc.cluster.local:8000"` |  |
 | hermes-agent.config.mcp_servers.plane.env.PLANE_WORKSPACE_SLUG | string | `"${PLANE_WORKSPACE_SLUG}"` |  |
+| hermes-agent.config.mcp_servers.plane.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.plane.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.plane.timeout | int | `120` |  |
 | hermes-agent.config.mcp_servers.plane.tools.include[0] | string | `"project"` |  |
 | hermes-agent.config.mcp_servers.plane.tools.include[1] | string | `"workitem"` |  |
@@ -271,7 +350,18 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.config.mcp_servers.plane.tools.include[8] | string | `"page"` |  |
 | hermes-agent.config.mcp_servers.plane.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.plane.tools.resources | bool | `false` |  |
+| hermes-agent.config.mcp_servers.skiplagged.connect_timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.skiplagged.timeout | int | `60` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[0] | string | `"sk_flights_search"` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[1] | string | `"sk_destinations_anywhere"` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[2] | string | `"sk_flex_departure_calendar"` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[3] | string | `"sk_flex_return_calendar"` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[4] | string | `"sk_hotels_search"` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[5] | string | `"sk_cars_search"` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[6] | string | `"sk_hotel_details"` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[7] | string | `"sk_faq_search"` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[8] | string | `"sk_resolve_location"` |  |
+| hermes-agent.config.mcp_servers.skiplagged.tools.include[9] | string | `"sk_resolve_iata"` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.url | string | `"https://mcp.skiplagged.com/mcp"` |  |
@@ -332,6 +422,9 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.extraVolumeMounts[0].mountPath | string | `"/opt/data/hooks/discord-session-link"` |  |
 | hermes-agent.extraVolumeMounts[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumeMounts[0].readOnly | bool | `true` |  |
+| hermes-agent.extraVolumeMounts[10].mountPath | string | `"/opt/data/mcp-verify"` |  |
+| hermes-agent.extraVolumeMounts[10].name | string | `"mcp-verify"` |  |
+| hermes-agent.extraVolumeMounts[10].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumeMounts[1].mountPath | string | `"/opt/data/.config/opencode/opencode.json"` |  |
 | hermes-agent.extraVolumeMounts[1].name | string | `"opencode-config"` |  |
 | hermes-agent.extraVolumeMounts[1].readOnly | bool | `true` |  |
@@ -381,6 +474,11 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | hermes-agent.extraVolumes[5].name | string | `"hermes-mise-config"` |  |
 | hermes-agent.extraVolumes[6].configMap.name | string | `"openagent-dashboard-auth"` |  |
 | hermes-agent.extraVolumes[6].name | string | `"dashboard-auth"` |  |
+| hermes-agent.extraVolumes[7].configMap.name | string | `"openagent-mcp-manifest"` |  |
+| hermes-agent.extraVolumes[7].name | string | `"mcp-verify"` |  |
+| hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
+| hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
+| hermes-agent.image.tag | string | `"v2026.7.7.2"` |  |
 | hermes-agent.resources.limits.cpu | string | `"2"` |  |
 | hermes-agent.resources.limits.memory | string | `"3Gi"` |  |
 | hermes-agent.resources.requests.cpu | string | `"2"` |  |
@@ -641,6 +739,15 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | litellmVirtualService.destination.host | string | `"openagent-litellm.openagent.svc.cluster.local"` |  |
 | litellmVirtualService.destination.port | int | `4000` |  |
 | litellmVirtualService.host | string | `"litellm.maklab.net"` |  |
+| mcpVerification.cronjob.activeDeadlineSeconds | int | `900` |  |
+| mcpVerification.cronjob.backoffLimit | int | `0` |  |
+| mcpVerification.cronjob.enabled | bool | `true` |  |
+| mcpVerification.cronjob.historyLimit | int | `3` |  |
+| mcpVerification.cronjob.schedule | string | `"*/15 * * * *"` |  |
+| mcpVerification.preflight.activeDeadlineSeconds | int | `1800` |  |
+| mcpVerification.preflight.backoffLimit | int | `0` |  |
+| mcpVerification.preflight.enabled | bool | `true` |  |
+| mcpVerification.preflight.toolchainWaitSeconds | int | `300` |  |
 | namespace | string | `"openagent"` |  |
 | opencode-server.enabled | bool | `true` |  |
 | postgres.clusterName | string | `"openagent-pg"` |  |

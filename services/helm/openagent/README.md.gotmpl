@@ -30,4 +30,37 @@ The script runs `helm template --set runtimeMode=local`, extracts `data.k8s-gito
 
 The skill body is Helm-templated — it carries `runtimeMode` conditionals around the two path-context regions. Because Helm processes the body as a template, any literal Go-template braces you want to DISPLAY inside the skill text must use Helm's `escapeBrace` helper (`lit.Brace` / the two-brace escape idiom). Keep in mind: this README's generated section is itself rendered through helm-docs, so brace-showing examples here are deliberately shown in plain words rather than as raw brace tokens.
 
+## MCP Manifest Verification
+
+`hermes-agent.config.mcp_servers` is the **single source of truth** for the MCP servers the gateway connects to. The `bootstrap` init container re-seeds `config.yaml` from this chart on every pod start (`overwrite: true`), so live config edits are reverted — change the manifest here. A bad package name, a missing env var, or a server that silently loses tools used to surface only when a feature was already broken (typically as `Failed to connect to MCP server '<name>'`). Three layers now catch that before it bites:
+
+| Layer | What it does | Run by |
+|-------|--------------|--------|
+| **Static lint** — `scripts/validate-mcp-manifest.py` | No unpinned/`@latest` stdio package; every server has `connect_timeout`; every stdio server has `idle_timeout_seconds` + `max_lifetime_seconds`; every enabled server declares `resources`/`prompts` and a non-empty `tools.include`; parked servers stay present as `enabled: false`. | CI (`.github/workflows/helm_lint-test.yaml`) and the `validate-mcp-manifest` pre-commit hook. |
+| **Preflight Job** — `templates/hooks/job-mcp-preflight.yaml` | For every **enabled** server it does a real JSON-RPC `initialize` + `tools/list` (stdio or Streamable HTTP), asserts every declared `tools.include` tool is present, and fails loudly with the server's own stderr on failure. Gated by `mcpVerification.preflight.enabled`. | Helm/ArgoCD **PostSync** hook Job (after the PVC + boot toolchain exist). |
+| **Drift CronJob** — `templates/hooks/cronjob-mcp-verify.yaml` | Same handshake on `mcpVerification.cronjob.schedule` (default every 15 min); quiet when the live surface matches, prints + exits non-zero on drift. Gated by `mcpVerification.cronjob.enabled`. | In-cluster `CronJob`. |
+
+The server definitions are rendered once into the `openagent-mcp-manifest` ConfigMap (from these same values) and consumed by both Jobs and by the gateway's boot pre-warm — there is no second server list to drift. The gateway never *started* a server at boot to warm caches: `files/mcp/prewarm.py` materialises each `npx`/`uvx` cache with a package-resolution command (`npm exec --package=<pkg> -- true`, `uv tool install`), runs every child in its own process group and hard-kills the group on timeout, and sweeps `_npx` orphans left by older boots.
+
+Run the pieces locally:
+
+```bash
+python3 scripts/validate-mcp-manifest.py services/helm/openagent/values.yaml
+# handshake the enabled servers against the live endpoints (needs the MCP env vars):
+python3 services/helm/openagent/files/mcp/verify.py \
+  --manifest <(helm template openagent services/helm/openagent --skip-schema-validation -s templates/hooks/configmap-mcp-manifest.yaml | yq 'select(.kind=="ConfigMap").data."mcp-manifest"') \
+  --mode preflight
+```
+
+### Known limitations
+
+- **A hanging server is only bounded where verification can bound it.** The preflight/CronJob enforce a per-server hard timeout and kill the process group, but the gateway's own connect path still relies on Hermes' `connect_timeout`; a server that hangs mid-session is not detected until the next CronJob run.
+- **The client's error surface stays opaque.** Verification recovers the *server's* stderr, which is what Hermes discards; the gateway still reports only its own terse client-side error at runtime.
+- **Recycle timings trade availability for leak prevention.** `idle_timeout_seconds` / `max_lifetime_seconds` (30 min / 6 h) recycle a wedged server, but a recycle drops that server's tools until it reconnects. Loosen them in `values.yaml` if a server's startup is expensive.
+- **The Jobs reuse the gateway's `ReadWriteOnce` PVC.** On this single-node cluster that is fine; on a multi-node cluster a Job and the gateway pod can land on different nodes and the Job will not schedule while the volume is attached.
+- **The CronJob starts a second copy of each server.** Servers that hold exclusive local resources (browser profiles, file locks) can conflict with the gateway's live instance.
+- **Public HTTP servers are third-party and can change or rate-limit.** Drift is reported, never auto-fixed; the declared `tools.include` lists for `skiplagged`/`kiwi`/`ferryhopper` are the surface observed when they were pinned into the manifest.
+- **Only enabled servers are handshaked.** Parked servers are still checked statically (pin, policy, presence) but are not connected to.
+- **helm-unittest for this umbrella is blocked upstream.** The fetched `hermes-agent` chart's `values.schema.json` sets `additionalProperties: false` and rejects the `global` key Helm injects, so schema-validating tooling (including this repo's `helm-unittest`) errors before rendering. CI renders with `--skip-schema-validation`; a locally published copy of the schema that allows `global` is needed to run `helm unittest` on this chart.
+
 {{ template "chart.valuesSection" . }}
