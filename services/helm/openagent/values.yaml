@@ -751,14 +751,36 @@ hermes-agent:
         idle_timeout_seconds: 1800
         max_lifetime_seconds: 21600
         env:
-          # See the plane block: uvx is a mise shim and needs MISE_*/UV_* in the
-          # child env, which Hermes only forwards when declared here.
+          # The gateway pod's environment and the boot pre-warm disagree. The
+          # boot script installs the uv toolchain under HOME=/opt/data/home,
+          # while the gateway runs with HOME=/root and a PATH that has neither
+          # /opt/data/bin nor the mise shims. So uvx looked for the tool in
+          # UV_TOOL_DIR=/opt/data/.local/share/uv/tools — which holds only
+          # .gitignore and .lock — while the pre-warmed
+          # plane-mcp-server/workspace-mcp live in
+          # /opt/data/home/.local/share/uv/tools. Every connect re-resolved the
+          # package in an empty tool dir and the child died inside the window.
+          #
+          # These values are the ones the in-cluster preflight Job supplies
+          # (openagent.mcpVerifyEnv) when it starts this server successfully, so
+          # declaring them makes the gateway child identical to the certified
+          # environment instead of merely similar to it.
+          #
+          # Superseded note: an earlier version of this block claimed uvx
+          # degraded 0.12.5 gnu -> 0.11.6 musl under the filtered env. That was
+          # wrong — both uv binaries on this host report 0.11.6
+          # (aarch64-unknown-linux-musl), and the cache dirs hold the same
+          # entry count. The divergence is the directory layout above, not the
+          # uv version.
+          HOME: /opt/data/home
+          PATH: /opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           MISE_CONFIG_FILE: /mise/mise.toml
           MISE_DATA_DIR: /opt/data/mise
           MISE_CACHE_DIR: /opt/data/mise-cache
-          UV_CACHE_DIR: /opt/data/.cache/uv
-          UV_TOOL_DIR: /opt/data/.local/share/uv/tools
-          UV_TOOL_BIN_DIR: /opt/data/.local/bin
+          UV_CACHE_DIR: /opt/data/home/.cache/uv
+          UV_TOOL_DIR: /opt/data/home/.local/share/uv/tools
+          UV_TOOL_BIN_DIR: /opt/data/home/.local/bin
+          NPM_CONFIG_CACHE: /opt/data/home/.npm
           GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
           GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
         tools:
@@ -774,20 +796,24 @@ hermes-agent:
         idle_timeout_seconds: 1800
         max_lifetime_seconds: 21600
         env:
-          # uvx resolves through a mise shim, so without MISE_* it silently
-          # degrades to a different uv found on PATH — measured under the
-          # filtered env Hermes gives stdio children (PATH/HOME/LANG/TERM/…
-          # only): 0.12.5 gnu -> 0.11.6 musl. That uv has a different
-          # cache/tool layout, so the packages materialised at boot are
-          # invisible, the resolve happens cold inside the connect window, and
-          # the child dies without output. Same vars, same reason, as the
-          # opencode-server pod.
+          # See the google-workspace block: the gateway's HOME=/root and its
+          # PATH (no /opt/data/bin, no mise shims) sent uvx to the empty
+          # /opt/data/.local/share/uv/tools instead of the pre-warmed
+          # /opt/data/home/.local/share/uv/tools that actually contains
+          # plane-mcp-server. These are the values the in-cluster preflight Job
+          # passes (openagent.mcpVerifyEnv) when it starts this server
+          # successfully — declaring them makes the gateway child match the
+          # certified environment. The earlier 0.12.5-gnu-vs-0.11.6-musl claim
+          # in this comment was wrong and has been removed.
+          HOME: /opt/data/home
+          PATH: /opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           MISE_CONFIG_FILE: /mise/mise.toml
           MISE_DATA_DIR: /opt/data/mise
           MISE_CACHE_DIR: /opt/data/mise-cache
-          UV_CACHE_DIR: /opt/data/.cache/uv
-          UV_TOOL_DIR: /opt/data/.local/share/uv/tools
-          UV_TOOL_BIN_DIR: /opt/data/.local/bin
+          UV_CACHE_DIR: /opt/data/home/.cache/uv
+          UV_TOOL_DIR: /opt/data/home/.local/share/uv/tools
+          UV_TOOL_BIN_DIR: /opt/data/home/.local/bin
+          NPM_CONFIG_CACHE: /opt/data/home/.npm
           PLANE_API_KEY: "${PLANE_API_KEY}"
           PLANE_WORKSPACE_SLUG: "${PLANE_WORKSPACE_SLUG}"
           PLANE_INTERNAL_BASE_URL: "http://plane-api.plane.svc.cluster.local:8000"
