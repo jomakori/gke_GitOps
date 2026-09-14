@@ -149,7 +149,12 @@ jobs:
           .useful-scripts/validate_litellm_config.sh
 
       - name: Validate MCP manifest (pins/timeouts/lifecycle/tool surface)
-        if: ${{ inputs.run_mcp_manifest_validation != false }}
+        # Runs on every PR; on a manual dispatch it can be switched off. NB: the
+        # other validation steps in this workflow use `if: inputs.X != false`
+        # alone, and `inputs` is empty on pull_request events - GitHub then
+        # evaluates the condition as false and the step is SKIPPED while the
+        # workflow still reports success. Guard on the event explicitly.
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_mcp_manifest_validation != false }}
         run: |
           # Static lint of hermes-agent.config.mcp_servers: every stdio package
           # pinned (no @latest), every server bounded by connect_timeout, every
