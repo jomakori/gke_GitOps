@@ -1042,41 +1042,33 @@ hermes-agent:
           && chmod +x /opt/data/bin/doppler \
           || rm -f /tmp/doppler.tgz
       fi
-      # ── Pre-warm the private npx caches used by the stdio MCP servers ──────
+      # ── Pre-warm the private npx/uvx caches WITHOUT starting a server ──────
       # The MCP client runs `npx -y <pkg>`, which installs the package at every
       # start into that server's private npm_config_cache. That install happens
       # INSIDE the MCP connect window: cancel the connect and the client kills
-      # the child's process group mid-reify ("npm error signal SIGTERM"), and
-      # npm's install is not atomic — the leftover node_modules looks complete,
-      # so every later start SKIPS the install and the server dies instantly on
-      # a missing module. Live 2026-09-13 after private caches were introduced:
-      #   argocd  -> "Cannot find module 'pino-std-serializers'"
-      #   gistpad -> no package installed in _npx at all
-      # (Same class as the earlier doppler cache missing fastmcp.)
-      # Running the install here — at boot, outside any connect window, before
-      # Hermes starts — repairs a poisoned cache and leaves the later reify a
-      # fast local one. Idempotent: tarballs come from _cacache, so a warm boot
-      # costs seconds.
-      for spec in \
-        argocd:argocd-mcp@latest \
-        doppler:@dopplerhq/mcp-server \
-        gistpad:gistpad-mcp \
-        github:@modelcontextprotocol/server-github \
-        grafana:@leval/mcp-grafana; do
-        mcp_name="${spec%%:*}"; mcp_pkg="${spec#*:}"; mcp_cache="/opt/data/.npm-mcp/$mcp_name"
-        # Drop a poisoned install first: the incomplete node_modules directory
-        # is precisely what makes npm treat the package as installed and skip
-        # the real install on every later start.
-        rm -rf "$mcp_cache/_npx"
-        # Then run the REAL npx so _npx is fully materialised. Warming only
-        # _cacache is not enough: the runtime reify still happens inside the
-        # connect window, and five of them at once is exactly what gets
-        # cancelled. </dev/null + timeout keep a server that would sit waiting
-        # on stdin from stalling boot; the install has finished by then either
-        # way. Backgrounded so five installs overlap instead of serialising.
-        NPM_CONFIG_CACHE="$mcp_cache" timeout 120 npx -y "$mcp_pkg" </dev/null >/dev/null 2>&1 &
-      done
-      wait
+      # the child mid-reify, and npm's install is not atomic — the leftover
+      # node_modules looks complete, so every later start SKIPS the install and
+      # the server dies on a missing module (argocd "Cannot find module
+      # 'pino-std-serializers'", gistpad with no _npx at all).
+      #
+      # The previous mechanism fixed that by RUNNING each server at boot and
+      # relying on `timeout` to reap it. MCP servers do not exit on stdin EOF
+      # and `timeout` only signals the direct child, so the `node` grandchildren
+      # leaked — verified alive 3h42m after boot. files/mcp/prewarm.py instead:
+      #   * materialises each cache with a package-resolution command that never
+      #     runs the server (`npm exec --package=<pkg> -- true`, `uv tool install`);
+      #   * runs every child in its own session/process group and hard-kills the
+      #     GROUP (SIGTERM then SIGKILL) on timeout, so nothing can outlive it;
+      #   * sweeps `_npx`/npm-cache orphans left by older boots and asserts none
+      #     remain;
+      #   * reads the package list from the rendered manifest (no second copy to
+      #     drift) and skips work when a cache is already warm.
+      # Non-fatal: a pre-warm failure must never block the gateway.
+      if [ -f /opt/data/mcp-verify/prewarm.py ]; then
+        python3 /opt/data/mcp-verify/prewarm.py || echo "WARN: MCP cache pre-warm reported errors (non-fatal)" >&2
+      else
+        echo "WARN: /opt/data/mcp-verify/prewarm.py missing — MCP caches not pre-warmed" >&2
+      fi
       # Boot ran as root — chown caches/tools to runtime uid 10000 (npx/uvx/
       # mise shims EACCES otherwise). Includes the MCP private caches: this
       # script runs as root, and root-owned entries in a cache the gateway
