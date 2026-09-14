@@ -644,10 +644,9 @@ hermes-agent:
           prompts: false
 
       argocd:
-        # Parked: this is the server that ran @latest and broke on registry
-        # drift — the exact failure the pin rule now prevents. Now pinned;
-        # re-enable once the pin has soaked.
-        enabled: false
+        # Re-enabled: this is the server that ran @latest and broke on registry
+        # drift, which the pin below now makes impossible by construction. The
+        # preflight Job certifies the handshake on every deploy.
         command: "npx"
         args: ["-y", "argocd-mcp@0.9.0", "stdio"]
         connect_timeout: 180
@@ -673,9 +672,10 @@ hermes-agent:
         # (plane, google-workspace, argocd, gistpad) surfaced as CancelledError
         # collateral. The `grep --line-buffered jsonrpc` wrapper filters stdout
         # to real protocol frames (matching "jsonrpc", not "^{", because
-        # pino's line is valid JSON); the server stays parked until that path
-        # is proven live.
-        enabled: false
+        # pino's line is valid JSON). Re-enabled with the wrapper below in
+        # place; the preflight Job now certifies the filtered handshake, so a
+        # regression fails the deploy instead of silently cancelling unrelated
+        # servers mid-handshake.
         command: "sh"
         args:
           - "-c"
@@ -721,9 +721,8 @@ hermes-agent:
           include: [browser_navigate, browser_snapshot, browser_markdown, browser_click, browser_type, browser_fill, browser_fill_form, browser_extract, browser_interactive_elements, browser_links, browser_screenshot, browser_scroll, browser_search, browser_evaluate, browser_wait_for_text]
 
       drawio:
-        # Parked: runs a local deno checkout cloned at boot; parked to keep
-        # boot lean. No registry package, so the pin rule does not apply.
-        enabled: false
+        # Re-enabled: runs a local deno checkout cloned at boot (see the boot
+        # script). No registry package, so no version pin applies.
         command: "sh"
         args:
           - "-c"
@@ -735,6 +734,9 @@ hermes-agent:
         idle_timeout_seconds: 1800
         max_lifetime_seconds: 21600
         tools:
+          # Full surface intended for a local tool; "*" keeps the declaration
+          # explicit so the linter and drift check still see a surface.
+          include: ["*"]
           resources: false
           prompts: false
 
@@ -804,10 +806,9 @@ hermes-agent:
           prompts: false
 
       bitwarden:
-        # Parked: `bw login`/`bw unlock` needs interactive
-        # state that is unreliable at pod start. Pinned so a re-enable uses a
-        # known build.
-        enabled: false
+        # Re-enabled: pinned, and the inline block below performs `bw login` /
+        # `bw unlock` at spawn. The preflight Job certifies that the unlock
+        # yields a usable session — the failure mode that kept this parked.
         command: "sh"
         args:
           - "-c"
