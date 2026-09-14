@@ -301,6 +301,13 @@ def _list_tools(client: Stdio, deadline: float) -> list[str]:
 
 
 def declared_tools(server: dict[str, Any]) -> list[str]:
+    """The tool surface this server declares in the manifest.
+
+    Entries are compared literally against the live ``tools/list`` result. The
+    Hermes config reference also permits fnmatch-style globs in ``include``, so
+    a glob declared here would be reported as missing — keep declarations
+    exact. The preflight Job is what proves each declared tool exists.
+    """
     tools = server.get("tools")
     tools = tools if isinstance(tools, dict) else {}
     include = tools.get("include")
