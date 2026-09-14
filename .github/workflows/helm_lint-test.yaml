@@ -30,6 +30,11 @@ on:
         required: false
         default: true
         type: boolean
+      run_mcp_manifest_validation:
+        description: 'Run MCP manifest validation step'
+        required: false
+        default: true
+        type: boolean
   pull_request:
     types:
       - opened
@@ -142,6 +147,23 @@ jobs:
         if: contains(steps.changed-files.outputs.all_changed_files, 'services/helm/openagent/values.yaml') || inputs.chart == 'services/helm/openagent'
         run: |
           .useful-scripts/validate_litellm_config.sh
+
+      - name: Validate MCP manifest (pins/timeouts/lifecycle/tool surface)
+        # Runs on every PR; on a manual dispatch it can be switched off. NB: the
+        # other validation steps in this workflow use `if: inputs.X != false`
+        # alone, and `inputs` is empty on pull_request events - GitHub then
+        # evaluates the condition as false and the step is SKIPPED while the
+        # workflow still reports success. Guard on the event explicitly.
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_mcp_manifest_validation != false }}
+        run: |
+          # Static lint of hermes-agent.config.mcp_servers: every stdio package
+          # pinned (no @latest), every server bounded by connect_timeout, every
+          # stdio server carrying a recycle lifecycle, parked servers kept as
+          # enabled:false, and every enabled server declaring tools.include —
+          # the surface the preflight Job and drift CronJob certify at runtime.
+          # Same script runs locally and as a pre-commit hook. Uses PyYAML when
+          # present, otherwise the yq installed in the setup step above.
+          python3 scripts/validate-mcp-manifest.py services/helm/openagent/values.yaml
 
       - name: kubeconform (validate rendered manifests against K8s OpenAPI)
         if: ${{ inputs.run_kubeconform != false }}

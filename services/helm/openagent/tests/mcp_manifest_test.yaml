@@ -1,0 +1,166 @@
+suite: openagent MCP manifest certification
+templates:
+  - configmap-mcp-manifest.yaml
+  - job-mcp-preflight.yaml
+  - cronjob-mcp-verify.yaml
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: renders no @latest package for any stdio server
+    asserts:
+      - notMatchRegex:
+          path: data.mcp-manifest
+          pattern: '@latest'
+        template: hooks/configmap-mcp-manifest.yaml
+
+  - it: pins the packages that were previously floating
+    asserts:
+      - matchRegex:
+          path: data.server-argocd
+          pattern: 'argocd-mcp@0\.9\.0'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-github
+          pattern: '@modelcontextprotocol/server-github@2025\.4\.8'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-grafana
+          pattern: '@leval/mcp-grafana@1\.1\.7'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-doppler
+          pattern: '@dopplerhq/mcp-server@1\.0\.5'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-google-workspace
+          pattern: 'workspace-mcp==1\.26\.1'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-plane
+          pattern: 'plane-mcp-server==0\.3\.2'
+        template: hooks/configmap-mcp-manifest.yaml
+
+  - it: every enabled stdio server has a connect timeout and a lifecycle
+    asserts:
+      - matchRegex:
+          path: data.server-doppler
+          pattern: '"connect_timeout":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-doppler
+          pattern: '"idle_timeout_seconds":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-doppler
+          pattern: '"max_lifetime_seconds":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-obscura
+          pattern: '"connect_timeout":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-obscura
+          pattern: '"idle_timeout_seconds":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-obscura
+          pattern: '"max_lifetime_seconds":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-google-workspace
+          pattern: '"connect_timeout":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-google-workspace
+          pattern: '"idle_timeout_seconds":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-google-workspace
+          pattern: '"max_lifetime_seconds":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-plane
+          pattern: '"connect_timeout":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-plane
+          pattern: '"idle_timeout_seconds":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-plane
+          pattern: '"max_lifetime_seconds":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+
+  - it: every enabled HTTP server has a connect timeout
+    asserts:
+      - matchRegex:
+          path: data.server-skiplagged
+          pattern: '"connect_timeout":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-kiwi
+          pattern: '"connect_timeout":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-ferryhopper
+          pattern: '"connect_timeout":[0-9]+'
+        template: hooks/configmap-mcp-manifest.yaml
+
+  - it: parked servers stay in the manifest, explicitly disabled
+    asserts:
+      - matchRegex:
+          path: data.server-github
+          pattern: '"enabled":false'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-gistpad
+          pattern: '"enabled":false'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-argocd
+          pattern: '"enabled":false'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-grafana
+          pattern: '"enabled":false'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-bitwarden
+          pattern: '"enabled":false'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-drawio
+          pattern: '"enabled":false'
+        template: hooks/configmap-mcp-manifest.yaml
+
+  - it: renders the preflight Job when its toggle is on
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: hooks/job-mcp-preflight.yaml
+      - isKind:
+          of: Job
+        template: hooks/job-mcp-preflight.yaml
+      - equal:
+          path: metadata.name
+          value: openagent-mcp-preflight
+        template: hooks/job-mcp-preflight.yaml
+
+  - it: drops the preflight Job when its toggle is off
+    set:
+      mcpVerification.preflight.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: hooks/job-mcp-preflight.yaml
+
+  - it: renders the drift CronJob with the configured schedule
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: hooks/cronjob-mcp-verify.yaml
+      - equal:
+          path: spec.schedule
+          value: "*/15 * * * *"
+        template: hooks/cronjob-mcp-verify.yaml
