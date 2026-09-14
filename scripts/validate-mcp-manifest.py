@@ -55,9 +55,16 @@ DEFAULT_PATH = "hermes-agent.config.mcp_servers"
 
 # Servers that exist but are deliberately disabled in the live config. They
 # must stay in the manifest as ``enabled: false`` — deleting one silently
-# loses its pinned package, env mapping and tool surface. See the comments in
-# values.yaml for why each is parked.
-PARKED_SERVERS = ("github", "gistpad", "argocd", "grafana", "bitwarden", "drawio")
+# loses its pinned package, env mapping and tool surface.
+#
+# This list is about *duplicates*: servers whose surface is already provided
+# elsewhere, which must stay parked rather than being deleted or silently
+# re-enabled. It is deliberately short. Everything else is expected to be
+# enabled, so an entry here that is not actually a duplicate fails the lint for
+# the wrong reason — which is precisely what happened when this held every
+# server parked during the initial migration and four of them were turned back
+# on.
+DUPLICATE_SERVERS = ("github", "gistpad")
 
 
 class Violation:
@@ -228,16 +235,16 @@ def validate(servers: dict[str, Any]) -> list[Violation]:
                     Violation(name, "tools-include", "enabled server has no non-empty tools.include")
                 )
 
-    # Rule 6 — parked servers are present and disabled, never silently absent.
-    for name in PARKED_SERVERS:
+    # Rule 6 — duplicates stay parked: present, and explicitly enabled: false.
+    for name in DUPLICATE_SERVERS:
         server = servers.get(name)
         if not isinstance(server, dict):
             violations.append(
-                Violation(name, "parked", "parked server missing from manifest (must stay enabled: false)")
+                Violation(name, "duplicate", "duplicate server missing from manifest (must stay enabled: false)")
             )
         elif server.get("enabled") is not False:
             violations.append(
-                Violation(name, "parked", "parked server is not explicitly enabled: false")
+                Violation(name, "duplicate", "duplicate server is not explicitly enabled: false")
             )
 
     return violations
@@ -272,7 +279,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     enabled = sum(1 for s in servers.values() if isinstance(s, dict) and is_enabled(s))
-    parked = sum(1 for n in PARKED_SERVERS if n in servers)
+    # Derived, not hardcoded: whatever the manifest actually disables.
+    parked = sum(
+        1 for s in servers.values() if isinstance(s, dict) and s.get("enabled") is False
+    )
 
     print(f"MCP manifest lint: {args.values} :: {args.path}")
     print(f"  servers: {len(servers)} (enabled: {enabled}, parked: {parked})\n")
