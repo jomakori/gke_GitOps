@@ -1,0 +1,62 @@
+{{- if and .Values.hermes.enabled .Values.mcpVerification.cronjob.enabled }}
+# Continuous drift check. Runs the same handshake as the preflight Job on a
+# schedule and compares the live tool surface with the declared tools.include.
+# Quiet when everything matches; only drift prints and exits non-zero, so a
+# watcher can alert on change rather than on every run.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: openagent-mcp-drift
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-drift
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  schedule: {{ .Values.mcpVerification.cronjob.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.mcpVerification.cronjob.historyLimit }}
+  failedJobsHistoryLimit: {{ .Values.mcpVerification.cronjob.historyLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.mcpVerification.cronjob.backoffLimit }}
+      activeDeadlineSeconds: {{ .Values.mcpVerification.cronjob.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "openagent.labels" . | nindent 12 }}
+            app.kubernetes.io/component: mcp-drift
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 10000
+            runAsGroup: 10000
+          containers:
+            - name: drift
+              image: "{{ include "openagent.hermesImage" . }}"
+              imagePullPolicy: {{ (index .Values "hermes-agent" "image").pullPolicy }}
+              securityContext:
+                runAsUser: 10000
+                runAsGroup: 10000
+              env:
+                {{- include "openagent.mcpVerifyEnv" . | nindent 16 }}
+              envFrom:
+                - secretRef:
+                    name: openagent-secrets
+              command:
+                - python3
+                - /mcp-verify/verify.py
+                - --manifest
+                - /mcp-verify/mcp-manifest
+                - --mode
+                - drift
+              volumeMounts:
+                - name: data
+                  mountPath: /opt/data
+                - name: mcp-verify
+                  mountPath: /mcp-verify
+                  readOnly: true
+          volumes:
+            {{- include "openagent.mcpVerifyVolumes" . | nindent 12 }}
+{{- end }}

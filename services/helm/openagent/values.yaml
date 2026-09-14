@@ -368,6 +368,14 @@ litellm:
 hermes:
   enabled: true
 hermes-agent:
+  # Image for the gateway pod AND the MCP verification Jobs: both run the same
+  # toolchain, and the mise node/uv on the PVC is ABI-coupled to this image.
+  # Pinned explicitly so a Job never resolves an empty tag; keep in lockstep
+  # with the hermes-agent chart dependency's appVersion (0.9.1 -> v2026.7.7.2).
+  image:
+    repository: nousresearch/hermes-agent
+    tag: "v2026.7.7.2"
+    pullPolicy: IfNotPresent
   config:
     model:
       # DeepSeek V4 Flash (direct API) — orchestration brain. User-mandated
@@ -900,6 +908,13 @@ hermes-agent:
     - name: dashboard-auth
       configMap:
         name: openagent-dashboard-auth
+    # Manifest + verification/pre-warm scripts, rendered from this file's
+    # mcp_servers by templates/hooks/configmap-mcp-manifest.yaml. Mounting it
+    # (rather than duplicating the package list in the boot script) keeps the
+    # manifest the single source of truth.
+    - name: mcp-verify
+      configMap:
+        name: openagent-mcp-manifest
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -938,6 +953,9 @@ hermes-agent:
     - name: dashboard-auth
       mountPath: /opt/hermes/.venv/lib/python3.13/site-packages/dashboard_auth_patch.py
       subPath: dashboard_auth_patch.py
+      readOnly: true
+    - name: mcp-verify
+      mountPath: /opt/data/mcp-verify
       readOnly: true
   command:
     - sh
@@ -1114,6 +1132,36 @@ hermes-agent:
   service:
     enabled: true
     port: 9119
+
+# ── MCP verification (manifest certification) ──────────────────────
+# The manifest at hermes-agent.config.mcp_servers is the single source of
+# truth. Two in-cluster checks prove it against real servers; both do a genuine
+# JSON-RPC initialize + tools/list and fail when a declared tool is missing:
+#
+#   * preflight — Helm/ArgoCD PostSync hook Job. PostSync (not PreSync) because
+#     it needs the same PVC + boot-installed toolchain the gateway uses, which
+#     the main sync creates. Fails the sync loudly and prints the server's own
+#     stderr (which Hermes discards, half the original problem).
+#   * cronjob — every 15 min, quiet on match; only drift produces output and a
+#     non-zero exit, so a watcher alerts on change, not on every run.
+#
+# Both are disabled by a single toggle without deleting them. The scripts live
+# in files/mcp/ and ship in the openagent-mcp-manifest ConfigMap, rendered from
+# the same mcp_servers values — no duplicated server list anywhere.
+mcpVerification:
+  preflight:
+    enabled: true
+    # PostSync can run before the gateway's first boot has installed the
+    # toolchain (mise node/uv on the PVC); the Job waits up to this long.
+    toolchainWaitSeconds: 300
+    activeDeadlineSeconds: 1800
+    backoffLimit: 0
+  cronjob:
+    enabled: true
+    schedule: "*/15 * * * *"
+    activeDeadlineSeconds: 900
+    backoffLimit: 0
+    historyLimit: 3
 
 # ── Hermes WebUI (gateway thin-client dashboard) ───────────────────
 hermes-webui:

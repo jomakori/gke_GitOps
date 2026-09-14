@@ -1,0 +1,86 @@
+{{- if and .Values.hermes.enabled .Values.mcpVerification.preflight.enabled }}
+# Preflight certification of the MCP manifest. For every enabled server it does
+# a real JSON-RPC initialize + tools/list and asserts the declared tool surface
+# (tools.include) is present. A failure fails the sync AND prints the server's
+# own stderr — the detail Hermes discards.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: openagent-mcp-preflight
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-preflight
+  annotations:
+    # PostSync, not PreSync: the check needs the manifest ConfigMap, the PVC and
+    # the boot-installed toolchain, all of which the main sync creates.
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+    helm.sh/hook-weight: "5"
+spec:
+  backoffLimit: {{ .Values.mcpVerification.preflight.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.mcpVerification.preflight.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "openagent.labels" . | nindent 8 }}
+        app.kubernetes.io/component: mcp-preflight
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 10000
+        runAsGroup: 10000
+      initContainers:
+        # PostSync can beat the gateway's first boot; wait (bounded) until the
+        # boot pre-warm has exposed the mise toolchain on the PVC.
+        - name: wait-for-toolchain
+          image: "{{ include "openagent.hermesImage" . }}"
+          imagePullPolicy: {{ (index .Values "hermes-agent" "image").pullPolicy }}
+          securityContext:
+            runAsUser: 10000
+            runAsGroup: 10000
+          command:
+            - sh
+            - -c
+            - |
+              for _ in $(seq 1 {{ div .Values.mcpVerification.preflight.toolchainWaitSeconds 5 }}); do
+                [ -x /opt/data/bin/npx ] && [ -x /opt/data/bin/uvx ] && exit 0
+                sleep 5
+              done
+              echo "MCP toolchain not ready after {{ .Values.mcpVerification.preflight.toolchainWaitSeconds }}s" >&2
+              exit 1
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+      containers:
+        - name: preflight
+          image: "{{ include "openagent.hermesImage" . }}"
+          imagePullPolicy: {{ (index .Values "hermes-agent" "image").pullPolicy }}
+          securityContext:
+            runAsUser: 10000
+            runAsGroup: 10000
+          env:
+            {{- include "openagent.mcpVerifyEnv" . | nindent 12 }}
+          envFrom:
+            # Same secret bundle the gateway gets, so ${MCP_*} / ${PLANE_*}
+            # placeholders resolve exactly as they do at runtime.
+            - secretRef:
+                name: openagent-secrets
+          command:
+            - python3
+            - /mcp-verify/verify.py
+            - --manifest
+            - /mcp-verify/mcp-manifest
+            - --mode
+            - preflight
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+            - name: mcp-verify
+              mountPath: /mcp-verify
+              readOnly: true
+      volumes:
+        {{- include "openagent.mcpVerifyVolumes" . | nindent 8 }}
+{{- end }}

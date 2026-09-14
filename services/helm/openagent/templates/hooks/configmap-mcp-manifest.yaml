@@ -1,0 +1,33 @@
+{{- if .Values.hermes.enabled }}
+# The rendered MCP manifest + the runtime scripts that consume it. Everything
+# that needs the server definitions — the gateway's boot pre-warm and the
+# preflight/drift Jobs — reads them from here, so the manifest stays the single
+# source of truth (no second copy of the pins to drift).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-mcp-manifest
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-manifest
+  annotations:
+    # Rendered with (just before) the workload so the pod and the PostSync
+    # preflight Job can both mount it.
+    argocd.argoproj.io/sync-wave: "-1"
+data:
+  # Dot-free keys on purpose: helm-unittest's assertion path syntax treats '.'
+  # and '[]' as separators, so keys containing a dot cannot be addressed from
+  # tests/mcp_manifest_test.yaml. scripts/validate-mcp-manifest.py is the
+  # exhaustive every-server check; these keys make the same invariants
+  # assertable per server in helm-unittest.
+  mcp-manifest: |
+{{ (index .Values "hermes-agent" "config" "mcp_servers") | toJson | indent 4 }}
+{{- range $name, $server := (index .Values "hermes-agent" "config" "mcp_servers") }}
+  server-{{ $name }}: {{ $server | toJson | quote }}
+{{- end }}
+  verify.py: |
+{{ .Files.Get "files/mcp/verify.py" | indent 4 }}
+  prewarm.py: |
+{{ .Files.Get "files/mcp/prewarm.py" | indent 4 }}
+{{- end }}
