@@ -734,9 +734,11 @@ hermes-agent:
         idle_timeout_seconds: 1800
         max_lifetime_seconds: 21600
         tools:
-          # Full surface intended for a local tool; "*" keeps the declaration
-          # explicit so the linter and drift check still see a surface.
-          include: ["*"]
+          # Exact names, not a glob: the verifier compares declared tools
+          # literally against the live tools/list result, so "*" (legal for
+          # Hermes per the MCP config reference) is reported as missing. Surface
+          # taken from the upstream README, certified live by the preflight Job.
+          include: [search-shapes, get-shape-categories, get-shapes-in-category, get-style-presets, add-cells, edit-cells, edit-edges, set-cell-shape, delete-cell-by-id, list-paged-model, get-diagram-stats, export-diagram, import-diagram, clear-diagram]
           resources: false
           prompts: false
 
