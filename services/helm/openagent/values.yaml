@@ -1077,6 +1077,13 @@ hermes-agent:
       # script runs as root, and root-owned entries in a cache the gateway
       # writes to are a "Permission denied" waiting to happen.
       chown -R 10000:10000 $HOME/.npm $HOME/.cache $HOME/.deno $HOME/.local $HOME/.config /opt/data/mise /opt/data/mise-cache /opt/data/npm-global /opt/data/.npm-mcp 2>/dev/null || true
+      # Anything still root-owned elsewhere on the shared volume. The agent pod
+      # (opencode-server) had no runAsUser, so it wrote as the image default uid
+      # into a tree owned by 10000 — root-owned git object directories were the
+      # visible symptom ("insufficient permission for adding an object to
+      # repository database" when committing in a shared worktree). Targeted,
+      # not recursive, so the boot stays fast on a multi-GB volume.
+      find /opt/data/repos /opt/data/wt /opt/data/.local /opt/data/.config /opt/data/.omo -user root -exec chown 10000:10000 {} + 2>/dev/null || true
       # ── OpenCode CLI + hermes-opencode-plugin (replaces OMO fleet bootstrap) ──
       # Heavy engineering dispatches via opencode tool → opencode run subprocess
       # → agents in ~/.config/opencode/opencode.json (mounted ConfigMap). All

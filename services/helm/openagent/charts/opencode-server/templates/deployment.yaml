@@ -30,6 +30,12 @@ spec:
         {{- include "opencode-server.labels" . | nindent 8 }}
         app.kubernetes.io/component: opencode-server
     spec:
+      # Run as the uid that owns the shared volume (see values.yaml): as root
+      # this pod left root-owned files in a tree the gateway has to write to.
+      {{- with .Values.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

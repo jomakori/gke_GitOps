@@ -74,3 +74,24 @@ resources:
 # Empty by default: the PV's nodeAffinity already pins this to the node holding
 # the shared volume. Set kubernetes.io/hostname only if that ever stops holding.
 nodeSelector: {}
+
+# The pod runs as the gateway's runtime uid (10000).
+#
+# WHY: /opt/data is shared with the gateway pod, and everything in it is owned
+# by 10000. Without a runAsUser this container ran as the image default (root),
+# so every file the agent wrote — git object directories, helm-docs output,
+# caches — landed root-owned and the gateway could no longer write to its own
+# repositories. The symptom was commits failing in a shared worktree with
+# "insufficient permission for adding an object to repository database", and
+# 162 root-owned paths accumulated before it was traced.
+#
+# Sharing the path is deliberate (see the persistence block): the agent needs
+# the same repos, toolchain and config. Sharing it under a *different uid* was
+# the bug.
+#
+# No fsGroup on purpose: kubelet's fsGroup change policy would recursively chown
+# this multi-GB volume on every mount. runAsUser/runAsGroup covers it, and the
+# gateway's boot script repairs anything left over from the root era.
+securityContext:
+  runAsUser: 10000
+  runAsGroup: 10000
