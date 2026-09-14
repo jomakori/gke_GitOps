@@ -751,6 +751,14 @@ hermes-agent:
         idle_timeout_seconds: 1800
         max_lifetime_seconds: 21600
         env:
+          # See the plane block: uvx is a mise shim and needs MISE_*/UV_* in the
+          # child env, which Hermes only forwards when declared here.
+          MISE_CONFIG_FILE: /mise/mise.toml
+          MISE_DATA_DIR: /opt/data/mise
+          MISE_CACHE_DIR: /opt/data/mise-cache
+          UV_CACHE_DIR: /opt/data/.cache/uv
+          UV_TOOL_DIR: /opt/data/.local/share/uv/tools
+          UV_TOOL_BIN_DIR: /opt/data/.local/bin
           GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
           GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
         tools:
@@ -766,6 +774,20 @@ hermes-agent:
         idle_timeout_seconds: 1800
         max_lifetime_seconds: 21600
         env:
+          # uvx resolves through a mise shim, so without MISE_* it silently
+          # degrades to a different uv found on PATH — measured under the
+          # filtered env Hermes gives stdio children (PATH/HOME/LANG/TERM/…
+          # only): 0.12.5 gnu -> 0.11.6 musl. That uv has a different
+          # cache/tool layout, so the packages materialised at boot are
+          # invisible, the resolve happens cold inside the connect window, and
+          # the child dies without output. Same vars, same reason, as the
+          # opencode-server pod.
+          MISE_CONFIG_FILE: /mise/mise.toml
+          MISE_DATA_DIR: /opt/data/mise
+          MISE_CACHE_DIR: /opt/data/mise-cache
+          UV_CACHE_DIR: /opt/data/.cache/uv
+          UV_TOOL_DIR: /opt/data/.local/share/uv/tools
+          UV_TOOL_BIN_DIR: /opt/data/.local/bin
           PLANE_API_KEY: "${PLANE_API_KEY}"
           PLANE_WORKSPACE_SLUG: "${PLANE_WORKSPACE_SLUG}"
           PLANE_INTERNAL_BASE_URL: "http://plane-api.plane.svc.cluster.local:8000"
