@@ -563,7 +563,32 @@ hermes-agent:
         - discord-platform
         - opencode
     mcp_servers:
-      # ── npx-launched servers get a PRIVATE npm cache ──────────────────
+      # ── Manifest = single source of truth ──────────────────────────────
+      # Hermes reads these entries from config.yaml; the bootstrap init
+      # container re-seeds that file from this chart on every pod start
+      # (overwrite: true), so live edits are reverted. Change the manifest
+      # here. Three invariants are enforced by
+      # scripts/validate-mcp-manifest.py (CI + pre-commit) and proven in
+      # cluster by the preflight hook Job + drift CronJob (templates/hooks/):
+      #
+      #   * PINS — every npx/uvx package is pinned to an exact published
+      #     version. `@latest` and bare names let a registry-side publish
+      #     silently change what runs.
+      #   * connect_timeout — no server rides the 60s default. Package-
+      #     launched servers get 180s (a cold npx/uvx resolve + reify races
+      #     60s); locally-installed binaries and HTTP endpoints keep 60s.
+      #   * lifecycle (stdio only) — idle_timeout_seconds and
+      #     max_lifetime_seconds recycle a wedged server instead of leaving it
+      #     dead until the pod restarts. Deliberately conservative: a recycle
+      #     drops that server's tools until it reconnects, so 30 min idle is
+      #     longer than any normal interactive gap and the 6 h cap only bounds
+      #     a genuinely unbounded leak.
+      #
+      # Servers marked `enabled: false` are PARKED, not deleted: the pinned
+      # package, env mapping and tool surface stay so re-enabling is a
+      # one-line change, and the lint fails if a parked server disappears.
+      #
+      # npx-launched servers get a PRIVATE npm cache (env.npm_config_cache).
       # The MCP client runs `npx -y <pkg>`, which installs the package at
       # every startup. By default that lands in the shared PVC cache
       # (/opt/data/.npm), which the gateway, opencode-server and dispatched
@@ -573,10 +598,19 @@ hermes-agent:
       # `Cannot find module .../fastmcp/dist/FastMCP.js` (partial install),
       # or `sh: 1: mcp-grafana: Permission denied` (a root-owned bin), all
       # surfacing only as `Failed to connect to MCP server '<name>'`.
-      # A per-server cache dir keeps installs isolated and re-usable.
+      # A per-server cache dir keeps installs isolated and re-usable; the
+      # boot pre-warm (files/mcp/prewarm.py, invoked from the hermes-agent
+      # command) materialises them without ever starting a server.
       github:
+        # Parked: the OpenCode-driven GitHub tooling in
+        # templates/omo/configmap-opencode-config.yaml already covers repo
+        # access. Kept pinned so re-enabling is a one-line change.
+        enabled: false
         command: "npx"
-        args: ["-y", "@modelcontextprotocol/server-github"]
+        args: ["-y", "@modelcontextprotocol/server-github@2025.4.8"]
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         env:
           GITHUB_PERSONAL_ACCESS_TOKEN: "${MCP_GITHUB_TOKEN}"
           npm_config_loglevel: "error"
@@ -587,8 +621,13 @@ hermes-agent:
           prompts: false
 
       gistpad:
+        # Parked: overlaps the github server's surface.
+        enabled: false
         command: "npx"
-        args: ["-y", "gistpad-mcp"]
+        args: ["-y", "gistpad-mcp@0.5.0"]
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         env:
           GITHUB_TOKEN: "${MCP_GITHUB_TOKEN}"
           npm_config_cache: "/opt/data/.npm-mcp/gistpad"
@@ -597,8 +636,15 @@ hermes-agent:
           prompts: false
 
       argocd:
+        # Parked: this is the server that ran @latest and broke on registry
+        # drift — the exact failure the pin rule now prevents. Now pinned;
+        # re-enable once the pin has soaked.
+        enabled: false
         command: "npx"
-        args: ["-y", "argocd-mcp@latest", "stdio"]
+        args: ["-y", "argocd-mcp@0.9.0", "stdio"]
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         env:
           ARGOCD_API_TOKEN: "${MCP_ARGOCD_TOKEN}"
           ARGOCD_BASE_URL: "${MCP_ARGOCD_URL}"
@@ -609,22 +655,26 @@ hermes-agent:
           include: [list_applications, get_application, get_application_managed_resources, get_application_resource_tree, get_application_events, sync_application, get_appproject, get_resources]
 
       grafana:
-        # @leval/mcp-grafana@1.1.7 writes THREE non-protocol lines to STDOUT:
-        # dist/cli.js:146 `console.log("Starting MCP Grafana server ...")`, a
-        # tool-category summary, and pino's JSON log line. stdout IS the
-        # JSON-RPC channel, so the client's stdout_reader raises "Invalid
-        # JSON ... Failed to parse JSONRPC message from server". MCP servers
-        # are initialised in an asyncio TaskGroup, so that single exception
-        # cancels every sibling mid-handshake - which is why unrelated and
-        # perfectly healthy servers (plane, google-workspace, argocd,
-        # gistpad) surface as `CancelledError` collateral instead.
-        # Filter stdout down to real protocol frames. Matching on "jsonrpc"
-        # rather than "^{" is deliberate: pino's line is valid JSON, so a
-        # brace check would let it through and corrupt the stream later.
+        # Parked: @leval/mcp-grafana@1.1.7 writes THREE non-protocol lines to
+        # STDOUT (dist/cli.js startup banner, a tool-category summary, and
+        # pino's JSON log line). stdout IS the JSON-RPC channel, so the
+        # client's stdout_reader raises "Invalid JSON ... Failed to parse
+        # JSONRPC message from server". MCP servers are initialised in an
+        # asyncio TaskGroup, so that single exception cancels every sibling
+        # mid-handshake — which is why unrelated and perfectly healthy servers
+        # (plane, google-workspace, argocd, gistpad) surfaced as CancelledError
+        # collateral. The `grep --line-buffered jsonrpc` wrapper filters stdout
+        # to real protocol frames (matching "jsonrpc", not "^{", because
+        # pino's line is valid JSON); the server stays parked until that path
+        # is proven live.
+        enabled: false
         command: "sh"
         args:
           - "-c"
-          - "exec npx -y @leval/mcp-grafana | grep --line-buffered jsonrpc"
+          - "exec npx -y @leval/mcp-grafana@1.1.7 | grep --line-buffered jsonrpc"
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         env:
           GRAFANA_URL: "${MCP_GRAFANA_URL}"
           GRAFANA_SERVICE_ACCOUNT_TOKEN: "${MCP_GRAFANA_TOKEN}"
@@ -636,7 +686,10 @@ hermes-agent:
 
       doppler:
         command: "npx"
-        args: ["-y", "@dopplerhq/mcp-server"]
+        args: ["-y", "@dopplerhq/mcp-server@1.0.5"]
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         env:
           DOPPLER_TOKEN: "${MCP_DOPPLER_TOKEN}"
           npm_config_cache: "/opt/data/.npm-mcp/doppler"
@@ -649,24 +702,42 @@ hermes-agent:
         command: "/opt/data/bin/obscura"
         args: ["mcp", "--stealth"]
         timeout: 120
+        # Local binary, not a registry package: no resolve to race, so the
+        # 60s default is ample.
+        connect_timeout: 60
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         tools:
           resources: false
           prompts: false
           include: [browser_navigate, browser_snapshot, browser_markdown, browser_click, browser_type, browser_fill, browser_fill_form, browser_extract, browser_interactive_elements, browser_links, browser_screenshot, browser_scroll, browser_search, browser_evaluate, browser_wait_for_text]
 
       drawio:
+        # Parked: runs a local deno checkout cloned at boot; parked to keep
+        # boot lean. No registry package, so the pin rule does not apply.
+        enabled: false
         command: "sh"
         args:
           - "-c"
           - "cd /opt/data/drawio-mcp-server && exec /opt/data/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio"
         timeout: 120
+        # Deno may compile/cache lockfile deps on first run — between the
+        # no-resolve 60s and the package-resolve 180s.
+        connect_timeout: 120
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         tools:
           resources: false
           prompts: false
 
       google-workspace:
         command: "uvx"
-        args: ["workspace-mcp", "--tool-tier", "complete"]
+        args: ["workspace-mcp==1.26.1", "--tool-tier", "complete"]
+        # uvx resolves a large dependency tree (google-api-python-client et
+        # al) on a cold tool cache; give it room past the 60s default.
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         env:
           GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
           GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
@@ -677,47 +748,68 @@ hermes-agent:
 
       plane:
         command: "uvx"
-        args: ["plane-mcp-server", "stdio"]
+        args: ["plane-mcp-server==0.3.2", "stdio"]
+        timeout: 120
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         env:
           PLANE_API_KEY: "${PLANE_API_KEY}"
           PLANE_WORKSPACE_SLUG: "${PLANE_WORKSPACE_SLUG}"
           PLANE_INTERNAL_BASE_URL: "http://plane-api.plane.svc.cluster.local:8000"
           PLANE_BASE_URL: "https://plane.maklab.net"
-        timeout: 120
         tools:
           resources: false
           prompts: false
           include: [project, workitem, member, state, label, workitem_comment, workitem_attachment, workitem_relation, page]
 
       skiplagged:
+        # Public remote Streamable-HTTP server. tools.include is the live
+        # surface captured when it was pinned into the manifest; the drift
+        # CronJob alerts if upstream changes it.
         url: "https://mcp.skiplagged.com/mcp"
         timeout: 60
+        connect_timeout: 60
         tools:
+          include: [sk_flights_search, sk_destinations_anywhere, sk_flex_departure_calendar, sk_flex_return_calendar, sk_hotels_search, sk_cars_search, sk_hotel_details, sk_faq_search, sk_resolve_location, sk_resolve_iata]
           resources: false
           prompts: false
 
       kiwi:
+        # Public remote Streamable-HTTP server (see skiplagged).
         url: "https://mcp.kiwi.com"
         timeout: 60
+        connect_timeout: 60
         tools:
+          include: [search-flight, feedback-to-devs]
           resources: false
           prompts: false
 
       ferryhopper:
+        # Public remote Streamable-HTTP server (see skiplagged).
         url: "https://mcp.ferryhopper.com/mcp"
         timeout: 60
+        connect_timeout: 60
         tools:
+          include: [get_ports, get_disruptions, get_direct_connections_for_ports, search_trips, search_trips_v2, trip_details]
           resources: false
           prompts: false
 
       bitwarden:
+        # Parked: `bw login`/`bw unlock` needs interactive
+        # state that is unreliable at pod start. Pinned so a re-enable uses a
+        # known build.
+        enabled: false
         command: "sh"
         args:
           - "-c"
           - |
             BW_CLIENTID=$BW_CLIENTID BW_CLIENTSECRET=$BW_CLIENTSECRET bw login --apikey 2>/dev/null
             export BW_SESSION=$(BW_PASSWORD=$BW_PASSWORD bw unlock --passwordenv BW_PASSWORD 2>/dev/null | grep "BW_SESSION=" | sed "s/.*BW_SESSION=\"//;s/\".*//")
-            exec npx -y @bitwarden/mcp-server
+            exec npx -y @bitwarden/mcp-server@2026.7.0
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
         env:
           BW_CLIENTID: "${BW_CLIENTID}"
           BW_CLIENTSECRET: "${BW_CLIENTSECRET}"
