@@ -281,6 +281,9 @@ services:
           - .spec.data[].remoteRef.decodingStrategy
           - .spec.data[].remoteRef.metadataPolicy
           - .spec.data[].remoteRef.nullBytePolicy
+          - .spec.dataFrom[].find.conversionStrategy
+          - .spec.dataFrom[].find.decodingStrategy
+          - .spec.dataFrom[].find.nullBytePolicy
       - group: stackgres.io
         kind: SGPostgresConfig
         name: pg-main-config
@@ -292,6 +295,7 @@ services:
         name: pg-main
         namespace: data
         jsonPointers:
+          - /metadata/annotations/stackgres.io~1operatorVersion
           - /spec/configurations/observability
           - /spec/pods/disableEnvoy
           - /spec/pods/disablePostgresUtil
@@ -315,6 +319,7 @@ services:
         name: openagent-pg
         namespace: openagent
         jsonPointers:
+          - /metadata/annotations/stackgres.io~1operatorVersion
           - /spec/configurations/observability
           - /spec/pods/disableEnvoy
           - /spec/pods/disablePostgresUtil
