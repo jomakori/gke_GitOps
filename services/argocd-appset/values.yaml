@@ -301,6 +301,7 @@ services:
           - /spec/users
           - /spec/managedSql
 
+    finalizer: false     # safety gate: deleting this Application must ORPHAN the SGCluster, never cascade-delete it
   # Plane.so — kanban backend on pg-main (M2). Requires plane user/db in pg-main
   # (users list) + PLANE_* keys in svc_postgres_operator.
   plane:
