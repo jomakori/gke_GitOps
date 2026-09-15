@@ -21,8 +21,15 @@ spec:
         {{- include "claude-proxy.labels" . | nindent 8 }}
         app.kubernetes.io/component: claude-proxy
     spec:
-      imagePullSecrets:
-        - name: ghcr-pull-secret
+      # No imagePullSecrets on purpose. ghcr.io/jomakori/ocp is a PUBLIC package
+      # (anonymous token request → 200), so the image needs no credentials. The
+      # `ghcr-pull-secret` this chart used to reference holds a credential that
+      # GHCR now rejects (403, verified against the package token endpoint), and
+      # containerd does NOT fall back to anonymous when it is handed a bad one —
+      # the pod sat in ImagePullBackOff with "failed to authorize ... 403
+      # Forbidden" while the registry served the same image to anonymous pulls.
+      # If this image ever becomes private, add a pull secret that is actually
+      # valid (and verify it with a token request before trusting it).
       initContainers:
         - name: seed-credentials
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
