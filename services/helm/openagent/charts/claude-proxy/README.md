@@ -1,17 +1,22 @@
 # claude-proxy
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: latest](https://img.shields.io/badge/AppVersion-latest-informational?style=flat-square)
+![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v3.36.0](https://img.shields.io/badge/AppVersion-v3.36.0-informational?style=flat-square)
 
-Claude CLI wrapper as OpenAI-compatible API proxy
+Claude Code CLI exposed as an OpenAI-compatible API gateway (OCP), with caller-side tool calling
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| credentials.tokenSecretKey | string | `"CLAUDE_CODE_OAUTH_TOKEN"` |  |
+| credentials.tokenSecretName | string | `"openagent-secrets"` |  |
 | enabled | bool | `true` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
-| image.repository | string | `"ghcr.io/jomakori/claude-proxy"` |  |
-| image.tag | string | `"latest"` |  |
+| image.repository | string | `"ghcr.io/jomakori/ocp"` |  |
+| image.tag | string | `"v3.36.0"` |  |
+| ocp.allowedHosts | string | `""` |  |
+| ocp.noContext | string | `"true"` |  |
+| ocp.toolCalling | string | `"1"` |  |
 | persistence.enabled | bool | `true` |  |
 | persistence.size | string | `"100Mi"` |  |
 | persistence.storageClass | string | `"local-path"` |  |

@@ -1,16 +1,38 @@
 enabled: true
+# OCP (open-claude-proxy) — OpenAI-compatible gateway in front of the Claude Code
+# CLI. Built by .github/workflows/ocp_image.yaml; the tag here MUST match a pushed
+# image tag (upstream publishes no image of its own). The image vendors a pinned
+# OCP release + a pinned Claude Code CLI version — see images/ocp/Dockerfile.
 image:
-  repository: ghcr.io/jomakori/claude-proxy
-  tag: latest
+  repository: ghcr.io/jomakori/ocp
+  tag: v3.36.0
   pullPolicy: IfNotPresent
 service:
   port: 4523
-# Credentials persistence: Claude Code OAuth rotates tokens on every refresh.
-# The CLI writes the rotated tokens to ~/.claude/.credentials.json — an
-# emptyDir loses them on restart, and the k8s secret goes stale after the
-# first rotation (refresh tokens are single-use). A PVC lets the CLI's own
-# refresh keep tokens alive across pod restarts; the secret is only a
-# bootstrap source (seeded on first boot / after PVC reset).
+# Runtime behaviour.
+ocp:
+  # Client `tools` are bridged into the `claude -p` spawn as an internal MCP server
+  # and returned as OpenAI `tool_calls` for the CALLER to execute (upstream ADR
+  # 0022). 0 restores the drop-tools behaviour that claude-pipe had.
+  toolCalling: "1"
+  # Do not load CLAUDE.md / auto-memory — callers supply their own system prompt.
+  noContext: "true"
+  # Host gate (upstream ADR 0020, DNS-rebinding defence). Empty = the in-cluster
+  # Service names for this release are declared automatically.
+  allowedHosts: ""
+# Credential precedence in OCP: CLAUDE_CODE_OAUTH_TOKEN (long-lived, from
+# `claude setup-token`) beats the rotating ~/.claude/.credentials.json file. The
+# token is a Doppler `svc_openagent` key surfaced through the umbrella's
+# `openagent-secrets` ExternalSecret. The PVC below stays as the file fallback.
+credentials:
+  tokenSecretName: openagent-secrets
+  tokenSecretKey: CLAUDE_CODE_OAUTH_TOKEN
+# Credentials persistence: only used on the fallback path. Claude Code OAuth
+# rotates tokens on every refresh, and the CLI writes the rotated pair back to
+# ~/.claude/.credentials.json — an emptyDir loses them on restart and the k8s
+# secret goes stale after the first rotation (refresh tokens are single-use). A
+# PVC lets the CLI's own refresh keep tokens alive across pod restarts; the secret
+# is a bootstrap source only (seeded when the PVC is empty).
 persistence:
   enabled: true
   size: 100Mi
