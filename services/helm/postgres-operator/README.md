@@ -66,6 +66,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.openagent-pg.namespace | string | `"openagent"` |  |
 | postgres.clusters.openagent-pg.poolingConfigName | string | `"openagent-pg-pooling"` |  |
 | postgres.clusters.openagent-pg.profile | string | `"development"` |  |
+| postgres.clusters.openagent-pg.reclaimPolicy | string | `"Retain"` |  |
 | postgres.clusters.openagent-pg.storage | string | `"5Gi"` |  |
 | postgres.clusters.openagent-pg.storageClass | string | `"local-path"` |  |
 | postgres.clusters.openagent-pg.syncWave | string | `"-1"` |  |
@@ -97,6 +98,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.namespace | string | `"data"` |  |
 | postgres.clusters.pg-main.poolingConfigName | string | `"pg-main-pooling"` |  |
 | postgres.clusters.pg-main.profile | string | `"development"` |  |
+| postgres.clusters.pg-main.reclaimPolicy | string | `"Retain"` |  |
 | postgres.clusters.pg-main.storage | string | `"15Gi"` |  |
 | postgres.clusters.pg-main.storageClass | string | `"local-path"` |  |
 | postgres.clusters.pg-main.users[0].databases[0].name | string | `"plane"` |  |

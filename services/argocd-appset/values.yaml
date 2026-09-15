@@ -258,6 +258,7 @@ services:
     argoProject: default
     destNamespace: ""
     finalizer: false
+    helmPath: services/helm/postgres-operator
     dopplerConfig: "svc_postgres_operator"
     parameters:
       - name: renderOperator
