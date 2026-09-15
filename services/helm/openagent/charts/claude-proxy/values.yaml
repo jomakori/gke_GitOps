@@ -5,7 +5,11 @@ enabled: true
 # OCP release + a pinned Claude Code CLI version — see images/ocp/Dockerfile.
 image:
   repository: ghcr.io/jomakori/ocp
-  tag: v3.36.0
+  # -p1 = vendored-patch revision, not a pristine OCP release: the image carries
+  # images/ocp/patches/ (see its Dockerfile). MUST be bumped with the image, because
+  # pullPolicy is IfNotPresent — reusing a tag for different content leaves nodes
+  # serving the cached image with no error anywhere.
+  tag: v3.36.0-p1
   pullPolicy: IfNotPresent
 service:
   port: 4523
