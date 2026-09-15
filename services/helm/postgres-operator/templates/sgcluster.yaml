@@ -1,3 +1,8 @@
+{{- /*
+  NOTE: no spec.users — the SGCluster CRD (StackGres 1.18) schema has no users
+  field. Roles/DBs are created via managedSql SGScripts owned by each app chart
+  (shorthand users in values are SGScript input only).
+*/ -}}
 {{- if .Values.renderClusters }}
 {{- range $name, $c := .Values.postgres.clusters }}
 apiVersion: stackgres.io/v1
@@ -39,9 +44,6 @@ spec:
       - id: 0
         sgScript: {{ $c.managedSqlScript }}
   {{- end }}
-  {{- /* NOTE: no spec.users — the SGCluster CRD (StackGres 1.18) schema has no users
-         field. Roles/DBs are created via managedSql SGScripts owned by each app chart
-         (shorthand users below are SGScript input only). */ -}}
 ---
 {{- end }}
 {{- end }}
