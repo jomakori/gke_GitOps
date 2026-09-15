@@ -13,3 +13,12 @@ app.kubernetes.io/part-of: openagent
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 {{- end -}}
+
+{{/*
+Selector labels — stable subset, excludes helm.sh/chart and managed-by
+(version-bearing keys in an immutable selector break on chart version bump).
+*/}}
+{{- define "hermes-webui.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "hermes-webui.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}

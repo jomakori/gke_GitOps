@@ -12,7 +12,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    {{- include "hermes-webui.labels" . | nindent 4 }}
+    {{- include "hermes-webui.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: hermes-webui
   ports:
     - name: http
