@@ -82,8 +82,6 @@ postgres:
       storage: 15Gi
       version: "18"
       profile: "development"
-      # PVC must survive any cluster/app deletion (local-path default is Delete)
-      reclaimPolicy: Retain
       disableMetricsExporter: true
       disableConnectionPooling: true
       configName: pg-main-config
@@ -112,7 +110,6 @@ postgres:
       storage: 5Gi
       version: "18"
       profile: "development"
-      reclaimPolicy: Retain
       disableMetricsExporter: true
       disableConnectionPooling: true
       configName: openagent-pg-config

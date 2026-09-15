@@ -19,11 +19,8 @@ spec:
   pods:
     persistentVolume:
       size: {{ $c.storage }}
-      {{- if $c.storageClass }}
+{{- if $c.storageClass }}
       storageClass: {{ $c.storageClass }}
-      {{- end }}
-      {{- if $c.reclaimPolicy }}
-      reclaimPolicy: {{ $c.reclaimPolicy }}
       {{- end }}
     disableMetricsExporter: {{ $c.disableMetricsExporter }}
     disableConnectionPooling: {{ $c.disableConnectionPooling }}
