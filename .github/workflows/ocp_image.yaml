@@ -44,6 +44,14 @@ env:
   OCP_VERSION_DEFAULT: v3.36.0
   CLAUDE_CODE_VERSION_DEFAULT: 2.1.272
   BUILD_PLATFORMS: linux/arm64
+  # Vendored-patch revision, and the reason the image tag is not just the OCP tag:
+  # the image carries images/ocp/patches/ (see the Dockerfile), so its content is
+  # no longer identical to the upstream release named in OCP_VERSION. The chart
+  # pins a tag with `pullPolicy: IfNotPresent`, so publishing patched content under
+  # the bare `v3.36.0` tag would leave every node serving the OLD cached image under
+  # the same name — the failure mode is silence, not an error. Bump to -p2 for the
+  # next vendored patch; drop the suffix when the image is pristine upstream again.
+  IMAGE_TAG_SUFFIX: -p1
 
 jobs:
   build_and_push:
@@ -67,7 +75,8 @@ jobs:
           echo "OCP_VERSION=${OCP_VERSION}" >> "$GITHUB_OUTPUT"
           echo "CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION}" >> "$GITHUB_OUTPUT"
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          echo "Resolved OCP_VERSION=${OCP_VERSION} CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION}"
+          echo "IMAGE_TAG=${OCP_VERSION}${IMAGE_TAG_SUFFIX}" >> "$GITHUB_OUTPUT"
+          echo "Resolved OCP_VERSION=${OCP_VERSION} CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION} IMAGE_TAG=${OCP_VERSION}${IMAGE_TAG_SUFFIX}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -95,7 +104,7 @@ jobs:
             OCP_VERSION=${{ steps.build_inputs.outputs.OCP_VERSION }}
             CLAUDE_CODE_VERSION=${{ steps.build_inputs.outputs.CLAUDE_CODE_VERSION }}
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ steps.build_inputs.outputs.OCP_VERSION }}
+            ${{ env.IMAGE_NAME }}:${{ steps.build_inputs.outputs.IMAGE_TAG }}
             ${{ env.IMAGE_NAME }}:sha-${{ steps.build_inputs.outputs.SHORT_SHA }}
             ${{ env.IMAGE_NAME }}:latest
           labels: |
@@ -105,7 +114,7 @@ jobs:
 
       - name: Summarize pushed image
         env:
-          IMAGE_TAG: ${{ steps.build_inputs.outputs.OCP_VERSION }}
+          IMAGE_TAG: ${{ steps.build_inputs.outputs.IMAGE_TAG }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           set -euo pipefail
