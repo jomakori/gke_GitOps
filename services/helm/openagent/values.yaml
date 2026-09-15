@@ -74,10 +74,12 @@ litellm:
   proxy_config:
     general_settings:
       master_key: os.environ/LITELLM_MASTER_KEY
-      # Raw pass-through to claude-pipe (claude-proxy). Requests to
-      # /claude-pipe/<path> are forwarded byte-for-byte to the upstream, so
-      # Anthropic /v1/messages and OpenAI /v1/chat/completions both work
-      # without LiteLLM format conversion. NOTE: OSS pass-through routes skip
+      # Raw pass-through to the claude-proxy gateway (OCP). Requests to
+      # /claude-pipe/<path> are forwarded byte-for-byte to the upstream without
+      # LiteLLM format conversion — OpenAI /v1/chat/completions works, including
+      # tool calling. NOTE: OCP serves chat completions only; Anthropic
+      # /v1/messages is NOT available on this upstream (the previous
+      # claude-pipe image served it). NOTE: OSS pass-through routes skip
       # LiteLLM key auth (Enterprise-only) — protect via Cloudflare Access.
       pass_through_endpoints:
         - path: "/claude-pipe"

@@ -13,7 +13,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://charts/claude-proxy | claude-proxy | 0.1.0 |
+| file://charts/claude-proxy | claude-proxy | 0.2.0 |
 | file://charts/hermes-webui | hermes-webui | 0.1.0 |
 | file://charts/opencode-server | opencode-server | 0.1.0 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |

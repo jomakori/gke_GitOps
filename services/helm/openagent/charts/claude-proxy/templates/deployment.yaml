@@ -17,8 +17,6 @@ spec:
       app.kubernetes.io/component: claude-proxy
   template:
     metadata:
-      annotations:
-        checksum/responses-config: {{ include (print $.Template.BasePath "/configmap-responses.yaml") . | sha256sum }}
       labels:
         {{- include "claude-proxy.labels" . | nindent 8 }}
         app.kubernetes.io/component: claude-proxy
@@ -33,11 +31,15 @@ spec:
             - /bin/sh
             - -c
             - |
-              # Seed ~/.claude/.credentials.json from the bootstrap secret ONLY
-              # on first boot (empty PVC). No refresh logic here: Claude Code
-              # OAuth rotates tokens on refresh and the CLI persists the rotated
-              # tokens back to ~/.claude (the PVC), so refreshing in an init
-              # container would fight the CLI and the secret would go stale.
+              # File-based credentials are the FALLBACK path: with
+              # CLAUDE_CODE_OAUTH_TOKEN set, OCP authenticates the `claude -p` spawn
+              # from the env token and never reads this file.
+              #
+              # Seed from the bootstrap secret ONLY on first boot (empty PVC). There
+              # is deliberately no refresh logic here — Claude Code rotates its OAuth
+              # refresh token (single-use) and writes the rotated pair back to
+              # ~/.claude itself, so a refreshing init container would fight the CLI
+              # and the k8s secret would go stale after the first rotation.
               if [ ! -f /writable/.credentials.json ]; then
                 cp /secrets/.credentials.json /writable/.credentials.json
                 echo "Seeded credentials from secret"
@@ -54,41 +56,43 @@ spec:
         - name: claude-proxy
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - /bin/sh
-            - -c
-            - |
-              sed -i '/^const MODEL_ALIASES/,/^};/c\
-              const MODEL_ALIASES: Record<string, string> = {\
-                sonnet: \"claude-sonnet-5\",\
-                opus: \"claude-opus-4-6\",\
-                haiku: \"claude-haiku-4-5\",\
-                \"sonnet-5\": \"claude-sonnet-5\",\
-                \"claude-sonnet-5\": \"claude-sonnet-5\",\
-                \"sonnet-4.6\": \"claude-sonnet-4-6\",\
-                \"claude-sonnet-4\": \"claude-sonnet-4-6\",\
-                \"opus-4.6\": \"claude-opus-4-6\",\
-                \"claude-opus-4\": \"claude-opus-4-6\",\
-                \"claude-haiku-4\": \"claude-haiku-4-5\",\
-                \"gpt-4\": \"claude-sonnet-5\",\
-                \"gpt-4o\": \"claude-sonnet-5\",\
-              };' /root/.bun/install/global/node_modules/claude-pipe/src/claude.ts && \
-              cp /responses-config/responses.ts /root/.bun/install/global/node_modules/claude-pipe/src/responses.ts && \
-              sed -i '/const server = Bun.serve({/a\
-              idleTimeout: 255, // Bun max; long Claude thinking gaps killed the stream (default 10s)' /root/.bun/install/global/node_modules/claude-pipe/src/index.ts && \
-              sed -i '/if (url.pathname === "\/v1\/chat\/completions"/a\
-              if (url.pathname === "\/v1\/responses" \&\& req.method === "POST") { return handleOpenAIResponses(req); }' /root/.bun/install/global/node_modules/claude-pipe/src/index.ts
-              sed -i 's/import { handleOpenAICompletions } from "\.\/openai"/import { handleOpenAICompletions } from "\.\/openai"\nimport { handleOpenAIResponses } from "\.\/responses"/' /root/.bun/install/global/node_modules/claude-pipe/src/index.ts
-              exec /usr/local/bin/bun /usr/local/bin/claude-pipe
+          env:
+            # OCP binds loopback by default; the Service needs it on all interfaces.
+            - name: CLAUDE_BIND
+              value: "0.0.0.0"
+            - name: CLAUDE_PROXY_PORT
+              value: {{ .Values.service.port | quote }}
+            - name: CLAUDE_BIN
+              value: /usr/local/bin/claude
+            # Caller-side tool calling over OCP's MCP bridge (upstream ADR 0022).
+            # 0 restores the drop-tools behaviour agents cannot use.
+            - name: OCP_TOOL_CALLING
+              value: {{ .Values.ocp.toolCalling | quote }}
+            # The caller supplies its own system prompt; do not inject CLAUDE.md or
+            # the CLI's auto-memory into every request.
+            - name: CLAUDE_NO_CONTEXT
+              value: {{ .Values.ocp.noContext | quote }}
+            # Host gate (upstream ADR 0020): a request whose Host is a public DNS
+            # name is refused unless declared here. Only the in-cluster Service
+            # names are declared — nothing routes to this proxy from outside.
+            - name: OCP_ALLOWED_HOSTS
+              value: {{ .Values.ocp.allowedHosts | default (printf "claude-proxy,claude-proxy.%s.svc.cluster.local" .Release.Namespace) | quote }}
+            # Long-lived subscription token (from `claude setup-token`), synced from
+            # Doppler `svc_openagent`. Optional: without it OCP falls back to the
+            # credentials file on the PVC.
+            - name: CLAUDE_CODE_OAUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentials.tokenSecretName }}
+                  key: {{ .Values.credentials.tokenSecretKey }}
+                  optional: true
           ports:
             - containerPort: {{ .Values.service.port }}
               name: http
-          env:
-            - name: HOST
-              value: "0.0.0.0"
-            - name: CLAUDE_PROXY_API_KEY
-              value: "claude-proxy-local"
-
+          volumeMounts:
+            # HOME in the image is /home/ocp, so this is ~/.claude.
+            - name: claude-credentials-writable
+              mountPath: /home/ocp/.claude
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           startupProbe:
@@ -113,12 +117,6 @@ spec:
             periodSeconds: 30
             failureThreshold: 5
             timeoutSeconds: 5
-          volumeMounts:
-            - name: claude-credentials-writable
-              mountPath: /root/.claude
-            - name: responses-config
-              mountPath: /responses-config
-              readOnly: true
       volumes:
         - name: claude-credentials-secret
           secret:
@@ -130,7 +128,4 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
-        - name: responses-config
-          configMap:
-            name: claude-proxy-responses
 {{- end }}
