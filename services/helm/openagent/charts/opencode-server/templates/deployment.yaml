@@ -81,14 +81,21 @@ spec:
               # `server unavailable key=plane type=local status=failed`, so the
               # agent had no Plane or GitHub tools.
               value: {{ .Values.persistence.mountPath }}/mise/shims:{{ .Values.persistence.mountPath }}/bin:{{ .Values.persistence.mountPath }}/.local/bin:/usr/local/bin:/usr/bin:/bin
-            # Same uv layout the gateway exports; without these the servers fall
-            # back to a different tool dir and re-download on every boot.
+            # The tool dirs the boot pre-warm actually populates. The boot
+            # script installs with HOME=/opt/data/home, so the tools land under
+            # /opt/data/home/.local - while this pod's HOME is /opt/data and it
+            # declared UV_TOOL_DIR=/opt/data/.local/share/uv/tools, which is
+            # empty. `ls` on it returns nothing; the boot dir holds
+            # plane-mcp-server, workspace-mcp and yt-dlp. Pointing at the empty
+            # dir made every `uvx` / `uv tool run` re-resolve the package from
+            # scratch. HOME is deliberately left alone: it governs opencode's
+            # own state dirs, and only the uv layout was wrong.
             - name: UV_CACHE_DIR
-              value: {{ .Values.persistence.mountPath }}/.cache/uv
+              value: {{ .Values.persistence.mountPath }}/home/.cache/uv
             - name: UV_TOOL_DIR
-              value: {{ .Values.persistence.mountPath }}/.local/share/uv/tools
+              value: {{ .Values.persistence.mountPath }}/home/.local/share/uv/tools
             - name: UV_TOOL_BIN_DIR
-              value: {{ .Values.persistence.mountPath }}/.local/bin
+              value: {{ .Values.persistence.mountPath }}/home/.local/bin
             # Headless: the same defaults the plugin applies to its child
             # process. Without these the embedded web UI tries to open a browser
             # inside the pod and auto-update can fire mid-run.
