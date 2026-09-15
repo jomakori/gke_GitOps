@@ -1,6 +1,16 @@
 {{- if .Values.renderClusters }}
 {{- range $name, $c := .Values.postgres.clusters }}
-{{- if and $c.managedSqlScript $c.users }}
+{{- /* only clusters with shorthand users (passwordKey/initSqlKey). Full-form users
+       (password.secretKeyRef) own their SGScript in their own chart (e.g. openagent
+       chart renders openagent-pg-init) — rendering it here would create a duplicate
+       SGScript owned by two ArgoCD apps and reference the wrong secret */ -}}
+{{- $initUsers := list }}
+{{- range $u := $c.users }}
+{{-   if $u.initSqlKey }}
+{{-     $initUsers = append $initUsers $u }}
+{{-   end }}
+{{- end }}
+{{- if and $c.managedSqlScript $initUsers }}
 apiVersion: stackgres.io/v1
 kind: SGScript
 metadata:
@@ -12,9 +22,11 @@ spec:
   # Init SQL for roles/DBs that StackGres does not manage via spec.users
   # (shorthand users: passwordKey/initSqlKey). SQL (incl. password) comes
   # from Doppler key <initSqlKey> via the pg-secrets Secret.
+  # id is a key field for the StackGres CRD — must be present for SSA diffs.
   scripts:
-    {{- range $u := $c.users }}
-    - name: init-{{ $u.name }}
+    {{- range $i, $u := $initUsers }}
+    - id: {{ $i }}
+      name: init-{{ $u.name }}
       scriptFrom:
         secretKeyRef:
           name: pg-secrets
