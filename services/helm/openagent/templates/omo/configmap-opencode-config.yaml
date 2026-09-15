@@ -1,3 +1,9 @@
+{{- $models := dict -}}
+{{- range .Values.litellm.proxy_config.model_list -}}
+{{- if not (hasPrefix "opencode/" .model_name) -}}
+{{- $_ := set $models .model_name (dict "name" .model_name) -}}
+{{- end -}}
+{{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -14,7 +20,7 @@ data:
   #   2. register the oh-my-openagent ("OMO") plugin, which opencode
   #      auto-installs from npm (arborist, no bun needed) on first run and
   #      which supplies the agent fleet + BOTH fallback layers:
-  #        - per-agent model fallback chains (fallback_models in omo.jsonc)
+  #        - per-agent model fallback chains (models arrays in omo.jsonc)
   #        - runtime fallback on 429/5xx (runtime_fallback hook in omo.jsonc)
   #   Model ids are LiteLLM aliases (values.yaml → litellm.model_list),
   #   slash-free because opencode parses provider/model on the slash. Agent
@@ -65,28 +71,12 @@ data:
             "baseURL": "http://openagent-litellm.openagent.svc.cluster.local:4000/v1",
             "apiKey": "{env:LITELLM_MASTER_KEY}"
           },
-          "models": {
-            "deepseek-v4-flash-direct": { "name": "DeepSeek V4 Flash (direct)" },
-            "deepseek-v4-flash": { "name": "DeepSeek V4 Flash (kilo)" },
-            "deepseek-v4-pro": { "name": "DeepSeek V4 Pro" },
-            "minimax-m3": { "name": "MiniMax M3" },
-            "glm-5.3": { "name": "GLM 5.3" },
-            "claude-opus-5": { "name": "Claude Opus 5" },
-            "claude-sonnet-5": { "name": "Claude Sonnet 5" },
-            "claude-haiku-4-5": { "name": "Claude Haiku 4.5" },
-            "gemini-3.6-flash": { "name": "Gemini 3.6 Flash" },
-            "qwen3-6-plus": { "name": "Qwen3 6 Plus" },
-            "bytedance-seed-code": { "name": "ByteDance Seed Code" },
-            "bytedance-glm-5.2": { "name": "ByteDance GLM 5.2" },
-            "bytedance-dola-seed-2.0-code": { "name": "ByteDance Dola 2.0 Code" },
-            "bytedance-dola-seed-2.0-pro": { "name": "ByteDance Dola 2.0 Pro" },
-            "bytedance-deepseek-v4-flash": { "name": "ByteDance DeepSeek V4 Flash" }
-          }
+          "models": {{ $models | toJson }}
         }
       },
-      "model": "litellm/deepseek-v4-flash-direct",
-      "default_agent": "sisyphus",
-      "plugin": ["oh-my-openagent@5.0.0-beta.48"],
+      "model": "{{ .Values.opencode.defaultModel }}",
+      "default_agent": "{{ .Values.opencode.defaultAgent }}",
+      "plugin": ["{{ .Values.opencode.plugin }}"],
       "mcp": {
         "plane": {
           "type": "local",
@@ -113,10 +103,11 @@ data:
         "github*": false
       },
       "agent": {
-        "sisyphus": { "tools": { "plane*": true, "github*": true } },
-        "hephaestus": { "tools": { "plane*": true, "github*": true } },
-        "prometheus": { "tools": { "plane*": true, "github*": true } },
-        "atlas": { "tools": { "plane*": true, "github*": true } }
+        {{- $agentNames := .Values.opencode.mcpToolAgents -}}
+        {{- range $i, $name := $agentNames -}}
+        {{- if gt $i 0 }},{{ end }}
+        "{{ $name }}": { "tools": { "plane*": true, "github*": true } }
+        {{- end }}
       }
     }
   # OMO runtime config (boot-copied to ~/.omo/omo.jsonc; OMO rewrites it —
@@ -131,70 +122,24 @@ data:
       "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/omo.schema.json",
       "[opencode]": {
         "categories": {
-          "quick":      { "model": "litellm/deepseek-v4-flash", "fallback_models": ["litellm/minimax-m3", "litellm/claude-haiku-4-5"] },
-          "default":    { "model": "litellm/minimax-m3", "fallback_models": ["litellm/glm-5.3", "litellm/claude-sonnet-5", "litellm/bytedance-glm-5.2"] },
-          "deep":       { "model": "litellm/minimax-m3", "fallback_models": ["litellm/glm-5.3", "litellm/claude-sonnet-5", "litellm/bytedance-dola-seed-2.0-pro"] },
-          "ultrabrain": { "model": "litellm/claude-opus-5", "fallback_models": ["litellm/glm-5.3", "litellm/bytedance-seed-code"] },
-          "visual":     { "model": "litellm/gemini-3.6-flash", "fallback_models": ["litellm/qwen3-6-plus", "litellm/claude-sonnet-5"] },
-          "writing":    { "model": "litellm/minimax-m3", "fallback_models": ["litellm/claude-sonnet-5"] }
+        {{- $catNames := keys .Values.opencode.categories -}}
+        {{- range $i, $name := $catNames -}}
+        {{- $cat := index $.Values.opencode.categories $name -}}
+        {{- if gt $i 0 }},
+        {{- end }}
+          "{{ $name }}": { "models": {{ toJson $cat.models }} }
+        {{- end }}
         },
         "agents": {
-          "sisyphus": {
-            "model": "litellm/deepseek-v4-flash-direct",
-            "fallback_models": ["litellm/claude-sonnet-5", "litellm/bytedance-glm-5.2"]
-          },
-          "hephaestus": {
-            "model": "litellm/minimax-m3",
-            "fallback_models": ["litellm/glm-5.3", "litellm/claude-sonnet-5", "litellm/bytedance-dola-seed-2.0-code"]
-          },
-          "oracle": {
-            "model": "litellm/claude-opus-5",
-            "fallback_models": ["litellm/glm-5.3", "litellm/bytedance-seed-code"]
-          },
-          "prometheus": {
-            "model": "litellm/minimax-m3",
-            "fallback_models": ["litellm/deepseek-v4-pro", "litellm/claude-sonnet-5", "litellm/bytedance-glm-5.2"]
-          },
-          "metis": {
-            "model": "litellm/minimax-m3",
-            "fallback_models": ["litellm/deepseek-v4-pro", "litellm/claude-sonnet-5", "litellm/bytedance-glm-5.2"]
-          },
-          "momus": {
-            "model": "litellm/minimax-m3",
-            "fallback_models": ["litellm/glm-5.3", "litellm/claude-sonnet-5", "litellm/bytedance-dola-seed-2.0-pro"]
-          },
-          "atlas": {
-            "model": "litellm/minimax-m3",
-            "fallback_models": ["litellm/deepseek-v4-pro", "litellm/claude-sonnet-5", "litellm/bytedance-dola-seed-2.0-pro"]
-          },
-          "explore": {
-            "model": "litellm/deepseek-v4-flash",
-            "fallback_models": ["litellm/minimax-m3", "litellm/claude-haiku-4-5", "litellm/bytedance-deepseek-v4-flash"]
-          },
-          "librarian": {
-            "model": "litellm/deepseek-v4-flash",
-            "fallback_models": ["litellm/minimax-m3", "litellm/claude-haiku-4-5", "litellm/bytedance-deepseek-v4-flash"]
-          },
-          "multimodal-looker": {
-            "model": "litellm/gemini-3.6-flash",
-            "fallback_models": ["litellm/qwen3-6-plus", "litellm/claude-sonnet-5", "litellm/bytedance-seed-code"]
-          },
-          "sisyphus-junior": {
-            "model": "litellm/deepseek-v4-flash",
-            "fallback_models": ["litellm/minimax-m3", "litellm/claude-haiku-4-5", "litellm/bytedance-deepseek-v4-flash"]
-          }
+        {{- $agentKeys := keys .Values.opencode.agents -}}
+        {{- range $i, $name := $agentKeys -}}
+        {{- $agent := index $.Values.opencode.agents $name -}}
+        {{- if gt $i 0 }},
+        {{- end }}
+          "{{ $name }}": { "models": {{ toJson $agent.models }} }
+        {{- end }}
         },
-        "background_task": {
-          "defaultConcurrency": 8
-        },
-        "runtime_fallback": {
-          "enabled": true,
-          "retry_on_errors": [400, 401, 403, 404, 429, 500, 502, 503, 504],
-          "max_fallback_attempts": 3,
-          "cooldown_seconds": 30,
-          "timeout_seconds": 30,
-          "notify_on_fallback": false,
-          "restore_primary_after_cooldown": true
-        }
+        "background_task": {{ toJson .Values.opencode.backgroundTask }},
+        "runtime_fallback": {{ toJson .Values.opencode.runtimeFallback }}
       }
     }
