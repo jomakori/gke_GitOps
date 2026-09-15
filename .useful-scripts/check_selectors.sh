@@ -1,17 +1,28 @@
 #!/usr/bin/env bash
 #
-# check_selectors.sh — org-wide guard for the
-# "Deployment selector doesn't match pod template labels" class of bug
-# that ArgoCD can't fix (selector is immutable; only delete+recreate works).
+# check_selectors.sh — org-wide guard for two selector classes that ArgoCD
+# cannot repair for you:
+#
+#   1. "selector doesn't match pod template labels" — the Deployment is invalid
+#      and every sync fails until the selector is corrected.
+#   2. "selector carries a version-bearing key" (helm.sh/chart,
+#      app.kubernetes.io/managed-by, app.kubernetes.io/version) — the chart
+#      renders clean and the keys still match, so NO render-time gate sees it,
+#      but a Deployment's spec.selector is IMMUTABLE: the next chart version
+#      bump makes ArgoCD fail with
+#        spec.selector: Invalid value: {...}: field is immutable
+#      and the only repair is deleting and recreating the workload. A Service
+#      selector with the same key is not immutable, but it churns endpoints on
+#      every version bump for no benefit.
 #
 # Usage: check_selectors.sh <rendered-manifest.yaml>
 #
-# For every Deployment, StatefulSet, DaemonSet, ReplicaSet, Job, CronJob in
-# the file, verify that EVERY key in spec.selector.matchLabels is present in
-# spec.template.metadata.labels. Mismatches cause ArgoCD sync to fail with
-# "spec.selector: Invalid value: field is immutable".
+# For every Deployment, StatefulSet, DaemonSet, ReplicaSet, Job, CronJob in the
+# file, verify that EVERY key in the selector is present in
+# spec.template.metadata.labels. For those kinds AND every Service, verify the
+# selector carries no version-bearing key.
 #
-# Exit code 0 = all selectors valid. Non-zero = at least one mismatch.
+# Exit code 0 = all selectors valid. Non-zero = at least one problem.
 
 set -euo pipefail
 
@@ -33,8 +44,8 @@ if [ -z "$yq_bin" ]; then
 fi
 
 workload_kinds="Deployment StatefulSet DaemonSet ReplicaSet Job CronJob"
+selector_kinds="$workload_kinds Service"
 errors=0
-warnings=0
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
@@ -51,7 +62,7 @@ for ((idx=0; idx<total_docs; idx++)); do
   [ -s "$tmpdir/doc.yaml" ] || continue
 
   kind=$("$yq_bin" eval '.kind // ""' "$tmpdir/doc.yaml")
-  case " $workload_kinds " in
+  case " $selector_kinds " in
     *" $kind "*) ;;
     *) continue ;;
   esac
@@ -59,9 +70,39 @@ for ((idx=0; idx<total_docs; idx++)); do
   name=$("$yq_bin" eval '.metadata.name // ""' "$tmpdir/doc.yaml")
   namespace=$("$yq_bin" eval '.metadata.namespace // "default"' "$tmpdir/doc.yaml")
 
-  # Check selector exists
-  selector=$("$yq_bin" eval '.spec.selector.matchLabels // {}' "$tmpdir/doc.yaml" 2>/dev/null)
+  # A Service carries its selector at spec.selector; a workload at
+  # spec.selector.matchLabels.
+  if [ "$kind" = "Service" ]; then
+    selector_path=".spec.selector"
+    selector_label="spec.selector"
+  else
+    selector_path=".spec.selector.matchLabels"
+    selector_label="spec.selector.matchLabels"
+  fi
+
+  selector=$("$yq_bin" eval "$selector_path // {}" "$tmpdir/doc.yaml" 2>/dev/null)
   if [ "$selector" = "{}" ] || [ -z "$selector" ] || [ "$selector" = "null" ]; then
+    continue
+  fi
+
+  # Version-bearing labels must never be in a selector. This is an ERROR, not a
+  # warning: every chart in this repo is now clean (claude-proxy #202,
+  # hermes-webui #205), so a regression has to fail the build rather than pass
+  # with a note — the whole defect is that nothing else sees it. Fixing a chart
+  # that regresses here is itself a delete-and-recreate, so the time to catch it
+  # is before it merges.
+  while IFS= read -r k; do
+    [ -z "$k" ] && continue
+    case "$k" in
+      helm.sh/chart|app.kubernetes.io/managed-by|app.kubernetes.io/version)
+        echo "::error::$kind $namespace/$name $selector_label carries version-bearing key '$k' — a chart version bump makes this an immutable-selector failure (workloads) or needless endpoint churn (Services); keep it on metadata/pod labels only"
+        errors=$((errors+1))
+        ;;
+    esac
+  done < <("$yq_bin" eval "$selector_path | keys | .[]" "$tmpdir/doc.yaml" 2>/dev/null)
+
+  # The subset check applies only to workloads: a Service has no pod template.
+  if [ "$kind" = "Service" ]; then
     continue
   fi
 
@@ -83,37 +124,15 @@ for ((idx=0; idx<total_docs; idx++)); do
     [ -z "$k" ] && continue
     has=$("$yq_bin" eval ".spec.template.metadata.labels | has(\"$k\")" "$tmpdir/doc.yaml" 2>/dev/null)
     if [ "$has" != "true" ]; then
-      echo "::error::$kind $namespace/$name selector.matchLabels key '$k' is NOT in spec.template.metadata.labels — ArgoCD will fail to apply (immutable selector)"
+      echo "::error::$kind $namespace/$name spec.selector.matchLabels key '$k' is NOT in spec.template.metadata.labels — ArgoCD will fail to apply (immutable selector)"
       errors=$((errors+1))
     fi
-  done < <("$yq_bin" eval '.spec.selector.matchLabels | keys | .[]' "$tmpdir/doc.yaml" 2>/dev/null)
-
-  # Version-bearing labels must never be in a selector: spec.selector is
-  # IMMUTABLE, so a chart version bump changes the rendered selector and every
-  # subsequent ArgoCD sync fails with
-  #   spec.selector: Invalid value: {...}: field is immutable
-  # (hit live by claude-proxy-0.1.0 -> 0.2.0; the Deployment then has to be
-  # deleted and recreated). Non-fatal here because fixing a chart that is
-  # already in this state is itself a replace — see the warning, fix on a
-  # deliberate change.
-  while IFS= read -r k; do
-    case "$k" in
-      helm.sh/chart|app.kubernetes.io/managed-by|app.kubernetes.io/version)
-        echo "::warning::$kind $namespace/$name selector.matchLabels carries version-bearing key '$k' — a chart version bump will fail as an immutable selector; move it to spec.template.metadata.labels only"
-        warnings=$((warnings+1))
-        ;;
-    esac
   done < <("$yq_bin" eval '.spec.selector.matchLabels | keys | .[]' "$tmpdir/doc.yaml" 2>/dev/null)
 done
 
 if [ "$errors" -gt 0 ]; then
-  echo "::error::$errors selector/label mismatch(es) found"
+  echo "::error::$errors selector problem(s) found"
   exit 1
 fi
 
-if [ "$warnings" -gt 0 ]; then
-  echo "All selectors match pod template labels, but $warnings selector(s) carry version-bearing labels (see warnings above)."
-  exit 0
-fi
-
-echo "All selectors match pod template labels."
+echo "All selectors match pod template labels and carry no version-bearing keys."
