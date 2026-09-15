@@ -141,6 +141,18 @@ services:
     syncOptions:
       - CreateNamespace=true
     skipSchemaValidation: true
+    # The MCP preflight runs as a PostSync hook and fails the sync when a server
+    # does not come up. With the default limit of 1, one failure exhausts the
+    # retry budget and the app sits OutOfSync/Degraded with no further attempt -
+    # so a subsequent commit that fixes the gate is never applied without a
+    # manual sync. Several gate failures are genuinely transient (the drift job
+    # has caught kiwi returning "initialize HTTP 503: upstream connect error ...
+    # connection timeout"), and those deserve a retry.
+    #
+    # Known limitation: this does not make a permanently-red gate recover. If the
+    # gate keeps failing, the sync stays Failed and still needs a manual sync -
+    # by design, since a gate that cannot fail a sync is not a gate.
+    retryLimit: 5
     ignoreDifferences:
       # HPA writes live .spec.replicas on the litellm Deployment; ArgoCD
       # selfHeal would fight it into a perpetual sync loop. Ignore the field.
