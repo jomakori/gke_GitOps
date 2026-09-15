@@ -13,7 +13,7 @@ spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "hermes-webui.labels" . | nindent 6 }}
+      {{- include "hermes-webui.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: hermes-webui
   template:
     metadata:
