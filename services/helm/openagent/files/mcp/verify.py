@@ -75,10 +75,40 @@ def expand(value: Any, env: dict[str, str], missing: set[str]) -> str:
 # ── stdio transport ───────────────────────────────────────────────────────────
 
 
+# The native MCP client does not hand stdio children the full environment: it
+# passes a safe baseline (PATH/HOME/USER/LANG/LC_ALL/TERM/SHELL/TMPDIR plus
+# XDG_*) and forwards everything else only when the server declares it under
+# `env`. Passing os.environ here made this verifier report a false green — it
+# certified servers that production could not start, because the client strips
+# far more than this process does. Mirror the client so a pass here means a
+# pass there.
+BASELINE_ENV_KEYS = (
+    "PATH",
+    "HOME",
+    "USER",
+    "LANG",
+    "LC_ALL",
+    "TERM",
+    "SHELL",
+    "TMPDIR",
+)
+
+
+def baseline_env() -> dict[str, str]:
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key in BASELINE_ENV_KEYS or key.startswith("XDG_")
+    }
+    env.setdefault("PATH", "/usr/local/bin:/usr/bin:/bin")
+    env.setdefault("HOME", os.path.expanduser("~"))
+    return env
+
+
 class Stdio:
     def __init__(self, server: dict[str, Any]) -> None:
         self._missing: set[str] = set()
-        child_env = dict(os.environ)
+        child_env = baseline_env()
         for key, value in (server.get("env") or {}).items():
             child_env[str(key)] = expand(value, child_env, self._missing)
         self.missing = self._missing
