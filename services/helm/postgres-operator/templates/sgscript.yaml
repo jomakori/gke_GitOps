@@ -1,0 +1,26 @@
+{{- if .Values.renderClusters }}
+{{- range $name, $c := .Values.postgres.clusters }}
+{{- if and $c.managedSqlScript $c.users }}
+apiVersion: stackgres.io/v1
+kind: SGScript
+metadata:
+  name: {{ $c.managedSqlScript }}
+  namespace: {{ $c.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  # Init SQL for roles/DBs that StackGres does not manage via spec.users
+  # (shorthand users: passwordKey/initSqlKey). SQL (incl. password) comes
+  # from Doppler key <initSqlKey> via the pg-secrets Secret.
+  scripts:
+    {{- range $u := $c.users }}
+    - name: init-{{ $u.name }}
+      scriptFrom:
+        secretKeyRef:
+          name: pg-secrets
+          key: {{ $u.initSqlKey | quote }}
+    {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

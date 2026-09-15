@@ -1,0 +1,17 @@
+{{- if .Values.renderClusters }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+  labels:
+    argocd.argoproj.io/respect-existing: "true"
+{{- end }}
+---
+{{- if .Values.renderOperator }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: postgres-operator
+  labels:
+    argocd.argoproj.io/respect-existing: "true"
+{{- end }}

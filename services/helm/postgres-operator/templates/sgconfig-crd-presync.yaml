@@ -1,3 +1,4 @@
+{{- if .Values.renderOperator }}
 ---
 # Pre-install workaround: the upstream StackGres hook uses `kubectl replace` for
 # the SGConfig CRD, which fails on a fresh cluster because the CRD does not exist.
@@ -48,3 +49,4 @@ spec:
         - name: sgconfig-crd
           configMap:
             name: {{ .Release.Name }}-sgconfig-crd-bootstrap
+{{- end }}

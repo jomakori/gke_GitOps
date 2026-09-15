@@ -1,0 +1,49 @@
+{{- if .Values.renderClusters }}
+{{- range $name, $c := .Values.postgres.clusters }}
+apiVersion: stackgres.io/v1
+kind: SGCluster
+metadata:
+  name: {{ $name }}
+  namespace: {{ $c.namespace }}
+  annotations:
+    {{- if $c.syncWave }}
+    argocd.argoproj.io/sync-wave: {{ $c.syncWave | quote }}
+    {{- else }}
+    argocd.argoproj.io/sync-wave: "0"
+    {{- end }}
+spec:
+  instances: {{ $c.instances }}
+  postgres:
+    version: {{ $c.version | quote }}
+  profile: {{ $c.profile | quote }}
+  pods:
+    persistentVolume:
+      size: {{ $c.storage }}
+      {{- if $c.storageClass }}
+      storageClass: {{ $c.storageClass }}
+      {{- end }}
+    disableMetricsExporter: {{ $c.disableMetricsExporter }}
+    disableConnectionPooling: {{ $c.disableConnectionPooling }}
+  configurations:
+    sgPostgresConfig: {{ $c.configName | quote }}
+    sgPoolingConfig: {{ $c.poolingConfigName | quote }}
+    {{- if $c.backups.enabled }}
+    backups:
+      - cronSchedule: {{ $c.backups.cronSchedule | quote }}
+        retention: {{ $c.backups.retention }}
+        sgObjectStorage: {{ $name }}-storage
+    {{- end }}
+  {{- if $c.managedSqlScript }}
+  managedSql:
+    scripts:
+      - id: 0
+        sgScript: {{ $c.managedSqlScript }}
+  {{- end }}
+  {{- /* spec.users only for full-form users (password.secretKeyRef); shorthand users (passwordKey/initSqlKey) are SGScript input only (old pg-main parity) */ -}}
+  {{- if and $c.users (index $c.users 0).password }}
+  users:
+    {{- toYaml $c.users | nindent 4 }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}

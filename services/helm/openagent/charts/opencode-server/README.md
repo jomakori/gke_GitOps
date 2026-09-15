@@ -22,6 +22,8 @@ OpenCode headless server (the oh-my-opencode agent harness) as its own pod, so a
 | resources.limits.memory | string | `"6Gi"` |  |
 | resources.requests.cpu | string | `"2"` |  |
 | resources.requests.memory | string | `"6Gi"` |  |
+| securityContext.runAsGroup | int | `10000` |  |
+| securityContext.runAsUser | int | `10000` |  |
 | service.port | int | `4096` |  |
 
 ----------------------------------------------

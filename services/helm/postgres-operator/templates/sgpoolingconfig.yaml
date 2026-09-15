@@ -1,8 +1,10 @@
+{{- if .Values.renderClusters }}
+{{- range $name, $c := .Values.postgres.clusters }}
 apiVersion: stackgres.io/v1
 kind: SGPoolingConfig
 metadata:
-  name: {{ .Values.postgres.poolingConfigName | default "openagent-pg-pooling" }}
-  namespace: {{ .Values.namespace }}
+  name: {{ $c.poolingConfigName }}
+  namespace: {{ $c.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
 spec:
@@ -11,3 +13,6 @@ spec:
       pgbouncer:
         pool_mode: transaction
         max_client_conn: "100"
+---
+{{- end }}
+{{- end }}
