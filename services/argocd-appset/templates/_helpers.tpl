@@ -13,7 +13,12 @@
 {{- end -}}
 {{- $name := $cfg.name | default (lower (regexReplaceAll "([a-z])([A-Z])" (toString .key) "${1}-${2}" | lower)) -}}
 {{- $helmPath := $cfg.helmPath | default (printf "services/helm/%s" $name) -}}
-{{- $destNamespace := $cfg.destNamespace | default $name -}}
+{{- /* destNamespace: "" = cluster-scope. sprig `default` treats "" as empty,
+      so default only when the key is ABSENT — not when explicitly "" */ -}}
+{{- if not (hasKey $cfg "destNamespace") -}}
+{{-   $_ := set $cfg "destNamespace" $name -}}
+{{- end -}}
+{{- $destNamespace := $cfg.destNamespace -}}
 {{- $dopplerConfig := $cfg.dopplerConfig | default (printf "svc_%s" $name) -}}
 {{- $namespace := $cfg.argocdNamespace | default (printf "%s" ($root.Values.argoNamespace | default "argocd")) -}}
 {{- $project := $cfg.argoProject | default (printf "%s" ($root.Values.argoProject | default "default")) -}}

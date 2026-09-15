@@ -1,0 +1,29 @@
+{{- if .Values.renderClusters }}
+{{- range $name, $c := .Values.postgres.clusters }}
+{{- if $c.backups.enabled }}
+apiVersion: stackgres.io/v1beta1
+kind: SGObjectStorage
+metadata:
+  name: {{ $name }}-storage
+  namespace: {{ $c.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  type: s3Compatible
+  s3Compatible:
+    bucket: {{ $c.backups.bucket }}
+    region: {{ $c.backups.region }}
+    endpoint: {{ $c.backups.endpoint }}
+    enablePathStyleAddressing: true
+    awsCredentials:
+      secretKeySelectors:
+        accessKeyId:
+          name: {{ $c.backups.credentialsSecret }}
+          key: R2_ACCESS_KEY_ID
+        secretAccessKey:
+          name: {{ $c.backups.credentialsSecret }}
+          key: R2_SECRET_ACCESS_KEY
+---
+{{- end }}
+{{- end }}
+{{- end }}

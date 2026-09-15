@@ -1,0 +1,16 @@
+{{- if .Values.renderClusters }}
+{{- range $name, $c := .Values.postgres.clusters }}
+apiVersion: stackgres.io/v1
+kind: SGPostgresConfig
+metadata:
+  name: {{ $c.configName }}
+  namespace: {{ $c.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  postgresVersion: {{ $c.version | quote }}
+  postgresql.conf:
+    timezone: "America/Chicago"
+---
+{{- end }}
+{{- end }}

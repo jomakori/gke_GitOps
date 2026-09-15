@@ -1,7 +1,14 @@
 dopplerConfig: "svc_postgres_operator"
 
+# Feature gates — the appset splits this chart across two Applications:
+#   renderOperator=true  + renderClusters=false  → operator only (ns postgres-operator)
+#   renderOperator=false + renderClusters=true   → clusters only (cluster-scope)
+renderOperator: true
+renderClusters: true
+
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
 stackgresOperator:
+  enabled: true
   # opt for virtualService
   adminui:
     service:
@@ -60,3 +67,77 @@ stackgresOperator:
   # └─────────────────────────────────────────────────────────────────────────────┘
   backupStorage:
     enabled: false
+
+# StackGres clusters owned by this chart. Each entry = one SGCluster +
+# SGPostgresConfig + SGPoolingConfig + optional SGObjectStorage/backups.
+# DB roles/DBs/connection secrets for shorthand users (passwordKey/initSqlKey)
+# are created via SGScript + ExternalSecret, owned by this chart too (parity
+# with the old pg-main chart) — see services/helm/openagent for full-form users.
+postgres:
+  clusters:
+    pg-main:
+      namespace: data
+      storageClass: local-path
+      instances: 1
+      storage: 15Gi
+      version: "18"
+      profile: "development"
+      disableMetricsExporter: true
+      disableConnectionPooling: true
+      configName: pg-main-config
+      poolingConfigName: pg-main-pooling
+      managedSqlScript: plane-pg-init    # SGScript rendered by this chart from users below
+      users:
+        - name: plane
+          passwordKey: PLANE_PG_PASSWORD
+          initSqlKey: PLANE_INIT_SQL
+          databases:
+            - name: plane
+      backups:
+        enabled: true
+        cronSchedule: "0 2 */2 * *"           # EVERY 2 DAYS @02:00 (centralized cluster — user requirement)
+        retention: 4
+        bucket: stackgres-pg-main
+        endpoint: https://f8caac5c12d315d3690fd6df74cacdb9.r2.cloudflarestorage.com
+        region: auto
+        credentialsSecret: pg-secrets          # in ns data, rendered by this chart (dataFrom find-all)
+        credentialsSecretManagedByOperator: false
+        createStorageAccountSecret: false
+    openagent-pg:
+      namespace: openagent
+      storageClass: local-path
+      instances: 1
+      storage: 5Gi
+      version: "18"
+      profile: "development"
+      disableMetricsExporter: true
+      disableConnectionPooling: true
+      configName: openagent-pg-config
+      poolingConfigName: openagent-pg-pooling
+      managedSqlScript: openagent-pg-init     # rendered by openagent chart (creds owner)
+      syncWave: "-1"
+      # StackGres 1.18 still honors SGCluster.spec.users on this cluster (verified live).
+      users:
+        - name: openagent
+          password:
+            secretKeyRef:
+              name: openagent-secrets
+              key: OPENAGENT_PG_PASSWORD
+          superuser: true
+          createdb: true
+          createrole: true
+          login: true
+          inherit: true
+          databases:
+            - name: litellm
+              owner: true
+      backups:
+        enabled: true
+        cronSchedule: "0 2 */2 * *"           # EVERY 2 DAYS @02:00 (user requirement)
+        retention: 4
+        bucket: stackgres-pg-main          # shared bucket (only one exists; StackGres keys are cluster-prefixed)
+        endpoint: https://f8caac5c12d315d3690fd6df74cacdb9.r2.cloudflarestorage.com
+        region: auto
+        credentialsSecret: pg-secrets         # in ns openagent, rendered by this chart (below)
+        credentialsSecretManagedByOperator: true
+        createStorageAccountSecret: true

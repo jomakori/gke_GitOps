@@ -122,7 +122,7 @@ services:
 
   openagent:
     enable: true
-    syncWave: "0"
+    syncWave: "5"
     destNamespace: openagent
     managedNamespaceMetadata:
       labels:
@@ -162,29 +162,6 @@ services:
         namespace: openagent
         jsonPointers:
           - /spec/replicas
-      - group: stackgres.io
-        kind: SGPostgresConfig
-        name: openagent-pg-config
-        namespace: openagent
-        jsonPointers:
-          - /spec/postgresql.conf
-      - group: stackgres.io
-        kind: SGCluster
-        name: openagent-pg
-        namespace: openagent
-        jsonPointers:
-          - /spec/configurations/observability
-          - /spec/pods/disableEnvoy
-          - /spec/pods/disablePostgresUtil
-          - /spec/pods/managementPolicy
-          - /spec/pods/updateStrategy
-          - /spec/postgres/flavor
-          - /spec/postgres/ssl
-          - /spec/postgresServices
-          - /spec/replication
-          - /spec/sgInstanceProfile
-          - /spec/users
-          - /spec/managedSql
 
   # Wave 3 — Edge infrastructure (after istio for backend routing)
   cloudflareTunnel:
@@ -234,11 +211,19 @@ services:
         jqPathExpressions:
           - .
 
+  # Wave 4 — StackGres operator only (upstream subchart + operator admin ES + SGConfig hook).
+  # Cluster CRs live in the separate cluster-scope app `postgresClusters` below —
+  # a namespaced app can only manage resources in its own namespace.
   postgresOperator:
     enable: true
     syncWave: "4"
     argocdNamespace: argocd
     argoProject: default
+    destNamespace: postgres-operator
+    dopplerConfig: "svc_postgres_operator"
+    parameters:
+      - name: renderClusters
+        value: "false"
     syncOptions:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
@@ -247,9 +232,6 @@ services:
     retryLimit: 2
     retryMaxDuration: 3m
     skipCrds: true
-    managedNamespaceMetadata:
-      labels:
-        argocd.argoproj.io/respect-existing: "true"
     ignoreDifferences:
       - group: apiextensions.k8s.io
         kind: CustomResourceDefinition
@@ -262,21 +244,42 @@ services:
           - .spec.data[].remoteRef.decodingStrategy
           - .spec.data[].remoteRef.metadataPolicy
           - .spec.data[].remoteRef.nullBytePolicy
-    dopplerConfig: "svc_postgres_operator"
 
-  # Centralized PostgreSQL — shared SGCluster (data ns), per-service DBs via users list.
-  # Requires Doppler config svc_pg (R2 keys + per-service PG passwords) — user-side prereq.
-  pgMain:
+  # StackGres cluster resources (SGCluster/SGPostgresConfig/SGPoolingConfig/
+  # SGObjectStorage + SGScript + pg-secrets ExternalSecrets + Namespace data).
+  # Cluster-scope (destNamespace: "") so resources pin explicit namespaces
+  # (data, openagent). Renders with renderOperator=false + dependency disabled.
+  # finalizer: false — app removal must orphan the SGClusters, not cascade-delete
+  # them (same safety gate as the old pgMain entry).
+  postgresClusters:
     enable: true
     syncWave: "5"
-    destNamespace: data
+    argocdNamespace: argocd
+    argoProject: default
+    destNamespace: ""
+    finalizer: false
     dopplerConfig: "svc_postgres_operator"
-    retryLimit: 5
-    retryMaxDuration: 3m
+    parameters:
+      - name: renderOperator
+        value: "false"
+      - name: renderClusters
+        value: "true"
+      - name: stackgresOperator.enabled
+        value: "false"
     syncOptions:
-      - CreateNamespace=true
-      - SyncTimeoutSeconds=300
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+      - ServerSideApply=true
+    retryLimit: 2
+    retryMaxDuration: 3m
     ignoreDifferences:
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.data[].remoteRef.conversionStrategy
+          - .spec.data[].remoteRef.decodingStrategy
+          - .spec.data[].remoteRef.metadataPolicy
+          - .spec.data[].remoteRef.nullBytePolicy
       - group: stackgres.io
         kind: SGPostgresConfig
         name: pg-main-config
@@ -300,10 +303,32 @@ services:
           - /spec/sgInstanceProfile
           - /spec/users
           - /spec/managedSql
+      - group: stackgres.io
+        kind: SGPostgresConfig
+        name: openagent-pg-config
+        namespace: openagent
+        jsonPointers:
+          - /spec/postgresql.conf
+      - group: stackgres.io
+        kind: SGCluster
+        name: openagent-pg
+        namespace: openagent
+        jsonPointers:
+          - /spec/configurations/observability
+          - /spec/pods/disableEnvoy
+          - /spec/pods/disablePostgresUtil
+          - /spec/pods/managementPolicy
+          - /spec/pods/updateStrategy
+          - /spec/postgres/flavor
+          - /spec/postgres/ssl
+          - /spec/postgresServices
+          - /spec/replication
+          - /spec/sgInstanceProfile
+          - /spec/users
+          - /spec/managedSql
 
-    finalizer: false     # safety gate: deleting this Application must ORPHAN the SGCluster, never cascade-delete it
-  # Plane.so — kanban backend on pg-main (M2). Requires plane user/db in pg-main
-  # (users list) + PLANE_* keys in svc_postgres_operator.
+# Plane.so — kanban backend. Workloads only; pg-main cluster + creds are
+  # owned by the postgres-operator chart (postgresClusters app).
   plane:
     enable: true
     syncWave: "6"
