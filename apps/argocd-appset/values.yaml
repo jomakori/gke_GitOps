@@ -145,6 +145,12 @@ apps:
     finalizers:
       - resources-finalizer.argocd.argoproj.io
     selfHeal: true
+    # Same retry-exhaustion trap as openagent. This app's only blocker was the
+    # missing Doppler key ARGOCD_GITHUB_TOKEN, which its own ExternalSecret could
+    # not fetch - so its sync failed, consumed the single default retry, and left
+    # it OutOfSync with the ApplicationSet never created. Once the key existed the
+    # app still would not re-attempt without a manual sync.
+    retryLimit: 5
     syncOptions:
       - CreateNamespace=true
     # Inject the globals the preview chart expects. Values come from the
