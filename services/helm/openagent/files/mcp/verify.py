@@ -109,8 +109,19 @@ class Stdio:
     def __init__(self, server: dict[str, Any]) -> None:
         self._missing: set[str] = set()
         child_env = baseline_env()
+        # Placeholders resolve from the process environment — the secret bundle
+        # this Job receives via envFrom — falling back to values declared here.
+        # That is what the HTTP transport below does, and what the client does
+        # when it reads its secret scope. Resolving against child_env alone
+        # handed servers the literal string "${VAR}": the child env is
+        # deliberately just the baseline plus declarations, so a secret
+        # placeholder could never resolve. Doppler read
+        # DOPPLER_TOKEN="${MCP_DOPPLER_TOKEN}" as its token and died at startup
+        # ("Cached token appears invalid"), which is how this was caught.
+        lookup = {**os.environ, **child_env}
         for key, value in (server.get("env") or {}).items():
-            child_env[str(key)] = expand(value, child_env, self._missing)
+            child_env[str(key)] = expand(value, lookup, self._missing)
+            lookup[str(key)] = child_env[str(key)]
         self.missing = self._missing
         cmd = [str(server["command"])] + [str(a) for a in server.get("args", []) or []]
         self.proc = subprocess.Popen(
@@ -123,6 +134,15 @@ class Stdio:
         )
         self.stderr: list[str] = []
         self._diag: list[str] = []
+        if self._missing:
+            # A placeholder that resolves nowhere is handed to the server as the
+            # literal "${VAR}". Say so: doppler failed this way and the only
+            # trace was the server's own "Not authenticated" message, which
+            # reads like a bad credential rather than an unresolved template.
+            self._diag.append(
+                "unresolved env placeholder(s) passed literally: "
+                + ", ".join(sorted(self._missing))
+            )
         self._selector = selectors.DefaultSelector()
         self._selector.register(self.proc.stdout, selectors.EVENT_READ)
         self._buf = b""
