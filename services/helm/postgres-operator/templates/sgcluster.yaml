@@ -19,7 +19,7 @@ spec:
   pods:
     persistentVolume:
       size: {{ $c.storage }}
-      {{- if $c.storageClass }}
+{{- if $c.storageClass }}
       storageClass: {{ $c.storageClass }}
       {{- end }}
       {{- if $c.reclaimPolicy }}
