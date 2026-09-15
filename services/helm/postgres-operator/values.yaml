@@ -114,23 +114,8 @@ postgres:
       disableConnectionPooling: true
       configName: openagent-pg-config
       poolingConfigName: openagent-pg-pooling
-      managedSqlScript: openagent-pg-init     # rendered by openagent chart (creds owner)
+      managedSqlScript: openagent-pg-init     # rendered by openagent chart (creds owner; incl. role creation)
       syncWave: "-1"
-      # StackGres 1.18 still honors SGCluster.spec.users on this cluster (verified live).
-      users:
-        - name: openagent
-          password:
-            secretKeyRef:
-              name: openagent-secrets
-              key: OPENAGENT_PG_PASSWORD
-          superuser: true
-          createdb: true
-          createrole: true
-          login: true
-          inherit: true
-          databases:
-            - name: litellm
-              owner: true
       backups:
         enabled: true
         cronSchedule: "0 2 */2 * *"           # EVERY 2 DAYS @02:00 (user requirement)

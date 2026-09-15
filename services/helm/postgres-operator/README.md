@@ -69,16 +69,6 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.openagent-pg.storage | string | `"5Gi"` |  |
 | postgres.clusters.openagent-pg.storageClass | string | `"local-path"` |  |
 | postgres.clusters.openagent-pg.syncWave | string | `"-1"` |  |
-| postgres.clusters.openagent-pg.users[0].createdb | bool | `true` |  |
-| postgres.clusters.openagent-pg.users[0].createrole | bool | `true` |  |
-| postgres.clusters.openagent-pg.users[0].databases[0].name | string | `"litellm"` |  |
-| postgres.clusters.openagent-pg.users[0].databases[0].owner | bool | `true` |  |
-| postgres.clusters.openagent-pg.users[0].inherit | bool | `true` |  |
-| postgres.clusters.openagent-pg.users[0].login | bool | `true` |  |
-| postgres.clusters.openagent-pg.users[0].name | string | `"openagent"` |  |
-| postgres.clusters.openagent-pg.users[0].password.secretKeyRef.key | string | `"OPENAGENT_PG_PASSWORD"` |  |
-| postgres.clusters.openagent-pg.users[0].password.secretKeyRef.name | string | `"openagent-secrets"` |  |
-| postgres.clusters.openagent-pg.users[0].superuser | bool | `true` |  |
 | postgres.clusters.openagent-pg.version | string | `"18"` |  |
 | postgres.clusters.pg-main.backups.bucket | string | `"stackgres-pg-main"` |  |
 | postgres.clusters.pg-main.backups.createStorageAccountSecret | bool | `false` |  |

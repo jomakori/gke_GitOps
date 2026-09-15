@@ -39,11 +39,9 @@ spec:
       - id: 0
         sgScript: {{ $c.managedSqlScript }}
   {{- end }}
-  {{- /* spec.users only for full-form users (password.secretKeyRef); shorthand users (passwordKey/initSqlKey) are SGScript input only (old pg-main parity) */ -}}
-  {{- if and $c.users (index $c.users 0).password }}
-  users:
-    {{- toYaml $c.users | nindent 4 }}
-  {{- end }}
+  {{- /* NOTE: no spec.users — the SGCluster CRD (StackGres 1.18) schema has no users
+         field. Roles/DBs are created via managedSql SGScripts owned by each app chart
+         (shorthand users below are SGScript input only). */ -}}
 ---
 {{- end }}
 {{- end }}
