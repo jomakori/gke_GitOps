@@ -8,7 +8,16 @@ metadata:
     argocd.argoproj.io/sync-wave: "-1"
 spec:
   scripts:
-    - name: create-litellm-db
+    # SGCluster CRD (StackGres 1.18) has no spec.users — role must be created here.
+    # Password comes from the ESO-templated openagent-pg-init secret (OPENAGENT_PG_PASSWORD).
+    - id: 0
+      name: create-openagent-role
+      scriptFrom:
+        secretKeyRef:
+          name: openagent-pg-init
+          key: OPENAGENT_PG_INIT_SQL
+    - id: 1
+      name: create-litellm-db
       script: |
         DO $$
         BEGIN
