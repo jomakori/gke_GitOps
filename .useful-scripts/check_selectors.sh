@@ -34,6 +34,7 @@ fi
 
 workload_kinds="Deployment StatefulSet DaemonSet ReplicaSet Job CronJob"
 errors=0
+warnings=0
 
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
@@ -86,11 +87,33 @@ for ((idx=0; idx<total_docs; idx++)); do
       errors=$((errors+1))
     fi
   done < <("$yq_bin" eval '.spec.selector.matchLabels | keys | .[]' "$tmpdir/doc.yaml" 2>/dev/null)
+
+  # Version-bearing labels must never be in a selector: spec.selector is
+  # IMMUTABLE, so a chart version bump changes the rendered selector and every
+  # subsequent ArgoCD sync fails with
+  #   spec.selector: Invalid value: {...}: field is immutable
+  # (hit live by claude-proxy-0.1.0 -> 0.2.0; the Deployment then has to be
+  # deleted and recreated). Non-fatal here because fixing a chart that is
+  # already in this state is itself a replace — see the warning, fix on a
+  # deliberate change.
+  while IFS= read -r k; do
+    case "$k" in
+      helm.sh/chart|app.kubernetes.io/managed-by|app.kubernetes.io/version)
+        echo "::warning::$kind $namespace/$name selector.matchLabels carries version-bearing key '$k' — a chart version bump will fail as an immutable selector; move it to spec.template.metadata.labels only"
+        warnings=$((warnings+1))
+        ;;
+    esac
+  done < <("$yq_bin" eval '.spec.selector.matchLabels | keys | .[]' "$tmpdir/doc.yaml" 2>/dev/null)
 done
 
 if [ "$errors" -gt 0 ]; then
   echo "::error::$errors selector/label mismatch(es) found"
   exit 1
+fi
+
+if [ "$warnings" -gt 0 ]; then
+  echo "All selectors match pod template labels, but $warnings selector(s) carry version-bearing labels (see warnings above)."
+  exit 0
 fi
 
 echo "All selectors match pod template labels."

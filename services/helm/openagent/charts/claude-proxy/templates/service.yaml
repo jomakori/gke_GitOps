@@ -12,7 +12,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    {{- include "claude-proxy.labels" . | nindent 4 }}
+    {{- include "claude-proxy.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: claude-proxy
   ports:
     - port: {{ .Values.service.port }}
