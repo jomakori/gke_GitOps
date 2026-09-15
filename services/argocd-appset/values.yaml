@@ -308,6 +308,8 @@ services:
           - /spec/sgInstanceProfile
           - /spec/users
           - /spec/managedSql
+        jqPathExpressions:
+          - .spec.configurations.backups[].reconciliationTimeout
       - group: stackgres.io
         kind: SGPostgresConfig
         name: openagent-pg-config
@@ -332,6 +334,8 @@ services:
           - /spec/sgInstanceProfile
           - /spec/users
           - /spec/managedSql
+        jqPathExpressions:
+          - .spec.configurations.backups[].reconciliationTimeout
 
 # Plane.so — kanban backend. Workloads only; pg-main cluster + creds are
   # owned by the postgres-operator chart (postgresClusters app).
