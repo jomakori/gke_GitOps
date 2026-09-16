@@ -1,0 +1,37 @@
+# RBAC for tailnet user identities (human devices).
+#
+# The API server proxy runs in auth mode, so it impersonates each request using
+# the caller's Tailscale identity and Kubernetes RBAC decides what that identity
+# may do. An untagged user device is impersonated as its Tailscale login name,
+# which is what `tailnetAdminUsers` lists — tagged devices take the other path
+# and are handled in ci-rbac.yaml.
+#
+# Impersonation is per user identity, not per device: anything egressing as a
+# listed login gets these rights, including workloads that route through the
+# same tailnet node. That makes `tailnetAdminUsers` the revocation lever.
+#
+# This is an ordinary ClusterRoleBinding, so the grant is evaluated and logged
+# as normal RBAC and removing the entry (or the binding) withdraws it. Do not
+# mistake it for the built-in `system:masters` group: the apiserver honours that
+# group ahead of authorization, so it bypasses RBAC and cannot be revoked
+# through it. That bypass applies only where an identity is put *into*
+# system:masters — e.g. a grant that impersonates that group — not to binding
+# the cluster-admin ClusterRole, as done here.
+{{- if .Values.tailnetAdminUsers }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tailnet-user-k8s-admin
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  {{- range .Values.tailnetAdminUsers }}
+  - kind: User
+    name: {{ . | quote }}
+    apiGroup: rbac.authorization.k8s.io
+  {{- end }}
+{{- end }}

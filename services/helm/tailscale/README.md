@@ -15,6 +15,7 @@ Tailscale Kubernetes Operator
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | dopplerConfig | string | `"svc_tailscale"` |  |
+| tailnetAdminUsers[0] | string | `"joe3rdwash@gmail.com"` |  |
 | tailscale-operator.apiServerProxyConfig.mode | string | `"true"` |  |
 | tailscale-operator.oauth.clientId | string | `""` |  |
 | tailscale-operator.oauth.clientSecret | string | `""` |  |

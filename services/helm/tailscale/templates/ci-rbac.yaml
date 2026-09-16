@@ -8,9 +8,14 @@
 # to permissions for chart install tests (gke_GitOps) and Terraform
 # providers (devops_Terraform) to operate.
 #
-# NOTE: verify the impersonated user/group on the first CI run — a Forbidden
-# error names the exact identity. If it differs from tag:k8s, tighten this
-# binding accordingly.
+# Verified on the first CI run (helm_lint-test, 2026-09-16): the runner
+# authenticates as `github-runner<id>.<tailnet>.ts.net` with groups
+# [tag:k8s system:authenticated], so this binding matches the impersonated
+# identity exactly. That it is still in force is asserted on every run by
+# `kubectl auth can-i list namespaces` in that workflow, which exits non-zero
+# when the binding is gone. `kubectl auth whoami` would NOT catch that -- it
+# reports identity only, and SelfSubjectReview is granted to every
+# authenticated user via system:basic-user.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
