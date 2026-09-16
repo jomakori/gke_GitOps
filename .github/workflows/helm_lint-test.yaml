@@ -173,7 +173,14 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_kubeconform != false }}
         env:
           chart_input: ${{ inputs.chart }}
-          kube_version: ${{ inputs.kube_version }}
+          # `inputs.*` is EMPTY on pull_request events — only workflow_dispatch
+          # populates it. A bare `inputs.kube_version` therefore handed
+          # kubeconform `-kubernetes-version ""`, which it rejected by printing
+          # its usage and exiting 1; that failed the step and (because a failure
+          # skips every later step) took helm-unittest and selector-check down
+          # with it. The fallback mirrors the workflow_dispatch default declared
+          # at the top of this file.
+          kube_version: ${{ inputs.kube_version || '1.35.1' }}
         run: |
           # kubeconform catches malformed resources, missing required fields,
           # wrong field types — bugs that helm lint + helm template can't see.
