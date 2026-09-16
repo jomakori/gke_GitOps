@@ -69,12 +69,18 @@ openagent/                       ← umbrella
 ├── charts/
 │   ├── hermes-webui/            ← local subchart (web dashboard)
 │   └── claude-proxy/            ← local subchart (Claude Pro proxy)
-├── templates/                   ← CRDs + shared resources
-│   ├── omo/                     ← OMO agent fleet (agents, categories, fallbacks)
-│   ├── db/                      ← StackGres SGScript (cluster owned by postgres-operator chart)
-│   ├── hooks/                   ← hermes hook scripts
-│   ├── skills/                  ← skill ConfigMaps
-│   └── shared/                  ← ExternalSecrets, GHCR, VPA
+├── templates/                   ← flat manifests (condensed; no subdirs)
+│   ├── apps.yaml                ← dashboard-auth, hermes API svc, litellm VS, responses-proxy
+│   ├── boot.yaml                ← boot shim + hermes-tools Go sources (tools-src CM)
+│   ├── db.yaml                  ← StackGres SGScript (cluster owned by postgres-operator chart)
+│   ├── hermes.yaml              ← hermes mise config
+│   ├── hooks.yaml               ← MCP manifest CM + preflight Job + drift CronJob
+│   ├── k8s-gitops-context.yaml  ← skill ConfigMap
+│   ├── opencode.yaml            ← OMO agent fleet (agents, categories, fallbacks)
+│   ├── secrets.yaml             ← ExternalSecrets, GHCR pull secret, litellm/pg creds
+│   └── vpa.yaml                 ← VerticalPodAutoscaler
+├── extras/                      ← stdlib-only Go CLI hermes-tools (cmd/, internal/) + shims/
+├── files/                       ← (deleted: boot.sh, mcp/*.py, skills/ moved to extras/ or dropped)
 ├── values.yaml                  ← full config surface
 └── Chart.yaml                   ← 2 remote OCI + 2 local subchart deps
 ```
@@ -85,7 +91,7 @@ openagent/                       ← umbrella
 
 #### OMO Agent Fleet
 
-The cluster's AI workforce is an **11-agent OMO (Oh My OpenAgent) fleet**, generated into the **`openagent-opencode-config` ConfigMap** (`templates/omo/configmap-opencode-config.yaml`) from the `opencode:` values block (values.yaml) — the single source of truth for agent → model → fallback chain, category routing, and the Claude escalation policy. Model IDs live only in `litellm.proxy_config.model_list`; the template iterates it to build opencode.json provider models, so a model appears exactly once. Chains use the OMO `models` array (primary-first); runtime fallback on 429/5xx lives in `opencode.runtimeFallback`.
+The cluster's AI workforce is an **11-agent OMO (Oh My OpenAgent) fleet**, generated into the **`openagent-opencode-config` ConfigMap** (`templates/opencode.yaml`) from the `opencode:` values block (values.yaml) — the single source of truth for agent → model → fallback chain, category routing, and the Claude escalation policy. Model IDs live only in `litellm.proxy_config.model_list`; the template iterates it to build opencode.json provider models, so a model appears exactly once. Chains use the OMO `models` array (primary-first); runtime fallback on 429/5xx lives in `opencode.runtimeFallback`.
 
 Agents: sisyphus (orchestrator), hephaestus (coder), oracle (architect), prometheus (planner), metis (analyzer), momus (reviewer), atlas (coordinator), explore (explorer), librarian (researcher), multimodal-looker (vision), sisyphus-junior (trivial). Scribe has no OMO counterpart — writing work routes via the `writing` category / sisyphus. Each agent/category carries a primary model + fallback chain; Claude (opus-5) is escalation-only.
 
@@ -135,7 +141,7 @@ Browser
 
 The workspace web UI at `openagent.maklab.net` connects to two hermes-agent backends: the API server (`:8642`) for chat/sessions and the dashboard (`:9119`) for config/skills. Dashboard uses cookie-based basic auth with credentials from Doppler `svc_openagent`. See the [k8s-gitops-context skill](#) for connectivity modes and troubleshooting.
 
-See the `opencode:` block in `services/helm/openagent/values.yaml` (fleet agents, categories, routing chains) and `services/helm/openagent/templates/omo/configmap-opencode-config.yaml` (rendered opencode.json + omo.jsonc) for the agent fleet, category routing, and Claude escalation policy.
+See the `opencode:` block in `services/helm/openagent/values.yaml` (fleet agents, categories, routing chains) and `services/helm/openagent/templates/opencode.yaml` (rendered opencode.json + omo.jsonc) for the agent fleet, category routing, and Claude escalation policy.
 
 ### Apps
 

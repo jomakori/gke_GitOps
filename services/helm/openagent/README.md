@@ -21,7 +21,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 
 ## Skill Single-Source: k8s-gitops-context
 
-The `k8s-gitops-context` skill body is owned here, in `templates/skills/k8s-gitops-context.yaml`, and rendered for two runtimes via the `runtimeMode` value.
+The `k8s-gitops-context` skill body is owned here, in `templates/k8s-gitops-context.yaml`, and rendered for two runtimes via the `runtimeMode` value.
 
 | `runtimeMode` | Rendered For | Path Context | Repo Pair Variant | `Repo Locations` |
 |---------------|--------------|--------------|-------------------|---------------------|
@@ -49,18 +49,18 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 | Layer | What it does | Run by |
 |-------|--------------|--------|
 | **Static lint** — `scripts/validate-mcp-manifest.py` | No unpinned/`@latest` stdio package; every server has `connect_timeout`; every stdio server has `idle_timeout_seconds` + `max_lifetime_seconds`; every enabled server declares `resources`/`prompts` and a non-empty `tools.include`; parked servers stay present as `enabled: false`. | CI (`.github/workflows/helm_lint-test.yaml`) and the `validate-mcp-manifest` pre-commit hook. |
-| **Preflight Job** — `templates/hooks/job-mcp-preflight.yaml` | For every **enabled** server it does a real JSON-RPC `initialize` + `tools/list` (stdio or Streamable HTTP), asserts every declared `tools.include` tool is present, and fails loudly with the server's own stderr on failure. Gated by `mcpVerification.preflight.enabled`. | Helm/ArgoCD **PostSync** hook Job (after the PVC + boot toolchain exist). |
-| **Drift CronJob** — `templates/hooks/cronjob-mcp-verify.yaml` | Same handshake on `mcpVerification.cronjob.schedule` (default every 15 min); quiet when the live surface matches, prints + exits non-zero on drift. Gated by `mcpVerification.cronjob.enabled`. | In-cluster `CronJob`. |
+| **Preflight Job** — `templates/hooks.yaml` | For every **enabled** server it does a real JSON-RPC `initialize` + `tools/list` (stdio or Streamable HTTP), asserts every declared `tools.include` tool is present, and fails loudly with the server's own stderr on failure. Gated by `mcpVerification.preflight.enabled`. | Helm/ArgoCD **PostSync** hook Job (after the PVC + boot toolchain exist). |
+| **Drift CronJob** — `templates/hooks.yaml` | Same handshake on `mcpVerification.cronjob.schedule` (default every 15 min); quiet when the live surface matches, prints + exits non-zero on drift. Gated by `mcpVerification.cronjob.enabled`. | In-cluster `CronJob`. |
 
-The server definitions are rendered once into the `openagent-mcp-manifest` ConfigMap (from these same values) and consumed by both Jobs and by the gateway's boot pre-warm — there is no second server list to drift. The gateway never *started* a server at boot to warm caches: `files/mcp/prewarm.py` materialises each `npx`/`uvx` cache with a package-resolution command (`npm exec --package=<pkg> -- true`, `uv tool install`), runs every child in its own process group and hard-kills the group on timeout, and sweeps `_npx` orphans left by older boots.
+The server definitions are rendered once into the `openagent-mcp-manifest` ConfigMap (from these same values) and consumed by both Jobs and by the gateway's boot pre-warm — there is no second server list to drift. The gateway never *starts* a server at boot to warm caches: the `hermes-tools` `mcp prewarm` command (stdlib-only Go CLI compiled from `extras/` into the boot toolchain at `/opt/data/bin/hermes-tools`) materialises each `npx`/`uvx` cache with a package-resolution command (`npm exec --package=<pkg> -- true`, `uv tool install`), runs every child in its own process group and hard-kills the group on timeout, and sweeps `_npx` orphans left by older boots.
 
 Run the pieces locally:
 
 ```bash
 python3 scripts/validate-mcp-manifest.py services/helm/openagent/values.yaml
-# handshake the enabled servers against the live endpoints (needs the MCP env vars):
-python3 services/helm/openagent/files/mcp/verify.py \
-  --manifest <(helm template openagent services/helm/openagent --skip-schema-validation -s templates/hooks/configmap-mcp-manifest.yaml | yq 'select(.kind=="ConfigMap").data."mcp-manifest"') \
+# handshake the enabled servers (built from extras/, same binary the cluster jobs run):
+go run ./extras/cmd/hermes-tools mcp verify \
+  --manifest <(helm template openagent services/helm/openagent --skip-schema-validation | yq 'select(.kind=="ConfigMap" and .metadata.name=="openagent-mcp-manifest" ).data."mcp-manifest"') \
   --mode preflight
 ```
 
@@ -462,13 +462,6 @@ python3 services/helm/openagent/files/mcp/verify.py \
 | hermes-agent.extraVolumeMounts[0].mountPath | string | `"/opt/data/hooks/discord-session-link"` |  |
 | hermes-agent.extraVolumeMounts[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumeMounts[0].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[10].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard_auth_patch.py"` |  |
-| hermes-agent.extraVolumeMounts[10].name | string | `"dashboard-auth"` |  |
-| hermes-agent.extraVolumeMounts[10].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[10].subPath | string | `"dashboard_auth_patch.py"` |  |
-| hermes-agent.extraVolumeMounts[11].mountPath | string | `"/opt/data/mcp-verify"` |  |
-| hermes-agent.extraVolumeMounts[11].name | string | `"mcp-verify"` |  |
-| hermes-agent.extraVolumeMounts[11].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumeMounts[1].mountPath | string | `"/opt/data/.config/opencode/opencode.json"` |  |
 | hermes-agent.extraVolumeMounts[1].name | string | `"opencode-config"` |  |
 | hermes-agent.extraVolumeMounts[1].readOnly | bool | `true` |  |
@@ -481,47 +474,43 @@ python3 services/helm/openagent/files/mcp/verify.py \
 | hermes-agent.extraVolumeMounts[3].name | string | `"k8s-gitops-context"` |  |
 | hermes-agent.extraVolumeMounts[3].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumeMounts[3].subPath | string | `"k8s-gitops-context.md"` |  |
-| hermes-agent.extraVolumeMounts[4].mountPath | string | `"/opt/data/skills/us-tax-filing-automation/SKILL.md"` |  |
-| hermes-agent.extraVolumeMounts[4].name | string | `"skill-us-tax-filing-automation"` |  |
+| hermes-agent.extraVolumeMounts[4].mountPath | string | `"/mise"` |  |
+| hermes-agent.extraVolumeMounts[4].name | string | `"hermes-mise-config"` |  |
 | hermes-agent.extraVolumeMounts[4].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[4].subPath | string | `"us-tax-filing-automation.SKILL.md"` |  |
-| hermes-agent.extraVolumeMounts[5].mountPath | string | `"/opt/data/skills/plane-ticket-sync/SKILL.md"` |  |
-| hermes-agent.extraVolumeMounts[5].name | string | `"skill-plane-ticket-sync"` |  |
+| hermes-agent.extraVolumeMounts[5].mountPath | string | `"/opt/boot/boot.sh"` |  |
+| hermes-agent.extraVolumeMounts[5].name | string | `"boot-script"` |  |
 | hermes-agent.extraVolumeMounts[5].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[5].subPath | string | `"plane-ticket-sync.SKILL.md"` |  |
-| hermes-agent.extraVolumeMounts[6].mountPath | string | `"/opt/data/skills/plane-ticket-sync/scripts/plan_to_tickets.py"` |  |
-| hermes-agent.extraVolumeMounts[6].name | string | `"skill-plane-ticket-sync"` |  |
+| hermes-agent.extraVolumeMounts[5].subPath | string | `"boot.sh"` |  |
+| hermes-agent.extraVolumeMounts[6].mountPath | string | `"/opt/src"` |  |
+| hermes-agent.extraVolumeMounts[6].name | string | `"tools-src"` |  |
 | hermes-agent.extraVolumeMounts[6].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[6].subPath | string | `"plan_to_tickets.py"` |  |
-| hermes-agent.extraVolumeMounts[7].mountPath | string | `"/mise"` |  |
-| hermes-agent.extraVolumeMounts[7].name | string | `"hermes-mise-config"` |  |
+| hermes-agent.extraVolumeMounts[7].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard-auth.pth"` |  |
+| hermes-agent.extraVolumeMounts[7].name | string | `"dashboard-auth"` |  |
 | hermes-agent.extraVolumeMounts[7].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[8].mountPath | string | `"/opt/boot/boot.sh"` |  |
-| hermes-agent.extraVolumeMounts[8].name | string | `"boot-script"` |  |
+| hermes-agent.extraVolumeMounts[7].subPath | string | `"dashboard-auth.pth"` |  |
+| hermes-agent.extraVolumeMounts[8].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard_auth_patch.py"` |  |
+| hermes-agent.extraVolumeMounts[8].name | string | `"dashboard-auth"` |  |
 | hermes-agent.extraVolumeMounts[8].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[8].subPath | string | `"boot.sh"` |  |
-| hermes-agent.extraVolumeMounts[9].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard-auth.pth"` |  |
-| hermes-agent.extraVolumeMounts[9].name | string | `"dashboard-auth"` |  |
+| hermes-agent.extraVolumeMounts[8].subPath | string | `"dashboard_auth_patch.py"` |  |
+| hermes-agent.extraVolumeMounts[9].mountPath | string | `"/opt/data/mcp-verify"` |  |
+| hermes-agent.extraVolumeMounts[9].name | string | `"mcp-verify"` |  |
 | hermes-agent.extraVolumeMounts[9].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[9].subPath | string | `"dashboard-auth.pth"` |  |
 | hermes-agent.extraVolumes[0].configMap.name | string | `"openagent-hermes-hooks"` |  |
 | hermes-agent.extraVolumes[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumes[1].configMap.name | string | `"openagent-opencode-config"` |  |
 | hermes-agent.extraVolumes[1].name | string | `"opencode-config"` |  |
 | hermes-agent.extraVolumes[2].configMap.name | string | `"openagent-k8s-gitops-context"` |  |
 | hermes-agent.extraVolumes[2].name | string | `"k8s-gitops-context"` |  |
-| hermes-agent.extraVolumes[3].configMap.name | string | `"openagent-skill-us-tax-filing-automation"` |  |
-| hermes-agent.extraVolumes[3].name | string | `"skill-us-tax-filing-automation"` |  |
-| hermes-agent.extraVolumes[4].configMap.name | string | `"openagent-skill-plane-ticket-sync"` |  |
-| hermes-agent.extraVolumes[4].name | string | `"skill-plane-ticket-sync"` |  |
-| hermes-agent.extraVolumes[5].configMap.name | string | `"openagent-hermes-mise-config"` |  |
-| hermes-agent.extraVolumes[5].name | string | `"hermes-mise-config"` |  |
-| hermes-agent.extraVolumes[6].configMap.name | string | `"openagent-boot-script"` |  |
-| hermes-agent.extraVolumes[6].name | string | `"boot-script"` |  |
-| hermes-agent.extraVolumes[7].configMap.name | string | `"openagent-dashboard-auth"` |  |
-| hermes-agent.extraVolumes[7].name | string | `"dashboard-auth"` |  |
-| hermes-agent.extraVolumes[8].configMap.name | string | `"openagent-mcp-manifest"` |  |
-| hermes-agent.extraVolumes[8].name | string | `"mcp-verify"` |  |
+| hermes-agent.extraVolumes[3].configMap.name | string | `"openagent-hermes-mise-config"` |  |
+| hermes-agent.extraVolumes[3].name | string | `"hermes-mise-config"` |  |
+| hermes-agent.extraVolumes[4].configMap.name | string | `"openagent-boot-script"` |  |
+| hermes-agent.extraVolumes[4].name | string | `"boot-script"` |  |
+| hermes-agent.extraVolumes[5].configMap.name | string | `"openagent-tools-src"` |  |
+| hermes-agent.extraVolumes[5].name | string | `"tools-src"` |  |
+| hermes-agent.extraVolumes[6].configMap.name | string | `"openagent-dashboard-auth"` |  |
+| hermes-agent.extraVolumes[6].name | string | `"dashboard-auth"` |  |
+| hermes-agent.extraVolumes[7].configMap.name | string | `"openagent-mcp-manifest"` |  |
+| hermes-agent.extraVolumes[7].name | string | `"mcp-verify"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
 | hermes-agent.image.tag | string | `"v2026.7.7.2"` |  |

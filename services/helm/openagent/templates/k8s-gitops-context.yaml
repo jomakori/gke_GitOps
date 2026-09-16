@@ -710,7 +710,7 @@ data:
     ### OpenCode + OMO Agent Execution (replaces Hermes-native OMO fleet)
 
     > **Source of truth**: `openagent-opencode-config` ConfigMap
-    > (`templates/omo/configmap-opencode-config.yaml`). Two data keys:
+    > (`templates/opencode.yaml`). Two data keys:
     > `opencode.json` — global opencode config (`~/.config/opencode/
     > opencode.json`, mounted read-only) with the custom `litellm` provider →
     > in-cluster LiteLLM gateway + the oh-my-openagent (**OMO**) plugin
@@ -851,7 +851,7 @@ data:
     | `openagent-hermes-agent` | 9119 | dashboard | Hermes built-in dashboard: session cookies, config, skills admin |
     | `openagent-hermes-api` | 8642 | API | Chat completions, sessions, models, runs, capabilities |
 
-    **Why two Services**: The hermes-agent OCI subchart creates a single Service exposing only port 9119 (dashboard). Port 8642 (API server) is NOT exposed by the subchart's Service template. A separate `openagent-hermes-api` Service (`templates/shared/hermes-api-service.yaml`) was added to expose the API port.
+    **Why two Services**: The hermes-agent OCI subchart creates a single Service exposing only port 9119 (dashboard). Port 8642 (API server) is NOT exposed by the subchart's Service template. A separate `openagent-hermes-api` Service (`templates/apps.yaml`) was added to expose the API port.
 
     **Hermes dashboard auth** (`values.yaml` → `hermes-agent.extraEnv`):
     - `HERMES_DASHBOARD=1` — enables the dashboard process (s6-supervised)
@@ -933,7 +933,7 @@ data:
 
     ### Adding a Worker
 
-    **REMOVED**: The swarm controller and swarm workers were removed with the `hermes-workspace` subchart. There is no separate worker workload — the hermes-agent pod is the single agent. Heavy engineering executes via the `opencode` tool (hermes-opencode-plugin → `opencode run`), with OMO agents/models/fallback chains defined in the `openagent-opencode-config` ConfigMap (`templates/omo/configmap-opencode-config.yaml` → `omo.jsonc`). To change agents/models/fallbacks, edit that ConfigMap — there is no worker Deployment to modify.
+    **REMOVED**: The swarm controller and swarm workers were removed with the `hermes-workspace` subchart. There is no separate worker workload — the hermes-agent pod is the single agent. Heavy engineering executes via the `opencode` tool (hermes-opencode-plugin → `opencode run`), with OMO agents/models/fallback chains defined in the `openagent-opencode-config` ConfigMap (`templates/opencode.yaml` → `omo.jsonc`). To change agents/models/fallbacks, edit that ConfigMap — there is no worker Deployment to modify.
 
     ### OpenAgent Gotchas
 

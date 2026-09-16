@@ -1,3 +1,117 @@
+{{- if .Values.hermes.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-dashboard-auth
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  dashboard-auth.pth: |
+    import dashboard_auth_patch
+  dashboard_auth_patch.py: |
+    """Dashboard auth augmentation — password-only provider login.
+
+    Hermes dashboard auth supports two provider kinds: OAuth/portal flows and
+    password-only providers (BasicAuthProvider). The auto-SSO fast path in
+    ``_auto_sso_response`` (hermes_cli/dashboard_auth/middleware.py) bounces
+    unauthenticated document loads to the OAuth initiation route whenever
+    exactly ONE interactive provider is registered — but password-only
+    providers have no OAuth flow, so that route 500s (agent v2026.7.7.2).
+
+    This module installs the upstream fix (master middleware.py adds
+    ``if getattr(provider, "supports_password", False): return None``) at
+    site-init. Loaded via dashboard-auth.pth mounted into the agent venv
+    site-packages (site-init runs ``import dashboard_auth_patch`` in every
+    python process; the argv guard limits the patch to the dashboard process).
+
+    REMOVE this ConfigMap + its values mounts once the agent image includes
+    the upstream fix (the patch is inert after that point, but the mount
+    should go with it).
+    """
+
+    import sys
+
+
+    def _install() -> None:
+        if "dashboard" not in " ".join(sys.argv):
+            return
+        try:
+            from hermes_cli.dashboard_auth import middleware as _m
+        except Exception:
+            return  # not in this process env; nothing to patch
+        orig = getattr(_m, "_auto_sso_response", None)
+        if orig is None or getattr(orig, "_password_provider_patched", False):
+            return
+
+        def _patched(request):
+            try:
+                providers = _m.list_session_providers()
+                if len(providers) == 1 and getattr(
+                    providers[0], "supports_password", False
+                ):
+                    # Single password-only provider: no OAuth redirect flow —
+                    # fall through so the /login password form renders.
+                    return None
+            except Exception:
+                pass
+            return orig(request)
+
+        _patched._password_provider_patched = True
+        _m._auto_sso_response = _patched
+
+
+    _install()
+{{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openagent-hermes-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{ include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hermes-api
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: openagent
+    app.kubernetes.io/name: hermes-agent
+  ports:
+    - name: api
+      port: 8642
+      targetPort: 8642
+      protocol: TCP
+
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: litellm
+  namespace: istio-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  hosts:
+    - {{ .Values.litellmVirtualService.host | quote }}
+  gateways:
+    - maklab-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: {{ .Values.litellmVirtualService.destination.host }}
+            port:
+              number: {{ .Values.litellmVirtualService.destination.port }}
+
+---
 {{- if index .Values "claude-proxy" "enabled" }}
 apiVersion: v1
 kind: ConfigMap

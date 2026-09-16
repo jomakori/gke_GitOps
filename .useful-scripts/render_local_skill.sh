@@ -59,7 +59,7 @@ BODY="$(
     helm template "${CHART_DIR}" \
         --set runtimeMode=local \
         --skip-schema-validation \
-        --show-only templates/skills/k8s-gitops-context.yaml 2>/tmp/render_local_skill_helm.err \
+        --show-only templates/k8s-gitops-context.yaml 2>/tmp/render_local_skill_helm.err \
         | yq '.data["k8s-gitops-context.md"]'
 )"
 if [ -z "${BODY}" ] || [ "${BODY}" = "null" ]; then
