@@ -708,6 +708,39 @@ hermes-agent:
           prompts: false
           include: [secrets_get, secrets_list, secrets_names, secrets_update, secrets_delete, secrets_download, configs_list, configs_get, projects_list, projects_get, activity_logs_list, workplace_get]
 
+      arctic-shift:
+        # Read-only Reddit search against the Arctic Shift archive API. No
+        # auth and no tokens: Reddit's own JSON endpoints answer this
+        # cluster's egress IP with a 403 datacenter block page, and its RSS
+        # endpoints with 429 — so every credential-free alternative that
+        # queries reddit.com live fails here, which is what parked the
+        # key-based Reddit servers before this one. Verified against the
+        # archive API from this pod before wiring: /api/posts/search returned
+        # 200 with posts <1 day old, and /api/comments/search?link_id=<id>
+        # returned real comment bodies.
+        #
+        # The surface is read-only by construction: upstream ships exactly
+        # three tools and holds no credentials, so there is nothing to write
+        # with. tools.include stays an explicit list because the verifier
+        # compares declared names literally against the tools/list result.
+        #
+        # Two limits worth knowing before debugging a "missing" result: the
+        # archive lags Reddit by roughly 24-48h, and the API rejects a bare
+        # full-text query — `query` must be paired with `subreddit` or
+        # `author`, so search is within a community, not across all of
+        # Reddit.
+        command: "npx"
+        args: ["-y", "arctic-shift-mcp@1.0.2"]
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
+        env:
+          npm_config_cache: "/opt/data/.npm-mcp/arctic-shift"
+        tools:
+          include: [search_submissions, search_comments, get_post_comments]
+          resources: false
+          prompts: false
+
       obscura:
         command: "/opt/data/bin/obscura"
         args: ["mcp", "--stealth"]
