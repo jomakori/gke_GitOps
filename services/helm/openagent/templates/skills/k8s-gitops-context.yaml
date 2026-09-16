@@ -1052,7 +1052,12 @@ data:
 
     The operator (`services/helm/tailscale/`) runs with `apiServerProxyConfig.mode: "true"` — an in-process API server proxy that exposes `kube-apiserver` on the tailnet at `https://tailscale-operator.tail2354a3.ts.net`. In auth mode the proxy identifies the caller by their Tailscale identity and impersonates it into the cluster, so the client kubeconfig holds no credentials and never expires.
 
-    **Client kubeconfig** — Doppler `devops` / `svc_tailscale`, key `TAILSCALE_KUBECONFIG` (raw multiline YAML, matching the `MCP_KUBECONFIG` precedent in `svc_openagent`):
+    **Client kubeconfig** — key `TAILSCALE_KUBECONFIG` (raw multiline YAML, matching the `MCP_KUBECONFIG` precedent in `svc_openagent`), stored **twice** so CI's cluster access and human access can be reviewed and rotated separately:
+
+    - `devops` / `ci` — read by `.github/workflows/helm_lint-test.yaml`. The runner joins the tailnet with `TAILSCALE_AUTH_KEY` (also in `ci`), so it is a tagged device.
+    - `devops` / `svc_tailscale` — the copy for local/interactive use.
+
+    Each file carries a header comment naming the caller it serves. Same shape for both:
 
     ```yaml
     apiVersion: v1
@@ -1076,10 +1081,10 @@ data:
     Same shape `tailscale configure kubeconfig tailscale-operator.tail2354a3.ts.net` writes into `~/.kube/config`; either path works, the Doppler copy is the one to use where a static file is needed.
 
     - **No CA data** — the proxy's serving cert is Let's Encrypt-issued, so the public root store validates it. Don't pin a CA.
-    - **No real credential** — auth mode replaces kubeconfig auth entirely with Tailscale identity. The only requirement is that the caller is on the tailnet.
+    - **No real credential, and identity cannot be supplied FROM the file.** Auth mode replaces kubeconfig auth entirely with the Tailscale identity of the *connecting device*, and that decision is the proxy's. `act-as:` / `as:` in a kubeconfig is **inert** here — the proxy overwrites client impersonation. Verified on the wire: with `as: nobody-bogus@example.invalid` set, kubectl does send `Impersonate-User: nobody-bogus@example.invalid`, and `kubectl auth whoami` still returns the connection's identity (`joe3rdwash@gmail.com`), not the requested one. So do not try to pin a user in the kubeconfig to make local access "use my identity" — connect from your own device and you already are that identity. The only identity levers are tailnet-side: the device's own Tailscale identity, and tailnet ACL grants that add Kubernetes groups. (`apiServerProxyConfig.allowImpersonation: "true"` provisions the proxy RBAC for *grants-based* impersonation; it is not a way to pass a client-chosen identity. Currently unset.) The only requirement is that the caller is on the tailnet.
     - **`token: unused` is load-bearing, not cosmetic.** A user block with no credential (`user: {}`) makes kubectl fall back to an interactive basic-auth prompt and die with `Please enter Username:` / `error: EOF` **without sending a single request** — because the server is HTTPS and client-go has nothing to offer. It reads as broken auth but never touches the network. Keep the placeholder.
     - **RBAC is identity-scoped, and two bindings in this chart are the whole story.** `templates/ci-rbac.yaml` binds `cluster-admin` to user/group `tag:k8s` (GitHub Actions runners authenticating with `TAILSCALE_AUTH_KEY`); `templates/user-rbac.yaml` binds the same role to every login listed in `tailnetAdminUsers`, since an untagged user device is impersonated as its Tailscale login name. Impersonation is per *user identity, not per device*, so every process egressing as a listed login — the agent pod included — holds cluster-admin, which makes that list the revocation lever. An identity in neither binding still authenticates but has no workload access, so `kubectl get ns` returns `403 Forbidden`: expected, not a broken kubeconfig. `kubectl auth whoami` shows which identity the proxy handed over; it reports identity only, because `SelfSubjectReview` is granted to every authenticated user via `system:basic-user`. To assert permissions use `kubectl auth can-i list namespaces`, which exits non-zero when denied.
-    - **Same file, different powers.** The kubeconfig carries no identity, so what it can do depends entirely on which device or tag is calling. Never reason about its access without naming the caller.
+    - **Same shape, different powers.** Neither kubeconfig carries an identity, so what it can do depends entirely on which device or tag is calling. Never reason about its access without naming the caller.
     - **Single point of failure.** `mode: "true"` runs the proxy in-process in the operator pod — one replica, shared lifecycle. If the operator cannot schedule, tailnet API access is gone. The documented HA path is a dedicated `ProxyGroup` with `spec.type: kube-apiserver` plus `apiServerProxyConfig.allowImpersonation`.
     - `svc_tailscale` also carries `TAILSCALE_OAUTH_CLIENT_ID` / `TAILSCALE_OAUTH_CLIENT_SECRET`, read by the chart's `operator-oauth` ExternalSecret via explicit `data` mappings — so `TAILSCALE_KUBECONFIG` is deliberately NOT synced into a K8s Secret.
 

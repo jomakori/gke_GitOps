@@ -100,14 +100,23 @@ jobs:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
         run: |
           # Client kubeconfig for the operator's API server proxy. Its shape is
-          # pinned in Doppler (devops/svc_tailscale -> TAILSCALE_KUBECONFIG)
-          # rather than generated here by `tailscale configure kubeconfig`, so CI
-          # and every other consumer get byte-identical files. The kubeconfig
-          # holds no credentials: the proxy authenticates the runner's Tailscale
-          # identity (tag:k8s), which ci-rbac.yaml binds to cluster-admin.
+          # pinned in Doppler (devops/ci -> TAILSCALE_KUBECONFIG) rather than
+          # generated here by `tailscale configure kubeconfig`, so CI gets a
+          # byte-identical file on every run. CI reads its OWN copy: the
+          # interactive human copy lives in devops/svc_tailscale ->
+          # TAILSCALE_KUBECONFIG, so cluster access for CI and for people can be
+          # reviewed and rotated separately.
+          #
+          # The kubeconfig holds no credentials, and identity cannot be set in
+          # it either: the proxy decides identity from the source Tailscale
+          # identity and overwrites client impersonation. The runner joins the
+          # tailnet with TAILSCALE_AUTH_KEY (also in devops/ci), which makes it a
+          # tagged device, impersonated as its node FQDN with groups
+          # [tag:k8s system:authenticated] -- the subject ci-rbac.yaml binds to
+          # cluster-admin.
           mkdir -p ~/.kube
           doppler secrets get TAILSCALE_KUBECONFIG \
-            --project devops --config svc_tailscale --plain > ~/.kube/config
+            --project devops --config ci --plain > ~/.kube/config
           chmod 600 ~/.kube/config
 
           # `kubectl config current-context` only reads the file back and makes NO
