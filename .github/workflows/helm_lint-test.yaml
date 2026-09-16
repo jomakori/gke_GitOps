@@ -75,7 +75,14 @@ jobs:
           # Upstream (helm-unittest/helm-unittest) — documentSelector support
           # and active maintenance. Pinned; install failure must fail the job
           # (no `|| true` — a missing plugin silently skipped all suites).
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2 --verify=false
+          # helm v4 verifies plugin signatures by default and the upstream
+          # release ships none (--verify=false needed); helm v3 has no
+          # --verify flag at all, so keep it conditional on the major version.
+          if helm version --short 2>/dev/null | grep -qE '^v4'; then
+            helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2 --verify=false
+          else
+            helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2
+          fi
 
       - name: Setup Doppler CLI
         uses: dopplerhq/cli-action@master
