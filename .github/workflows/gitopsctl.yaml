@@ -1,0 +1,125 @@
+# gitopsctl — the repo-wide Go CLI (module: .useful-scripts/gitopsctl).
+#
+# Two jobs, both cheap:
+#   1. test  — go build/vet/test. Nothing else in this repo compiles Go, so
+#              without this the CLI only ever gets compiled by the pod at boot
+#              (and by the pod's first boot after a merge, which is the worst
+#              place to discover a compile error).
+#   2. image — publish the static binary as its own image. The gateway pod
+#              cannot get it any other way: Helm's `.Files` cannot read outside
+#              the chart directory, so the chart cannot embed the Go tree, and
+#              the gateway image is upstream (nousresearch/hermes-agent).
+#              The image is PUBLIC: ghcr.io/jomakori/* inherits the repo's
+#              visibility, and this repo's ghcr-pull-secret credential is dead
+#              — attaching it to a public pull causes ImagePullBackOff, so no
+#              pod references it.
+name: gitopsctl
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".useful-scripts/gitopsctl/**"
+      - ".github/workflows/gitopsctl.yaml"
+  push:
+    branches: [main]
+    paths:
+      - ".useful-scripts/gitopsctl/**"
+      - ".github/workflows/gitopsctl.yaml"
+
+permissions:
+  contents: read
+
+env:
+  CLI_DIR: .useful-scripts/gitopsctl
+
+jobs:
+  test:
+    name: Build, vet, test
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          # Matches the `go` directive in .useful-scripts/gitopsctl/go.mod.
+          # No cache-dependency-path: the module is stdlib-only, there is no
+          # go.sum, and pointing at a missing file breaks the cache step.
+          go-version-file: .useful-scripts/gitopsctl/go.mod
+
+      - name: go build
+        working-directory: ${{ env.CLI_DIR }}
+        run: go build ./...
+
+      - name: go vet
+        working-directory: ${{ env.CLI_DIR }}
+        run: go vet ./...
+
+      # Bounded on purpose: the MCP tests spawn processes and handshake, so a
+      # hung child would otherwise sit until the job's own ceiling.
+      - name: go test
+        working-directory: ${{ env.CLI_DIR }}
+        run: go test -timeout 120s ./...
+
+  image:
+    name: Publish image
+    needs: test
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Resolve version tag
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '[:space:]' < "$CLI_DIR/VERSION")"
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "Resolved VERSION=${VERSION}"
+
+      # The chart pins the same tag in values.yaml. Values files cannot be
+      # templated, so the two cannot be derived from one another — a mismatch
+      # would only show up as ImagePullBackOff on a live pod, so it is checked
+      # here instead.
+      - name: Verify the chart pins this version
+        run: |
+          set -euo pipefail
+          PINNED="$(grep -oE 'ghcr\.io/[a-z0-9-]+/gitopsctl:[^"]+' \
+            services/helm/openagent/values.yaml | head -1 | cut -d: -f2)"
+          if [ "${PINNED}" != "${{ steps.version.outputs.VERSION }}" ]; then
+            echo "::error::values.yaml pins gitopsctl:${PINNED} but VERSION is ${{ steps.version.outputs.VERSION }}"
+            exit 1
+          fi
+          echo "chart pin matches VERSION (${PINNED})"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push gitopsctl image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ env.CLI_DIR }}
+          file: ${{ env.CLI_DIR }}/Dockerfile
+          platforms: linux/arm64
+          # PRs build but do not push, so a Dockerfile that does not compile
+          # surfaces in review and no PR can publish an image main has not
+          # accepted.
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/gitopsctl:${{ steps.version.outputs.VERSION }}
+            ghcr.io/${{ github.repository_owner }}/gitopsctl:sha-${{ steps.version.outputs.SHORT_SHA }}
+          # Provenance/SBOM off: this image is one static binary copied onto a
+          # PVC, and the attestations are noise for the consumer (kubelet).
+          provenance: false
+          sbom: false

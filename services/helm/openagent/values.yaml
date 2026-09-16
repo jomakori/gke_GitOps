@@ -582,7 +582,7 @@ hermes-agent:
       # container re-seeds that file from this chart on every pod start
       # (overwrite: true), so live edits are reverted. Change the manifest
       # here. Three invariants are enforced by
-      # hermes-tools `mcp verify --mode validate` (CI + pre-commit) and proven in
+      # gitopsctl `mcp verify --mode validate` (CI + pre-commit) and proven in
       # cluster by the preflight hook Job + drift CronJob (templates/hooks.yaml):
       #
       #   * PINS — every npx/uvx package is pinned to an exact published
@@ -976,6 +976,35 @@ hermes-agent:
           key: CLAUDE_PROXY_API_KEY
     - name: DASHBOARD_BASE_URL
       value: "https://openagent.maklab.net"
+  extraInitContainers:
+    # The gitopsctl binary travels as its own image and is copied onto the PVC
+    # before either container starts. It cannot ship inside this chart: Helm's
+    # `.Files` cannot read outside the chart directory, and the gateway image is
+    # upstream (nousresearch/hermes-agent), so there is nowhere to bake it. This
+    # also removes the old cross-pod race where the preflight Job waited for the
+    # gateway to finish compiling the toolchain — every pod brings its own copy,
+    # so boot order stops mattering.
+    #
+    # templates/hooks.yaml reuses this exact entry for the Job and CronJob init
+    # containers (openagent.gitopsctlInstall), so the image is pinned in one
+    # place. `cp -f` runs on every start, so a stale binary on the PVC cannot
+    # survive a rollback.
+    #
+    # No imagePullSecrets: ghcr.io/jomakori/gitopsctl is public, and this repo's
+    # ghcr-pull-secret credential is dead — containerd does NOT fall back to an
+    # anonymous token when handed a bad credential, so attaching it would turn a
+    # public pull into ImagePullBackOff.
+    - name: gitopsctl-install
+      image: "ghcr.io/jomakori/gitopsctl:v0.1.0"
+      imagePullPolicy: IfNotPresent
+      command:
+        - cp
+        - -f
+        - /usr/local/bin/gitopsctl
+        - /opt/data/bin/gitopsctl
+      volumeMounts:
+        - name: data
+          mountPath: /opt/data
   extraVolumes:
     - name: hermes-hooks
       configMap:
@@ -989,15 +1018,14 @@ hermes-agent:
     - name: hermes-mise-config
       configMap:
         name: openagent-hermes-mise-config
-    # The gateway boot shim (extras/shims/boot.sh) — mounted read-only; the pod
-    # command is a single `exec sh /opt/boot/boot.sh` (see command below). The
-    # Go sources it compiles ship in the openagent-tools-src ConfigMap (/opt/src).
+    # The gateway boot shim (rendered inline by templates/boot.yaml) — mounted
+    # read-only; the pod command is a single `exec sh /opt/boot/boot.sh` (see
+    # command below). The gitopsctl binary it hands over to is copied onto the
+    # PVC by the gitopsctl-install init container, not compiled in-pod: the Go
+    # tree lives in .useful-scripts/gitopsctl, outside this chart.
     - name: boot-script
       configMap:
         name: openagent-boot-script
-    - name: tools-src
-      configMap:
-        name: openagent-tools-src
     - name: dashboard-auth
       configMap:
         name: openagent-dashboard-auth
@@ -1030,9 +1058,6 @@ hermes-agent:
       mountPath: /opt/boot/boot.sh
       subPath: boot.sh
       readOnly: true
-    - name: tools-src
-      mountPath: /opt/src
-      readOnly: true
     - name: dashboard-auth
       mountPath: /opt/hermes/.venv/lib/python3.13/site-packages/dashboard-auth.pth
       subPath: dashboard-auth.pth
@@ -1045,9 +1070,9 @@ hermes-agent:
       mountPath: /opt/data/mcp-verify
       readOnly: true
   command:
-    # Full bootstrap lives in the boot shim (extras/shims/boot.sh → mounted
-    # from the openagent-boot-script ConfigMap) — one line so the toolchain
-    # can change without a pod-spec-shaped diff.
+    # Full bootstrap lives in the boot shim (inline in templates/boot.yaml →
+    # mounted from the openagent-boot-script ConfigMap) — one line so the
+    # toolchain can change without a pod-spec-shaped diff.
     - sh
     - -c
     - exec sh /opt/boot/boot.sh
@@ -1087,9 +1112,10 @@ hermes-agent:
 #     non-zero exit, so a watcher alerts on change, not on every run.
 #
 # Both are disabled by a single toggle without deleting them. The checks run
-# the Go CLI hermes-tools (extras/, built on the PVC by the boot shim); the
-# manifest ships in the openagent-mcp-manifest ConfigMap, rendered from the
-# same mcp_servers values — no duplicated server list anywhere.
+# the Go CLI gitopsctl (shipped as its own image, copied onto the PVC by the
+# gitopsctl-install init container); the manifest ships in the
+# openagent-mcp-manifest ConfigMap, rendered from the same mcp_servers values —
+# no duplicated server list anywhere.
 mcpVerification:
   preflight:
     enabled: true

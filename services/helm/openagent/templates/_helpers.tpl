@@ -57,3 +57,13 @@ boot pre-warm materialised, so the handshake is exactly what the gateway does.
   configMap:
     name: openagent-mcp-manifest
 {{- end -}}
+
+{{/*
+The gitopsctl-install init container, shared by the MCP preflight Job and drift
+CronJob. It is read straight out of the same values entry the gateway pod uses
+(hermes-agent.extraInitContainers), so the pinned image tag exists in exactly one
+place and no pod can drift to a different binary.
+*/}}
+{{- define "openagent.gitopsctlInstall" -}}
+{{- toYaml (index .Values "hermes-agent" "extraInitContainers") -}}
+{{- end -}}

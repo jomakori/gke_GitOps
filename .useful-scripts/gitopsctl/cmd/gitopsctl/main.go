@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"hermes-tools/internal/boot"
-	"hermes-tools/internal/mcp"
+	"gitopsctl/internal/boot"
+	"gitopsctl/internal/mcp"
 )
 
 func main() {
@@ -28,13 +28,13 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `hermes-tools — boot + MCP pre-warm/verification for the openagent umbrella
+	fmt.Fprintln(os.Stderr, `gitopsctl — boot + MCP pre-warm/verification for the openagent umbrella
 
 usage:
-  hermes-tools boot [--manifest PATH]      run the gateway boot sequence (replaces boot.sh)
-  hermes-tools mcp prewarm [--manifest PATH] [--parallel N]
+  gitopsctl boot [--manifest PATH]      run the gateway boot sequence (replaces boot.sh)
+  gitopsctl mcp prewarm [--manifest PATH] [--parallel N]
                                            materialise npx/uvx package caches
-  hermes-tools mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
+  gitopsctl mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
                                            handshake MCP servers and certify tools
                                            (validate = static manifest policy lint, no network)`)
 }

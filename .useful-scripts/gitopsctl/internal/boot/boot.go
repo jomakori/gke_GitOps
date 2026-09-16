@@ -13,7 +13,7 @@ import (
 	"strings"
 	"syscall"
 
-	"hermes-tools/internal/mcp"
+	"gitopsctl/internal/mcp"
 )
 
 const (

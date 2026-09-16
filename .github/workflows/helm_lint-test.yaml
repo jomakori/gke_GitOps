@@ -186,7 +186,7 @@ jobs:
           # parked servers kept as enabled:false, and every enabled server
           # declaring tools.include + resources/prompts — the surface the
           # preflight Job and drift CronJob certify at runtime. Same binary
-          # (hermes-tools mcp verify --mode validate) runs as a pre-commit
+          # (gitopsctl mcp verify --mode validate) runs as a pre-commit
           # hook. Static policy lives in the binary, not in a Python script.
           .useful-scripts/validate_mcp_manifest.sh
 

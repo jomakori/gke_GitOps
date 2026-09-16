@@ -5,7 +5,7 @@ release:
   name: openagent
   namespace: openagent
 # Static MCP policy (pins, timeouts, lifecycles, tool surface) is owned by the
-# hermes-tools binary (`mcp verify --mode validate`) — this suite asserts only
+# gitopsctl binary (`mcp verify --mode validate`) — this suite asserts only
 # template structure: what renders, when, and under which values.
 tests:
   - it: renders the MCP manifest ConfigMap with manifest + per-server keys

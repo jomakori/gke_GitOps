@@ -71,7 +71,7 @@ openagent/                       ← umbrella
 │   └── claude-proxy/            ← local subchart (Claude Pro proxy)
 ├── templates/                   ← flat manifests (condensed; no subdirs)
 │   ├── apps.yaml                ← dashboard-auth, hermes API svc, litellm VS, responses-proxy
-│   ├── boot.yaml                ← boot shim + hermes-tools Go sources (tools-src CM)
+│   ├── boot.yaml                ← boot shim (inline) → hands over to gitopsctl on the PVC
 │   ├── db.yaml                  ← StackGres SGScript (cluster owned by postgres-operator chart)
 │   ├── hermes.yaml              ← hermes mise config
 │   ├── hooks.yaml               ← MCP manifest CM + preflight Job + drift CronJob
@@ -79,8 +79,10 @@ openagent/                       ← umbrella
 │   ├── opencode.yaml            ← OMO agent fleet (agents, categories, fallbacks)
 │   ├── secrets.yaml             ← ExternalSecrets, GHCR pull secret, litellm/pg creds
 │   └── vpa.yaml                 ← VerticalPodAutoscaler
-├── extras/                      ← stdlib-only Go CLI hermes-tools (cmd/, internal/) + shims/
-├── files/                       ← (deleted: boot.sh, mcp/*.py, skills/ moved to extras/ or dropped)
+# The gitopsctl CLI is deliberately NOT in this chart: it lives at
+# .useful-scripts/gitopsctl/ (repo-wide) and reaches the pod as its own
+# image, copied onto the PVC by the gitopsctl-install init container —
+# Helm's .Files cannot read outside the chart directory.
 ├── values.yaml                  ← full config surface
 └── Chart.yaml                   ← 2 remote OCI + 2 local subchart deps
 ```
