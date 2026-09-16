@@ -1,6 +1,16 @@
 
 dopplerConfig: "svc_tailscale"
 
+# Tailnet identities granted cluster-admin through the API server proxy.
+# Untagged user devices are impersonated as their Tailscale *login name*, so
+# these are logins (emails), not node FQDNs. Tagged devices instead impersonate
+# as the node FQDN with their tags as groups — that path is templates/ci-rbac.yaml.
+#
+# Impersonation is per user identity, not per device, so every process egressing
+# as a listed login inherits these rights. Empty list renders no binding.
+tailnetAdminUsers:
+  - joe3rdwash@gmail.com
+
 tailscale-operator:
   # OAuth client auth
   # secrets in git. OAuth client must own tag:k8s-operator (see README).
