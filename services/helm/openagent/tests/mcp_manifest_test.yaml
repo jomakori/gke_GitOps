@@ -40,56 +40,72 @@ tests:
           path: data.server-plane
           pattern: 'plane-mcp-server==0\.3\.2'
         template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-arctic-shift
+          pattern: 'arctic-shift-mcp@1\.0\.2'
+        template: hooks/configmap-mcp-manifest.yaml
 
   - it: every enabled stdio server has a connect timeout and a lifecycle
     asserts:
       - matchRegex:
-          path: data.server-doppler
-          pattern: '"connect_timeout":[0-9]+'
+          path: data.server-arctic-shift
+          pattern: '"connect_timeout":[1-9][0-9]*'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-arctic-shift
+          pattern: '"idle_timeout_seconds":[1-9][0-9]*'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-arctic-shift
+          pattern: '"max_lifetime_seconds":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-doppler
-          pattern: '"idle_timeout_seconds":[0-9]+'
+          pattern: '"connect_timeout":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-doppler
-          pattern: '"max_lifetime_seconds":[0-9]+'
+          pattern: '"idle_timeout_seconds":[1-9][0-9]*'
+        template: hooks/configmap-mcp-manifest.yaml
+      - matchRegex:
+          path: data.server-doppler
+          pattern: '"max_lifetime_seconds":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-obscura
-          pattern: '"connect_timeout":[0-9]+'
+          pattern: '"connect_timeout":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-obscura
-          pattern: '"idle_timeout_seconds":[0-9]+'
+          pattern: '"idle_timeout_seconds":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-obscura
-          pattern: '"max_lifetime_seconds":[0-9]+'
+          pattern: '"max_lifetime_seconds":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-google-workspace
-          pattern: '"connect_timeout":[0-9]+'
+          pattern: '"connect_timeout":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-google-workspace
-          pattern: '"idle_timeout_seconds":[0-9]+'
+          pattern: '"idle_timeout_seconds":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-google-workspace
-          pattern: '"max_lifetime_seconds":[0-9]+'
+          pattern: '"max_lifetime_seconds":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-plane
-          pattern: '"connect_timeout":[0-9]+'
+          pattern: '"connect_timeout":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-plane
-          pattern: '"idle_timeout_seconds":[0-9]+'
+          pattern: '"idle_timeout_seconds":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
       - matchRegex:
           path: data.server-plane
-          pattern: '"max_lifetime_seconds":[0-9]+'
+          pattern: '"max_lifetime_seconds":[1-9][0-9]*'
         template: hooks/configmap-mcp-manifest.yaml
 
   - it: every enabled HTTP server has a connect timeout
