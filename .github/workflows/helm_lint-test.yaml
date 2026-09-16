@@ -188,7 +188,7 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_kubeconform != false }}
         env:
           chart_input: ${{ inputs.chart }}
-          kube_version: ${{ inputs.kube_version }}
+          kube_version: ${{ inputs.kube_version || '1.35.1' }}
         run: |
           # kubeconform catches malformed resources, missing required fields,
           # wrong field types — bugs that helm lint + helm template can't see.
