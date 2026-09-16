@@ -175,11 +175,12 @@ jobs:
           .useful-scripts/validate_litellm_config.sh
 
       - name: Validate MCP manifest (pins/timeouts/lifecycle/tool surface)
-        # Runs on every PR; on a manual dispatch it can be switched off. NB: the
-        # other validation steps in this workflow use `if: inputs.X != false`
-        # alone, and `inputs` is empty on pull_request events - GitHub then
-        # evaluates the condition as false and the step is SKIPPED while the
-        # workflow still reports success. Guard on the event explicitly.
+        # Runs on every PR; on a manual dispatch it can be switched off. NB: every
+        # `run_*` toggle in this workflow needs the explicit event guard shown
+        # here. `inputs` is empty on pull_request events, so a bare
+        # `if: inputs.run_X != false` evaluates false: the step is SKIPPED while
+        # the workflow still reports success. That is precisely how kubeconform,
+        # helm-unittest and selector-check silently stopped running on PRs.
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_mcp_manifest_validation != false }}
         run: |
           # Static lint of hermes-agent.config.mcp_servers: every stdio package
@@ -192,7 +193,7 @@ jobs:
           python3 scripts/validate-mcp-manifest.py services/helm/openagent/values.yaml
 
       - name: kubeconform (validate rendered manifests against K8s OpenAPI)
-        if: ${{ inputs.run_kubeconform != false }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_kubeconform != false }}
         env:
           chart_input: ${{ inputs.chart }}
           kube_version: ${{ inputs.kube_version }}
@@ -224,7 +225,7 @@ jobs:
           done
 
       - name: helm-unittest (semantic assertions on rendered output)
-        if: ${{ inputs.run_helm_unittest != false }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_helm_unittest != false }}
         env:
           chart_input: ${{ inputs.chart }}
         run: |
@@ -250,7 +251,7 @@ jobs:
           done
 
       - name: selector-check (selector.matchLabels == template.metadata.labels)
-        if: ${{ inputs.run_selector_check != false }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_selector_check != false }}
         env:
           chart_input: ${{ inputs.chart }}
         run: |
