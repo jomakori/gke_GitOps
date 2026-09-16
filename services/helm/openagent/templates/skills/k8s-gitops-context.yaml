@@ -1048,6 +1048,41 @@ data:
 
     - **OAuth tokens expire in hours — prefer `claude setup-token` for a non-rotating credential**: standard `claude auth login` tokens are short-lived, and the file they live in rotates on every refresh. With OCP, run `claude setup-token` once on a machine where the CLI can persist creds, then put the value in Doppler `svc_openagent` as `CLAUDE_CODE_OAUTH_TOKEN` — the `openagent-secrets` ExternalSecret surfaces it and the Deployment consumes it as env (`optional: true`, so a missing token falls back to the PVC file). No PVC deletion or re-seed is needed on that path. The file path (login → `claude-credentials` secret → seed init container) still exists as the fallback and is documented above.
 
+    ## Tailscale Cluster Access
+
+    The operator (`services/helm/tailscale/`) runs with `apiServerProxyConfig.mode: "true"` — an in-process API server proxy that exposes `kube-apiserver` on the tailnet at `https://tailscale-operator.tail2354a3.ts.net`. In auth mode the proxy identifies the caller by their Tailscale identity and impersonates it into the cluster, so the client kubeconfig holds no credentials and never expires.
+
+    **Client kubeconfig** — Doppler `devops` / `svc_tailscale`, key `TAILSCALE_KUBECONFIG` (raw multiline YAML, matching the `MCP_KUBECONFIG` precedent in `svc_openagent`):
+
+    ```yaml
+    apiVersion: v1
+    clusters:
+    - cluster:
+        server: https://tailscale-operator.tail2354a3.ts.net
+      name: tailscale-operator.tail2354a3.ts.net
+    contexts:
+    - context:
+        cluster: tailscale-operator.tail2354a3.ts.net
+        user: tailscale-auth
+      name: tailscale-operator.tail2354a3.ts.net
+    current-context: tailscale-operator.tail2354a3.ts.net
+    kind: Config
+    users:
+    - name: tailscale-auth
+      user:
+        token: unused
+    ```
+
+    Same shape `tailscale configure kubeconfig tailscale-operator.tail2354a3.ts.net` writes into `~/.kube/config`; either path works, the Doppler copy is the one to use where a static file is needed.
+
+    - **No CA data** — the proxy's serving cert is Let's Encrypt-issued, so the public root store validates it. Don't pin a CA.
+    - **No real credential** — auth mode replaces kubeconfig auth entirely with Tailscale identity. The only requirement is that the caller is on the tailnet.
+    - **`token: unused` is load-bearing, not cosmetic.** A user block with no credential (`user: {}`) makes kubectl fall back to an interactive basic-auth prompt and die with `Please enter Username:` / `error: EOF` **without sending a single request** — because the server is HTTPS and client-go has nothing to offer. It reads as broken auth but never touches the network. Keep the placeholder.
+    - **RBAC is identity-scoped.** `templates/ci-rbac.yaml` binds `cluster-admin` to user/group `tag:k8s` only (GitHub Actions runners authenticating with `TAILSCALE_AUTH_KEY`). A user device authenticates as its own tailnet identity with groups `[system:authenticated]` and then gets `403 Forbidden` on `kubectl get ns`. That is expected, not a broken kubeconfig — `kubectl get ns` is the wrong probe. Use `kubectl auth whoami` to see which identity the proxy handed over; that is the connectivity check. It reports identity only and says nothing about permissions, because `SelfSubjectReview` is granted to every authenticated user via `system:basic-user`. To assert permissions use `kubectl auth can-i list namespaces`, which exits non-zero when denied.
+    - **Same file, different powers.** The kubeconfig carries no identity, so what it can do depends entirely on which device or tag is calling. Never reason about its access without naming the caller.
+    - **Single point of failure.** `mode: "true"` runs the proxy in-process in the operator pod — one replica, shared lifecycle. If the operator cannot schedule, tailnet API access is gone. The documented HA path is a dedicated `ProxyGroup` with `spec.type: kube-apiserver` plus `apiServerProxyConfig.allowImpersonation`.
+    - `svc_tailscale` also carries `TAILSCALE_OAUTH_CLIENT_ID` / `TAILSCALE_OAUTH_CLIENT_SECRET`, read by the chart's `operator-oauth` ExternalSecret via explicit `data` mappings — so `TAILSCALE_KUBECONFIG` is deliberately NOT synced into a K8s Secret.
+
     ## Critical Gotchas
     - **GHCR pull credential is DEAD — never attach `ghcr-pull-secret` to a public image**: `ghcr.io/jomakori/*` packages carry whatever visibility they were created with; `ocp` is public (anonymous token request → 200) while `claude-proxy` is private. The credential inside `ghcr-pull-secret` is rejected by GHCR (`403` on the package token endpoint, including for this owner's own private package — the PAT itself is dead). containerd does **not** fall back to anonymous when handed a bad credential, so a pod that references it fails with `failed to authorize: ... 403 Forbidden` even for a public image (hit live: the OCP pod sat in `ImagePullBackOff` while the registry served the same image anonymously). Keep `imagePullSecrets` off pods pulling public images; if a pull secret is genuinely needed, rotate the PAT and verify it with a `ghcr.io/token?scope=repository:<owner>/<pkg>:pull` request BEFORE trusting it.
     - **Never put version-bearing labels in `spec.selector`**: `spec.selector` is IMMUTABLE, and `helm.sh/chart: <name>-<version>` (also `app.kubernetes.io/version`, and `managed-by` when templated) changes with every chart version bump. Such a chart renders clean, passes kubeconform and the selector-drift check (keys still match the pod template), then every ArgoCD sync fails with `spec.selector: Invalid value: ...: field is immutable` and the workload can only be fixed by deleting and recreating it. Render selector labels from a stable subset helper (`*.selectorLabels`: name + instance + component) and keep the full label set on `spec.template.metadata.labels` only. Hit live THREE times — `claude-proxy` 0.1.0 → 0.2.0 (#202), then `hermes-webui` (#205), which had been running 14 days one bump away from the same failure. All three charts are clean now, and `.useful-scripts/check_selectors.sh` **fails CI** (not a warning) on any version-bearing selector key, in workloads AND Services — fixing an already-broken chart is itself a delete-and-recreate, so it has to be caught before merge. A Service selector with the key is not immutable but churns endpoints for no benefit. Note the one-time cost of the fix: the Deployment must be deleted so automated sync recreates it (brief outage; the Service keeps matching because the new selector is a strict subset of the old pod labels).
