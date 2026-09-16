@@ -48,7 +48,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 
 | Layer | What it does | Run by |
 |-------|--------------|--------|
-| **Static lint** — `scripts/validate-mcp-manifest.py` | No unpinned/`@latest` stdio package; every server has `connect_timeout`; every stdio server has `idle_timeout_seconds` + `max_lifetime_seconds`; every enabled server declares `resources`/`prompts` and a non-empty `tools.include`; parked servers stay present as `enabled: false`. | CI (`.github/workflows/helm_lint-test.yaml`) and the `validate-mcp-manifest` pre-commit hook. |
+| **Static lint** — `hermes-tools mcp verify --mode validate` | No unpinned/`@latest` stdio package; every server has `connect_timeout`; every stdio server has `idle_timeout_seconds` + `max_lifetime_seconds`; every enabled server declares `resources`/`prompts` and a non-empty `tools.include`; parked servers stay present as `enabled: false`. | CI (`.github/workflows/helm_lint-test.yaml`) and the `mcp-manifest-validate` pre-commit hook via `.useful-scripts/validate_mcp_manifest.sh`. |
 | **Preflight Job** — `templates/hooks.yaml` | For every **enabled** server it does a real JSON-RPC `initialize` + `tools/list` (stdio or Streamable HTTP), asserts every declared `tools.include` tool is present, and fails loudly with the server's own stderr on failure. Gated by `mcpVerification.preflight.enabled`. | Helm/ArgoCD **PostSync** hook Job (after the PVC + boot toolchain exist). |
 | **Drift CronJob** — `templates/hooks.yaml` | Same handshake on `mcpVerification.cronjob.schedule` (default every 15 min); quiet when the live surface matches, prints + exits non-zero on drift. Gated by `mcpVerification.cronjob.enabled`. | In-cluster `CronJob`. |
 
@@ -57,7 +57,7 @@ The server definitions are rendered once into the `openagent-mcp-manifest` Confi
 Run the pieces locally:
 
 ```bash
-python3 scripts/validate-mcp-manifest.py services/helm/openagent/values.yaml
+.useful-scripts/validate_mcp_manifest.sh
 # handshake the enabled servers (built from extras/, same binary the cluster jobs run):
 go run ./extras/cmd/hermes-tools mcp verify \
   --manifest <(helm template openagent services/helm/openagent --skip-schema-validation | yq 'select(.kind=="ConfigMap" and .metadata.name=="openagent-mcp-manifest" ).data."mcp-manifest"') \
@@ -73,7 +73,7 @@ go run ./extras/cmd/hermes-tools mcp verify \
 - **The CronJob starts a second copy of each server.** Servers that hold exclusive local resources (browser profiles, file locks) can conflict with the gateway's live instance.
 - **Public HTTP servers are third-party and can change or rate-limit.** Drift is reported, never auto-fixed; the declared `tools.include` lists for `skiplagged`/`kiwi`/`ferryhopper` are the surface observed when they were pinned into the manifest.
 - **Only enabled servers are handshaked.** Parked servers are still checked statically (pin, policy, presence) but are not connected to.
-- **helm-unittest for this umbrella is blocked upstream.** The fetched `hermes-agent` chart's `values.schema.json` sets `additionalProperties: false` and rejects the `global` key Helm injects, so schema-validating tooling (including this repo's `helm-unittest`) errors before rendering. CI renders with `--skip-schema-validation`; a locally published copy of the schema that allows `global` is needed to run `helm unittest` on this chart.
+- **helm-unittest needs the patched hermes-agent schema.** The fetched `hermes-agent` chart's `values.schema.json` sets root `additionalProperties: false` and has no `global` property, so any schema-validating tool rejects Helm's injected `global` key. `.useful-scripts/patch_hermes_schema.sh` edits the fetched tgz in place (idempotent, version-agnostic: adds `properties.global`) and is wired into `ct_check.sh`, the pre-commit render/kubeconform + helm-unittest hooks, and CI. `helm lint` and `helm unittest` on this umbrella require it; plain `helm template` renders do not.
 
 ## Values
 

@@ -40,11 +40,15 @@ data:
   go.mod: |
 {{ .Files.Get "extras/go.mod" | indent 4 }}
 {{- range $p, $_ := .Files.Glob "extras/cmd/**" }}
+{{- if and (not (hasSuffix "_test.go" $p)) (not (hasPrefix "extras/internal/mcp/testdata/" $p)) }}
   {{ $p | trimPrefix "extras/" }}: |
 {{ $.Files.Get $p | indent 4 }}
 {{- end }}
+{{- end }}
 {{- range $p, $_ := .Files.Glob "extras/internal/**" }}
+{{- if and (not (hasSuffix "_test.go" $p)) (not (hasPrefix "extras/internal/mcp/testdata/" $p)) }}
   {{ $p | trimPrefix "extras/" }}: |
 {{ $.Files.Get $p | indent 4 }}
+{{- end }}
 {{- end }}
 {{- end }}

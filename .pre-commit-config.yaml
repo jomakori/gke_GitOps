@@ -54,3 +54,26 @@ repos:
         language: system
         files: ^services/helm/.*/templates/.*\.(yaml|yml)$
         pass_filenames: true
+      - id: helm-unittest
+        name: helm-unittest (semantic chart assertions)
+        description: |
+          Run helm-unittest suites for the openagent umbrella chart — the
+          local equivalent of CI's helm-unittest step. The wrapper applies
+          the hermes-agent schema patch (idempotent) and cleans the stale
+          OCI subchart extract that otherwise breaks the next run. Skips
+          silently when the plugin is missing (CI/devbox install it).
+        entry: .useful-scripts/helm_unittest_openagent.sh
+        language: system
+        files: ^services/helm/openagent/
+        pass_filenames: false
+      - id: mcp-manifest-validate
+        name: MCP manifest static policy (hermes-tools validate)
+        description: |
+          Render the MCP manifest ConfigMap from values.yaml and run the
+          hermes-tools `mcp verify --mode validate` static policy (pins,
+          timeouts, lifecycle, parked duplicates, tool surface). Same binary
+          as the CI step. Skips when the Go toolchain is absent.
+        entry: .useful-scripts/validate_mcp_manifest.sh
+        language: system
+        files: ^services/helm/openagent/(values\.yaml|templates/hooks\.yaml)$
+        pass_filenames: false

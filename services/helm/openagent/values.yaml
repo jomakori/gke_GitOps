@@ -578,7 +578,7 @@ hermes-agent:
       # container re-seeds that file from this chart on every pod start
       # (overwrite: true), so live edits are reverted. Change the manifest
       # here. Three invariants are enforced by
-      # scripts/validate-mcp-manifest.py (CI + pre-commit) and proven in
+      # hermes-tools `mcp verify --mode validate` (CI + pre-commit) and proven in
       # cluster by the preflight hook Job + drift CronJob (templates/hooks.yaml):
       #
       #   * PINS — every npx/uvx package is pinned to an exact published

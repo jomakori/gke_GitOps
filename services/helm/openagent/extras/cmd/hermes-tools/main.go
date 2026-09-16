@@ -34,8 +34,9 @@ usage:
   hermes-tools boot [--manifest PATH]      run the gateway boot sequence (replaces boot.sh)
   hermes-tools mcp prewarm [--manifest PATH] [--parallel N]
                                            materialise npx/uvx package caches
-  hermes-tools mcp verify [--manifest PATH] [--mode preflight|drift] [--only NAME]...
-                                           handshake MCP servers and certify tools`)
+  hermes-tools mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
+                                           handshake MCP servers and certify tools
+                                           (validate = static manifest policy lint, no network)`)
 }
 
 func cmdBoot() {
@@ -71,13 +72,16 @@ func cmdMCP(args []string) {
 	case "verify":
 		fs := flag.NewFlagSet("verify", flag.ExitOnError)
 		manifest := fs.String("manifest", mcp.DefaultManifest, "rendered MCP manifest path")
-		mode := fs.String("mode", "preflight", "preflight or drift")
+		mode := fs.String("mode", "preflight", "preflight, drift or validate")
 		var only multiFlag
 		fs.Var(&only, "only", "verify only this server (repeatable)")
 		_ = fs.Parse(args[1:])
-		if *mode != "preflight" && *mode != "drift" {
-			log.Printf("verify: unknown mode %q (want preflight|drift)", *mode)
+		if *mode != "preflight" && *mode != "drift" && *mode != "validate" {
+			log.Printf("verify: unknown mode %q (want preflight|drift|validate)", *mode)
 			os.Exit(2)
+		}
+		if *mode == "validate" {
+			os.Exit(mcp.ExecuteValidate(*manifest))
 		}
 		os.Exit(mcp.Execute(*manifest, *mode, only))
 	default:

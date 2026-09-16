@@ -210,7 +210,7 @@ For **apps**, the single parameterized chart at `apps/helm/` generates all manif
 
 | Tool | What |
 |------|------|
-| **GitHub Actions** | `.github/workflows/pull_request.yaml` — lint/check on PRs |
+| **GitHub Actions** | `.github/workflows/helm_lint-test.yaml` — lint/check on PRs |
 | **Renovate** | `renovate.json` — auto-updates Helm chart versions every Tuesday |
 | **Pre-commit** | `.pre-commit-config.yaml` — merge conflict check, trailing whitespace, detect-secrets, yamllint, helm-docs |
 | **Chart Testing** | `.ct-config.yml` — dry-run validation via `.useful-scripts/ct_check.sh` |

@@ -72,6 +72,9 @@ for chart_dir in "${CHARTS[@]}"; do
     if ! helm dependency update "${chart_dir}" >/dev/null 2>&1; then
         echo "  warning: helm dependency update failed (chart may have no dependencies)"
     fi
+    # hermes-agent schema rejects Helm's injected `global` key; patch the
+    # fresh tgz so schema-validating runs pass (no-op for other charts).
+    .useful-scripts/patch_hermes_schema.sh "${chart_dir}" >/dev/null
     if ! helm template "${chart_dir}" \
             --skip-schema-validation --validate=false \
             > /tmp/openkite_kubeconform_$$.yaml 2> /tmp/openkite_kubeconform_$$.err; then

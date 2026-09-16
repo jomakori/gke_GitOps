@@ -13,6 +13,9 @@ tests:
     # We disable the migration Job entirely; schema updates require manual
     # `kubectl exec` or an upstream fix.
     asserts:
-      - notContainsDocument:
-          kind: Job
-          name: openagent-migrations
+      - notExists:
+          path: metadata.name
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-migrations
+          skipEmptyTemplates: true

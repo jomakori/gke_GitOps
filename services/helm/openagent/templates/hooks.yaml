@@ -132,8 +132,8 @@ metadata:
 data:
   # Dot-free keys on purpose: helm-unittest's assertion path syntax treats '.'
   # and '[]' as separators, so keys containing a dot cannot be addressed from
-  # tests/mcp_manifest_test.yaml. scripts/validate-mcp-manifest.py is the
-  # exhaustive every-server check; these keys make the same invariants
+  # tests/mcp_manifest_test.yaml. hermes-tools `mcp verify --mode validate` is
+  # the exhaustive every-server check; these keys make the same invariants
   # assertable per server in helm-unittest.
   mcp-manifest: |
 {{ (index .Values "hermes-agent" "config" "mcp_servers") | toJson | indent 4 }}

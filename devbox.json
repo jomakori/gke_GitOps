@@ -1,9 +1,14 @@
 {
   "packages": [
     "yq-go@latest",
-    "git@latest"
+    "git@latest",
+    "helm@latest",
+    "go@latest"
   ],
   "shell": {
+    "init_hook": [
+      "helm plugin list 2>/dev/null | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2 --verify=false"
+    ],
     "scripts": {
       "deploy": [
         "for var in GH_USER_EMAIL GH_USER ENV_NUM CONTAINER_TAG GIT_MESSAGE; do eval \"value=\\$$var\"; [ -z \"$value\" ] && { echo \"Error: $var is not set.\"; exit 1; }; done",

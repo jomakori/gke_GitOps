@@ -32,19 +32,26 @@ const BootManifest = "/opt/data/mcp-verify/mcp-manifest"
 
 const StderrLines = 40
 
+// ToolsConfig carries the declared tool surface. Prompts/Resources are
+// pointers so the static validator can distinguish "policy absent" from
+// "policy explicitly false" (the Python lint checks key presence, not value).
 type ToolsConfig struct {
-	Include []string `json:"include,omitempty"`
+	Include   []string `json:"include,omitempty"`
+	Prompts   *bool    `json:"prompts,omitempty"`
+	Resources *bool    `json:"resources,omitempty"`
 }
 
 type Server struct {
-	Command        string            `json:"command,omitempty"`
-	Args           []string          `json:"args,omitempty"`
-	URL            string            `json:"url,omitempty"`
-	Env            map[string]string `json:"env,omitempty"`
-	Headers        map[string]string `json:"headers,omitempty"`
-	Enabled        *bool             `json:"enabled,omitempty"`
-	ConnectTimeout int               `json:"connect_timeout,omitempty"`
-	Tools          *ToolsConfig      `json:"tools,omitempty"`
+	Command             string            `json:"command,omitempty"`
+	Args                []string          `json:"args,omitempty"`
+	URL                 string            `json:"url,omitempty"`
+	Env                 map[string]string `json:"env,omitempty"`
+	Headers             map[string]string `json:"headers,omitempty"`
+	Enabled             *bool             `json:"enabled,omitempty"`
+	ConnectTimeout      int               `json:"connect_timeout,omitempty"`
+	IdleTimeoutSeconds  int               `json:"idle_timeout_seconds,omitempty"`
+	MaxLifetimeSeconds  int               `json:"max_lifetime_seconds,omitempty"`
+	Tools               *ToolsConfig      `json:"tools,omitempty"`
 }
 
 func (s Server) IsEnabled() bool { return s.Enabled == nil || *s.Enabled }
