@@ -66,10 +66,14 @@ jobs:
           # yq: required for selector-check script
           curl -sLo /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
-          # helm-unittest plugin: per-chart semantic assertions
-          # NOTE: repo is vbehar/helm-unittest (NOT helmpyp — that's a typo
-          # and silently fails the install in CI).
-          helm plugin install https://github.com/vbehar/helm-unittest || true
+          # helm-unittest plugin: per-chart semantic assertions.
+          # NOTE: repo is helm-unittest/helm-unittest (NOT helmpyp — that's a
+          # typo and silently fails the install in CI; NOT the vbehar fork,
+          # whose last release v1.0.16 predates --skip-schema-validation,
+          # which the unittest step below needs). Version pinned for the
+          # same reason every other tool in this step is pinned.
+          helm plugin install https://github.com/helm-unittest/helm-unittest \
+            --version v1.1.2 || true
 
       - name: Setup Doppler CLI
         uses: dopplerhq/cli-action@master
@@ -166,7 +170,7 @@ jobs:
           python3 scripts/validate-mcp-manifest.py services/helm/openagent/values.yaml
 
       - name: kubeconform (validate rendered manifests against K8s OpenAPI)
-        if: ${{ inputs.run_kubeconform != false }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_kubeconform != false }}
         env:
           chart_input: ${{ inputs.chart }}
           kube_version: ${{ inputs.kube_version }}
@@ -198,7 +202,7 @@ jobs:
           done
 
       - name: helm-unittest (semantic assertions on rendered output)
-        if: ${{ inputs.run_helm_unittest != false }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_helm_unittest != false }}
         env:
           chart_input: ${{ inputs.chart }}
         run: |
@@ -206,6 +210,16 @@ jobs:
           # that assert specific properties of the rendered output, e.g.
           # "ExternalSecret maps Doppler TUNNEL_TOKEN to K8s key 'token'".
           # Catches bugs that helm lint + kubeconform can't catch.
+          #
+          # --skip-schema-validation: Helm injects a `global` map into every
+          # subchart's values, and hermes-agent's values.schema.json sets
+          # additionalProperties:false without declaring `global`, so any
+          # render of the openagent umbrella fails schema validation with
+          # "Additional property global is not allowed". That is an upstream
+          # schema defect, not a config error here — which is why the
+          # kubeconform and selector-check steps above already pass the same
+          # flag to their own `helm template`. Without it this step cannot
+          # run at all: it failed 8/8 on every test.
           helm_dirs=()
           if [ -n "$chart_input" ]; then
             helm_dirs=("$chart_input")
@@ -220,11 +234,11 @@ jobs:
           if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
           for d in "${helm_dirs[@]}"; do
             [ -d "$d/tests" ] || continue
-            helm unittest "$d"
+            helm unittest --skip-schema-validation "$d"
           done
 
       - name: selector-check (selector.matchLabels == template.metadata.labels)
-        if: ${{ inputs.run_selector_check != false }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_selector_check != false }}
         env:
           chart_input: ${{ inputs.chart }}
         run: |
