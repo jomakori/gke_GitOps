@@ -283,7 +283,7 @@ litellm:
       # Slash-free Claude aliases — OpenCode custom-provider model ids cannot
       # contain "/" (opencode parses provider/model on the slash). LiteLLM must
       # expose claude-opus-5 / claude-sonnet-5 / claude-haiku-4-5 as literal
-      # model_names for the opencode.json agent config (templates/omo/).
+      # model_names for the opencode.json agent config (templates/opencode.yaml).
       - model_name: claude-opus-5
         litellm_params:
           model: openai/claude-opus-5
@@ -373,10 +373,10 @@ hermes-agent:
   # Image for the gateway pod AND the MCP verification Jobs: both run the same
   # toolchain, and the mise node/uv on the PVC is ABI-coupled to this image.
   # Pinned explicitly so a Job never resolves an empty tag; keep in lockstep
-  # with the hermes-agent chart dependency's appVersion (0.9.1 -> v2026.7.7.2).
+  # with the hermes-agent chart dependency's appVersion (1.15.0 -> v2026.9.11).
   image:
     repository: nousresearch/hermes-agent
-    tag: "v2026.7.7.2"
+    tag: "v2026.9.11"
     pullPolicy: IfNotPresent
   config:
     model:
@@ -402,12 +402,16 @@ hermes-agent:
         key_env: LITELLM_MASTER_KEY
         discover_models: true
     agent:
+      # Chart v0.9.1 seeded max_turns: 90; v1.15.0 removed the seed (unlimited
+      # default). Explicit pin preserves the capped behavior when bootstrap
+      # re-seeds config.yaml from chart values on every pod start.
+      max_turns: 90
       # Sisyphus = Hermes default profile (HERMES_HOME=/opt/data) — the
       # orchestrator that fields ALL prompts. Heavy engineering is dispatched
       # to the `opencode` tool (OpenCode + OMO agents run as subprocesses);
       # lightweight subagent work uses `delegate_task`. Fleet/agent config no
       # longer lives in this chart — OpenCode reads its own omo.jsonc +
-      # opencode.json ConfigMaps (templates/omo/).
+      # opencode.json ConfigMaps (templates/opencode.yaml).
       system_prompt: |
         You are Sisyphus — OMO Orchestrator. You field ALL prompts and are the
         sole Discord-facing interface. Classify every request BEFORE acting.
@@ -578,8 +582,8 @@ hermes-agent:
       # container re-seeds that file from this chart on every pod start
       # (overwrite: true), so live edits are reverted. Change the manifest
       # here. Three invariants are enforced by
-      # scripts/validate-mcp-manifest.py (CI + pre-commit) and proven in
-      # cluster by the preflight hook Job + drift CronJob (templates/hooks/):
+      # hermes-tools `mcp verify --mode validate` (CI + pre-commit) and proven in
+      # cluster by the preflight hook Job + drift CronJob (templates/hooks.yaml):
       #
       #   * PINS — every npx/uvx package is pinned to an exact published
       #     version. `@latest` and bare names let a registry-side publish
@@ -613,7 +617,7 @@ hermes-agent:
       # command) materialises them without ever starting a server.
       github:
         # Parked: the OpenCode-driven GitHub tooling in
-        # templates/omo/configmap-opencode-config.yaml already covers repo
+        # templates/opencode.yaml already covers repo
         # access. Kept pinned so re-enabling is a one-line change.
         enabled: false
         command: "npx"
@@ -982,27 +986,24 @@ hermes-agent:
     - name: k8s-gitops-context
       configMap:
         name: openagent-k8s-gitops-context
-    - name: skill-us-tax-filing-automation
-      configMap:
-        name: openagent-skill-us-tax-filing-automation
-    - name: skill-plane-ticket-sync
-      configMap:
-        name: openagent-skill-plane-ticket-sync
     - name: hermes-mise-config
       configMap:
         name: openagent-hermes-mise-config
-    # The gateway boot script (files/boot/boot.sh) — mounted read-only; the pod
-    # command is a single `exec sh /opt/boot/boot.sh` (see command below).
+    # The gateway boot shim (extras/shims/boot.sh) — mounted read-only; the pod
+    # command is a single `exec sh /opt/boot/boot.sh` (see command below). The
+    # Go sources it compiles ship in the openagent-tools-src ConfigMap (/opt/src).
     - name: boot-script
       configMap:
         name: openagent-boot-script
+    - name: tools-src
+      configMap:
+        name: openagent-tools-src
     - name: dashboard-auth
       configMap:
         name: openagent-dashboard-auth
-    # Manifest + verification/pre-warm scripts, rendered from this file's
-    # mcp_servers by templates/hooks/configmap-mcp-manifest.yaml. Mounting it
-    # (rather than duplicating the package list in the boot script) keeps the
-    # manifest the single source of truth.
+    # The MCP manifest, rendered from this file's mcp_servers by
+    # templates/hooks.yaml. Mounting it (rather than duplicating the package
+    # list in the boot flow) keeps the manifest the single source of truth.
     - name: mcp-verify
       configMap:
         name: openagent-mcp-manifest
@@ -1022,24 +1023,15 @@ hermes-agent:
       mountPath: /opt/data/memories/k8s-gitops-context.md
       subPath: k8s-gitops-context.md
       readOnly: true
-    - name: skill-us-tax-filing-automation
-      mountPath: /opt/data/skills/us-tax-filing-automation/SKILL.md
-      subPath: us-tax-filing-automation.SKILL.md
-      readOnly: true
-    - name: skill-plane-ticket-sync
-      mountPath: /opt/data/skills/plane-ticket-sync/SKILL.md
-      subPath: plane-ticket-sync.SKILL.md
-      readOnly: true
-    - name: skill-plane-ticket-sync
-      mountPath: /opt/data/skills/plane-ticket-sync/scripts/plan_to_tickets.py
-      subPath: plan_to_tickets.py
-      readOnly: true
     - name: hermes-mise-config
       mountPath: /mise
       readOnly: true
     - name: boot-script
       mountPath: /opt/boot/boot.sh
       subPath: boot.sh
+      readOnly: true
+    - name: tools-src
+      mountPath: /opt/src
       readOnly: true
     - name: dashboard-auth
       mountPath: /opt/hermes/.venv/lib/python3.13/site-packages/dashboard-auth.pth
@@ -1053,9 +1045,9 @@ hermes-agent:
       mountPath: /opt/data/mcp-verify
       readOnly: true
   command:
-    # Full bootstrap lives in files/boot/boot.sh (mounted from the
-    # openagent-boot-script ConfigMap) — one line so the script can
-    # change without a pod-spec-shaped diff.
+    # Full bootstrap lives in the boot shim (extras/shims/boot.sh → mounted
+    # from the openagent-boot-script ConfigMap) — one line so the toolchain
+    # can change without a pod-spec-shaped diff.
     - sh
     - -c
     - exec sh /opt/boot/boot.sh
@@ -1094,9 +1086,10 @@ hermes-agent:
 #   * cronjob — every 15 min, quiet on match; only drift produces output and a
 #     non-zero exit, so a watcher alerts on change, not on every run.
 #
-# Both are disabled by a single toggle without deleting them. The scripts live
-# in files/mcp/ and ship in the openagent-mcp-manifest ConfigMap, rendered from
-# the same mcp_servers values — no duplicated server list anywhere.
+# Both are disabled by a single toggle without deleting them. The checks run
+# the Go CLI hermes-tools (extras/, built on the PVC by the boot shim); the
+# manifest ships in the openagent-mcp-manifest ConfigMap, rendered from the
+# same mcp_servers values — no duplicated server list anywhere.
 mcpVerification:
   preflight:
     enabled: true
@@ -1158,7 +1151,7 @@ litellmVirtualService:
 # ── VPA ────────────────────────────────────────────────────────────
 # Dynamic sizing: the autoscaler sets the memory/cpu requests from observed
 # usage, so nobody hand-tunes a limit again. Read the header comment in
-# templates/shared/vpa.yaml before changing this block — three things there are
+# templates/vpa.yaml before changing this block — three things there are
 # easy to get silently wrong (requests == limits required for `Auto` to apply at
 # all; bounds are per container, `"*"` is only a default; helpers are switched
 # off explicitly instead of inheriting these numbers).

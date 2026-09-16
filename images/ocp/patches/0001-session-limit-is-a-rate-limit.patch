@@ -8,7 +8,7 @@ index 1fa68de..6b42396 100644
    "resource_exhausted",
 +  "session limit",
  ];
- 
+
 +// "session limit" is ADDED FROM THE WIRE, not invented, and it is the one entry above with a dated
 +// observation behind it. On 2026-09-15 a live OCP v3.36.0 instance hit the 5-hour subscription wall
 +// and the spawned `claude` said, verbatim:

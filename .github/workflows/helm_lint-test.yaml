@@ -54,6 +54,11 @@ jobs:
           python-version: "3.10"
           check-latest: true
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
       - name: Setup Chart-Testing
         uses: helm/chart-testing-action@v2
 
@@ -67,13 +72,17 @@ jobs:
           curl -sLo /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
           # helm-unittest plugin: per-chart semantic assertions.
-          # NOTE: repo is helm-unittest/helm-unittest (NOT helmpyp — that's a
-          # typo and silently fails the install in CI; NOT the vbehar fork,
-          # whose last release v1.0.16 predates --skip-schema-validation,
-          # which the unittest step below needs). Version pinned for the
-          # same reason every other tool in this step is pinned.
-          helm plugin install https://github.com/helm-unittest/helm-unittest \
-            --version v1.1.2 || true
+          # Upstream (helm-unittest/helm-unittest) — documentSelector support
+          # and active maintenance. Pinned; install failure must fail the job
+          # (no `|| true` — a missing plugin silently skipped all suites).
+          # helm v4 verifies plugin signatures by default and the upstream
+          # release ships none (--verify=false needed); helm v3 has no
+          # --verify flag at all, so keep it conditional on the major version.
+          if helm version --short 2>/dev/null | grep -qE '^v4'; then
+            helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2 --verify=false
+          else
+            helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2
+          fi
 
       - name: Setup Doppler CLI
         uses: dopplerhq/cli-action@master
@@ -124,30 +133,6 @@ jobs:
           # when denied, so RBAC drift fails CI instead of degrading silently.
           kubectl auth can-i list namespaces
 
-      - name: Determine target charts
-        id: targets
-        run: |
-          # If `chart` input is set (manual dispatch only), use it as the
-          # sole target. Otherwise, use changed-files output from a PR,
-          # or all charts on a manual dispatch without `chart` input.
-          chart_input="${{ inputs.chart }}"
-          if [ -n "$chart_input" ]; then
-            echo "value=${chart_input}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # Use tj-actions/changed-files output
-            all_changed=$(echo '${{ steps.changed-files.outputs.all_changed_files }}')
-            if [ -z "$all_changed" ]; then
-              echo "value=" >> "$GITHUB_OUTPUT"
-            else
-              echo "value=${all_changed}" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            # Manual dispatch with no `chart` input — lint ALL charts
-            echo "value=" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Grab File changes (PRs only)
         id: changed-files
         if: github.event_name == 'pull_request'
@@ -186,26 +171,29 @@ jobs:
         # workflow still reports success. Guard on the event explicitly.
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_mcp_manifest_validation != false }}
         run: |
-          # Static lint of hermes-agent.config.mcp_servers: every stdio package
-          # pinned (no @latest), every server bounded by connect_timeout, every
-          # stdio server carrying a recycle lifecycle, parked servers kept as
-          # enabled:false, and every enabled server declaring tools.include —
-          # the surface the preflight Job and drift CronJob certify at runtime.
-          # Same script runs locally and as a pre-commit hook. Uses PyYAML when
-          # present, otherwise the yq installed in the setup step above.
-          python3 scripts/validate-mcp-manifest.py services/helm/openagent/values.yaml
+          # Static lint of the rendered MCP manifest ConfigMap: every stdio
+          # package pinned (no @latest), every server bounded by
+          # connect_timeout, every stdio server carrying a recycle lifecycle,
+          # parked servers kept as enabled:false, and every enabled server
+          # declaring tools.include + resources/prompts — the surface the
+          # preflight Job and drift CronJob certify at runtime. Same binary
+          # (hermes-tools mcp verify --mode validate) runs as a pre-commit
+          # hook. Static policy lives in the binary, not in a Python script.
+          .useful-scripts/validate_mcp_manifest.sh
 
       - name: kubeconform (validate rendered manifests against K8s OpenAPI)
+        # Guard on the event explicitly: `inputs.*` is EMPTY on pull_request
+        # events — only workflow_dispatch populates it. A bare
+        # `inputs.kube_version` therefore handed kubeconform
+        # `-kubernetes-version ""`, which it rejected by printing its usage
+        # and exiting 1; that failed the step and (because a failure skips
+        # every later step) took helm-unittest and selector-check down with
+        # it. The fallback mirrors the workflow_dispatch default declared at
+        # the top of this file, and the event guard replaces the off-message
+        # `inputs.X != false` pattern that silently skips on PRs.
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_kubeconform != false }}
         env:
           chart_input: ${{ inputs.chart }}
-          # `inputs.*` is EMPTY on pull_request events — only workflow_dispatch
-          # populates it. A bare `inputs.kube_version` therefore handed
-          # kubeconform `-kubernetes-version ""`, which it rejected by printing
-          # its usage and exiting 1; that failed the step and (because a failure
-          # skips every later step) took helm-unittest and selector-check down
-          # with it. The fallback mirrors the workflow_dispatch default declared
-          # at the top of this file.
           kube_version: ${{ inputs.kube_version || '1.35.1' }}
         run: |
           # kubeconform catches malformed resources, missing required fields,
@@ -225,6 +213,7 @@ jobs:
           for d in "${helm_dirs[@]}"; do
             [ -f "$d/Chart.yaml" ] || continue
             helm dependency update "$d" > /dev/null 2>&1
+            .useful-scripts/patch_hermes_schema.sh "$d" > /dev/null
             helm template "$d" --skip-schema-validation --validate=false > /tmp/rendered.yaml
             # -ignore-missing-schemas: skip CRDs (ExternalSecret, SGCluster,
             # VirtualService, etc.) — their schemas aren't in kubeconform's
@@ -235,6 +224,8 @@ jobs:
           done
 
       - name: helm-unittest (semantic assertions on rendered output)
+        # See kubeconform step: guard on event, not on inputs (PRs otherwise
+        # silently skip this step).
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_helm_unittest != false }}
         env:
           chart_input: ${{ inputs.chart }}
@@ -243,16 +234,6 @@ jobs:
           # that assert specific properties of the rendered output, e.g.
           # "ExternalSecret maps Doppler TUNNEL_TOKEN to K8s key 'token'".
           # Catches bugs that helm lint + kubeconform can't catch.
-          #
-          # --skip-schema-validation: Helm injects a `global` map into every
-          # subchart's values, and hermes-agent's values.schema.json sets
-          # additionalProperties:false without declaring `global`, so any
-          # render of the openagent umbrella fails schema validation with
-          # "Additional property global is not allowed". That is an upstream
-          # schema defect, not a config error here — which is why the
-          # kubeconform and selector-check steps above already pass the same
-          # flag to their own `helm template`. Without it this step cannot
-          # run at all: it failed 8/8 on every test.
           helm_dirs=()
           if [ -n "$chart_input" ]; then
             helm_dirs=("$chart_input")
@@ -267,10 +248,12 @@ jobs:
           if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
           for d in "${helm_dirs[@]}"; do
             [ -d "$d/tests" ] || continue
-            helm unittest --skip-schema-validation "$d"
+            .useful-scripts/helm_unittest_openagent.sh "$d"
           done
 
       - name: selector-check (selector.matchLabels == template.metadata.labels)
+        # See kubeconform step: guard on event, not on inputs (PRs otherwise
+        # silently skip this step).
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_selector_check != false }}
         env:
           chart_input: ${{ inputs.chart }}
@@ -295,6 +278,7 @@ jobs:
           for d in "${helm_dirs[@]}"; do
             [ -f "$d/Chart.yaml" ] || continue
             helm dependency update "$d" > /dev/null 2>&1
+            .useful-scripts/patch_hermes_schema.sh "$d" > /dev/null
             helm template "$d" --skip-schema-validation --validate=false > /tmp/rendered.yaml
             .useful-scripts/check_selectors.sh /tmp/rendered.yaml
           done

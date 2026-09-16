@@ -66,6 +66,9 @@ for dir in "${helm_dirs[@]}"; do
       echo -e "${RED}  ✗ helm dependency update failed${RESET}"
       exit 1
     }
+    # hermes-agent schema rejects Helm's injected `global` key; patch the
+    # fresh tgz so helm lint passes for real (no-op for other charts).
+    .useful-scripts/patch_hermes_schema.sh "$dir" >/dev/null
   fi
 
   # Helm lint (schema + YAML validation; may fail for umbrella charts

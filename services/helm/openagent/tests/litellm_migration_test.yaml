@@ -1,53 +1,41 @@
-suite: litellm migration Job must not render (upstream leak)
-# Regression: litellm/proxy/prisma_migration.py has an upstream memory leak —
-# the migration pod OOMs with exit 137 after migrations complete, regardless of
-# memory cap (verified at 256Mi/1Gi/2Gi/4Gi, all OOMKilled). We disable the
-# migration Job entirely; schema updates require manual `kubectl exec` or an
-# upstream fix.
-#
-# Path form matters and is not obvious. Template paths in a suite resolve as
-# <chart-name>/<entry> under this chart's templates/ directory, and the litellm
-# subchart is ALIASED (`alias: litellm` in Chart.yaml), so its rendered manifest
-# keys are `openagent/charts/litellm/templates/...` — not `.../litellm-helm/...`
-# as the chart's real name suggests. Hence the `../charts/litellm/...` traversal:
-# without it the suite fails with
-#   template "openagent/charts/litellm-helm/templates/migrations-job.yaml"
-#   not exists or not selected in test suite
-#
-# Replaces a `notContainsDocument` assertion that does not exist in upstream
-# helm-unittest (upstream has `containsDocument`, with no negated form), so this
-# suite errored as "Assertion type `notContainsDocument` is invalid" the moment
-# the gate was allowed to run at all (2026-09-16).
+suite: test openagent umbrella chart
 templates:
-  - ../charts/litellm/templates/migrations-job.yaml
+  - charts/litellm-helm/templates/migrations-job.yaml
+  - charts/litellm-helm/templates/deployment.yaml
 release:
   name: openagent
   namespace: openagent
 tests:
-  - it: renders zero migration Job documents
+  - it: should NOT render the prisma-migration PreSync hook Job (upstream leak)
+    # Regression: litellm/proxy/prisma_migration.py has an upstream memory
+    # leak — pod OOMs with exit 137 after migrations complete, regardless
+    # of memory cap (verified at 256Mi/1Gi/2Gi/4Gi, all OOMKilled).
+    # We disable the migration Job entirely; schema updates require manual
+    # `kubectl exec` or an upstream fix.
     asserts:
-      - hasDocuments:
-          count: 0
+      - notExists:
+          path: metadata.name
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-migrations
+          skipEmptyTemplates: true
 
 ---
 suite: litellm subchart still renders (control for the assertion above)
 # Companion control: "the migration template renders nothing" is only meaningful
 # if the aliased subchart renders at all. Without this, the suite above would
-# keep passing if litellm were disabled, renamed, or the alias dropped — a green
-# test proving nothing.
-#
-# This asserts on the ConfigMap rather than the Deployment on purpose: restricting
-# a suite's `templates:` list to a template that `include`s a sibling renders
-# partially and dies with
-#   no template ".../configmap-litellm.yaml" associated with template "gotpl"
-# so the control has to pick a template with no cross-template includes.
-templates:
-  - ../charts/litellm/templates/configmap-litellm.yaml
+# keep passing if litellm were disabled, renamed, or the alias dropped — a
+# green test proving nothing. Subchart templates can't be targeted via
+# `templates:` (helm-unittest only resolves chart-local paths), so assert
+# via documentSelector on full render.
 release:
   name: openagent
   namespace: openagent
 tests:
   - it: still renders the litellm ConfigMap
     asserts:
-      - isKind:
-          of: ConfigMap
+      - exists:
+          path: data
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
