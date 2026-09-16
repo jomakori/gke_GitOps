@@ -109,9 +109,16 @@ jobs:
           # `kubectl config current-context` only reads the file back and makes NO
           # API call -- it stays green even when the tailnet route is dead, so it
           # certified nothing. `auth whoami` round-trips to kube-apiserver through
-          # the proxy and fails loudly if the kubeconfig, the tailnet route, or the
-          # RBAC binding is broken.
+          # the proxy, so it fails loudly if the kubeconfig or the tailnet route
+          # breaks. Note it reports IDENTITY ONLY: SelfSubjectReview is granted to
+          # every authenticated user via system:basic-user, so it stays green even
+          # if the tag:k8s binding below disappears.
           kubectl auth whoami
+
+          # The permission-gated check, which is what actually asserts that
+          # ci-rbac.yaml still grants the CI identity cluster-admin. Exits non-zero
+          # when denied, so RBAC drift fails CI instead of degrading silently.
+          kubectl auth can-i list namespaces
 
       - name: Determine target charts
         id: targets
