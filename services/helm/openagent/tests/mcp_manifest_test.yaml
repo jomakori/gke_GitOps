@@ -1,8 +1,12 @@
 suite: openagent MCP manifest certification
 templates:
-  - configmap-mcp-manifest.yaml
-  - job-mcp-preflight.yaml
-  - cronjob-mcp-verify.yaml
+  # Paths are relative to this chart's templates/ directory. They must match the
+  # per-assertion `template:` values below; a mismatch is reported as
+  # 'template "openagent/templates/<x>" not exists or not selected in test suite'
+  # rather than as a missing file, so it reads like a missing resource.
+  - hooks/configmap-mcp-manifest.yaml
+  - hooks/job-mcp-preflight.yaml
+  - hooks/cronjob-mcp-verify.yaml
 release:
   name: openagent
   namespace: openagent
@@ -133,22 +137,13 @@ tests:
           path: data.server-gistpad
           pattern: '"enabled":false'
         template: hooks/configmap-mcp-manifest.yaml
-      - matchRegex:
-          path: data.server-argocd
-          pattern: '"enabled":false'
-        template: hooks/configmap-mcp-manifest.yaml
-      - matchRegex:
-          path: data.server-grafana
-          pattern: '"enabled":false'
-        template: hooks/configmap-mcp-manifest.yaml
-      - matchRegex:
-          path: data.server-bitwarden
-          pattern: '"enabled":false'
-        template: hooks/configmap-mcp-manifest.yaml
-      - matchRegex:
-          path: data.server-drawio
-          pattern: '"enabled":false'
-        template: hooks/configmap-mcp-manifest.yaml
+      # argocd, grafana, bitwarden and drawio are NOT asserted here any more:
+      # they were re-enabled in values.yaml (each with a comment saying why the
+      # blocking defect was fixed), and this test kept claiming they were
+      # parked — which is only invisible while the helm-unittest step is
+      # skipped on PRs. `scripts/validate-mcp-manifest.py` → DUPLICATE_SERVERS
+      # is the list that must genuinely stay parked (github, gistpad) and it
+      # enforces it as a lint on every run, including PRs.
 
   - it: renders the preflight Job when its toggle is on
     asserts:
