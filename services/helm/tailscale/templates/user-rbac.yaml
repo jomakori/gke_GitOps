@@ -8,9 +8,15 @@
 #
 # Impersonation is per user identity, not per device: anything egressing as a
 # listed login gets these rights, including workloads that route through the
-# same tailnet node. Cluster-admin is equivalent to the built-in system:masters
-# group and sits ahead of RBAC authorization, so keep the list small and treat
-# removals as the primary revocation lever.
+# same tailnet node. That makes `tailnetAdminUsers` the revocation lever.
+#
+# This is an ordinary ClusterRoleBinding, so the grant is evaluated and logged
+# as normal RBAC and removing the entry (or the binding) withdraws it. Do not
+# mistake it for the built-in `system:masters` group: the apiserver honours that
+# group ahead of authorization, so it bypasses RBAC and cannot be revoked
+# through it. That bypass applies only where an identity is put *into*
+# system:masters — e.g. a grant that impersonates that group — not to binding
+# the cluster-admin ClusterRole, as done here.
 {{- if .Values.tailnetAdminUsers }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
