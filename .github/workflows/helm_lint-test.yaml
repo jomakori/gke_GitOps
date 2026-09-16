@@ -90,9 +90,28 @@ jobs:
           authkey: ${{ env.TAILSCALE_AUTH_KEY }}
 
       - name: Configure kubectl
+        env:
+          # Token for the Doppler read below. Same GitHub secret the
+          # secret-fetch step above uses to pull devops/ci.
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
         run: |
-          tailscale configure kubeconfig ${{ env.TAILSCALE_PROXY_HOST }}
-          kubectl config current-context
+          # Client kubeconfig for the operator's API server proxy. Its shape is
+          # pinned in Doppler (devops/svc_tailscale -> TAILSCALE_KUBECONFIG)
+          # rather than generated here by `tailscale configure kubeconfig`, so CI
+          # and every other consumer get byte-identical files. The kubeconfig
+          # holds no credentials: the proxy authenticates the runner's Tailscale
+          # identity (tag:k8s), which ci-rbac.yaml binds to cluster-admin.
+          mkdir -p ~/.kube
+          doppler secrets get TAILSCALE_KUBECONFIG \
+            --project devops --config svc_tailscale --plain > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+          # `kubectl config current-context` only reads the file back and makes NO
+          # API call -- it stays green even when the tailnet route is dead, so it
+          # certified nothing. `auth whoami` round-trips to kube-apiserver through
+          # the proxy and fails loudly if the kubeconfig, the tailnet route, or the
+          # RBAC binding is broken.
+          kubectl auth whoami
 
       - name: Determine target charts
         id: targets
