@@ -182,9 +182,15 @@ jobs:
           .useful-scripts/validate_mcp_manifest.sh
 
       - name: kubeconform (validate rendered manifests against K8s OpenAPI)
-        # Guard on the event explicitly: on pull_request `inputs` is empty and
-        # `inputs.X != false` evaluates to false, which would silently skip
-        # this step on every PR. See the MCP-validation step comment below.
+        # Guard on the event explicitly: `inputs.*` is EMPTY on pull_request
+        # events — only workflow_dispatch populates it. A bare
+        # `inputs.kube_version` therefore handed kubeconform
+        # `-kubernetes-version ""`, which it rejected by printing its usage
+        # and exiting 1; that failed the step and (because a failure skips
+        # every later step) took helm-unittest and selector-check down with
+        # it. The fallback mirrors the workflow_dispatch default declared at
+        # the top of this file, and the event guard replaces the off-message
+        # `inputs.X != false` pattern that silently skips on PRs.
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_kubeconform != false }}
         env:
           chart_input: ${{ inputs.chart }}

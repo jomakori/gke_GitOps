@@ -19,3 +19,23 @@ tests:
           path: metadata.name
           value: openagent-litellm-migrations
           skipEmptyTemplates: true
+
+---
+suite: litellm subchart still renders (control for the assertion above)
+# Companion control: "the migration template renders nothing" is only meaningful
+# if the aliased subchart renders at all. Without this, the suite above would
+# keep passing if litellm were disabled, renamed, or the alias dropped — a
+# green test proving nothing. Subchart templates can't be targeted via
+# `templates:` (helm-unittest only resolves chart-local paths), so assert
+# via documentSelector on full render.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: still renders the litellm ConfigMap
+    asserts:
+      - exists:
+          path: data
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
