@@ -373,10 +373,10 @@ hermes-agent:
   # Image for the gateway pod AND the MCP verification Jobs: both run the same
   # toolchain, and the mise node/uv on the PVC is ABI-coupled to this image.
   # Pinned explicitly so a Job never resolves an empty tag; keep in lockstep
-  # with the hermes-agent chart dependency's appVersion (0.9.1 -> v2026.7.7.2).
+  # with the hermes-agent chart dependency's appVersion (1.15.0 -> v2026.9.11).
   image:
     repository: nousresearch/hermes-agent
-    tag: "v2026.7.7.2"
+    tag: "v2026.9.11"
     pullPolicy: IfNotPresent
   config:
     model:
@@ -402,6 +402,10 @@ hermes-agent:
         key_env: LITELLM_MASTER_KEY
         discover_models: true
     agent:
+      # Chart v0.9.1 seeded max_turns: 90; v1.15.0 removed the seed (unlimited
+      # default). Explicit pin preserves the capped behavior when bootstrap
+      # re-seeds config.yaml from chart values on every pod start.
+      max_turns: 90
       # Sisyphus = Hermes default profile (HERMES_HOME=/opt/data) — the
       # orchestrator that fields ALL prompts. Heavy engineering is dispatched
       # to the `opencode` tool (OpenCode + OMO agents run as subprocesses);
