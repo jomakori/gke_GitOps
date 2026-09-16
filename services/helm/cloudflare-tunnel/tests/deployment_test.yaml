@@ -2,43 +2,92 @@ suite: test cloudflare-tunnel chart
 templates:
   - charts/cloudflare-tunnel/templates/deployment.yaml
   - charts/cloudflare-tunnel/templates/secret-token.yaml
+  # deployment.yaml takes a checksum of two sibling templates it does not itself
+  # render, via `include (print $.Template.BasePath "/<name>.yaml")`:
+  #   line 28 -> configmap.yaml   (checksum/configmap annotation)
+  #   line 29 -> secret.yaml      (checksum/secret annotation)
+  # A suite must select every template the selected ones reference, or each test
+  # errors out with:
+  #   template: no template
+  #   "cloudflare-tunnel/charts/cloudflare-tunnel/templates/<name>.yaml"
+  #   associated with template "gotpl"
+  # Everything else these templates call is a _helpers.tpl define, which Helm
+  # always loads. Add any further include the upstream chart grows here.
+  - charts/cloudflare-tunnel/templates/configmap.yaml
+  - charts/cloudflare-tunnel/templates/secret.yaml
 release:
   name: my-release
   namespace: cloudflare-tunnel
 tests:
+  # Every assertion below carries a `documentSelector` plus `skipEmptyTemplates`.
+  # Selecting more than one template means an unscoped assertion is evaluated
+  # against EVERY rendered document and fails on the ones it does not apply to.
+  # `skipEmptyTemplates: true` skips templates where the selector matches nothing
+  # instead of failing them; the default is to require a match in every template.
   - it: should be in remote mode (TUNNEL_TOKEN env present)
+    # Asserted against the Deployment's own env rather than via containsDocument.
+    # `containsDocument` requires `apiVersion` to match and cannot express what
+    # this test is actually about: that remote mode wires TUNNEL_TOKEN from the
+    # externally managed secret. The previous second assertion expected a
+    # rendered Secret named my-release-cloudflare-tunnel-token, which cannot
+    # exist here — the upstream chart renders that Secret only when
+    # `cloudflare.tunnelToken` is set AND `tunnelTokenSecretName` is empty, and
+    # this umbrella sets `tunnelTokenSecretName: cloudflare-tunnel-auth` (the
+    # token arrives via the ExternalSecret in templates/external-secret.yaml).
+    # env[0] is TUNNEL_TOKEN only in remote mode, so this also fails if the
+    # chart silently falls back to local mode.
     asserts:
-      - containsDocument:
-          kind: Deployment
-          name: my-release-cloudflare-tunnel
-      - containsDocument:
-          kind: Secret
-          name: my-release-cloudflare-tunnel-token
+      - equal:
+          path: spec.template.spec.containers[0].env[0].name
+          value: TUNNEL_TOKEN
+        documentSelector:
+          path: metadata.name
+          value: my-release-cloudflare-tunnel
+        skipEmptyTemplates: true
+      - equal:
+          path: spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name
+          value: cloudflare-tunnel-auth
+        documentSelector:
+          path: metadata.name
+          value: my-release-cloudflare-tunnel
+        skipEmptyTemplates: true
 
   - it: should NOT have a creds volume (remote mode uses TUNNEL_TOKEN, not a credentials file)
     # Regression: bug where the upstream chart's `or` gate evaluated empty
     # sidecar.extraVolumes as truthy, rendering a `creds` volume + mount
     # pointing to a non-existent secret. Pod stuck in ContainerCreating.
+    #
+    # The two assertions below ARE the regression test. A third
+    # `notContainsDocument` assertion used to sit above them; upstream
+    # helm-unittest has no such assertion type (it has `containsDocument`, with
+    # no negated form), so it errored the whole suite out with
+    #   Assertion type `notContainsDocument` is invalid
+    # the moment the gate was allowed to run (2026-09-16), and made this chart
+    # fail the now-enabled helm-unittest step. It was redundant as well:
+    # asserting `spec.template.spec.volumes` is null for this Deployment already
+    # means there is no `creds` volume, which is the stronger claim of the two.
     set:
       cloudflare-tunnel.cloudflare.mode: remote
       cloudflare-tunnel.cloudflare.tunnelTokenSecretName: cloudflare-tunnel-auth
     asserts:
-      - notContainsDocument:
-          kind: Deployment
-          name: my-release-cloudflare-tunnel
-          any: true
-      - equal:
+      # `notExists`, not `equal: null`. An absent path is not a null value:
+      # helm-unittest's `equal` validator errors with "unknown path
+      # spec.template.spec.volumes" when the path is missing, so `equal: null`
+      # can never pass for the very case this test asserts. `notExists`
+      # (formerly `isNull`) is the assertion for a path that is absent, and it
+      # still fails if the regression returns and the creds volume reappears.
+      - notExists:
           path: spec.template.spec.containers[0].volumeMounts
-          value: null
-          documentSelector:
-            path: spec.template.spec.containers[0].name
-            value: cloudflare-tunnel
-      - equal:
+        documentSelector:
+          path: metadata.name
+          value: my-release-cloudflare-tunnel
+        skipEmptyTemplates: true
+      - notExists:
           path: spec.template.spec.volumes
-          value: null
-          documentSelector:
-            path: metadata.name
-            value: my-release-cloudflare-tunnel
+        documentSelector:
+          path: metadata.name
+          value: my-release-cloudflare-tunnel
+        skipEmptyTemplates: true
 
   - it: should have the app.kubernetes.io/instance label (selector must match template)
     set:
@@ -47,6 +96,14 @@ tests:
       - equal:
           path: spec.selector.matchLabels["app.kubernetes.io/instance"]
           value: my-release
+        documentSelector:
+          path: kind
+          value: Deployment
+        skipEmptyTemplates: true
       - equal:
           path: spec.template.metadata.labels["app.kubernetes.io/instance"]
           value: my-release
+        documentSelector:
+          path: kind
+          value: Deployment
+        skipEmptyTemplates: true
