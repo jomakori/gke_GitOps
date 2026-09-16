@@ -179,8 +179,9 @@ jobs:
         # `run_*` toggle in this workflow needs the explicit event guard shown
         # here. `inputs` is empty on pull_request events, so a bare
         # `if: inputs.run_X != false` evaluates false: the step is SKIPPED while
-        # the workflow still reports success. That is precisely how kubeconform,
-        # helm-unittest and selector-check silently stopped running on PRs.
+        # the workflow still reports success. That is precisely how kubeconform
+        # and selector-check silently stopped running on PRs. (helm-unittest has
+        # the same defect but must stay disabled for now — see that step.)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_mcp_manifest_validation != false }}
         run: |
           # Static lint of hermes-agent.config.mcp_servers: every stdio package
@@ -225,7 +226,27 @@ jobs:
           done
 
       - name: helm-unittest (semantic assertions on rendered output)
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_helm_unittest != false }}
+        # DELIBERATELY still gated on `inputs.run_helm_unittest`, so it does NOT
+        # run on pull requests. Do not "fix" this to match the other steps unless
+        # the problems below are fixed first — enabling it today would add a
+        # check that can never fail.
+        #
+        # 1. CI installs an unpinned 2023 fork: `helm plugin install
+        #    https://github.com/vbehar/helm-unittest` redirects to
+        #    vbehar/helm3-unittest (`fork: true`, last pushed 2023-05-29, no
+        #    `version:` in its plugin.yaml). It rejects `containsDocument`, which
+        #    current upstream (helm-unittest/helm-unittest 1.1.2) supports.
+        # 2. That fork exits 0 on assertion EXECUTION errors. Verified with a
+        #    workflow_dispatch against services/helm/cloudflare-tunnel: the step
+        #    printed `FAIL ... Assertion type containsDocument is invalid` and
+        #    `Test Suites: 1 failed, 1 errored` while the step reported SUCCESS —
+        #    a false green, worse than no check at all.
+        # 3. The test files target a version in between the two:
+        #    cloudflare-tunnel/tests/deployment_test.yaml and
+        #    openagent/tests/litellm_migration_test.yaml use
+        #    `notContainsDocument`, accepted by neither the fork nor upstream.
+        # Fix the plugin (pin maintained upstream) and those two files first.
+        if: ${{ inputs.run_helm_unittest != false }}
         env:
           chart_input: ${{ inputs.chart }}
         run: |
