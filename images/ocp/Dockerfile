@@ -11,15 +11,16 @@
 # package nor a container image, so we vendor a pinned release tag at build time.
 # Pinned deliberately: OCP spawns the CLI and is the only thing between our agents
 # and the subscription, so the version in the image is the version we validated.
-# One vendored patch IS applied on top of that tag — see the `patches/` block
-# below; it is deleted the moment an upstream release carries the fix.
+# Image is a pristine upstream release — no vendored patches (upstream #494,
+# released in v3.37.0, classified the 5-hour session wall as a 429; we carried
+# that fix as a patch until the release landed).
 #
 # Build target: linux/arm64 — the cluster (k3d on OrbStack, Apple Silicon) is arm64.
 
 ARG NODE_IMAGE=node:22-bookworm-slim
 FROM ${NODE_IMAGE}
 
-ARG OCP_VERSION=v3.36.0
+ARG OCP_VERSION=v3.37.0
 ARG CLAUDE_CODE_VERSION=2.1.272
 
 LABEL org.opencontainers.image.title="ocp" \
@@ -47,26 +48,11 @@ RUN set -eux; \
 RUN set -eux; \
     git clone --depth 1 --branch "${OCP_VERSION}" https://github.com/dtzp555-max/ocp.git /opt/ocp
 
-# --- Vendored patch: the subscription wall is a 429, not a 500 -----------------
-# Upstream v3.36.0's classifier (`lib/upstream-errors.mjs`) matches `usage limit`,
-# `rate limit` and the quota nouns — but not the phrasing the 5-hour session wall
-# actually prints: `You've hit your session limit · resets 5am (UTC)`. So that wall
-# fails CLOSED and callers receive `500 proxy_error`, which agent frameworks treat
-# as retryable-and-NOT-failover. Measured on the live gateway: 26 wall frames over
-# ~40 minutes, arriving as bursts of three retries every five minutes, every one
-# answered 500 — the client spent its retry budget on a wall instead of leaving.
-#
-# REMOVE this block — `patches/` and the verify script together — once OCP_VERSION
-# is a release containing https://github.com/dtzp555-max/ocp/pull/492. Both rot
-# directions fail the build on purpose: if upstream edits the same hunk the patch
-# stops applying, and if upstream adds the phrase itself the verify script below
-# goes red instead of leaving us patching a file nobody watches.
-COPY patches/ /tmp/ocp-patches/
+# Vendored-patch block deleted with the v3.37.0 bump — upstream #494 makes the
+# 5-hour session wall a 429, so `patches/` and its verify script are gone.
+# Keeping it would re-apply legacy content to a release that owns the hunk.
 RUN set -eux; \
-    cd /opt/ocp; \
-    for p in /tmp/ocp-patches/*.patch; do git apply --verbose "$p"; done; \
-    node /tmp/ocp-patches/verify-session-limit.mjs; \
-    rm -rf /opt/ocp/.git /tmp/ocp-patches
+    rm -rf /opt/ocp/.git
 
 # The Claude Code CLI is the upstream OCP actually drives — version-pinned so a
 # CLI release cannot change our behaviour silently.

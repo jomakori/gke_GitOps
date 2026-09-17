@@ -1,0 +1,23 @@
+suite: openagent seeded hermes config is schema-version stamped
+# Regression: the gateway logs
+#   [config-migrate] WARNING: This config predates version 12 ...
+# on every boot when the seeded /opt/data/config.yaml carries no
+# `_config_version`. The subchart seeds that file from
+# `hermes-agent.config` with bootstrap.overwrite=true, so the version the
+# image's own migration stamps onto the PVC is discarded on every pod start;
+# the image then reads version 0, warns, and skips stamping again. Pin the key
+# so the seed matches the image's schema. Subchart templates can't be targeted
+# via `templates:` (helm-unittest only resolves chart-local paths), so assert
+# via documentSelector on the full render.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: stamps the seeded hermes config.yaml with _config_version 42
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^_config_version: 42$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config

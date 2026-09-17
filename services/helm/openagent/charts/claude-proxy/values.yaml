@@ -1,15 +1,14 @@
 enabled: true
 # OCP (open-claude-proxy) — OpenAI-compatible gateway in front of the Claude Code
-# CLI. Built by .github/workflows/ocp_image.yaml; the tag here MUST match a pushed
+# CLI. Built by .github/workflows/image-builds.yaml; the tag here MUST match a pushed
 # image tag (upstream publishes no image of its own). The image vendors a pinned
 # OCP release + a pinned Claude Code CLI version — see images/ocp/Dockerfile.
 image:
   repository: ghcr.io/jomakori/ocp
-  # -p1 = vendored-patch revision, not a pristine OCP release: the image carries
-  # images/ocp/patches/ (see its Dockerfile). MUST be bumped with the image, because
-  # pullPolicy is IfNotPresent — reusing a tag for different content leaves nodes
-  # serving the cached image with no error anywhere.
-  tag: v3.36.0-p1
+  # MUST be bumped together with the Dockerfile's OCP_VERSION, because pullPolicy is
+  # IfNotPresent — reusing a tag for different content leaves nodes serving the
+  # cached image with no error anywhere. Pristine upstream image (no vendored patch).
+  tag: v3.37.0
   pullPolicy: IfNotPresent
 service:
   port: 4523

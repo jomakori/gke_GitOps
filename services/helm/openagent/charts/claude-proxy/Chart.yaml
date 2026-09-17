@@ -3,4 +3,4 @@ name: claude-proxy
 description: Claude Code CLI exposed as an OpenAI-compatible API gateway (OCP), with caller-side tool calling
 type: application
 version: 0.2.0
-appVersion: "v3.36.0"
+appVersion: "v3.37.0"
