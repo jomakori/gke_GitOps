@@ -14,15 +14,20 @@ runtimeMode: "cluster"
 # Shared GHCR pull secret
 ghcrPullSecret: ""
 
-# ── Tools mode (src vs prebuilt image) ─────────────────────────────
+# ── Tools image (prebuilt gitopsctl binary) ────────────────────────
 tools:
-  # How the MCP-verify binary reaches the preflight/verify workloads.
-  #   src:   compile inside the cluster from the tools-src ConfigMap (/opt/src) — current behavior
-  #   image: run the prebuilt gitopsctl tools image
-  mode: src
+  # The prebuilt gitopsctl tools image ships the MCP-verify binary. The
+  # preflight Job and drift CronJob run it from /opt/tools/gitopsctl — the
+  # install-gitopsctl initContainer copies it out of the image into an
+  # emptyDir (the image is FROM scratch: binary only). The hermes image and
+  # the openagent-hermes-agent PVC stay, because the MCP toolchain
+  # (npx/uvx/deno/obscura/bw and the npm/uv caches) lives under /opt/data and
+  # is required for a faithful handshake.
   image:
     repository: ghcr.io/jomakori/gitopsctl
-    tag: ""            # empty → defaults to .Chart.AppVersion
+    # Published commit sha of the gitopsctl image (bare sha, no `sha-`
+    # prefix). `latest` must never be used with IfNotPresent.
+    tag: 09b6e38d285e0c2a638aa3ac3acb1b7bb0f86bb7
     pullPolicy: IfNotPresent
 
 # ── LiteLLM upstream chart values ──────────────────────────────────
@@ -593,7 +598,7 @@ hermes-agent:
       # container re-seeds that file from this chart on every pod start
       # (overwrite: true), so live edits are reverted. Change the manifest
       # here. Three invariants are enforced by
-      # hermes-tools `mcp verify --mode validate` (CI + pre-commit) and proven in
+      # gitopsctl `mcp verify --mode validate` (CI + pre-commit) and proven in
       # cluster by the preflight hook Job + drift CronJob (templates/hooks.yaml):
       #
       #   * PINS — every npx/uvx package is pinned to an exact published
@@ -1098,9 +1103,10 @@ hermes-agent:
 #     non-zero exit, so a watcher alerts on change, not on every run.
 #
 # Both are disabled by a single toggle without deleting them. The checks run
-# the Go CLI hermes-tools (extras/, built on the PVC by the boot shim); the
-# manifest ships in the openagent-mcp-manifest ConfigMap, rendered from the
-# same mcp_servers values — no duplicated server list anywhere.
+# the gitopsctl verifier binary from the prebuilt tools image (installed into
+# an emptyDir by the install-gitopsctl initContainer); the manifest ships in
+# the openagent-mcp-manifest ConfigMap, rendered from the same mcp_servers
+# values — no duplicated server list anywhere.
 mcpVerification:
   preflight:
     enabled: true

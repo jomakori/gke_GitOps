@@ -5,7 +5,7 @@ release:
   name: openagent
   namespace: openagent
 # Static MCP policy (pins, timeouts, lifecycles, tool surface) is owned by the
-# hermes-tools binary (`mcp verify --mode validate`) — this suite asserts only
+# gitopsctl binary (`mcp verify --mode validate`) — this suite asserts only
 # template structure: what renders, when, and under which values.
 tests:
   - it: renders the MCP manifest ConfigMap with manifest + per-server keys
@@ -78,6 +78,182 @@ tests:
       - equal:
           path: spec.schedule
           value: "*/15 * * * *"
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+
+  - it: preflight Job runs the gitopsctl verifier from the tools image on the hermes image
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "^nousresearch/hermes-agent:"
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: /opt/tools/gitopsctl
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.containers[0].command[4]
+          value: /mcp-verify/mcp-manifest
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.containers[0].command[6]
+          value: preflight
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: install-gitopsctl
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.initContainers[0].args[0]
+          value: install
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: wait-for-toolchain
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts
+          value:
+            - name: data
+              mountPath: /opt/data
+            - name: tools
+              mountPath: /opt/tools
+              readOnly: true
+            - name: mise-config
+              mountPath: /mise
+              readOnly: true
+            - name: mcp-verify
+              mountPath: /mcp-verify
+              readOnly: true
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.volumes
+          value:
+            - name: data
+              persistentVolumeClaim:
+                claimName: openagent-hermes-agent
+            - name: tools
+              emptyDir: {}
+            - name: mise-config
+              configMap:
+                name: openagent-hermes-mise-config
+            - name: mcp-verify
+              configMap:
+                name: openagent-mcp-manifest
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.containers[0].env[1].name
+          value: MISE_CONFIG_FILE
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+      - equal:
+          path: spec.template.spec.containers[0].env[1].value
+          value: /mise/mise.toml
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-preflight
+
+  - it: drift CronJob runs the gitopsctl verifier from the tools image on the hermes image
+    asserts:
+      - matchRegex:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          pattern: "^nousresearch/hermes-agent:"
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].command[0]
+          value: /opt/tools/gitopsctl
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].command[4]
+          value: /mcp-verify/mcp-manifest
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].command[6]
+          value: drift
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.initContainers[0].name
+          value: install-gitopsctl
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.initContainers[1].name
+          value: wait-for-toolchain
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          value:
+            - name: data
+              mountPath: /opt/data
+            - name: tools
+              mountPath: /opt/tools
+              readOnly: true
+            - name: mise-config
+              mountPath: /mise
+              readOnly: true
+            - name: mcp-verify
+              mountPath: /mcp-verify
+              readOnly: true
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          value:
+            - name: data
+              persistentVolumeClaim:
+                claimName: openagent-hermes-agent
+            - name: tools
+              emptyDir: {}
+            - name: mise-config
+              configMap:
+                name: openagent-hermes-mise-config
+            - name: mcp-verify
+              configMap:
+                name: openagent-mcp-manifest
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env[1].name
+          value: MISE_CONFIG_FILE
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env[1].value
+          value: /mise/mise.toml
         documentSelector:
           path: metadata.name
           value: openagent-mcp-drift

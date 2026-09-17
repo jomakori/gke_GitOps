@@ -50,12 +50,11 @@ go run ./cmd/gitopsctl mcp verify --manifest /tmp/mcp-manifest.json --mode prefl
 go run ./cmd/gitopsctl mcp verify --manifest /tmp/mcp-manifest.json --mode drift
 ```
 
-Cluster side, the same source reaches the workloads in two modes (`tools.mode` in `services/helm/openagent/values.yaml`):
+Cluster side, the preflight Job and drift CronJob run the verifier from the prebuilt tools image (`tools.image` in `services/helm/openagent/values.yaml`):
 
-| `tools.mode` | How the binary reaches the workloads |
-|--------------|--------------------------------------|
-| `src` (default) | compiled in-pod from the `tools-src` ConfigMap — the `services/helm/openagent/extras/` snapshot (still named `hermes-tools` there) |
-| `image` | prebuilt tools image `ghcr.io/jomakori/gitopsctl:<sha>` (`tools.image.repository`; empty `tag` → `.Chart.AppVersion`) |
+| How the binary reaches the workloads |
+|--------------------------------------|
+| `install-gitopsctl` initContainer copies it out of the prebuilt tools image `ghcr.io/jomakori/gitopsctl:<sha>` (`tools.image.repository` + pinned `tools.image.tag`) into an emptyDir at `/opt/tools/gitopsctl`; the hermes image + PVC stay for the MCP toolchain under `/opt/data` |
 
 ## Development
 

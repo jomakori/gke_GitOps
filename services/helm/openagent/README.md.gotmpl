@@ -36,7 +36,7 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 
 | Layer | What it does | Run by |
 |-------|--------------|--------|
-| **Static lint** — `hermes-tools mcp verify --mode validate` | No unpinned/`@latest` stdio package; every server has `connect_timeout`; every stdio server has `idle_timeout_seconds` + `max_lifetime_seconds`; every enabled server declares `resources`/`prompts` and a non-empty `tools.include`; parked servers stay present as `enabled: false`. | CI (`.github/workflows/helm_lint-test.yaml`) and the `mcp-manifest-validate` pre-commit hook via `.useful-scripts/validate_mcp_manifest.sh`. |
+| **Static lint** — `gitopsctl mcp verify --mode validate` | No unpinned/`@latest` stdio package; every server has `connect_timeout`; every stdio server has `idle_timeout_seconds` + `max_lifetime_seconds`; every enabled server declares `resources`/`prompts` and a non-empty `tools.include`; parked servers stay present as `enabled: false`. | CI (`.github/workflows/helm_lint-test.yaml`) and the `mcp-manifest-validate` pre-commit hook via `.useful-scripts/validate_mcp_manifest.sh`. |
 | **Preflight Job** — `templates/hooks.yaml` | For every **enabled** server it does a real JSON-RPC `initialize` + `tools/list` (stdio or Streamable HTTP), asserts every declared `tools.include` tool is present, and fails loudly with the server's own stderr on failure. Gated by `mcpVerification.preflight.enabled`. | Helm/ArgoCD **PostSync** hook Job (after the PVC + boot toolchain exist). |
 | **Drift CronJob** — `templates/hooks.yaml` | Same handshake on `mcpVerification.cronjob.schedule` (default every 15 min); quiet when the live surface matches, prints + exits non-zero on drift. Gated by `mcpVerification.cronjob.enabled`. | In-cluster `CronJob`. |
 
@@ -46,8 +46,8 @@ Run the pieces locally:
 
 ```bash
 .useful-scripts/validate_mcp_manifest.sh
-# handshake the enabled servers (built from extras/, same binary the cluster jobs run):
-go run ./extras/cmd/hermes-tools mcp verify \
+# handshake the enabled servers (built from .useful-scripts/gitopsctl, same binary the cluster jobs run):
+go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
   --manifest <(helm template openagent services/helm/openagent --skip-schema-validation | yq 'select(.kind=="ConfigMap" and .metadata.name=="openagent-mcp-manifest" ).data."mcp-manifest"') \
   --mode preflight
 ```
