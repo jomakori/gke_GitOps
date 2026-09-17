@@ -9,6 +9,7 @@ One binary, one command family, plus the sibling repo-side scripts staged to fol
 | Command | Stage | Status |
 |---------|-------|--------|
 | `gitopsctl boot` | in-cluster runtime (gateway entrypoint) | implemented — phase-1 src-mode, compiled from the chart `extras/` snapshot |
+| `gitopsctl install DEST` | in-cluster runtime (initContainer tool seeding) | implemented — copies the scratch-image binary into a shared `emptyDir` |
 | `gitopsctl mcp prewarm` | in-cluster runtime (boot cache warm) | implemented |
 | `gitopsctl mcp verify --mode preflight\|drift\|validate` | in-cluster runtime (PostSync preflight + drift CronJob) | implemented |
 | `chart lint/render/unittest/schema-patch` | repo-side | staged — shell (`.useful-scripts/ct_check.sh`, `helm_render_and_kubeconform.sh`, `helm_unittest_openagent.sh`, `patch_hermes_schema.sh`) |
