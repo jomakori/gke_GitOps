@@ -14,6 +14,17 @@ runtimeMode: "cluster"
 # Shared GHCR pull secret
 ghcrPullSecret: ""
 
+# ── Tools mode (src vs prebuilt image) ─────────────────────────────
+tools:
+  # How the MCP-verify binary reaches the preflight/verify workloads.
+  #   src:   compile inside the cluster from the tools-src ConfigMap (/opt/src) — current behavior
+  #   image: run the prebuilt gitopsctl tools image
+  mode: src
+  image:
+    repository: ghcr.io/jomakori/gitopsctl
+    tag: ""            # empty → defaults to .Chart.AppVersion
+    pullPolicy: IfNotPresent
+
 # ── LiteLLM upstream chart values ──────────────────────────────────
 litellm:
   enabled: true

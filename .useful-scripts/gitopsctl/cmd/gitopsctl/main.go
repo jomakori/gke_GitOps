@@ -1,0 +1,91 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+
+	"gitopsctl/internal/boot"
+	"gitopsctl/internal/mcp"
+)
+
+func main() {
+	log.SetFlags(0)
+	if len(os.Args) < 2 {
+		usage()
+		os.Exit(2)
+	}
+	switch os.Args[1] {
+	case "boot":
+		cmdBoot()
+	case "mcp":
+		cmdMCP(os.Args[2:])
+	default:
+		usage()
+		os.Exit(2)
+	}
+}
+
+func usage() {
+	fmt.Fprintln(os.Stderr, `gitopsctl — boot + MCP pre-warm/verification for the openagent umbrella
+
+usage:
+  gitopsctl boot [--manifest PATH]      run the gateway boot sequence (replaces boot.sh)
+  gitopsctl mcp prewarm [--manifest PATH] [--parallel N]
+                                           materialise npx/uvx package caches
+  gitopsctl mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
+                                           handshake MCP servers and certify tools
+                                           (validate = static manifest policy lint, no network)`)
+}
+
+func cmdBoot() {
+	fs := flag.NewFlagSet("boot", flag.ExitOnError)
+	manifest := fs.String("manifest", mcp.BootManifest, "rendered MCP manifest path")
+	_ = fs.Parse(os.Args[2:])
+	if err := boot.Run(*manifest); err != nil {
+		log.Printf("boot: %v", err)
+		os.Exit(1)
+	}
+}
+
+type multiFlag []string
+
+func (m *multiFlag) String() string { return "" }
+func (m *multiFlag) Set(v string) error {
+	*m = append(*m, v)
+	return nil
+}
+
+func cmdMCP(args []string) {
+	if len(args) == 0 {
+		usage()
+		os.Exit(2)
+	}
+	switch args[0] {
+	case "prewarm":
+		fs := flag.NewFlagSet("prewarm", flag.ExitOnError)
+		manifest := fs.String("manifest", mcp.BootManifest, "rendered MCP manifest path")
+		parallel := fs.Int("parallel", 4, "concurrent npm materialisations")
+		_ = fs.Parse(args[1:])
+		os.Exit(mcp.Prewarm(*manifest, *parallel))
+	case "verify":
+		fs := flag.NewFlagSet("verify", flag.ExitOnError)
+		manifest := fs.String("manifest", mcp.DefaultManifest, "rendered MCP manifest path")
+		mode := fs.String("mode", "preflight", "preflight, drift or validate")
+		var only multiFlag
+		fs.Var(&only, "only", "verify only this server (repeatable)")
+		_ = fs.Parse(args[1:])
+		if *mode != "preflight" && *mode != "drift" && *mode != "validate" {
+			log.Printf("verify: unknown mode %q (want preflight|drift|validate)", *mode)
+			os.Exit(2)
+		}
+		if *mode == "validate" {
+			os.Exit(mcp.ExecuteValidate(*manifest))
+		}
+		os.Exit(mcp.Execute(*manifest, *mode, only))
+	default:
+		usage()
+		os.Exit(2)
+	}
+}

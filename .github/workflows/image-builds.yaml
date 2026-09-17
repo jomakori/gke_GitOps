@@ -1,0 +1,235 @@
+name: Build and push images
+
+# Centralized image-build workflow: OCP (open-claude-proxy) gateway image +
+# gitopsctl tools image. Each job is gated on its own changed paths (see
+# detect-changes); workflow_dispatch runs both.
+#
+# OCP: builds the gateway image the claude-proxy chart runs. The image vendors
+# a pinned OCP release tag + a pinned Claude Code CLI, because upstream
+# publishes neither an npm package nor a container image. Bumping either
+# version is a chart change (charts/claude-proxy/values.yaml) AND a rebuild —
+# the two must be moved together, or the deployed tag will not exist.
+#
+# gitopsctl: static stdlib-only Go binary (renamed successor of hermes-tools),
+# tagged by git sha only. Phase 2: pulled by cluster preflight/drift workloads
+# instead of built-on-PVC.
+#
+# arm64 only for OCP: the cluster is k3d on OrbStack/Apple Silicon, and
+# `ubuntu-24.04-arm` is a natively arm64 runner, so no QEMU emulation is
+# involved. gitopsctl builds amd64+arm64, so it DOES set up QEMU for the
+# emulated amd64 leg.
+
+on:
+  workflow_dispatch:
+    inputs:
+      OCP_VERSION:
+        description: "OCP release tag to vendor"
+        required: true
+        default: "v3.36.0"
+      CLAUDE_CODE_VERSION:
+        description: "@anthropic-ai/claude-code version to install"
+        required: true
+        default: "2.1.272"
+  pull_request:
+    paths:
+      - images/ocp/**
+      - .useful-scripts/gitopsctl/**
+      - images/gitopsctl/**
+      - .github/workflows/image-builds.yaml
+  push:
+    branches:
+      - main
+    paths:
+      - images/ocp/**
+      - .useful-scripts/gitopsctl/**
+      - images/gitopsctl/**
+      - .github/workflows/image-builds.yaml
+
+concurrency:
+  group: image-builds
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ocp
+  OCP_VERSION_DEFAULT: v3.36.0
+  CLAUDE_CODE_VERSION_DEFAULT: 2.1.272
+  BUILD_PLATFORMS: linux/arm64
+  # Vendored-patch revision, and the reason the image tag is not just the OCP tag:
+  # the image carries images/ocp/patches/ (see the Dockerfile), so its content is
+  # no longer identical to the upstream release named in OCP_VERSION. The chart
+  # pins a tag with `pullPolicy: IfNotPresent`, so publishing patched content under
+  # the bare `v3.36.0` tag would leave every node serving the OLD cached image under
+  # the same name — the failure mode is silence, not an error. Bump to -p2 for the
+  # next vendored patch; drop the suffix when the image is pristine upstream again.
+  IMAGE_TAG_SUFFIX: -p1
+  GITOPSCTL_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/gitopsctl
+  GITOPSCTL_BUILD_PLATFORMS: linux/amd64,linux/arm64
+
+jobs:
+  detect-changes:
+    name: Detect changed image paths
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      ocp: ${{ steps.filter.outputs.ocp }}
+      gitopsctl: ${{ steps.filter.outputs.gitopsctl }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Detect changed paths
+        id: filter
+        # workflow_dispatch runs both jobs unconditionally; path gating only
+        # applies to push/pull_request.
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            ocp:
+              - 'images/ocp/**'
+              - '.github/workflows/image-builds.yaml'
+            gitopsctl:
+              - '.useful-scripts/gitopsctl/**'
+              - 'images/gitopsctl/**'
+              - '.github/workflows/image-builds.yaml'
+
+  build_and_push:
+    name: Build and push OCP image
+    # Newest STABLE arm64 runner label. ubuntu-26.04(-arm) is still preview —
+    # never use it. Verified live against actions/runner-images' README.
+    runs-on: ubuntu-24.04-arm
+    needs: detect-changes
+    if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.ocp == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Resolve build inputs
+        id: build_inputs
+        env:
+          OCP_VERSION_INPUT: ${{ inputs.OCP_VERSION }}
+          CLAUDE_CODE_VERSION_INPUT: ${{ inputs.CLAUDE_CODE_VERSION }}
+        run: |
+          set -euo pipefail
+          OCP_VERSION="${OCP_VERSION_INPUT:-$OCP_VERSION_DEFAULT}"
+          CLAUDE_CODE_VERSION="${CLAUDE_CODE_VERSION_INPUT:-$CLAUDE_CODE_VERSION_DEFAULT}"
+          echo "OCP_VERSION=${OCP_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_TAG=${OCP_VERSION}${IMAGE_TAG_SUFFIX}" >> "$GITHUB_OUTPUT"
+          echo "Resolved OCP_VERSION=${OCP_VERSION} CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION} IMAGE_TAG=${OCP_VERSION}${IMAGE_TAG_SUFFIX}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push OCP image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: images/ocp
+          file: images/ocp/Dockerfile
+          platforms: ${{ env.BUILD_PLATFORMS }}
+          # Pull requests BUILD but do not PUSH: a broken Dockerfile or a tag that
+          # does not resolve surfaces in review, and no PR can publish an image
+          # that `main` has not accepted.
+          push: ${{ github.event_name != 'pull_request' }}
+          build-args: |
+            OCP_VERSION=${{ steps.build_inputs.outputs.OCP_VERSION }}
+            CLAUDE_CODE_VERSION=${{ steps.build_inputs.outputs.CLAUDE_CODE_VERSION }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.build_inputs.outputs.IMAGE_TAG }}
+            ${{ env.IMAGE_NAME }}:sha-${{ steps.build_inputs.outputs.SHORT_SHA }}
+            ${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summarize pushed image
+        env:
+          IMAGE_TAG: ${{ steps.build_inputs.outputs.IMAGE_TAG }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### OCP image pushed"
+            echo ""
+            echo "- \`${IMAGE_NAME}:${IMAGE_TAG}\`"
+            echo "- digest \`${IMAGE_DIGEST}\`"
+            echo "- platform \`${BUILD_PLATFORMS}\`"
+            echo ""
+            echo "Reference it from \`charts/claude-proxy/values.yaml\` (image.tag) so the"
+            echo "chart and the image version stay in lockstep."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  gitopsctl-image:
+    name: Build and push gitopsctl image
+    runs-on: ubuntu-24.04-arm
+    needs: detect-changes
+    if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.gitopsctl == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Stage gitopsctl module into build context
+        run: cp -a .useful-scripts/gitopsctl/. images/gitopsctl/src/
+
+      - name: Set up QEMU
+        # amd64 is emulated on this arm64 runner; QEMU binfmt is required for
+        # the linux/amd64 leg of the multi-platform build.
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push gitopsctl image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: images/gitopsctl
+          file: images/gitopsctl/Dockerfile
+          platforms: ${{ env.GITOPSCTL_BUILD_PLATFORMS }}
+          # Pull requests BUILD but do not PUSH (same policy as the OCP job).
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.GITOPSCTL_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.GITOPSCTL_IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summarize pushed image
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### gitopsctl image pushed"
+            echo ""
+            echo "- \`${GITOPSCTL_IMAGE_NAME}:${GITHUB_SHA}\`"
+            echo "- digest \`${IMAGE_DIGEST}\`"
+            echo "- platforms \`${GITOPSCTL_BUILD_PLATFORMS}\`"
+            echo ""
+            echo "Pulled by cluster preflight/drift workloads (phase 2) instead of"
+            echo "building on-PVC."
+          } >> "$GITHUB_STEP_SUMMARY"

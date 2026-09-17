@@ -875,6 +875,10 @@ go run ./extras/cmd/hermes-tools mcp verify \
 | postgres.userName | string | `"openagent"` |  |
 | runtimeMode | string | `"cluster"` |  |
 | storageClass | string | `"local-path"` |  |
+| tools.image.pullPolicy | string | `"IfNotPresent"` |  |
+| tools.image.repository | string | `"ghcr.io/jomakori/gitopsctl"` |  |
+| tools.image.tag | string | `""` |  |
+| tools.mode | string | `"src"` |  |
 | vpa.enabled | bool | `true` |  |
 | vpa.targets[0].containers[0].maxCpu | string | `"2"` |  |
 | vpa.targets[0].containers[0].maxMemory | string | `"8Gi"` |  |

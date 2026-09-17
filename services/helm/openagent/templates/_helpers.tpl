@@ -25,10 +25,17 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 {{- printf "%s:%s" $image.repository $image.tag -}}
 {{- end -}}
 
+{{- define "openagent.toolsImage" -}}
+{{- printf "%s:%s" .Values.tools.image.repository (.Values.tools.image.tag | default .Chart.AppVersion) -}}
+{{- end -}}
+
 {{/*
 Environment and volumes shared by the MCP preflight Job and drift CronJob.
-Both run the same image as the gateway and reuse the PVC toolchain + caches the
-boot pre-warm materialised, so the handshake is exactly what the gateway does.
+tools.mode selects how the MCP-verify binary reaches them:
+  * src   — same image as the gateway, reuse the PVC toolchain + caches the boot
+            pre-warm materialised (the handshake is exactly what the gateway does).
+  * image — the prebuilt gitopsctl tools image ships the binary; the PVC is not
+            mounted, so only the manifest ConfigMap volume is needed.
 */}}
 {{- define "openagent.mcpVerifyEnv" -}}
 - name: HOME
@@ -50,9 +57,11 @@ boot pre-warm materialised, so the handshake is exactly what the gateway does.
 {{- end -}}
 
 {{- define "openagent.mcpVerifyVolumes" -}}
+{{- if eq .Values.tools.mode "src" -}}
 - name: data
   persistentVolumeClaim:
     claimName: openagent-hermes-agent
+{{- end }}
 - name: mcp-verify
   configMap:
     name: openagent-mcp-manifest
