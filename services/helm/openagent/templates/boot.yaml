@@ -33,22 +33,30 @@ metadata:
   annotations:
     # Rendered with (just before) the workload so the pod can mount it.
     argocd.argoproj.io/sync-wave: "-1"
-# Keys mirror the extras/ tree (mount = /opt/src in values → build dir).
-# Kubelet projects slash keys as nested paths; helm-unittest does not need
-# these keys (they are build inputs, not assertions).
-data:
-  go.mod: |
-{{ .Files.Get "extras/go.mod" | indent 4 }}
+# ConfigMap keys may only contain [-._a-zA-Z0-9], so the extras/ tree cannot be
+# projected as nested paths (slashes are rejected by the API server and fail the
+# whole ArgoCD sync). The tree therefore ships as indexed blobs — f0001, f0002, …
+# — plus tools-src.manifest listing the relative paths in the same order.
+# extras/shims/boot.sh rebuilds the tree on the PVC from those two pieces.
+{{- $srcs := dict }}
 {{- range $p, $_ := .Files.Glob "extras/cmd/**" }}
 {{- if and (not (hasSuffix "_test.go" $p)) (not (hasPrefix "extras/internal/mcp/testdata/" $p)) }}
-  {{ $p | trimPrefix "extras/" }}: |
-{{ $.Files.Get $p | indent 4 }}
+{{- $_ := set $srcs ($p | trimPrefix "extras/") true }}
 {{- end }}
 {{- end }}
 {{- range $p, $_ := .Files.Glob "extras/internal/**" }}
 {{- if and (not (hasSuffix "_test.go" $p)) (not (hasPrefix "extras/internal/mcp/testdata/" $p)) }}
-  {{ $p | trimPrefix "extras/" }}: |
-{{ $.Files.Get $p | indent 4 }}
+{{- $_ := set $srcs ($p | trimPrefix "extras/") true }}
 {{- end }}
+{{- end }}
+{{- $_ := set $srcs "go.mod" true }}
+data:
+  tools-src.manifest: |
+{{- range $rel := keys $srcs | sortAlpha }}
+    {{ $rel }}
+{{- end }}
+{{- range $i, $rel := keys $srcs | sortAlpha }}
+  f{{ printf "%04d" (add1 $i) }}: |
+{{ $.Files.Get (printf "extras/%s" $rel) | indent 4 }}
 {{- end }}
 {{- end }}
