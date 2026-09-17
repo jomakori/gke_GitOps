@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"path/filepath"
 
-	"hermes-tools/internal/boot"
-	"hermes-tools/internal/mcp"
+	"gitopsctl/internal/boot"
+	"gitopsctl/internal/mcp"
 )
 
 func main() {
@@ -19,6 +21,8 @@ func main() {
 	switch os.Args[1] {
 	case "boot":
 		cmdBoot()
+	case "install":
+		cmdInstall(os.Args[2:])
 	case "mcp":
 		cmdMCP(os.Args[2:])
 	default:
@@ -28,13 +32,14 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `hermes-tools — boot + MCP pre-warm/verification for the openagent umbrella
+	fmt.Fprintln(os.Stderr, `gitopsctl — boot + MCP pre-warm/verification for the openagent umbrella
 
 usage:
-  hermes-tools boot [--manifest PATH]      run the gateway boot sequence (replaces boot.sh)
-  hermes-tools mcp prewarm [--manifest PATH] [--parallel N]
+  gitopsctl boot [--manifest PATH]      run the gateway boot sequence (replaces boot.sh)
+  gitopsctl install DEST                 copy this executable to DEST (initContainer seeding)
+  gitopsctl mcp prewarm [--manifest PATH] [--parallel N]
                                            materialise npx/uvx package caches
-  hermes-tools mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
+  gitopsctl mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
                                            handshake MCP servers and certify tools
                                            (validate = static manifest policy lint, no network)`)
 }
@@ -47,6 +52,58 @@ func cmdBoot() {
 		log.Printf("boot: %v", err)
 		os.Exit(1)
 	}
+}
+
+// cmdInstall copies the running executable to a single destination path. It
+// lets a scratch-based tools image seed a binary into an emptyDir from an
+// initContainer, where no shell or cp exists.
+func cmdInstall(args []string) {
+	fs := flag.NewFlagSet("install", flag.ExitOnError)
+	_ = fs.Parse(args)
+	if fs.NArg() != 1 {
+		usage()
+		os.Exit(2)
+	}
+	if err := install(fs.Arg(0)); err != nil {
+		log.Printf("install: %v", err)
+		os.Exit(1)
+	}
+}
+
+func install(dest string) error {
+	src, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	if dir := filepath.Dir(dest); dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+
+	out, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o755)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return err
+	}
+	if err := out.Close(); err != nil {
+		return err
+	}
+
+	mode := os.FileMode(0o755)
+	if info, err := in.Stat(); err == nil {
+		mode = info.Mode().Perm()
+	}
+	return os.Chmod(dest, mode|0o111)
 }
 
 type multiFlag []string

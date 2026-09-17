@@ -1,0 +1,102 @@
+suite: hermes-agent gateway probes (9119 dashboard)
+templates:
+  - charts/hermes-agent/templates/deployment.yaml
+  - charts/hermes-agent/templates/configmap.yaml
+  - charts/hermes-agent/templates/secret.yaml
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: renders startup + readiness probes on the gateway container, and no liveness probe
+    asserts:
+      - isKind:
+          of: Deployment
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: hermes-agent
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - exists:
+          path: spec.template.spec.containers[0].startupProbe
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - exists:
+          path: spec.template.spec.containers[0].readinessProbe
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      # s6-overlay already restarts `hermes gateway run` on crash; a 9119
+      # liveness would couple whole-pod lifecycle to the dashboard (a separate
+      # s6 service) and kill-restart the pod when s6 would restart only the
+      # dashboard. Assert it stays absent.
+      - notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.port
+          value: 9119
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.periodSeconds
+          value: 10
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      # ~20 min budget (120 × 10s) > measured ~10 min boot.
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.failureThreshold
+          value: 120
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.timeoutSeconds
+          value: 3
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: 9119
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.periodSeconds
+          value: 10
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.failureThreshold
+          value: 3
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.timeoutSeconds
+          value: 3
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent

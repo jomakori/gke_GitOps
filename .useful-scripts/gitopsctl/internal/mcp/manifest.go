@@ -42,16 +42,16 @@ type ToolsConfig struct {
 }
 
 type Server struct {
-	Command             string            `json:"command,omitempty"`
-	Args                []string          `json:"args,omitempty"`
-	URL                 string            `json:"url,omitempty"`
-	Env                 map[string]string `json:"env,omitempty"`
-	Headers             map[string]string `json:"headers,omitempty"`
-	Enabled             *bool             `json:"enabled,omitempty"`
-	ConnectTimeout      int               `json:"connect_timeout,omitempty"`
-	IdleTimeoutSeconds  int               `json:"idle_timeout_seconds,omitempty"`
-	MaxLifetimeSeconds  int               `json:"max_lifetime_seconds,omitempty"`
-	Tools               *ToolsConfig      `json:"tools,omitempty"`
+	Command            string            `json:"command,omitempty"`
+	Args               []string          `json:"args,omitempty"`
+	URL                string            `json:"url,omitempty"`
+	Env                map[string]string `json:"env,omitempty"`
+	Headers            map[string]string `json:"headers,omitempty"`
+	Enabled            *bool             `json:"enabled,omitempty"`
+	ConnectTimeout     int               `json:"connect_timeout,omitempty"`
+	IdleTimeoutSeconds int               `json:"idle_timeout_seconds,omitempty"`
+	MaxLifetimeSeconds int               `json:"max_lifetime_seconds,omitempty"`
+	Tools              *ToolsConfig      `json:"tools,omitempty"`
 }
 
 func (s Server) IsEnabled() bool { return s.Enabled == nil || *s.Enabled }

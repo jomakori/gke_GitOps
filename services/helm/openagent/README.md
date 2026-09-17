@@ -48,18 +48,18 @@ The skill body is Helm-templated — it carries `runtimeMode` conditionals aroun
 
 | Layer | What it does | Run by |
 |-------|--------------|--------|
-| **Static lint** — `hermes-tools mcp verify --mode validate` | No unpinned/`@latest` stdio package; every server has `connect_timeout`; every stdio server has `idle_timeout_seconds` + `max_lifetime_seconds`; every enabled server declares `resources`/`prompts` and a non-empty `tools.include`; parked servers stay present as `enabled: false`. | CI (`.github/workflows/helm_lint-test.yaml`) and the `mcp-manifest-validate` pre-commit hook via `.useful-scripts/validate_mcp_manifest.sh`. |
+| **Static lint** — `gitopsctl mcp verify --mode validate` | No unpinned/`@latest` stdio package; every server has `connect_timeout`; every stdio server has `idle_timeout_seconds` + `max_lifetime_seconds`; every enabled server declares `resources`/`prompts` and a non-empty `tools.include`; parked servers stay present as `enabled: false`. | CI (`.github/workflows/helm_lint-test.yaml`) and the `mcp-manifest-validate` pre-commit hook via `.useful-scripts/validate_mcp_manifest.sh`. |
 | **Preflight Job** — `templates/hooks.yaml` | For every **enabled** server it does a real JSON-RPC `initialize` + `tools/list` (stdio or Streamable HTTP), asserts every declared `tools.include` tool is present, and fails loudly with the server's own stderr on failure. Gated by `mcpVerification.preflight.enabled`. | Helm/ArgoCD **PostSync** hook Job (after the PVC + boot toolchain exist). |
 | **Drift CronJob** — `templates/hooks.yaml` | Same handshake on `mcpVerification.cronjob.schedule` (default every 15 min); quiet when the live surface matches, prints + exits non-zero on drift. Gated by `mcpVerification.cronjob.enabled`. | In-cluster `CronJob`. |
 
-The server definitions are rendered once into the `openagent-mcp-manifest` ConfigMap (from these same values) and consumed by both Jobs and by the gateway's boot pre-warm — there is no second server list to drift. The gateway never *starts* a server at boot to warm caches: the `hermes-tools` `mcp prewarm` command (stdlib-only Go CLI compiled from `extras/` into the boot toolchain at `/opt/data/bin/hermes-tools`) materialises each `npx`/`uvx` cache with a package-resolution command (`npm exec --package=<pkg> -- true`, `uv tool install`), runs every child in its own process group and hard-kills the group on timeout, and sweeps `_npx` orphans left by older boots.
+The server definitions are rendered once into the `openagent-mcp-manifest` ConfigMap (from these same values) and consumed by both Jobs and by the gateway's boot pre-warm — there is no second server list to drift. The gateway never *starts* a server at boot to warm caches: the `gitopsctl` `mcp prewarm` command (prebuilt tools image, installed into the pod's `tools` emptyDir by the `install-gitopsctl` initContainer) materialises each `npx`/`uvx` cache with a package-resolution command (`npm exec --package=<pkg> -- true`, `uv tool install`), runs every child in its own process group and hard-kills the group on timeout, and sweeps `_npx` orphans left by older boots.
 
 Run the pieces locally:
 
 ```bash
 .useful-scripts/validate_mcp_manifest.sh
-# handshake the enabled servers (built from extras/, same binary the cluster jobs run):
-go run ./extras/cmd/hermes-tools mcp verify \
+# handshake the enabled servers (built from .useful-scripts/gitopsctl, same binary the cluster jobs run):
+go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
   --manifest <(helm template openagent services/helm/openagent --skip-schema-validation | yq 'select(.kind=="ConfigMap" and .metadata.name=="openagent-mcp-manifest" ).data."mcp-manifest"') \
   --mode preflight
 ```
@@ -86,9 +86,10 @@ go run ./extras/cmd/hermes-tools mcp verify \
 | dashboard.subdomain | string | `"openagent"` |  |
 | dopplerConfig | string | `"svc_openagent"` |  |
 | ghcrPullSecret | string | `""` |  |
-| hermes-agent.command[0] | string | `"sh"` |  |
-| hermes-agent.command[1] | string | `"-c"` |  |
-| hermes-agent.command[2] | string | `"exec sh /opt/boot/boot.sh"` |  |
+| hermes-agent.args | list | `[]` |  |
+| hermes-agent.command[0] | string | `"/opt/tools/gitopsctl"` |  |
+| hermes-agent.command[1] | string | `"boot"` |  |
+| hermes-agent.config._config_version | int | `42` |  |
 | hermes-agent.config.agent.environment_hint | string | `"# Skills: Ponytail + Caveman + k8s-gitops-context\n\n## K8s GitOps Context\n\nTHIS IS THE CLUSTER SOURCE OF TRUTH. Read @/opt/data/memories/k8s-gitops-context.md\nbefore ANY cluster-related task. Contains:\n- Repo paths, secrets chain (Doppler → ESO → pods)\n- Sync wave order, helm chart patterns, service registration\n- Istio networking, Cloudflare tunnel, Terraform execution order\n- OpenAgent architecture (umbrella chart, opencode agent execution, Claude proxy)\n- Critical gotchas (SNI, ExternalSecret patterns, storage limitations)\n\nNEVER operate on cluster resources without reading the context first.\n\n## Ponytail — YAGNI Ladder (before writing code)\n\nBefore writing code, stop at the first rung that holds:\n1. Does this need to exist? → no: skip it (YAGNI)\n2. Already in this codebase? → reuse it, don't rewrite\n3. Stdlib does it? → use it\n4. Native platform feature? → use it\n5. Installed dependency? → use it\n6. One line? → one line\n7. Only then: the minimum that works\n\nThe ladder runs after understanding the problem, not instead of it.\nLazy about the solution, never about reading.\n\nLazy, not negligent: trust-boundary validation, data-loss handling,\nsecurity, and accessibility are never on the chopping block.\n\nSource: github.com/DietrichGebert/ponytail\n\n## Caveman — Terse Communication\n\nRespond terse like smart caveman. All technical substance stay.\nOnly fluff die.\n\nRules:\n- Drop: articles (a/an/the), filler (just/really/basically),\n  pleasantries (sure/certainly/of course), hedging\n- Fragments OK. Short synonyms. Technical terms exact.\n- Code blocks unchanged. Errors quoted exact.\n- Pattern: [thing] [action] [reason]. [next step].\n\nNot: \"Sure! I'd be happy to help you with that.\"\nYes: \"Bug in auth middleware. Token expiry check use `<` not `<=`. Fix:\"\n\nAuto-Clarity: Drop caveman for security warnings, irreversible\nactions, multi-step sequences where fragments risk misread.\nResume after clear part.\n\nSource: github.com/JuliusBrussee/caveman\n\n## Pre-commit — Validate Before Commit\n\nBEFORE EVERY COMMIT: run pre-commit hooks.\n\n```bash\npre-commit run --files $(git diff --cached --name-only)\n```\n\nHooks in this repo:\n- yamllint: YAML syntax, indentation\n- check-merge-conflict: unresolved merge markers\n- trailing-whitespace: trailing spaces\n- gitleaks: API keys, tokens\n- helm-docs: Helm chart docs sync\n\nFailure flow:\n1. pre-commit fails → read error\n2. Fix issue (usually indentation)\n3. git add fixed file\n4. Re-run pre-commit\n5. Green → commit\n"` |  |
 | hermes-agent.config.agent.max_turns | int | `90` |  |
 | hermes-agent.config.agent.system_prompt | string | `"You are Sisyphus — OMO Orchestrator. You field ALL prompts and are the\nsole Discord-facing interface. Classify every request BEFORE acting.\n\n## Classification\n\n- TRIVIAL (typo, single config, known pattern): Answer directly. No delegation.\n- STANDARD (new feature, refactor, multi-file): Route through planning pipeline.\n- COMPLEX (architecture, cross-system, security): Full pipeline with review gates.\n\n## Delegation\n\n1. Assess context: is the request clear and unambiguous?\n   → NO: Ask ONE clarifying question first.\n   → YES: Proceed.\n\n2. Standard: Build a plan → present for USER APPROVAL → wait for \"go\" / \"approved\".\n   Complex: Analyze (Metis) → Architect (Oracle) → Plan (Prometheus) → Review (Momus)\n   → present for USER APPROVAL.\n\n3. NEVER execute Standard/Complex work without explicit user sign-off.\n\n4. On approval: spin up Plane kanban tickets via the plane-ticket-sync\n   skill (project per board, [Spec] parent ticket + child tickets per\n   work item, Risks/gotchas as comments) unless the user declines.\n\n## Tool routing\n\n- Quick work (< 3 tool calls): do it yourself (read_file, terminal, web).\n- Simple focused subtask / non-coding: `delegate_task`.\n- Real engineering (multi-file, refactor, bugfix, tests): `opencode`\n  (action=\"run\"). OpenCode + OMO agents execute internally (Sisyphus,\n  Hephaestus, Oracle, … — see the opencode-driven-development skill).\n  Inject project conventions + memory context into the prompt.\n- After every opencode dispatch: check returned `status` (completed /\n  error / timeout), read `text` summary, verify `file_diffs` against\n  the request, update memory/todos, then report to the user.\n- Max concurrency: 8 for opencode runs. Do not fire parallel opencode\n  runs against the same directory/repo — serialize those.\n\n## Approval Gates (BLOCK these without asking)\n\n- merge / commit\n- publish / deploy / push\n- destructive (delete, teardown, drop)\n- external-send (email, API, webhook)\n\n## Style\n\n- Terse. Caveman mode. Drop articles and filler.\n- ALWAYS verbalize your classification: \"Classified as [tier].\"\n- Show your work. Tell user what you're doing.\n- When delegating: \"Delegating to [agent] for [task].\"\n"` |  |
@@ -460,6 +461,15 @@ go run ./extras/cmd/hermes-tools mcp verify \
 | hermes-agent.extraEnv[8].value | string | `"true"` |  |
 | hermes-agent.extraEnv[9].name | string | `"API_SERVER_ENABLED"` |  |
 | hermes-agent.extraEnv[9].value | string | `"true"` |  |
+| hermes-agent.extraInitContainers[0].args[0] | string | `"install"` |  |
+| hermes-agent.extraInitContainers[0].args[1] | string | `"/opt/tools/gitopsctl"` |  |
+| hermes-agent.extraInitContainers[0].image | string | `"ghcr.io/jomakori/gitopsctl:d8e4877e2f52061738aa930a5c17f4369a0483e5"` |  |
+| hermes-agent.extraInitContainers[0].imagePullPolicy | string | `"IfNotPresent"` |  |
+| hermes-agent.extraInitContainers[0].name | string | `"install-gitopsctl"` |  |
+| hermes-agent.extraInitContainers[0].securityContext.runAsGroup | int | `10000` |  |
+| hermes-agent.extraInitContainers[0].securityContext.runAsUser | int | `10000` |  |
+| hermes-agent.extraInitContainers[0].volumeMounts[0].mountPath | string | `"/opt/tools"` |  |
+| hermes-agent.extraInitContainers[0].volumeMounts[0].name | string | `"tools"` |  |
 | hermes-agent.extraVolumeMounts[0].mountPath | string | `"/opt/data/hooks/discord-session-link"` |  |
 | hermes-agent.extraVolumeMounts[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumeMounts[0].readOnly | bool | `true` |  |
@@ -478,24 +488,20 @@ go run ./extras/cmd/hermes-tools mcp verify \
 | hermes-agent.extraVolumeMounts[4].mountPath | string | `"/mise"` |  |
 | hermes-agent.extraVolumeMounts[4].name | string | `"hermes-mise-config"` |  |
 | hermes-agent.extraVolumeMounts[4].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[5].mountPath | string | `"/opt/boot/boot.sh"` |  |
-| hermes-agent.extraVolumeMounts[5].name | string | `"boot-script"` |  |
+| hermes-agent.extraVolumeMounts[5].mountPath | string | `"/opt/tools"` |  |
+| hermes-agent.extraVolumeMounts[5].name | string | `"tools"` |  |
 | hermes-agent.extraVolumeMounts[5].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[5].subPath | string | `"boot.sh"` |  |
-| hermes-agent.extraVolumeMounts[6].mountPath | string | `"/opt/src"` |  |
-| hermes-agent.extraVolumeMounts[6].name | string | `"tools-src"` |  |
+| hermes-agent.extraVolumeMounts[6].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard-auth.pth"` |  |
+| hermes-agent.extraVolumeMounts[6].name | string | `"dashboard-auth"` |  |
 | hermes-agent.extraVolumeMounts[6].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[7].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard-auth.pth"` |  |
+| hermes-agent.extraVolumeMounts[6].subPath | string | `"dashboard-auth.pth"` |  |
+| hermes-agent.extraVolumeMounts[7].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard_auth_patch.py"` |  |
 | hermes-agent.extraVolumeMounts[7].name | string | `"dashboard-auth"` |  |
 | hermes-agent.extraVolumeMounts[7].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[7].subPath | string | `"dashboard-auth.pth"` |  |
-| hermes-agent.extraVolumeMounts[8].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard_auth_patch.py"` |  |
-| hermes-agent.extraVolumeMounts[8].name | string | `"dashboard-auth"` |  |
+| hermes-agent.extraVolumeMounts[7].subPath | string | `"dashboard_auth_patch.py"` |  |
+| hermes-agent.extraVolumeMounts[8].mountPath | string | `"/opt/data/mcp-verify"` |  |
+| hermes-agent.extraVolumeMounts[8].name | string | `"mcp-verify"` |  |
 | hermes-agent.extraVolumeMounts[8].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[8].subPath | string | `"dashboard_auth_patch.py"` |  |
-| hermes-agent.extraVolumeMounts[9].mountPath | string | `"/opt/data/mcp-verify"` |  |
-| hermes-agent.extraVolumeMounts[9].name | string | `"mcp-verify"` |  |
-| hermes-agent.extraVolumeMounts[9].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumes[0].configMap.name | string | `"openagent-hermes-hooks"` |  |
 | hermes-agent.extraVolumes[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumes[1].configMap.name | string | `"openagent-opencode-config"` |  |
@@ -504,17 +510,25 @@ go run ./extras/cmd/hermes-tools mcp verify \
 | hermes-agent.extraVolumes[2].name | string | `"k8s-gitops-context"` |  |
 | hermes-agent.extraVolumes[3].configMap.name | string | `"openagent-hermes-mise-config"` |  |
 | hermes-agent.extraVolumes[3].name | string | `"hermes-mise-config"` |  |
-| hermes-agent.extraVolumes[4].configMap.name | string | `"openagent-boot-script"` |  |
-| hermes-agent.extraVolumes[4].name | string | `"boot-script"` |  |
-| hermes-agent.extraVolumes[5].configMap.name | string | `"openagent-tools-src"` |  |
-| hermes-agent.extraVolumes[5].name | string | `"tools-src"` |  |
-| hermes-agent.extraVolumes[6].configMap.name | string | `"openagent-dashboard-auth"` |  |
-| hermes-agent.extraVolumes[6].name | string | `"dashboard-auth"` |  |
-| hermes-agent.extraVolumes[7].configMap.name | string | `"openagent-mcp-manifest"` |  |
-| hermes-agent.extraVolumes[7].name | string | `"mcp-verify"` |  |
+| hermes-agent.extraVolumes[4].emptyDir | object | `{}` |  |
+| hermes-agent.extraVolumes[4].name | string | `"tools"` |  |
+| hermes-agent.extraVolumes[5].configMap.name | string | `"openagent-dashboard-auth"` |  |
+| hermes-agent.extraVolumes[5].name | string | `"dashboard-auth"` |  |
+| hermes-agent.extraVolumes[6].configMap.name | string | `"openagent-mcp-manifest"` |  |
+| hermes-agent.extraVolumes[6].name | string | `"mcp-verify"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
 | hermes-agent.image.tag | string | `"v2026.9.11"` |  |
+| hermes-agent.probes.readiness.failureThreshold | int | `3` |  |
+| hermes-agent.probes.readiness.httpGet.path | string | `"/"` |  |
+| hermes-agent.probes.readiness.httpGet.port | int | `9119` |  |
+| hermes-agent.probes.readiness.periodSeconds | int | `10` |  |
+| hermes-agent.probes.readiness.timeoutSeconds | int | `3` |  |
+| hermes-agent.probes.startup.failureThreshold | int | `120` |  |
+| hermes-agent.probes.startup.httpGet.path | string | `"/"` |  |
+| hermes-agent.probes.startup.httpGet.port | int | `9119` |  |
+| hermes-agent.probes.startup.periodSeconds | int | `10` |  |
+| hermes-agent.probes.startup.timeoutSeconds | int | `3` |  |
 | hermes-agent.resources.limits.cpu | string | `"2"` |  |
 | hermes-agent.resources.limits.memory | string | `"3Gi"` |  |
 | hermes-agent.resources.requests.cpu | string | `"2"` |  |
@@ -875,6 +889,9 @@ go run ./extras/cmd/hermes-tools mcp verify \
 | postgres.userName | string | `"openagent"` |  |
 | runtimeMode | string | `"cluster"` |  |
 | storageClass | string | `"local-path"` |  |
+| tools.image.pullPolicy | string | `"IfNotPresent"` |  |
+| tools.image.repository | string | `"ghcr.io/jomakori/gitopsctl"` |  |
+| tools.image.tag | string | `"d8e4877e2f52061738aa930a5c17f4369a0483e5"` |  |
 | vpa.enabled | bool | `true` |  |
 | vpa.targets[0].containers[0].maxCpu | string | `"2"` |  |
 | vpa.targets[0].containers[0].maxMemory | string | `"8Gi"` |  |

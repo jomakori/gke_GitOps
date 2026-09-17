@@ -114,9 +114,9 @@ data:
 ---
 {{- if .Values.hermes.enabled }}
 # The rendered MCP manifest. The gateway's boot pre-warm and the preflight /
-# drift Jobs (stdlib Go CLI hermes-tools, built on the PVC by the boot shim)
-# read the server definitions from here, so the manifest stays the single
-# source of truth (no second copy of the pins to drift).
+# drift Jobs (gitopsctl verifier from the prebuilt tools image) read the
+# server definitions from here, so the manifest stays the single source of
+# truth (no second copy of the pins to drift).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -132,7 +132,7 @@ metadata:
 data:
   # Dot-free keys on purpose: helm-unittest's assertion path syntax treats '.'
   # and '[]' as separators, so keys containing a dot cannot be addressed from
-  # tests/mcp_manifest_test.yaml. hermes-tools `mcp verify --mode validate` is
+  # tests/mcp_manifest_test.yaml. gitopsctl `mcp verify --mode validate` is
   # the exhaustive every-server check; these keys make the same invariants
   # assertable per server in helm-unittest.
   mcp-manifest: |
@@ -178,28 +178,7 @@ spec:
         runAsUser: 10000
         runAsGroup: 10000
       initContainers:
-        # PostSync can beat the gateway's first boot; wait (bounded) until the
-        # boot shim has built hermes-tools and pre-warm exposed the mise
-        # toolchain (npx/uvx) on the PVC.
-        - name: wait-for-toolchain
-          image: "{{ include "openagent.hermesImage" . }}"
-          imagePullPolicy: {{ (index .Values "hermes-agent" "image").pullPolicy }}
-          securityContext:
-            runAsUser: 10000
-            runAsGroup: 10000
-          command:
-            - sh
-            - -c
-            - |
-              for _ in $(seq 1 {{ div .Values.mcpVerification.preflight.toolchainWaitSeconds 5 }}); do
-                [ -x /opt/data/bin/hermes-tools ] && [ -x /opt/data/bin/npx ] && [ -x /opt/data/bin/uvx ] && exit 0
-                sleep 5
-              done
-              echo "MCP toolchain not ready after {{ .Values.mcpVerification.preflight.toolchainWaitSeconds }}s" >&2
-              exit 1
-          volumeMounts:
-            - name: data
-              mountPath: /opt/data
+        {{- include "openagent.mcpVerifyInitContainers" . | nindent 8 }}
       containers:
         - name: preflight
           image: "{{ include "openagent.hermesImage" . }}"
@@ -215,7 +194,7 @@ spec:
             - secretRef:
                 name: openagent-secrets
           command:
-            - /opt/data/bin/hermes-tools
+            - /opt/tools/gitopsctl
             - mcp
             - verify
             - --manifest
@@ -223,11 +202,7 @@ spec:
             - --mode
             - preflight
           volumeMounts:
-            - name: data
-              mountPath: /opt/data
-            - name: mcp-verify
-              mountPath: /mcp-verify
-              readOnly: true
+            {{- include "openagent.mcpVerifyMounts" . | nindent 12 }}
       volumes:
         {{- include "openagent.mcpVerifyVolumes" . | nindent 8 }}
 {{- end }}
@@ -267,6 +242,8 @@ spec:
           securityContext:
             runAsUser: 10000
             runAsGroup: 10000
+          initContainers:
+            {{- include "openagent.mcpVerifyInitContainers" . | nindent 12 }}
           containers:
             - name: drift
               image: "{{ include "openagent.hermesImage" . }}"
@@ -280,7 +257,7 @@ spec:
                 - secretRef:
                     name: openagent-secrets
               command:
-                - /opt/data/bin/hermes-tools
+                - /opt/tools/gitopsctl
                 - mcp
                 - verify
                 - --manifest
@@ -288,11 +265,7 @@ spec:
                 - --mode
                 - drift
               volumeMounts:
-                - name: data
-                  mountPath: /opt/data
-                - name: mcp-verify
-                  mountPath: /mcp-verify
-                  readOnly: true
+                {{- include "openagent.mcpVerifyMounts" . | nindent 16 }}
           volumes:
             {{- include "openagent.mcpVerifyVolumes" . | nindent 12 }}
 {{- end }}

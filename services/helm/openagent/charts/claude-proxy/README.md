@@ -1,6 +1,6 @@
 # claude-proxy
 
-![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v3.36.0](https://img.shields.io/badge/AppVersion-v3.36.0-informational?style=flat-square)
+![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v3.37.0](https://img.shields.io/badge/AppVersion-v3.37.0-informational?style=flat-square)
 
 Claude Code CLI exposed as an OpenAI-compatible API gateway (OCP), with caller-side tool calling
 
@@ -13,7 +13,7 @@ Claude Code CLI exposed as an OpenAI-compatible API gateway (OCP), with caller-s
 | enabled | bool | `true` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/jomakori/ocp"` |  |
-| image.tag | string | `"v3.36.0-p1"` |  |
+| image.tag | string | `"v3.37.0"` |  |
 | ocp.allowedHosts | string | `""` |  |
 | ocp.noContext | string | `"true"` |  |
 | ocp.toolCalling | string | `"1"` |  |

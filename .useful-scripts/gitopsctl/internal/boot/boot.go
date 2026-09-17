@@ -13,7 +13,7 @@ import (
 	"strings"
 	"syscall"
 
-	"hermes-tools/internal/mcp"
+	"gitopsctl/internal/mcp"
 )
 
 const (
@@ -62,15 +62,6 @@ func mergedEnv() []string {
 func runEnv(env []string, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Env = env
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func runDir(env []string, dir, name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.Env = env
-	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -353,7 +344,6 @@ func Run(manifest string) error {
 	}
 	systemDeps(env)
 	linkShims(env)
-	_ = runDir(env, "/opt/data", "go", "mod", "download")
 	directDownloads(env)
 	prewarm(manifest)
 	chownTree()
