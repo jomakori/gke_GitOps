@@ -177,6 +177,7 @@ spec:
       securityContext:
         runAsUser: 10000
         runAsGroup: 10000
+      {{- if eq .Values.tools.mode "src" }}
       initContainers:
         # PostSync can beat the gateway's first boot; wait (bounded) until the
         # boot shim has built hermes-tools and pre-warm exposed the mise
@@ -200,10 +201,11 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /opt/data
+      {{- end }}
       containers:
         - name: preflight
-          image: "{{ include "openagent.hermesImage" . }}"
-          imagePullPolicy: {{ (index .Values "hermes-agent" "image").pullPolicy }}
+          image: "{{ if eq .Values.tools.mode "src" }}{{ include "openagent.hermesImage" . }}{{ else }}{{ include "openagent.toolsImage" . }}{{ end }}"
+          imagePullPolicy: {{ if eq .Values.tools.mode "src" }}{{ (index .Values "hermes-agent" "image").pullPolicy }}{{ else }}{{ .Values.tools.image.pullPolicy }}{{ end }}
           securityContext:
             runAsUser: 10000
             runAsGroup: 10000
@@ -215,7 +217,7 @@ spec:
             - secretRef:
                 name: openagent-secrets
           command:
-            - /opt/data/bin/hermes-tools
+            - {{ if eq .Values.tools.mode "src" }}/opt/data/bin/hermes-tools{{ else }}/usr/local/bin/gitopsctl{{ end }}
             - mcp
             - verify
             - --manifest
@@ -223,8 +225,10 @@ spec:
             - --mode
             - preflight
           volumeMounts:
+            {{- if eq .Values.tools.mode "src" }}
             - name: data
               mountPath: /opt/data
+            {{- end }}
             - name: mcp-verify
               mountPath: /mcp-verify
               readOnly: true
@@ -269,8 +273,8 @@ spec:
             runAsGroup: 10000
           containers:
             - name: drift
-              image: "{{ include "openagent.hermesImage" . }}"
-              imagePullPolicy: {{ (index .Values "hermes-agent" "image").pullPolicy }}
+              image: "{{ if eq .Values.tools.mode "src" }}{{ include "openagent.hermesImage" . }}{{ else }}{{ include "openagent.toolsImage" . }}{{ end }}"
+              imagePullPolicy: {{ if eq .Values.tools.mode "src" }}{{ (index .Values "hermes-agent" "image").pullPolicy }}{{ else }}{{ .Values.tools.image.pullPolicy }}{{ end }}
               securityContext:
                 runAsUser: 10000
                 runAsGroup: 10000
@@ -280,7 +284,7 @@ spec:
                 - secretRef:
                     name: openagent-secrets
               command:
-                - /opt/data/bin/hermes-tools
+                - {{ if eq .Values.tools.mode "src" }}/opt/data/bin/hermes-tools{{ else }}/usr/local/bin/gitopsctl{{ end }}
                 - mcp
                 - verify
                 - --manifest
@@ -288,8 +292,10 @@ spec:
                 - --mode
                 - drift
               volumeMounts:
+                {{- if eq .Values.tools.mode "src" }}
                 - name: data
                   mountPath: /opt/data
+                {{- end }}
                 - name: mcp-verify
                   mountPath: /mcp-verify
                   readOnly: true

@@ -181,6 +181,13 @@ jobs:
           # hook. Static policy lives in the binary, not in a Python script.
           .useful-scripts/validate_mcp_manifest.sh
 
+      - name: Go build + test + vet
+        # Cheap fail-fast gate for the stdlib-only gitopsctl Go module. Runs on
+        # every PR (no chart-path filtering) so a broken build/test/vet is
+        # caught before the heavier helm render steps. Reuses the Setup Go step
+        # above (go 1.24).
+        run: cd .useful-scripts/gitopsctl && go build ./... && go test ./... && go vet ./...
+
       - name: kubeconform (validate rendered manifests against K8s OpenAPI)
         # Guard on the event explicitly: `inputs.*` is EMPTY on pull_request
         # events — only workflow_dispatch populates it. A bare
