@@ -1057,7 +1057,7 @@ data:
     - `devops` / `ci` — read by `.github/workflows/helm_lint-test.yaml`. The runner joins the tailnet with `TAILSCALE_AUTH_KEY` (also in `ci`), so it is a tagged device.
     - `devops` / `svc_tailscale` — the copy for local/interactive use.
 
-    Each file carries a header comment naming the caller it serves. Same shape for both:
+    Both store the same bare kubeconfig: no comments, and nothing caller-specific. Which caller a copy serves comes from *where it is read*, not from its contents, so the values must stay identical to each other and to the output of `tailscale configure kubeconfig`. Explanatory notes belong here, not inside a stored secret.
 
     ```yaml
     apiVersion: v1
