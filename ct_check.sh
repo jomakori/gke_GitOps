@@ -4,6 +4,9 @@
 #   LOCAL:  ct_check.sh --dir services/helm/<chart>
 #   CI:     ct_check.sh "file1.yaml file2.yaml" [lint|install]
 #
+# An EMPTY CI file list is a valid "nothing to check" input (a PR that touches
+# no chart paths), not a usage error: it exits 0 with a skip message.
+#
 # For umbrella charts with strict subchart schemas, runs with
 # --skip-schema-validation on helm template to avoid false failures.
 
@@ -28,11 +31,13 @@ if [[ "${1:-}" == "--dir" ]]; then
   mode="local"
 else
   # --- CI mode: space-separated changed files ---
+  # An empty list is a valid no-op, not a usage error: a PR that touches no
+  # chart paths yields an empty `all_changed_files`, and failing here blocked
+  # every chart-agnostic PR behind branch protection.
   changed_files="${1:-}"
   if [[ -z "$changed_files" ]]; then
-    echo -e "${RED}Usage (CI): $0 \"file1.yaml file2.yaml\"${RESET}"
-    echo -e "${RED}Usage (local): $0 --dir services/helm/<chart>${RESET}"
-    exit 1
+    echo "No changed files given; nothing to check. Skipping."
+    exit 0
   fi
   IFS=' ' read -r -a files_array <<< "$changed_files"
   for file in "${files_array[@]}"; do
