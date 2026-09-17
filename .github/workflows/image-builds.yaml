@@ -18,8 +18,9 @@ name: Build and push images
 # the two must be moved together, or the deployed tag will not exist.
 #
 # gitopsctl: static stdlib-only Go binary (renamed successor of hermes-tools),
-# tagged by git sha only. Phase 2: pulled by cluster preflight/drift workloads
-# instead of built-on-PVC.
+# tagged by git sha only. The prebuilt image is pulled by the gateway's
+# install-gitopsctl initContainer and by the cluster preflight/drift workloads
+# instead of anything being built in-cluster.
 #
 # arm64 only for BOTH images: the cluster is k3d on OrbStack/Apple Silicon, and
 # `ubuntu-24.04-arm` is a natively arm64 runner, so no QEMU emulation is

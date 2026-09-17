@@ -1,6 +1,6 @@
 # gitopsctl
 
-Stdlib-only Go CLI for the openagent umbrella — the gateway boot sequence + MCP manifest pre-warm/verification. Moved from `services/helm/openagent/extras/` with the binary renamed `hermes-tools` → `gitopsctl`; that dir stays untouched as the phase-1 src-mode snapshot the cluster compiles in-pod.
+Stdlib-only Go CLI for the openagent umbrella — the gateway boot sequence + MCP manifest pre-warm/verification. Moved from `services/helm/openagent/extras/` with the binary renamed `hermes-tools` → `gitopsctl`; that dir is now removed (the prebuilt tools image ships the binary — nothing is compiled in-cluster).
 
 ## What it is
 
@@ -8,7 +8,7 @@ One binary, one command family, plus the sibling repo-side scripts staged to fol
 
 | Command | Stage | Status |
 |---------|-------|--------|
-| `gitopsctl boot` | in-cluster runtime (gateway entrypoint) | implemented — phase-1 src-mode, compiled from the chart `extras/` snapshot |
+| `gitopsctl boot` | in-cluster runtime (gateway entrypoint) | implemented — shipped prebuilt via the tools image (no in-cluster Go build) |
 | `gitopsctl install DEST` | in-cluster runtime (initContainer tool seeding) | implemented — copies the scratch-image binary into a shared `emptyDir` |
 | `gitopsctl mcp prewarm` | in-cluster runtime (boot cache warm) | implemented |
 | `gitopsctl mcp verify --mode preflight\|drift\|validate` | in-cluster runtime (PostSync preflight + drift CronJob) | implemented |
