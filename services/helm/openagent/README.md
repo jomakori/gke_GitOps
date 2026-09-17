@@ -518,6 +518,16 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
 | hermes-agent.image.tag | string | `"v2026.9.11"` |  |
+| hermes-agent.probes.readiness.failureThreshold | int | `3` |  |
+| hermes-agent.probes.readiness.httpGet.path | string | `"/"` |  |
+| hermes-agent.probes.readiness.httpGet.port | int | `9119` |  |
+| hermes-agent.probes.readiness.periodSeconds | int | `10` |  |
+| hermes-agent.probes.readiness.timeoutSeconds | int | `3` |  |
+| hermes-agent.probes.startup.failureThreshold | int | `120` |  |
+| hermes-agent.probes.startup.httpGet.path | string | `"/"` |  |
+| hermes-agent.probes.startup.httpGet.port | int | `9119` |  |
+| hermes-agent.probes.startup.periodSeconds | int | `10` |  |
+| hermes-agent.probes.startup.timeoutSeconds | int | `3` |  |
 | hermes-agent.resources.limits.cpu | string | `"2"` |  |
 | hermes-agent.resources.limits.memory | string | `"3Gi"` |  |
 | hermes-agent.resources.requests.cpu | string | `"2"` |  |

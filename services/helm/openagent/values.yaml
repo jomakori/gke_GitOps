@@ -1070,6 +1070,41 @@ hermes-agent:
     - /opt/tools/gitopsctl
     - boot
   args: []
+  # Startup + readiness probes on the Hermes Web UI dashboard (0.0.0.0:9119).
+  # The gateway only starts listening there AFTER a ~10 min boot (apt
+  # systemDeps → mise install → MCP prewarm → `boot: handing over to hermes`
+  # → s6 → `HERMES_DASHBOARD_READY port=9119`). Before this landed the pod
+  # reported Ready immediately while nothing served :9119, so the
+  # `openagent-hermes-agent:9119` / `openagent-hermes-api:8642` endpoints
+  # listed it ready ~10 min early. startupProbe gates readiness, so the pod
+  # only flips Ready once the dashboard actually answers; readiness failures
+  # never restart a pod.
+  #
+  # No livenessProbe: the image's s6-overlay already supervises and restarts
+  # `hermes gateway run` on crash. A 9119 liveness would couple the whole
+  # pod's lifecycle to the dashboard (a *separate* s6 service) — if the
+  # dashboard alone died, s6 restarts just it, while a liveness probe would
+  # kill-restart the entire pod (dropping in-flight orchestration).
+  probes:
+    startup:
+      httpGet:
+        path: /
+        port: 9119
+      # ~20 min budget = 120 failures × 10s. Measured boot is ~10 min, so
+      # ~2× headroom; the dashboard answers `/` with a 302 redirect, and
+      # httpGet counts any 2xx/3xx as success.
+      periodSeconds: 10
+      failureThreshold: 120
+      timeoutSeconds: 3
+    readiness:
+      httpGet:
+        path: /
+        port: 9119
+      # 3 failures × 10s = 30s before the pod is un-Ready; readiness never
+      # restarts, so this only gates the endpoints, not the pod lifecycle.
+      periodSeconds: 10
+      failureThreshold: 3
+      timeoutSeconds: 3
   resources:
     # requests == limits on purpose: VPA `Auto` only applies a recommendation to
     # a container whose request equals its limit, and it does so silently — with
