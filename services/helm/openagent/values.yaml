@@ -1005,15 +1005,10 @@ hermes-agent:
     - name: hermes-mise-config
       configMap:
         name: openagent-hermes-mise-config
-    # The gateway boot shim (extras/shims/boot.sh) — mounted read-only; the pod
-    # command is a single `exec sh /opt/boot/boot.sh` (see command below). The
-    # Go sources it compiles ship in the openagent-tools-src ConfigMap (/opt/src).
-    - name: boot-script
-      configMap:
-        name: openagent-boot-script
-    - name: tools-src
-      configMap:
-        name: openagent-tools-src
+    # gitopsctl binary installed by the install-gitopsctl initContainer
+    # (prebuilt tools image — no in-cluster Go build).
+    - name: tools
+      emptyDir: {}
     - name: dashboard-auth
       configMap:
         name: openagent-dashboard-auth
@@ -1042,12 +1037,8 @@ hermes-agent:
     - name: hermes-mise-config
       mountPath: /mise
       readOnly: true
-    - name: boot-script
-      mountPath: /opt/boot/boot.sh
-      subPath: boot.sh
-      readOnly: true
-    - name: tools-src
-      mountPath: /opt/src
+    - name: tools
+      mountPath: /opt/tools
       readOnly: true
     - name: dashboard-auth
       mountPath: /opt/hermes/.venv/lib/python3.13/site-packages/dashboard-auth.pth
@@ -1060,13 +1051,25 @@ hermes-agent:
     - name: mcp-verify
       mountPath: /opt/data/mcp-verify
       readOnly: true
+  extraInitContainers:
+    # Installs the gitopsctl binary from the prebuilt tools image into the
+    # shared tools emptyDir (no command: the image ENTRYPOINT is gitopsctl).
+    - name: install-gitopsctl
+      image: ghcr.io/jomakori/gitopsctl:09b6e38d285e0c2a638aa3ac3acb1b7bb0f86bb7
+      imagePullPolicy: IfNotPresent
+      args: ["install", "/opt/tools/gitopsctl"]
+      securityContext:
+        runAsUser: 10000
+        runAsGroup: 10000
+      volumeMounts:
+        - name: tools
+          mountPath: /opt/tools
   command:
-    # Full bootstrap lives in the boot shim (extras/shims/boot.sh → mounted
-    # from the openagent-boot-script ConfigMap) — one line so the toolchain
-    # can change without a pod-spec-shaped diff.
-    - sh
-    - -c
-    - exec sh /opt/boot/boot.sh
+    # gitopsctl boot (installed into the tools emptyDir by the
+    # install-gitopsctl initContainer) replaces the old boot.sh shim.
+    - /opt/tools/gitopsctl
+    - boot
+  args: []
   resources:
     # requests == limits on purpose: VPA `Auto` only applies a recommendation to
     # a container whose request equals its limit, and it does so silently — with
