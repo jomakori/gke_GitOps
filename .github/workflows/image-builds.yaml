@@ -4,6 +4,13 @@ name: Build and push images
 # gitopsctl tools image. Each job is gated on its own changed paths (see
 # detect-changes); workflow_dispatch runs both.
 #
+# pull_request has NO workflow-level paths filter on purpose: branch protection
+# requires these checks, and a workflow skipped by path filtering never reports
+# its checks (PR stuck in "waiting for status"). Instead every PR runs
+# detect-changes and each build job skips when unrelated — a skipped job
+# reports success, which satisfies a required check. push to main keeps path
+# filtering because merged code must rebuild images exactly when they changed.
+#
 # OCP: builds the gateway image the claude-proxy chart runs. The image vendors
 # a pinned OCP release tag + a pinned Claude Code CLI, because upstream
 # publishes neither an npm package nor a container image. Bumping either
@@ -14,10 +21,12 @@ name: Build and push images
 # tagged by git sha only. Phase 2: pulled by cluster preflight/drift workloads
 # instead of built-on-PVC.
 #
-# arm64 only for OCP: the cluster is k3d on OrbStack/Apple Silicon, and
+# arm64 only for BOTH images: the cluster is k3d on OrbStack/Apple Silicon, and
 # `ubuntu-24.04-arm` is a natively arm64 runner, so no QEMU emulation is
-# involved. gitopsctl builds amd64+arm64, so it DOES set up QEMU for the
-# emulated amd64 leg.
+# involved. The earlier gitopsctl amd64+arm64 build crashed the Go 1.24
+# toolchain on the emulated amd64 leg (`fatal error: lfstack.push`); with a
+# single native platform the build is qemu-free. Revisit amd64 only when a
+# non-arm cluster appears.
 
 on:
   workflow_dispatch:
@@ -31,11 +40,6 @@ on:
         required: true
         default: "2.1.272"
   pull_request:
-    paths:
-      - images/ocp/**
-      - .useful-scripts/gitopsctl/**
-      - images/gitopsctl/**
-      - .github/workflows/image-builds.yaml
   push:
     branches:
       - main
@@ -67,7 +71,7 @@ env:
   # next vendored patch; drop the suffix when the image is pristine upstream again.
   IMAGE_TAG_SUFFIX: -p1
   GITOPSCTL_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/gitopsctl
-  GITOPSCTL_BUILD_PLATFORMS: linux/amd64,linux/arm64
+  GITOPSCTL_BUILD_PLATFORMS: linux/arm64
 
 jobs:
   detect-changes:
@@ -184,11 +188,6 @@ jobs:
 
       - name: Stage gitopsctl module into build context
         run: cp -a .useful-scripts/gitopsctl/. images/gitopsctl/src/
-
-      - name: Set up QEMU
-        # amd64 is emulated on this arm64 runner; QEMU binfmt is required for
-        # the linux/amd64 leg of the multi-platform build.
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
