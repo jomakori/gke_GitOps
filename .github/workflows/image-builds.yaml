@@ -34,7 +34,7 @@ on:
       OCP_VERSION:
         description: "OCP release tag to vendor"
         required: true
-        default: "v3.36.0"
+        default: "v3.37.0"
       CLAUDE_CODE_VERSION:
         description: "@anthropic-ai/claude-code version to install"
         required: true
@@ -59,17 +59,9 @@ permissions:
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ocp
-  OCP_VERSION_DEFAULT: v3.36.0
+  OCP_VERSION_DEFAULT: v3.37.0
   CLAUDE_CODE_VERSION_DEFAULT: 2.1.272
   BUILD_PLATFORMS: linux/arm64
-  # Vendored-patch revision, and the reason the image tag is not just the OCP tag:
-  # the image carries images/ocp/patches/ (see the Dockerfile), so its content is
-  # no longer identical to the upstream release named in OCP_VERSION. The chart
-  # pins a tag with `pullPolicy: IfNotPresent`, so publishing patched content under
-  # the bare `v3.36.0` tag would leave every node serving the OLD cached image under
-  # the same name — the failure mode is silence, not an error. Bump to -p2 for the
-  # next vendored patch; drop the suffix when the image is pristine upstream again.
-  IMAGE_TAG_SUFFIX: -p1
   GITOPSCTL_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/gitopsctl
   GITOPSCTL_BUILD_PLATFORMS: linux/arm64
 
@@ -123,8 +115,8 @@ jobs:
           echo "OCP_VERSION=${OCP_VERSION}" >> "$GITHUB_OUTPUT"
           echo "CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION}" >> "$GITHUB_OUTPUT"
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          echo "IMAGE_TAG=${OCP_VERSION}${IMAGE_TAG_SUFFIX}" >> "$GITHUB_OUTPUT"
-          echo "Resolved OCP_VERSION=${OCP_VERSION} CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION} IMAGE_TAG=${OCP_VERSION}${IMAGE_TAG_SUFFIX}"
+          echo "IMAGE_TAG=${OCP_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved OCP_VERSION=${OCP_VERSION} CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION} IMAGE_TAG=${OCP_VERSION}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
