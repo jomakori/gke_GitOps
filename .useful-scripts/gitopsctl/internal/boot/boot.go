@@ -67,15 +67,6 @@ func runEnv(env []string, name string, args ...string) error {
 	return cmd.Run()
 }
 
-func runDir(env []string, dir, name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.Env = env
-	cmd.Dir = dir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
 func executable(path string) bool {
 	fi, err := os.Stat(path)
 	return err == nil && fi.Mode()&0o111 != 0
@@ -353,7 +344,6 @@ func Run(manifest string) error {
 	}
 	systemDeps(env)
 	linkShims(env)
-	_ = runDir(env, "/opt/data", "go", "mod", "download")
 	directDownloads(env)
 	prewarm(manifest)
 	chownTree()
