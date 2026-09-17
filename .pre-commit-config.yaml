@@ -67,10 +67,10 @@ repos:
         files: ^services/helm/openagent/
         pass_filenames: false
       - id: mcp-manifest-validate
-        name: MCP manifest static policy (hermes-tools validate)
+        name: MCP manifest static policy (gitopsctl validate)
         description: |
           Render the MCP manifest ConfigMap from values.yaml and run the
-          hermes-tools `mcp verify --mode validate` static policy (pins,
+          gitopsctl `mcp verify --mode validate` static policy (pins,
           timeouts, lifecycle, parked duplicates, tool surface). Same binary
           as the CI step. Skips when the Go toolchain is absent.
         entry: .useful-scripts/validate_mcp_manifest.sh
