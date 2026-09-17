@@ -214,6 +214,28 @@ For **apps**, the single parameterized chart at `apps/helm/` generates all manif
 | **Chart Testing** | `.ct-config.yml` — dry-run validation via `.useful-scripts/ct_check.sh` |
 | **Devbox** | `devbox.json` — reproducible shell with `yq-go` + `git` for image tag bumps |
 
+## CodeGraph (token-efficient code lookup)
+
+This repo is indexed with [CodeGraph](https://github.com/colbymchenry/codegraph) — a local, auto-syncing code knowledge graph that agents query over MCP in a single call instead of grepping and reading whole files. Fully local: no service, no API key.
+
+The CLI is installed (`codegraph --version`) and the MCP server is wired globally for opencode as `mcp.codegraph` → `codegraph serve --mcp` in `~/.config/opencode/opencode.jsonc`; the agent-side rule lives in the `CODEGRAPH_START`/`CODEGRAPH_END` block of `~/.config/opencode/AGENTS.md`. Re-wire any agent with `codegraph install --target opencode --location global --yes`.
+
+```bash
+codegraph init --yes     # build .codegraph/ (one time; the file watcher keeps it fresh)
+codegraph status         # files / nodes / edges
+codegraph sync           # force a catch-up (only needed if the watcher is off)
+
+# prefer these over grep/find for "where is X / what calls Y / what breaks if I change Z"
+codegraph explore "how are image tags bumped"
+codegraph query <symbol>
+codegraph callers <symbol>
+codegraph impact <symbol>
+```
+
+- `.codegraph/` is a local artifact — never commit it (gitignored here).
+- The index is **per working tree**: a `git worktree` needs its own `codegraph init`; `codegraph.json` excludes `.worktrees/` so worktree copies never bloat the parent graph.
+- `codegraph uninit` removes a project's index; `codegraph telemetry off` disables the anonymous usage stats.
+
 ## Prerequisites (Local Testing)
 
 - kubectl, helm, [ct](https://github.com/helm/chart-testing), yamllint (macOS/Linux)
