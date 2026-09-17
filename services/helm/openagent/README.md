@@ -462,7 +462,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraEnv[9].value | string | `"true"` |  |
 | hermes-agent.extraInitContainers[0].args[0] | string | `"install"` |  |
 | hermes-agent.extraInitContainers[0].args[1] | string | `"/opt/tools/gitopsctl"` |  |
-| hermes-agent.extraInitContainers[0].image | string | `"ghcr.io/jomakori/gitopsctl:09b6e38d285e0c2a638aa3ac3acb1b7bb0f86bb7"` |  |
+| hermes-agent.extraInitContainers[0].image | string | `"ghcr.io/jomakori/gitopsctl:d8e4877e2f52061738aa930a5c17f4369a0483e5"` |  |
 | hermes-agent.extraInitContainers[0].imagePullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.extraInitContainers[0].name | string | `"install-gitopsctl"` |  |
 | hermes-agent.extraInitContainers[0].securityContext.runAsGroup | int | `10000` |  |
@@ -890,7 +890,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | storageClass | string | `"local-path"` |  |
 | tools.image.pullPolicy | string | `"IfNotPresent"` |  |
 | tools.image.repository | string | `"ghcr.io/jomakori/gitopsctl"` |  |
-| tools.image.tag | string | `"09b6e38d285e0c2a638aa3ac3acb1b7bb0f86bb7"` |  |
+| tools.image.tag | string | `"d8e4877e2f52061738aa930a5c17f4369a0483e5"` |  |
 | vpa.enabled | bool | `true` |  |
 | vpa.targets[0].containers[0].maxCpu | string | `"2"` |  |
 | vpa.targets[0].containers[0].maxMemory | string | `"8Gi"` |  |
