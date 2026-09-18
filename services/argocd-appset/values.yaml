@@ -411,6 +411,11 @@ services:
 
   excalidash:
     enable: false
+    # Stateful and already running outside ArgoCD: removal must orphan the
+    # workload, never cascade-delete its namespace/PVC (`local-path` has
+    # reclaimPolicy Delete). Same guard as postgresClusters.
+    finalizer: false
+    prune: false
     syncWave: '6'
     argocdNamespace: argocd
     argoProject: default
@@ -423,6 +428,11 @@ services:
 
   opendesign:
     enable: false
+    # Stateful and already running outside ArgoCD: removal must orphan the
+    # workload, never cascade-delete its namespace/PVC (`local-path` has
+    # reclaimPolicy Delete). Same guard as postgresClusters.
+    finalizer: false
+    prune: false
     syncWave: '6'
     argocdNamespace: argocd
     argoProject: default
