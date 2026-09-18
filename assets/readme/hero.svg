@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
   <title id="title">gke_GitOps</title>
-  <desc id="desc">Merge to deploy — ArgoCD reconciles the repository into the cluster. A registry entry becomes an Application, applied in waves with prune and self-heal.</desc>
+  <desc id="desc">Add an entry to values.yaml, merge, and ArgoCD does the rest — one Application per registry entry, applied in waves with prune and self-heal.</desc>
 
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -24,9 +24,9 @@
   <g id="title-block" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif">
     <text x="72" y="94" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" letter-spacing="6" fill="#CDD4FF">KUBERNETES GITOPS</text>
     <text x="68" y="158" font-size="78" font-weight="700" fill="#FFFFFF" filter="url(#shadow)">gke_GitOps</text>
-    <text x="72" y="204" font-size="26" font-weight="600" fill="#FFFFFF">Declarative delivery for Kubernetes clusters</text>
-    <text x="72" y="236" font-size="20" fill="#FFFFFF" opacity="0.88">Merge to deploy · nothing is applied by hand</text>
-    <text x="72" y="268" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#FFFFFF" opacity="0.5">registry-driven app-of-apps · waves · prune + self-heal</text>
+    <text x="72" y="204" font-size="26" font-weight="600" fill="#FFFFFF">Every service and app lives in one registry</text>
+    <text x="72" y="236" font-size="20" fill="#FFFFFF" opacity="0.88">Edit values.yaml, merge — ArgoCD does the rest</text>
+    <text x="72" y="268" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#FFFFFF" opacity="0.5">registry entry → Application → waves · prune + self-heal</text>
   </g>
 
   <g id="reconcile-loop" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, sans-serif">

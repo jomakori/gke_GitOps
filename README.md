@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/readme/hero.svg" alt="gke_GitOps — merge to deploy, ArgoCD reconciles the repository into the cluster" width="100%">
+<img src="assets/readme/hero.svg" alt="gke_GitOps — every service and app in one registry; edit values.yaml, merge, and ArgoCD reconciles the rest" width="100%">
 
 <!-- BEGIN GENERATED: badges -->
 [![Helm - Lint/Test](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml/badge.svg?branch=main)](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml)
@@ -15,13 +15,16 @@
 
 <img src="assets/line-gradient.svg" alt="Section divider" width="100%" height="3px">
 
-Terraform provisions the cluster and bootstraps ArgoCD; **everything after that bootstrap is owned here** — services, apps, ingress and secret wiring — and reconciled by ArgoCD from this repository rather than applied by hand.
+Terraform provisions the cluster and bootstraps ArgoCD; **everything after that bootstrap is owned here** — services, apps, ingress and secret wiring — and ArgoCD keeps the cluster in sync with this repository, not with anything applied by hand.
+
+<details open>
+<summary>Table of contents</summary>
 
 <!--TOC-->
 
-- [How the loop works](#how-the-loop-works)
 - [Layout](#layout)
 - [Quickstart](#quickstart)
+- [How delivery works](#how-delivery-works)
 - [Services](#services)
 - [Apps](#apps)
 - [Secrets](#secrets)
@@ -30,35 +33,7 @@ Terraform provisions the cluster and bootstraps ArgoCD; **everything after that 
 
 <!--TOC-->
 
-## How the loop works
-
-```text
-Terraform (devops_Terraform)
-  ├─ provisions the cluster + ArgoCD
-  └─ creates the root Application ─┬─▶ services/argocd-appset ─┐
-                                   │                            ├─▶ one Application
-                                   └─▶ apps/argocd-appset     ─┘     per registry entry
-                                                                            │
-                                                              ArgoCD applies in waves
-                                                              (prune + self-heal)
-```
-
-- **Terraform owns the bootstrap** — the cluster, ArgoCD, and the root `Application` that points here. It also injects the values every entry inherits (`repoUrl`, `targetRevision`, `clusterDomain`, `argoProject`, `argoNamespace`).
-- **App-of-Apps** — each appset is a chart whose single template renders one `Application` per entry in its `values.yaml`. That file **is the registry**: adding a workload is an entry, not a hand-written manifest.
-- **Waves are dependency tiers**, applied in order, so the ordering rules hold by construction — secrets before consumers, an operator before its custom resources, a CRD before anything using it, shared platform before workloads:
-
-  | Wave | Tier | Examples |
-  |---|---|---|
-  | 0 | Foundation | storage class, certificate manager, metrics server, VPA |
-  | 1 | Secrets | external-secrets |
-  | 2 | Core networking | service mesh (CRDs → control plane → gateway), overlay network |
-  | 3 | Edge ingress | the public tunnel |
-  | 4 | Operators & DNS | database operator, DNS automation |
-  | 5 | Data, observability & platform | database clusters, monitoring stack, the AI platform |
-  | 6 | Consumer workloads | end-user services and apps |
-
-- **Wiring is generated from the same entry** — `gateways:` produces the ingress objects and `dopplerConfig` produces the ExternalSecret, so a workload and its exposure are declared once.
-- **Merging is deploying.** ArgoCD prunes and self-heals; nothing is applied imperatively.
+</details>
 
 ## Layout
 
@@ -89,17 +64,47 @@ pre-commit install && pre-commit run --all-files   # the hooks CI also runs
 
 Prerequisites: `kubectl`, `helm`, chart-testing (`ct`), `yamllint`.
 
-Charts are validated locally and never applied by hand — merging is what deploys. For local access without exposing anything:
+Charts are validated locally and never applied by hand — merging is what deploys. Need a peek at something running without exposing it?
 
 ```bash
 kubectl port-forward -n <namespace> svc/<service> 8080:80
 ```
 
+## How delivery works
+
+```text
+Terraform (devops_Terraform)
+  ├─ provisions the cluster + ArgoCD
+  └─ creates the root Application ─┬─▶ services/argocd-appset ─┐
+                                   │                            ├─▶ one Application
+                                   └─▶ apps/argocd-appset     ─┘     per registry entry
+                                                                            │
+                                                              ArgoCD applies in waves
+                                                              (prune + self-heal)
+```
+
+- **Terraform owns the bootstrap** — the cluster, ArgoCD, and the root `Application` that points here. It also injects the values every entry inherits (`repoUrl`, `targetRevision`, `clusterDomain`, `argoProject`, `argoNamespace`).
+- **App-of-Apps** — each appset is a chart whose single template renders one `Application` per entry in its `values.yaml`. That file **is the registry**: adding a workload is an entry, not a hand-written manifest.
+- **Waves are dependency tiers**, applied in order, so dependencies line up by construction — secrets before their consumers, an operator before its custom resources, a CRD before anything using it, shared platform before workloads:
+
+  | Wave | Tier | Examples |
+  |---|---|---|
+  | 0 | Foundation | storage class, certificate manager, metrics server, VPA |
+  | 1 | Secrets | external-secrets |
+  | 2 | Core networking | service mesh (CRDs → control plane → gateway), overlay network |
+  | 3 | Edge ingress | the public tunnel |
+  | 4 | Operators & DNS | database operator, DNS automation |
+  | 5 | Data, observability & platform | database clusters, monitoring stack, the AI platform |
+  | 6 | Consumer workloads | end-user services and apps |
+
+- **Wiring is generated from the same entry** — `gateways:` produces the ingress objects and `dopplerConfig` produces the ExternalSecret, so a workload and its exposure are declared once.
+- **Merging is deploying.** ArgoCD prunes and self-heals; nothing is applied imperatively.
+
 ## Services
 
 Third-party software we host, registered in [`services/argocd-appset/values.yaml`](services/argocd-appset/values.yaml). The registry — not this README — owns enablement, wave and parameters; its entries are grouped by the wave tiers above.
 
-Each service chart takes its upstream from the project's official chart when one exists; where it does not, we wrap a maintained community chart as a values-override layer (see [`services/README.md`](services/README.md#helm)).
+Most charts take their upstream from the project's official chart when one exists; when it does not, we wrap a maintained community chart as a values-override layer (see [`services/README.md`](services/README.md#helm)).
 
 The AI platform has its own documentation: [`services/helm/openagent/README.md`](services/helm/openagent/README.md).
 
@@ -138,7 +143,7 @@ Add a new secret in Doppler; the ExternalSecret syncs the whole config on its re
 | `image-builds.yaml` | builds and publishes the images under `images/` when their sources change |
 <!-- END GENERATED: ci -->
 
-Renovate opens dependency-update PRs. The same validations run locally via pre-commit, so a CI failure should be reproducible before pushing.
+Renovate opens dependency-update PRs. The same validations run locally through pre-commit, so a CI failure is something you can reproduce before you push.
 
 ## Troubleshooting
 
