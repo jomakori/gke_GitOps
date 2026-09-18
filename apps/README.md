@@ -1,67 +1,47 @@
 # Apps
 
-This folder contains GitOps configuration for **1st-party applications** — my own workloads running on the jmak-lab Minikube cluster.
+GitOps configuration for **first-party workloads we build or test** — chart source plus the registry ArgoCD reads. Third-party software we merely host belongs in [`../services/`](../services/).
 
 ## Structure
 
 Follows the ArgoCD [App-of-Apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#app-of-apps) pattern.
 
-```
+```text
 apps/
-├── argocd-appset/          ← ArgoCD Application manifests
-│   ├── Chart.yaml
-│   ├── templates/
-│   │   ├── _helpers.tpl
-│   │   ├── applications.yaml  ← Single template, auto-generates per-app Applications
-│   │   └── namespaces.yaml
-│   └── values.yaml
-├── openkite-preview/       ← Per-PR preview ApplicationSet (PR generator)
-│   ├── Chart.yaml
-│   ├── values.yaml
-│   └── templates/          ← ApplicationSet + wildcard Gateway/Certificate
-└── helm/                   ← Single parameterized Helm chart for all apps
-    ├── Chart.yaml
-    ├── templates/
-    │   ├── _helpers.tpl       ← 273-line define (app.manifests) — generates all resources
-    │   └── app.yaml           ← Invokes _helpers.tpl manifest generation
-    └── values.yaml
+├── argocd-appset/          ← registry + template (+ namespaces)
+│   ├── templates/applications.yaml
+│   ├── templates/namespaces.yaml
+│   └── values.yaml         ← the registry (enablement, environments, chart path)
+├── helm/                   ← the parameterized app chart, plus a chart per workload that needs its own
+└── openkite-preview/       ← per-PR preview ApplicationSet
 ```
 
 ### argocd-appset
 
-A single `applications.yaml` template auto-generates ArgoCD `Application` resources from `values.yaml`. Each app is registered by key (e.g., `demoApi`, `notesUi`) with its environment configs and dopplerConfig references. The AppSet passes `--set appName=<key>` to the single chart.
+One template renders an `Application` per entry in `values.yaml`. An entry names the chart it deploys (`helmPath`) along with its environments and `dopplerConfig`, so the parameterized chart and a workload-specific chart register identically.
 
 ### helm
 
-A single parameterized chart (`name: apps`) handles all application workloads. All manifests are generated from `_helpers.tpl` via one `app.yaml` invocation:
+`apps/helm/` holds the parameterized chart (`name: apps`): a single `_helpers.tpl` define emits every resource, driven by the entry's flags.
 
-| Resource | Conditional On |
-|----------|---------------|
-| ServiceAccount + ECR dockercfg Secret | Always |
-| ExternalSecret | `environments.<env>.dopplerConfig` set |
-| Deployment | Always (`nodeSelector: intent: apps`) |
-| Service | Always (ClusterIP for Istio; NodePort fallback) |
+| Resource | Created when |
+|---|---|
+| ServiceAccount + image pull Secret | always |
+| ExternalSecret | the environment sets `dopplerConfig` |
+| Deployment | always |
+| Service | always (ClusterIP for the mesh; NodePort fallback) |
 | VirtualService | `enable_domain` + `enable_istio` |
 | HPA | `enable_scaling` |
-| PVC | `storage.size` defined |
+| PVC | `storage.size` is set |
 
-Supports multi-environment (staging + production) per app.
+Multi-environment (staging + production) is supported per app. A workload that needs more than this shape keeps its own chart under `apps/helm/<name>/`, named by the entry's `helmPath`.
 
 ### openkite-preview
 
-A dedicated **per-PR preview** app, registered through the `apps` app-of-apps
-like every other app. It renders an ArgoCD `ApplicationSet` that uses the
-GitHub Pull Request generator to create one preview Application per open PR on
-`jomakori/openkite`, deploying
-the `apps/helm/openkite-preview` chart at `pr-<num>.openkite.maklab.net`.
-Previews are deleted automatically on PR close. It also owns the shared
-`*.openkite.maklab.net` TLS `Certificate` and Istio `Gateway`, and references
-the `argocd-github-token` ExternalSecret provisioned by OKT-76. See
-[openkite-preview/README.md](openkite-preview/README.md).
+A per-PR preview system registered like any other app. It renders an `ApplicationSet` using the GitHub Pull Request generator to create one preview `Application` per open PR on `jomakori/openkite`, at `pr-<num>.<clusterDomain>`, and deletes it when the PR closes. It also owns the wildcard TLS `Certificate` and Istio `Gateway` for that host, and consumes the GitHub token ExternalSecret. See [openkite-preview/README.md](openkite-preview/README.md).
 
-## Adding an App
+## Adding an app
 
-1. **Add an entry** in `argocd-appset/values.yaml` with the app key, environments, and `dopplerConfig` per environment.
-2. **Add a namespace** in `argocd-appset/templates/namespaces.yaml` (one per app).
-3. **Set `enable: true`** — both existing apps (`demoApi`, `notesUi`) are currently disabled, ready for activation.
-4. **PR and merge** — ArgoCD auto-syncs.
+1. **Add an entry** to `argocd-appset/values.yaml` — app key, environments, `dopplerConfig`, and the chart to deploy.
+2. **Add a namespace** in `argocd-appset/templates/namespaces.yaml`.
+3. **Validate locally** from the repo root: `./ct_check.sh --dir <chart>`, then **PR and merge** — ArgoCD syncs it. Enablement is a registry change, not a code change.
