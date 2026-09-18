@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="assets/banner.svg" alt="gke_GitOps" width="100%">
-
-<em>Declarative delivery for our Kubernetes clusters — merge to deploy.</em>
+<img src="assets/readme/hero.svg" alt="gke_GitOps — merge to deploy, ArgoCD reconciles the repository into the cluster" width="100%">
 
 <!-- BEGIN GENERATED: badges -->
 [![Helm - Lint/Test](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml/badge.svg?branch=main)](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml)
@@ -15,9 +13,22 @@
 
 </div>
 
-<img src="assets/line-gradient.svg" alt="" width="100%" height="3px">
+<img src="assets/line-gradient.svg" alt="Section divider" width="100%" height="3px">
 
 Terraform provisions the cluster and bootstraps ArgoCD; **everything after that bootstrap is owned here** — services, apps, ingress and secret wiring — and reconciled by ArgoCD from this repository rather than applied by hand.
+
+<!--TOC-->
+
+- [How the loop works](#how-the-loop-works)
+- [Layout](#layout)
+- [Quickstart](#quickstart)
+- [Services](#services)
+- [Apps](#apps)
+- [Secrets](#secrets)
+- [CI](#ci)
+- [Troubleshooting](#troubleshooting)
+
+<!--TOC-->
 
 ## How the loop works
 
