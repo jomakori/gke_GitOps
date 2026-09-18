@@ -19,6 +19,101 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |
 | oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.15.0 |
 
+## OpenAgent stack
+
+The umbrella chart that runs the cluster's AI workforce: an LLM gateway, the Hermes Agent gateway, its web UI, and a Claude Pro proxy — plus the CRDs, secrets and routing that tie them together. Work is *loop-engineered*: tasks are decomposed, delegated to specialised personas, reviewed, and iterated rather than answered in a single pass.
+
+### Components
+
+| Component | Deployed Via | Purpose |
+|-----------|-------------|---------|
+| `openagent-litellm` | remote OCI dep (LiteLLM Helm chart) | Multi-provider LLM gateway — model access only, no fallbacks. |
+| `openagent-hermes` | remote OCI dep (Hermes Agent Helm chart) | Hermes Agent gateway — Discord bot + MCP servers. |
+| `hermes-webui` | local subchart (`charts/hermes-webui`) | Web dashboard — thin-client gateway mode, CF Access private. |
+| `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP `:4523`. |
+| umbrella templates | local (`templates/`) | OMO agent fleet, skills, StackGres, istio gateway, ExternalSecrets. |
+
+> Chart and image versions are pinned in `Chart.yaml` / `values.yaml` and bumped by Renovate — deliberately not restated here, so this README cannot go stale on a version bump.
+
+### Chart structure
+
+```text
+openagent/                       ← umbrella
+├── charts/
+│   ├── hermes-webui/            ← local subchart (web dashboard)
+│   └── claude-proxy/            ← local subchart (Claude Pro proxy)
+├── templates/                   ← flat manifests (condensed; no subdirs)
+│   ├── apps.yaml                ← dashboard-auth, hermes API svc, litellm VS, responses-proxy
+│   ├── db.yaml                  ← StackGres SGScript (cluster owned by postgres-operator chart)
+│   ├── hermes.yaml              ← hermes mise config
+│   ├── hooks.yaml               ← MCP manifest CM + preflight Job + drift CronJob
+│   ├── k8s-gitops-context.yaml  ← skill ConfigMap
+│   ├── opencode.yaml            ← OMO agent fleet (agents, categories, fallbacks)
+│   ├── secrets.yaml             ← ExternalSecrets, GHCR pull secret, litellm/pg creds
+│   └── vpa.yaml                 ← VerticalPodAutoscaler
+├── values.yaml                  ← full config surface
+└── Chart.yaml                   ← remote OCI + local subchart deps
+```
+
+### Runtime, toolchain & health
+
+The gateway is **build-free in-cluster**: the agent tooling and the MCP verifier come from a prebuilt tools image instead of being compiled on the PVC. The old in-repo Go tree, boot shim and source ConfigMaps are retired; the hermes image and PVC remain, because MCP servers still need the toolchain the gateway pre-warms onto the volume.
+
+- **Boot** — an initContainer copies the verifier binary out of the tools image into an `emptyDir`; the container then runs the boot command, which prepares the toolchain and hands over to the gateway.
+- **Verification** — the MCP preflight Job and drift CronJob use the same initContainer + verifier pattern, so verification runs the identical binary and toolchain as the gateway (see [MCP Manifest Verification](#mcp-manifest-verification)).
+- **Health** — startup and readiness probes gate the gateway on its dashboard, so the pod is not Ready — and Service endpoints stay empty — until it actually serves.
+- **Configuration** — the chart seeds the agent config, including the schema version the pinned image expects, kept in lockstep by the same values that pin the image.
+- **Drift signal** — the drift CronJob fails by design when it detects drift; an ArgoCD health override for that CronJob reports it as Healthy-with-message, so a real finding does not mark the app Degraded or block auto-sync. Drift stays visible in the Job logs.
+
+### OMO agent fleet
+
+The AI workforce is an OMO (Oh My OpenAgent) fleet generated into the `openagent-opencode-config` ConfigMap (`templates/opencode.yaml`) from the `opencode:` values block — the single source of truth for agent → model → fallback chains, category routing, and the Claude escalation policy. Model IDs live only in `litellm.proxy_config.model_list`; the template iterates it to build `opencode.json` provider models, so a model appears exactly once. Chains use the OMO `models` array (primary-first); runtime fallback on 429/5xx lives in `opencode.runtimeFallback`.
+
+Agent roles: sisyphus (orchestrator), hephaestus (coder), oracle (architect), prometheus (planner), metis (analyzer), momus (reviewer), atlas (coordinator), explore (explorer), librarian (researcher), multimodal-looker (vision), sisyphus-junior (trivial). Writing work routes via the `writing` category / sisyphus. Each agent and category carries a primary model plus a fallback chain; Claude is escalation-only.
+
+### Skills
+
+The gateway loads built-in skills, configured via `config.agent.environment_hint`:
+
+| Skill | Source | Purpose |
+|-------|--------|---------|
+| **ponytail** | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) | YAGNI ladder — write only what is needed; reuse > rewrite, stdlib > custom |
+| **caveman** | [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) | Terse communication — fewer output tokens, drop filler, keep substance |
+
+**Ponytail YAGNI ladder** (before writing code): does this need to exist? → already in the codebase? → stdlib? → native platform feature? → installed dependency? → one line? → only then, the minimum that works.
+
+**Caveman rules**: drop articles, filler, pleasantries and hedging; fragments are fine; short synonyms; technical terms exact; code blocks unchanged.
+
+### LLM routing
+
+```text
+Discord user
+  → Hermes Agent (Discord bot, single agent)
+    → OMO agent fleet (routing + fallbacks)
+      → LiteLLM (model access)
+        → provider APIs (incl. the Claude proxy)
+```
+
+All LLM traffic flows through LiteLLM; LiteLLM provides model access, while the OMO fleet (ConfigMap) owns routing and fallbacks.
+
+### Web dashboard
+
+```text
+Browser
+  → https://openagent.maklab.net
+    → Cloudflare Tunnel
+      → Istio Ingress Gateway
+        → openagent-hermes-workspace.openagent:3000 (Web UI)
+          → openagent-hermes-api.openagent:8642 (API, chat/sessions)
+          → openagent-hermes-agent.openagent:9119 (Dashboard, config/skills)
+```
+
+The web UI connects to two gateway backends: the API server for chat/sessions and the dashboard for config/skills. The dashboard uses cookie-based basic auth with credentials from the `svc_openagent` Doppler config. See the `k8s-gitops-context` skill for connectivity modes and troubleshooting.
+
+### Namespaces & secrets
+
+All application resources deploy to the `openagent` namespace, and the gateway pod runs MCP servers as stdio processes within the container. Secrets come from the `svc_openagent` Doppler config (provider keys, Discord, GHCR) and flow in via `envFrom: secretRef` — no Helm `--set` for secrets.
+
 ## Skill Single-Source: k8s-gitops-context
 
 The `k8s-gitops-context` skill body is owned here, in `templates/k8s-gitops-context.yaml`, and rendered for two runtimes via the `runtimeMode` value.
