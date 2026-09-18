@@ -1,71 +1,41 @@
 # Services
 
-This folder contains GitOps configuration for **3rd-party infrastructure services** that the jmak-lab Minikube cluster depends on.
+GitOps configuration for **third-party software we host** — chart source plus the registry ArgoCD reads. First-party workloads we build or test live in [`../apps/`](../apps/).
 
 ## Structure
 
 Follows the ArgoCD [App-of-Apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#app-of-apps) pattern.
 
-```
+```text
 services/
-├── argocd-appset/          ← ArgoCD Application manifests
-│   ├── Chart.yaml
-│   ├── templates/
-│   │   ├── _helpers.tpl     ← Template helpers (service registration logic)
-│   │   └── applications.yaml ← Single template auto-generates all Applications
-│   └── values.yaml           ← Service registry (enable/disable, sync waves, parameters)
-└── helm/                   ← Helm chart source for each service (16 charts)
-    ├── cert-manager/        ← Thin wrapper
-    ├── cloudflare-tunnel/   ← Hybrid (lexfrei upstream + ExternalSecret)
-    ├── external-dns/        ← Hybrid
-    ├── external-secrets/    ← Hybrid
-    ├── headlamp/            ← Hybrid (upstream + user SA templates)
-    ├── istio/               ← Hybrid
-    ├── keda/                ← Thin wrapper (disabled)
-    ├── kube-prometheus-stack/ ← Hybrid
-    ├── local-path/          ← Thin wrapper
-    ├── metrics-server/      ← Thin wrapper
-    ├── mongodb-operator/    ← Thin wrapper (disabled)
-    ├── openagent/           ← Custom umbrella (LiteLLM + headroom + hermes agent + CRDs in single chart)
-    ├── opencost/            ← Thin wrapper
-    ├── postgres-operator/   ← Hybrid
-    ├── redis-operator/      ← Thin wrapper (disabled)
-    └── vpa/                 ← Thin wrapper
+├── argocd-appset/                    ← registry + the template that renders Applications from it
+│   ├── templates/_helpers.tpl
+│   ├── templates/applications.yaml   ← one Application per registry entry
+│   └── values.yaml                   ← the registry (enablement, wave, parameters)
+└── helm/                             ← one chart per service
 ```
 
 ### argocd-appset
 
-A single `applications.yaml` template auto-generates all ArgoCD `Application` resources from `values.yaml`, using `_helpers.tpl` for logic. Services are toggled on/off via `values.yaml` — parameters like `clusterDomain` are injected by Terraform and propagated through ArgoCD appset values.
+`applications.yaml` renders one `Application` per entry in `values.yaml`, with the shared logic in `_helpers.tpl`. Values injected by Terraform (`clusterDomain`, `repoUrl`, `targetRevision`, `argoProject`, `argoNamespace`, `storageClass`) are inherited by every entry. Enablement, wave and per-service parameters live in the registry and nowhere else.
 
 ### helm
 
-Charts fall into three patterns:
+Charts follow one of three patterns:
 
-| Pattern | Count | Description |
-|---------|-------|-------------|
-| **Thin Wrapper** | 8 | `Chart.yaml` with upstream `dependencies` only, no local templates |
-| **Custom** | 1 | Full local templates, no upstream dependency |
-| **Hybrid** | 7 | Upstream dependency + local templates for extra resources (ExternalSecrets, ClusterSecretStores, SGCluster, etc.) |
+| Pattern | Shape |
+|---|---|
+| Thin wrapper | `Chart.yaml` with upstream `dependencies` only — no local templates |
+| Hybrid | upstream dependency **plus** local templates for the extras (ExternalSecrets, ClusterSecretStores, database clusters, …) |
+| Custom | local templates only, no upstream dependency |
 
-## Adding a Service
+A chart can exist in `helm/` without being registered — the registry, not this directory, decides what is deployed.
 
-1. **Create the Helm chart** under `helm/<service-name>/` — thin wrapper (upstream dep), hybrid (upstream + local templates), or custom (full templates).
-2. **Register it** in `argocd-appset/values.yaml` with an `enable: true/false` flag, syncWave, destNamespace, and any parameters.
-3. **Wire secrets** via ESO: add a `dopplerConfig` key in the values entry. No Terraform changes needed — the ExternalSecret template pulls the entire config from Doppler.
-4. **If public ingress is needed**, set `gateways.enable_public: true` — the `applications.yaml` template auto-generates a VirtualService via the istio umbrella chart. For custom subdomains or non-default service names:
+## Adding a service
 
-   ```yaml
-   gateways:
-     enable_public: true       # required
-     subdomain: my-app          # optional — defaults to chart name
-     destination:
-       serviceName: my-svc      # optional — defaults to chart name
-       servicePort: 8080        # optional — defaults to 80
-   ```
-
-   The template derives host → `{subdomain}.{clusterDomain}`, dest host → `{serviceName}.{destNamespace}.svc.cluster.local`, VS name → `{subdomain}`. Most services need only `enable_public: true`.
-5. **Validate locally**:
-   ```bash
-   .useful-scripts/ct_check.sh services/helm/<name>
-   ```
-6. **PR and merge** — ArgoCD auto-syncs.
+1. **Create the chart** under `helm/<name>/`, using whichever pattern above fits.
+2. **Register it** in `argocd-appset/values.yaml`: enablement, `syncWave` (see the wave tiers in the [root README](../README.md#how-the-loop-works)), namespace and any parameters.
+3. **Wire secrets** with a `dopplerConfig` key — the ExternalSecret template pulls the whole Doppler config, so no Terraform change is needed.
+4. **Expose it** (optional) with `gateways.enable_public: true`; the template derives host, destination and VirtualService name from `clusterDomain` and the entry, and `subdomain` / `destination.*` override the defaults.
+5. **Validate locally** from the repo root: `./ct_check.sh --dir services/helm/<name>`.
+6. **PR and merge** — ArgoCD syncs it.
