@@ -23,13 +23,16 @@ services/
 
 Pick the chart source in this order:
 
-1. **The project ships an official chart** → depend on it (thin wrapper), adding local templates only for what it lacks (hybrid).
-2. **No official chart, but a community chart exists** → **wrap it as a values-override layer.** This is the default for services with no official chart — `excalidash` is the reference (it wraps the chart published at `https://charts.alekc.dev`).
+1. **The project ships a chart** → **vendor a copy of it here** *(preferred)*: the chart stays in our review surface, keeps working if an external repo moves or disappears, and its templates stay editable. `plane` is the reference — a copy of Plane's own chart, still carrying upstream's `home`/`sources` (`name: plane-ce`).
+2. **No chart of its own, but a maintained community chart exists** → **wrap it as a values-override layer** *(the default for a service with no chart)* — `excalidash` is the reference (it wraps the chart published at `https://charts.alekc.dev`).
 3. **No chart anywhere** → custom chart, local templates only.
+
+Depending on an official chart repo rather than vendoring is fine where we take the chart unmodified and the source is stable and project-owned (most of `cert-manager`, `keda`, `tailscale`, …). Vendoring is preferred as soon as we add local templates or expect to adjust the chart, and a vendored copy counts as *having* a chart — it is never a gap.
 
 | Pattern | When | Shape |
 |---|---|---|
-| Thin wrapper | official chart exists | `Chart.yaml` with the upstream `dependencies` only — no local templates |
+| **Vendored copy** *(preferred)* | the project ships a chart | a copy of the upstream chart in our tree, values adjusted locally — no external repo dependency (`plane`) |
+| Thin wrapper | official chart exists, taken unmodified | `Chart.yaml` with the upstream `dependencies` only — no local templates |
 | **Values-override layer** *(default)* | no official chart, community chart exists | upstream dependency + `values.yaml` overrides under the upstream chart's key + local `templates/` for what upstream lacks |
 | Hybrid | official chart exists, extras needed | upstream dependency **plus** local templates (ExternalSecrets, ClusterSecretStores, database clusters, …) |
 | Custom | nothing upstream | local templates only |
