@@ -4,12 +4,14 @@
 
 <em>Declarative delivery for our Kubernetes clusters — merge to deploy.</em>
 
-[![Helm lint & test](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml/badge.svg?branch=main)](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml)
-[![Image builds](https://github.com/jomakori/gke_GitOps/actions/workflows/image-builds.yaml/badge.svg?branch=main)](https://github.com/jomakori/gke_GitOps/actions/workflows/image-builds.yaml)
+<!-- BEGIN GENERATED: badges -->
+[![Helm - Lint/Test](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml/badge.svg?branch=main)](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml)
+[![Build and push images](https://github.com/jomakori/gke_GitOps/actions/workflows/image-builds.yaml/badge.svg?branch=main)](https://github.com/jomakori/gke_GitOps/actions/workflows/image-builds.yaml)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-4169E1?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kubernetes.io)
 [![Helm](https://img.shields.io/badge/Helm-5D4ED3?style=for-the-badge&logo=helm&logoColor=white)](https://helm.sh)
-[![Argo CD](https://img.shields.io/badge/Argo%20CD-7934C5?style=for-the-badge&logo=argo&logoColor=white)](https://argo-cd.readthedocs.io)
+[![Argo%20CD](https://img.shields.io/badge/Argo%20CD-7934C5?style=for-the-badge&logo=argo&logoColor=white)](https://argo-cd.readthedocs.io)
 [![Terraform](https://img.shields.io/badge/Terraform-8A2BE2?style=for-the-badge&logo=terraform&logoColor=white)](https://developer.hashicorp.com/terraform)
+<!-- END GENERATED: badges -->
 
 </div>
 
@@ -49,17 +51,19 @@ Terraform (devops_Terraform)
 
 ## Layout
 
+<!-- BEGIN GENERATED: tree -->
 ```text
 .
-├── services/           ← third-party software we host (charts + registry)
-├── apps/               ← first-party workloads we build or test (charts + registry)
-├── images/             ← images we build for the cluster
-├── .useful-scripts/    ← validation, rendering and cluster helpers
-├── .github/workflows/  ← CI: chart lint/test, image builds
-├── ct_check.sh         ← chart lint/dry-run entrypoint
-├── renovate.json       ← dependency updates
-└── .pre-commit-config.yaml
+├── services/        ← third-party software we host (charts + the registry)
+├── apps/            ← first-party workloads we build or test (charts + the registry)
+├── images/          ← images we build for the cluster
+├── .useful-scripts/ ← validation, rendering and cluster helpers
+├── .github/workflows/ ← CI: chart lint/test, image builds
+├── ct_check.sh      ← chart lint/dry-run entrypoint
+├── renovate.json    ← dependency updates
+└── .pre-commit-config.yaml ← local hooks CI also runs
 ```
+<!-- END GENERATED: tree -->
 
 [`services/README.md`](services/README.md) and [`apps/README.md`](apps/README.md) cover their registries, chart patterns and gateway/secret wiring in detail.
 
@@ -116,10 +120,12 @@ Add a new secret in Doppler; the ExternalSecret syncs the whole config on its re
 
 ## CI
 
+<!-- BEGIN GENERATED: ci -->
 | Workflow | What it checks |
 |---|---|
-| `helm_lint-test` | yamllint, chart lint/dry-run, render + schema validation, chart unit tests, chart policies, selector guard |
-| `image-builds` | builds and publishes the images under `images/` when their sources change |
+| `helm_lint-test.yaml` | yamllint, chart lint/dry-run, render + schema validation, chart unit tests, chart policies, selector guard |
+| `image-builds.yaml` | builds and publishes the images under `images/` when their sources change |
+<!-- END GENERATED: ci -->
 
 Renovate opens dependency-update PRs. The same validations run locally via pre-commit, so a CI failure should be reproducible before pushing.
 
