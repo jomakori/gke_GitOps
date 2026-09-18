@@ -58,7 +58,7 @@ The openagent umbrella chart (`services/helm/openagent/`) bundles all components
 | Component | Deployed Via | Purpose |
 |-----------|-------------|---------|
 | `openagent-litellm` | remote OCI dep (`oci://ghcr.io/berriai/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 16 models, model access only (no fallbacks). |
-| `openagent-hermes` | remote OCI dep (`oci://ghcr.io/jyje/hermes-agent-helm`, v0.9.1) | Hermes Agent — single agent, Discord bot, MCP servers. |
+| `openagent-hermes` | remote OCI dep (`oci://ghcr.io/jyje/hermes-agent-helm`, v1.15.0) | Hermes Agent — single agent, Discord bot, MCP servers. Runs the pinned `nousresearch/hermes-agent:v2026.9.11` gateway image. |
 | `hermes-webui` | local subchart (`charts/hermes-webui`) | Web dashboard — thin-client gateway mode, CF Access private. |
 | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP :4523. |
 | `openagent` templates | umbrella locals (`templates/`) | OMO agent fleet, skills, StackGres, istio gateway, ExternalSecrets. |
@@ -82,6 +82,16 @@ openagent/                       ← umbrella
 ├── values.yaml                  ← full config surface
 └── Chart.yaml                   ← 2 remote OCI + 2 local subchart deps
 ```
+
+#### Agent runtime, toolchain & health
+
+The gateway no longer compiles anything in-cluster. The gateway and the MCP verification workloads both run the prebuilt `gitopsctl` tools image (`ghcr.io/jomakori/gitopsctl`, pinned by commit sha); the old `extras/` Go tree, the boot shim, and the `openagent-tools-src`/`openagent-boot-script` ConfigMaps are retired.
+
+- **Gateway boot** — an `install-gitopsctl` initContainer copies the binary out of the tools image into an `emptyDir`, and the container command is `/opt/tools/gitopsctl boot`. The hermes image and the `openagent-hermes-agent` PVC stay, because the MCP toolchain (`npx`/`uvx`/`deno`/`obscura`/`bw` + mise caches) lives under `/opt/data` and must match what the gateway actually spawns.
+- **MCP preflight Job / drift CronJob** — the same pattern (`install-gitopsctl` + `emptyDir`, then `/opt/tools/gitopsctl mcp verify`), so verification runs the identical binary and toolchain as the gateway.
+- **Probes** — the gateway carries startup/readiness probes on the dashboard (`:9119`) with a ~20 min startup budget; the pod is not Ready until the dashboard actually answers, so Service endpoints are not populated during the ~10-12 min boot.
+- **Seeded config** — the chart seeds `_config_version: 42` in lockstep with the pinned gateway image's config schema.
+- **Drift health** — the drift CronJob exits non-zero when it detects drift, by design. A `batch_CronJob` health override in `argocd-cm` (Terraform-managed, `devops_Terraform/k8s-maklab-cluster`) reports that as Healthy-with-message so a real drift finding does not mark the app Degraded or block auto-sync; drift stays visible in the Job's logs.
 
 **Namespaces**: All application resources deploy to `openagent` namespace. The hermes-agent pod is the single agent and runs MCP servers as stdio processes within the container.
 
