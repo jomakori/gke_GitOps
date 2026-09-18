@@ -69,6 +69,8 @@ kubectl port-forward -n <namespace> svc/<service> 8080:80
 
 Third-party software we host, registered in [`services/argocd-appset/values.yaml`](services/argocd-appset/values.yaml). The registry — not this README — owns enablement, wave and parameters; its entries are grouped by the wave tiers above.
 
+Each service chart takes its upstream from the project's official chart when one exists; where it does not, we wrap a maintained community chart as a values-override layer (see [`services/README.md`](services/README.md#helm)).
+
 The AI platform has its own documentation: [`services/helm/openagent/README.md`](services/helm/openagent/README.md).
 
 ## Apps

@@ -21,13 +21,50 @@ services/
 
 ### helm
 
-Charts follow one of three patterns:
+Pick the chart source in this order:
 
-| Pattern | Shape |
-|---|---|
-| Thin wrapper | `Chart.yaml` with upstream `dependencies` only — no local templates |
-| Hybrid | upstream dependency **plus** local templates for the extras (ExternalSecrets, ClusterSecretStores, database clusters, …) |
-| Custom | local templates only, no upstream dependency |
+1. **The project ships an official chart** → depend on it (thin wrapper), adding local templates only for what it lacks (hybrid).
+2. **No official chart, but a community chart exists** → **wrap it as a values-override layer.** This is the default for services with no official chart — `excalidash` is the reference (it wraps the chart published at `https://charts.alekc.dev`).
+3. **No chart anywhere** → custom chart, local templates only.
+
+| Pattern | When | Shape |
+|---|---|---|
+| Thin wrapper | official chart exists | `Chart.yaml` with the upstream `dependencies` only — no local templates |
+| **Values-override layer** *(default)* | no official chart, community chart exists | upstream dependency + `values.yaml` overrides under the upstream chart's key + local `templates/` for what upstream lacks |
+| Hybrid | official chart exists, extras needed | upstream dependency **plus** local templates (ExternalSecrets, ClusterSecretStores, database clusters, …) |
+| Custom | nothing upstream | local templates only |
+
+#### Values-override layer recipe
+
+```yaml
+# helm/<service>/Chart.yaml
+dependencies:
+  - name: <upstream-chart>
+    version: <pinned>                     # pin it — Renovate bumps it
+    repository: https://<chart-repo>      # e.g. https://charts.alekc.dev
+```
+
+```yaml
+# helm/<service>/values.yaml
+dopplerConfig: svc_<service>              # consumed by templates/externalsecret.yaml
+
+<upstream-chart>:                         # overrides live under the upstream chart's key
+  ingress:
+    main:
+      enabled: false                      # routing is the Istio VirtualService, from the registry entry
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+```
+
+Rules for this pattern:
+
+- **Pin the upstream version** as a dependency so dependency PRs track it; never vendor a fork.
+- **Override values, don't fork templates.** Add local templates only for what upstream genuinely lacks — typically the `ExternalSecret`/`dopplerConfig` wiring.
+- **Disable the upstream's own ingress.** Exposure is decided by the registry entry (`gateways:`) and rendered by the istio chart.
+- **Chart-managed secrets are a fallback, not the source of truth.** Let upstream generate boot-time values if it needs them; the Doppler `ExternalSecret` (`creationPolicy: Merge`) overwrites with the real ones.
+- **Vendored dependencies are gitignored**, so CI and `ct_check.sh` run `helm dependency build` — do the same locally before rendering.
 
 A chart can exist in `helm/` without being registered — the registry, not this directory, decides what is deployed.
 
