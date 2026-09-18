@@ -2,7 +2,7 @@
 
 GitOps configuration for **third-party software we host** — chart source plus the registry ArgoCD reads. First-party workloads we build or test live in [`../apps/`](../apps/).
 
-## 🗂️ Structure
+## Structure
 
 Follows the ArgoCD [App-of-Apps](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#app-of-apps) pattern.
 
@@ -15,11 +15,11 @@ services/
 └── helm/                             ← one chart per service
 ```
 
-### 🧭 argocd-appset
+### argocd-appset
 
 `applications.yaml` renders one `Application` per entry in `values.yaml`, with the shared logic in `_helpers.tpl`. Values injected by Terraform (`clusterDomain`, `repoUrl`, `targetRevision`, `argoProject`, `argoNamespace`, `storageClass`) are inherited by every entry. Enablement, wave and per-service parameters live in the registry and nowhere else.
 
-### 📦 helm
+### helm
 
 Pick the chart source in this order:
 
@@ -71,7 +71,7 @@ Rules for this pattern:
 
 A chart can exist in `helm/` without being registered — the registry, not this directory, decides what is deployed.
 
-## ➕ Adding a service
+## Adding a service
 
 1. **Create the chart** under `helm/<name>/`, using whichever pattern above fits.
 2. **Register it** in `argocd-appset/values.yaml`: enablement, `syncWave` (see the wave tiers in the [root README](../README.md)), namespace and any parameters.
