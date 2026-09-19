@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -19,13 +20,14 @@ import (
 )
 
 const (
-	codegraphServer = "codegraph"
-	reposDir        = "/opt/data/repos"
-	home            = "/opt/data/home"
-	binDir          = "/opt/data/bin"
-	miseDir         = "/opt/data/mise"
-	miseConfig      = "/mise/mise.toml"
-	runtimeUID      = 10000
+	codegraphServer  = "codegraph"
+	codegraphWorkers = 4
+	reposDir         = "/opt/data/repos"
+	home             = "/opt/data/home"
+	binDir           = "/opt/data/bin"
+	miseDir          = "/opt/data/mise"
+	miseConfig       = "/mise/mise.toml"
+	runtimeUID       = 10000
 )
 
 func logf(format string, args ...any) {
@@ -95,19 +97,32 @@ func installMise(env []string) {
 	}
 }
 
+// Desktop-E2E X11 toolchain (mirrors openkite e2e.yml) plus the Rust
+// link-stage dev libraries (.pc files) local `cargo test` needs.
+const systemDepsScript = `set -e
+apt-get update -qq
+apt-get install -y --no-install-recommends xvfb xdotool openbox imagemagick dbus-x11 bats
+apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev \
+  libglib2.0-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+`
+
+// systemDeps installs systemDepsScript detached: the run takes ~6 minutes, and
+// blocking handover on it puts the rollout past the Deployment's 600s progress
+// deadline, which ArgoCD reports as a failed sync.
 func systemDeps(env []string) {
-	if !quietOK("bats", "--version") || !quietOK("xdotool", "--version") {
-		_ = runEnv(env, "apt-get", "update", "-qq")
-		// Desktop-E2E X11 toolchain; mirrors openkite e2e.yml apt list.
-		_ = runEnv(env, "apt-get", "install", "-y", "--no-install-recommends",
-			"xvfb", "xdotool", "openbox", "imagemagick", "dbus-x11", "bats")
+	if quietOK("bats", "--version") && quietOK("xdotool", "--version") && quietOK("pkg-config", "--exists", "glib-2.0") {
+		return
 	}
-	if !quietOK("pkg-config", "--exists", "glib-2.0") {
-		// Rust link-stage build deps (.pc files) for local `cargo test`.
-		_ = runEnv(env, "apt-get", "install", "-y", "--no-install-recommends",
-			"libwebkit2gtk-4.1-dev", "libgtk-3-dev", "libglib2.0-dev",
-			"libayatana-appindicator3-dev", "librsvg2-dev", "libxdo-dev", "libssl-dev")
+	cmd := exec.Command("sh", "-c", systemDepsScript)
+	cmd.Env = env
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		logf("system packages: %v", err)
+		return
 	}
+	logf("system packages installing in the background (pid %d)", cmd.Process.Pid)
 }
 
 func linkShims(env []string) {
@@ -309,6 +324,10 @@ func codegraphIndexes(env []string, manifest string) {
 	env = setEnv(env, "CODEGRAPH_TELEMETRY", "0")
 	env = setEnv(env, "npm_config_cache", cache)
 	env = setEnv(env, "npm_config_loglevel", "error")
+	// One npx per repo, each in its own process tree, so the repos index
+	// concurrently instead of queueing behind the slowest one.
+	var wg sync.WaitGroup
+	workers := make(chan struct{}, codegraphWorkers)
 	for _, e := range entries {
 		repo := filepath.Join(reposDir, e.Name())
 		if !e.IsDir() || !exists(filepath.Join(repo, ".git")) {
@@ -318,38 +337,34 @@ func codegraphIndexes(env []string, manifest string) {
 		if exists(filepath.Join(repo, ".codegraph")) {
 			args, verb, budget = []string{"-y", spec, "sync", repo}, "sync", 120
 		}
-		if err := runTimeout(env, budget, "npx", args...); err != nil {
-			logf("codegraph %s %s failed (non-fatal): %v", verb, e.Name(), err)
-			continue
-		}
-		logf("codegraph %s: %s", verb, e.Name())
+		wg.Add(1)
+		go func(name string, args []string, verb string, budget int) {
+			defer wg.Done()
+			workers <- struct{}{}
+			defer func() { <-workers }()
+			if err := runTimeout(env, budget, "npx", args...); err != nil {
+				logf("codegraph %s %s failed (non-fatal): %v", verb, name, err)
+				return
+			}
+			logf("codegraph %s: %s", verb, name)
+		}(e.Name(), args, verb, budget)
 	}
+	wg.Wait()
 }
 
 func chownTree() {
 	// uid 10000 owns the runtime tree (npx/uvx/mise shims EACCES otherwise);
-	// missing dirs are fine on first boots.
-	for _, path := range []string{
-		home + "/.npm", home + "/.cache", home + "/.deno", home + "/.local",
-		home + "/.config", miseDir, "/opt/data/mise-cache", "/opt/data/npm-global",
-		"/opt/data/.npm-mcp",
-	} {
-		_ = filepath.WalkDir(path, func(p string, d os.DirEntry, err error) error {
-			if err == nil {
-				_ = os.Chown(p, runtimeUID, runtimeUID)
-			}
-			return nil
-		})
-	}
-	// Anything still root-owned in agent-writable trees (root-owned git object
-	// dirs broke commits in a shared worktree). Targeted, not recursive over
-	// the whole volume, so boot stays fast on multi-GB data.
-	for _, path := range []string{
-		"/opt/data/repos", "/opt/data/wt", "/opt/data/.local",
-		"/opt/data/.config", "/opt/data/.omo",
-	} {
+	// missing dirs are fine on first boots. The trees are disjoint, so the
+	// walks run concurrently: on the PVC they are the slowest inline stage.
+	var wg sync.WaitGroup
+	walk := func(path string, onlyRootOwned bool) {
+		defer wg.Done()
 		_ = filepath.WalkDir(path, func(p string, d os.DirEntry, err error) error {
 			if err != nil {
+				return nil
+			}
+			if !onlyRootOwned {
+				_ = os.Chown(p, runtimeUID, runtimeUID)
 				return nil
 			}
 			if fi, err := d.Info(); err == nil {
@@ -360,6 +375,25 @@ func chownTree() {
 			return nil
 		})
 	}
+	for _, path := range []string{
+		home + "/.npm", home + "/.cache", home + "/.deno", home + "/.local",
+		home + "/.config", miseDir, "/opt/data/mise-cache", "/opt/data/npm-global",
+		"/opt/data/.npm-mcp",
+	} {
+		wg.Add(1)
+		go walk(path, false)
+	}
+	// Anything still root-owned in agent-writable trees (root-owned git object
+	// dirs broke commits in a shared worktree). Targeted, not recursive over
+	// the whole volume, so boot stays fast on multi-GB data.
+	for _, path := range []string{
+		"/opt/data/repos", "/opt/data/wt", "/opt/data/.local",
+		"/opt/data/.config", "/opt/data/.omo",
+	} {
+		wg.Add(1)
+		go walk(path, true)
+	}
+	wg.Wait()
 }
 
 func opencodeSetup(env []string) {
