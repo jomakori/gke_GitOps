@@ -98,34 +98,6 @@ func installMise(env []string) {
 	}
 }
 
-// Desktop-E2E X11 toolchain (mirrors openkite e2e.yml) plus the Rust
-// link-stage dev libraries (.pc files) local `cargo test` needs.
-const systemDepsScript = `set -e
-apt-get update -qq
-apt-get install -y --no-install-recommends xvfb xdotool openbox imagemagick dbus-x11 bats
-apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev \
-  libglib2.0-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
-`
-
-// systemDeps installs systemDepsScript detached: the run takes ~6 minutes, and
-// blocking handover on it puts the rollout past the Deployment's 600s progress
-// deadline, which ArgoCD reports as a failed sync.
-func systemDeps(env []string) {
-	if quietOK("bats", "--version") && quietOK("xdotool", "--version") && quietOK("pkg-config", "--exists", "glib-2.0") {
-		return
-	}
-	cmd := exec.Command("sh", "-c", systemDepsScript)
-	cmd.Env = env
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	if err := cmd.Start(); err != nil {
-		logf("system packages: %v", err)
-		return
-	}
-	logf("system packages installing in the background (pid %d)", cmd.Process.Pid)
-}
-
 func linkShims(env []string) {
 	// /init resets PATH — symlinks into /opt/data/bin (first on PATH) are what
 	// reach MCPs; direct downloads below cover tools mise doesn't ship.
@@ -498,7 +470,9 @@ func Run(manifest string) error {
 	if !quietOK("mise", "ls") {
 		logf("mise config failed to parse — see " + miseConfig)
 	}
-	systemDeps(env)
+	if !DepsPresent() {
+		logf("system packages not installed (install on demand: gitopsctl deps install)")
+	}
 	linkShims(env)
 	directDownloads(env)
 	prewarm(manifest)
