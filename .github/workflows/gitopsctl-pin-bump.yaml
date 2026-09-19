@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       sha:
-        description: 'Commit to pin (default: this run\'s commit). Use to recover a bump that failed.'
+        description: "Commit to pin (default: this run's commit). Use to recover a bump that failed."
         required: false
         default: ''
         type: string
