@@ -39,7 +39,7 @@ STACK_BADGES = [
 # One-line summaries: a workflow's own `name:` is too terse to be the whole story.
 CI_SUMMARY = {
     "helm_lint-test.yaml": "yamllint, chart lint/dry-run, render + schema validation, chart unit tests, chart policies, selector guard",
-    "image-builds.yaml": "builds and publishes the images under `images/` when their sources change",
+    "image-builds.yaml": "builds and publishes the images under `.assets/images/` when their sources change",
 }
 
 # Layout tree: allowlisted top-level entries; curation and notes are intent.
@@ -47,7 +47,7 @@ CI_SUMMARY = {
 TREE = [
     ("services/", "third-party software we host (charts + the registry)"),
     ("apps/", "first-party workloads we build or test (charts + the registry)"),
-    ("images/", "images we build for the cluster"),
+    (".assets/images/", "images we build for the cluster"),
     (".useful-scripts/", "validation, rendering and cluster helpers"),
     (".github/workflows/", "CI: chart lint/test, image builds"),
     ("ct_check.sh", "chart lint/dry-run entrypoint"),

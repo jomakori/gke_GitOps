@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/readme/hero.svg" alt="gke_GitOps — every service and app in one registry; edit values.yaml, merge, and ArgoCD reconciles the rest" width="100%">
+<img src=".assets/readme/hero.svg" alt="gke_GitOps — every service and app in one registry; edit values.yaml, merge, and ArgoCD reconciles the rest" width="100%">
 
 <!-- BEGIN GENERATED: badges -->
 [![Helm - Lint/Test](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml/badge.svg?branch=main)](https://github.com/jomakori/gke_GitOps/actions/workflows/helm_lint-test.yaml)
@@ -13,7 +13,7 @@
 
 </div>
 
-<img src="assets/line-gradient.svg" alt="Section divider" width="100%" height="3px">
+<img src=".assets/line-gradient.svg" alt="Section divider" width="100%" height="3px">
 
 Terraform provisions the cluster and bootstraps ArgoCD; **everything after that bootstrap is owned here** — services, apps, ingress and secret wiring — and ArgoCD keeps the cluster in sync with this repository, not with anything applied by hand.
 
@@ -42,7 +42,7 @@ Terraform provisions the cluster and bootstraps ArgoCD; **everything after that 
 .
 ├── services/        ← third-party software we host (charts + the registry)
 ├── apps/            ← first-party workloads we build or test (charts + the registry)
-├── images/          ← images we build for the cluster
+├── .assets/images/  ← images we build for the cluster
 ├── .useful-scripts/ ← validation, rendering and cluster helpers
 ├── .github/workflows/ ← CI: chart lint/test, image builds
 ├── ct_check.sh      ← chart lint/dry-run entrypoint
@@ -140,7 +140,7 @@ Add a new secret in Doppler; the ExternalSecret syncs the whole config on its re
 | Workflow | What it checks |
 |---|---|
 | `helm_lint-test.yaml` | yamllint, chart lint/dry-run, render + schema validation, chart unit tests, chart policies, selector guard |
-| `image-builds.yaml` | builds and publishes the images under `images/` when their sources change |
+| `image-builds.yaml` | builds and publishes the images under `.assets/images/` when their sources change |
 <!-- END GENERATED: ci -->
 
 Renovate opens dependency-update PRs. The same validations run locally through pre-commit, so a CI failure is something you can reproduce before you push.
