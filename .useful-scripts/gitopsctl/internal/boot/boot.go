@@ -22,6 +22,7 @@ import (
 const (
 	codegraphServer  = "codegraph"
 	codegraphWorkers = 4
+	downloadWorkers  = 4
 	reposDir         = "/opt/data/repos"
 	home             = "/opt/data/home"
 	binDir           = "/opt/data/bin"
@@ -194,15 +195,6 @@ func contains(list []string, s string) bool {
 // directDownloads covers tools absent from the mise registry, keeping the
 // exact pinned releases (deno v2.9.5 matches drawio's deno.lock v5).
 func directDownloads(env []string) {
-	if !executable(binDir + "/obscura") {
-		_ = extractTarball(
-			"https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz",
-			binDir)
-	}
-	if !quietOK("agent-reach", "--help") {
-		_ = runEnv(env, "uv", "tool", "install",
-			"https://github.com/Panniantong/agent-reach/archive/main.zip")
-	}
 	os.MkdirAll(home+"/.config/yt-dlp", 0o755)
 	cfg := home + "/.config/yt-dlp/config"
 	if data, _ := os.ReadFile(cfg); !strings.Contains(string(data), "--js-runtimes node") {
@@ -216,51 +208,86 @@ func directDownloads(env []string) {
 	_ = os.WriteFile(binDir+"/paddle-ocr",
 		[]byte("#!/bin/bash\nexec mise run paddle-ocr -- \"$@\"\n"), 0o755)
 
-	if !executable(binDir+"/deno") && !executable(home+"/.deno/bin/deno") {
-		// install.sh needs unzip/7z (absent) — release zip extracted via Go's
-		// archive/zip instead.
-		zipPath := "/tmp/deno.zip"
-		resp, err := http.Get("https://github.com/denoland/deno/releases/download/v2.9.5/deno-arm64-unknown-linux-gnu.zip")
-		if err == nil {
-			out, _ := os.Create(zipPath)
-			_, _ = io.Copy(out, resp.Body)
-			resp.Body.Close()
-			out.Close()
-			if zr, err := zip.OpenReader(zipPath); err == nil {
-				for _, f := range zr.File {
-					if f.Name == "deno" {
-						rc, _ := f.Open()
-						dst, _ := os.OpenFile(home+"/.deno/bin/deno",
-							os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
-						_, _ = io.Copy(dst, rc)
-						rc.Close()
-						dst.Close()
-					}
-				}
-				zr.Close()
-			}
+	var wg sync.WaitGroup
+	workers := make(chan struct{}, downloadWorkers)
+	download := func(fn func()) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			workers <- struct{}{}
+			defer func() { <-workers }()
+			fn()
+		}()
+	}
+
+	download(func() {
+		if executable(binDir + "/obscura") {
+			return
 		}
-		_ = os.Remove(zipPath)
-	}
-	if executable(home + "/.deno/bin/deno") {
-		_ = os.Remove(binDir + "/deno")
-		_ = os.Symlink(home+"/.deno/bin/deno", binDir+"/deno")
-	}
+		_ = extractTarball(
+			"https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz",
+			binDir)
+	})
+	download(func() {
+		if quietOK("agent-reach", "--help") {
+			return
+		}
+		_ = runEnv(env, "uv", "tool", "install",
+			"https://github.com/Panniantong/agent-reach/archive/main.zip")
+	})
+	download(func() {
+		if !executable(binDir+"/deno") && !executable(home+"/.deno/bin/deno") {
+			// install.sh needs unzip/7z (absent) — release zip extracted via Go's
+			// archive/zip instead.
+			zipPath := "/tmp/deno.zip"
+			resp, err := http.Get("https://github.com/denoland/deno/releases/download/v2.9.5/deno-arm64-unknown-linux-gnu.zip")
+			if err == nil {
+				out, _ := os.Create(zipPath)
+				_, _ = io.Copy(out, resp.Body)
+				resp.Body.Close()
+				out.Close()
+				if zr, err := zip.OpenReader(zipPath); err == nil {
+					for _, f := range zr.File {
+						if f.Name == "deno" {
+							rc, _ := f.Open()
+							dst, _ := os.OpenFile(home+"/.deno/bin/deno",
+								os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
+							_, _ = io.Copy(dst, rc)
+							rc.Close()
+							dst.Close()
+						}
+					}
+					zr.Close()
+				}
+			}
+			_ = os.Remove(zipPath)
+		}
+		if executable(home + "/.deno/bin/deno") {
+			_ = os.Remove(binDir + "/deno")
+			_ = os.Symlink(home+"/.deno/bin/deno", binDir+"/deno")
+		}
+	})
 	// drawio MCP needs a local checkout (remote-URL run never discovers
 	// deno.json).
-	if !exists("/opt/data/drawio-mcp-server/.git") {
-		_ = runEnv(env, "git", "clone", "--depth", "1",
-			"https://github.com/simonkurtz-MSFT/drawio-mcp-server",
-			"/opt/data/drawio-mcp-server")
-	}
+	download(func() {
+		if !exists("/opt/data/drawio-mcp-server/.git") {
+			_ = runEnv(env, "git", "clone", "--depth", "1",
+				"https://github.com/simonkurtz-MSFT/drawio-mcp-server",
+				"/opt/data/drawio-mcp-server")
+		}
+	})
 	// Doppler CLI; gpgv verify skipped (no gnupg as uid 10000).
-	if !executable(binDir + "/doppler") {
+	download(func() {
+		if executable(binDir + "/doppler") {
+			return
+		}
 		if err := extractTarball(
 			"https://cli.doppler.com/download?os=linux&arch=arm64&format=tar",
 			binDir, "doppler"); err != nil {
 			logf("doppler download failed: %v", err)
 		}
-	}
+	})
+	wg.Wait()
 }
 
 func exists(path string) bool {
@@ -384,14 +411,22 @@ func chownTree() {
 			if err != nil {
 				return nil
 			}
-			if !onlyRootOwned {
-				_ = os.Chown(p, runtimeUID, runtimeUID)
+			fi, err := d.Info()
+			if err != nil {
 				return nil
 			}
-			if fi, err := d.Info(); err == nil {
-				if sys, ok := fi.Sys().(*syscall.Stat_t); ok && sys.Uid == 0 {
+			sys, ok := fi.Sys().(*syscall.Stat_t)
+			if !ok {
+				return nil
+			}
+			if onlyRootOwned {
+				if sys.Uid == 0 {
 					_ = os.Chown(p, runtimeUID, runtimeUID)
 				}
+				return nil
+			}
+			if sys.Uid != runtimeUID || sys.Gid != runtimeUID {
+				_ = os.Chown(p, runtimeUID, runtimeUID)
 			}
 			return nil
 		})
