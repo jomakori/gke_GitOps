@@ -116,7 +116,14 @@ func Validate(servers map[string]*Server) []Violation {
 			}
 		}
 
-		// Rule 4 — every enabled server declares a resources/prompts policy.
+		// Rule 4 — every server registers lazily: its tools come from the
+		// on-disk schema cache and the process starts on first use, so no
+		// handshake sits in the gateway's startup path.
+		if !server.Lazy {
+			violations = append(violations, Violation{Server: name, Rule: "lazy", Message: "missing lazy: true (server connects eagerly at startup)"})
+		}
+
+		// Rule 5 — every enabled server declares a resources/prompts policy.
 		if enabled {
 			for _, key := range []string{"resources", "prompts"} {
 				declared := false
@@ -133,7 +140,7 @@ func Validate(servers map[string]*Server) []Violation {
 			}
 		}
 
-		// Rule 5 — every enabled server declares the golden tool surface.
+		// Rule 6 — every enabled server declares the golden tool surface.
 		if enabled {
 			if server.Tools == nil || len(server.Tools.Include) == 0 {
 				violations = append(violations, Violation{Server: name, Rule: "tools-include", Message: "enabled server has no non-empty tools.include"})
@@ -141,7 +148,7 @@ func Validate(servers map[string]*Server) []Violation {
 		}
 	}
 
-	// Rule 6 — duplicates stay parked: present, and explicitly enabled: false.
+	// Rule 7 — duplicates stay parked: present, and explicitly enabled: false.
 	for _, name := range duplicateServers {
 		server := servers[name]
 		if server == nil {

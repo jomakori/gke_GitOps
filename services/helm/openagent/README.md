@@ -211,6 +211,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.arctic-shift.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.arctic-shift.env.npm_config_cache | string | `"/opt/data/.npm-mcp/arctic-shift"` |  |
 | hermes-agent.config.mcp_servers.arctic-shift.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.arctic-shift.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.arctic-shift.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.arctic-shift.tools.include[0] | string | `"search_submissions"` |  |
 | hermes-agent.config.mcp_servers.arctic-shift.tools.include[1] | string | `"search_comments"` |  |
@@ -226,6 +227,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.argocd.env.ARGOCD_BASE_URL | string | `"${MCP_ARGOCD_URL}"` |  |
 | hermes-agent.config.mcp_servers.argocd.env.npm_config_cache | string | `"/opt/data/.npm-mcp/argocd"` |  |
 | hermes-agent.config.mcp_servers.argocd.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.argocd.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.argocd.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.argocd.tools.include[0] | string | `"list_applications"` |  |
 | hermes-agent.config.mcp_servers.argocd.tools.include[1] | string | `"get_application"` |  |
@@ -245,6 +247,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_CLIENTSECRET | string | `"${BW_CLIENTSECRET}"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_PASSWORD | string | `"${BW_PASSWORD}"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.bitwarden.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.bitwarden.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.bitwarden.tools.include[0] | string | `"status"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.tools.include[10] | string | `"create_folder"` |  |
@@ -272,6 +275,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.codegraph.env.npm_config_cache | string | `"/opt/data/.npm-mcp/codegraph"` |  |
 | hermes-agent.config.mcp_servers.codegraph.env.npm_config_loglevel | string | `"error"` |  |
 | hermes-agent.config.mcp_servers.codegraph.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.codegraph.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.codegraph.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.codegraph.tools.include[0] | string | `"codegraph_explore"` |  |
 | hermes-agent.config.mcp_servers.codegraph.tools.prompts | bool | `false` |  |
@@ -283,6 +287,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.doppler.env.DOPPLER_TOKEN | string | `"${MCP_DOPPLER_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.doppler.env.npm_config_cache | string | `"/opt/data/.npm-mcp/doppler"` |  |
 | hermes-agent.config.mcp_servers.doppler.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.doppler.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.doppler.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.include[0] | string | `"secrets_get"` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.include[10] | string | `"activity_logs_list"` |  |
@@ -303,6 +308,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.drawio.command | string | `"sh"` |  |
 | hermes-agent.config.mcp_servers.drawio.connect_timeout | int | `120` |  |
 | hermes-agent.config.mcp_servers.drawio.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.drawio.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.drawio.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.drawio.timeout | int | `120` |  |
 | hermes-agent.config.mcp_servers.drawio.tools.include[0] | string | `"search-shapes"` |  |
@@ -322,6 +328,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.drawio.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.drawio.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.connect_timeout | int | `60` |  |
+| hermes-agent.config.mcp_servers.ferryhopper.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.include[0] | string | `"get_ports"` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.include[1] | string | `"get_disruptions"` |  |
@@ -340,6 +347,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.gistpad.env.GITHUB_TOKEN | string | `"${MCP_GITHUB_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.gistpad.env.npm_config_cache | string | `"/opt/data/.npm-mcp/gistpad"` |  |
 | hermes-agent.config.mcp_servers.gistpad.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.gistpad.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.gistpad.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.gistpad.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.gistpad.tools.resources | bool | `false` |  |
@@ -352,6 +360,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.github.env.npm_config_cache | string | `"/opt/data/.npm-mcp/github"` |  |
 | hermes-agent.config.mcp_servers.github.env.npm_config_loglevel | string | `"error"` |  |
 | hermes-agent.config.mcp_servers.github.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.github.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.github.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.github.tools.include[0] | string | `"list_issues"` |  |
 | hermes-agent.config.mcp_servers.github.tools.include[1] | string | `"create_issue"` |  |
@@ -378,6 +387,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.google-workspace.env.UV_TOOL_BIN_DIR | string | `"/opt/data/home/.local/bin"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.env.UV_TOOL_DIR | string | `"/opt/data/home/.local/share/uv/tools"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.google-workspace.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.google-workspace.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.google-workspace.tools.include[0] | string | `"create_doc"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.tools.include[10] | string | `"update_doc_headers_footers"` |  |
@@ -424,6 +434,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_URL | string | `"${MCP_GRAFANA_URL}"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.npm_config_cache | string | `"/opt/data/.npm-mcp/grafana"` |  |
 | hermes-agent.config.mcp_servers.grafana.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.grafana.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.grafana.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.include[0] | string | `"search_dashboards"` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.include[10] | string | `"list_prometheus_label_values"` |  |
@@ -440,6 +451,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.grafana.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.grafana.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.kiwi.connect_timeout | int | `60` |  |
+| hermes-agent.config.mcp_servers.kiwi.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.kiwi.timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.kiwi.tools.include[0] | string | `"search-flight"` |  |
 | hermes-agent.config.mcp_servers.kiwi.tools.include[1] | string | `"feedback-to-devs"` |  |
@@ -451,6 +463,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.obscura.command | string | `"/opt/data/bin/obscura"` |  |
 | hermes-agent.config.mcp_servers.obscura.connect_timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.obscura.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.obscura.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.obscura.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.obscura.timeout | int | `120` |  |
 | hermes-agent.config.mcp_servers.obscura.tools.include[0] | string | `"browser_navigate"` |  |
@@ -488,6 +501,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.plane.env.UV_TOOL_BIN_DIR | string | `"/opt/data/home/.local/bin"` |  |
 | hermes-agent.config.mcp_servers.plane.env.UV_TOOL_DIR | string | `"/opt/data/home/.local/share/uv/tools"` |  |
 | hermes-agent.config.mcp_servers.plane.idle_timeout_seconds | int | `1800` |  |
+| hermes-agent.config.mcp_servers.plane.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.plane.max_lifetime_seconds | int | `21600` |  |
 | hermes-agent.config.mcp_servers.plane.timeout | int | `120` |  |
 | hermes-agent.config.mcp_servers.plane.tools.include[0] | string | `"project"` |  |
@@ -502,6 +516,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.plane.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.plane.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.connect_timeout | int | `60` |  |
+| hermes-agent.config.mcp_servers.skiplagged.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.skiplagged.timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.include[0] | string | `"sk_flights_search"` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.include[1] | string | `"sk_destinations_anywhere"` |  |

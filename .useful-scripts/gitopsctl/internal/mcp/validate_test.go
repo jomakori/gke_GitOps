@@ -29,8 +29,8 @@ func violationsString(vs []Violation) string {
 // the manifest as enabled: false. Fixtures that test other rules include them
 // so the duplicate rule stays quiet.
 const parkedPair = `,
-				"github": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-github@2025.4.8"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600},
-				"gistpad": {"command": "npx", "args": ["-y", "gistpad-mcp@0.5.0"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600}`
+				"github": {"lazy": true, "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github@2025.4.8"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600},
+				"gistpad": {"lazy": true, "command": "npx", "args": ["-y", "gistpad-mcp@0.5.0"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600}`
 
 func TestValidate(t *testing.T) {
 	cases := []struct {
@@ -41,28 +41,35 @@ func TestValidate(t *testing.T) {
 		{
 			name: "clean manifest passes",
 			manifest: `{
-				"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@0.9.0", "stdio"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["list_applications"], "resources": false, "prompts": false}},
-				"ferryhopper": {"url": "https://mcp.ferryhopper.com/mcp", "connect_timeout": 60, "tools": {"include": ["get_ports"], "resources": false, "prompts": false}}` + parkedPair + `
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@0.9.0", "stdio"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["list_applications"], "resources": false, "prompts": false}},
+				"ferryhopper": {"lazy": true, "url": "https://mcp.ferryhopper.com/mcp", "connect_timeout": 60, "tools": {"include": ["get_ports"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 		},
 		{
 			name: "@latest stdio package rejected",
 			manifest: `{
-				"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@latest"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@latest"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{{Server: "argocd", Rule: "pin", Message: "unpinned package argument 'argocd-mcp@latest' (uses @latest)"}},
 		},
 		{
+			name: "eager server rejected",
+			manifest: `{
+				"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
+			}`,
+			want: []Violation{{Server: "argocd", Rule: "lazy", Message: "missing lazy: true (server connects eagerly at startup)"}},
+		},
+		{
 			name: "missing connect_timeout on enabled server rejected",
 			manifest: `{
-				"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{{Server: "argocd", Rule: "connect_timeout", Message: "missing or non-positive connect_timeout"}},
 		},
 		{
 			name: "enabled stdio server missing lifecycle rejected",
 			manifest: `{
-				"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{
 				{Server: "argocd", Rule: "lifecycle", Message: "missing or non-positive idle_timeout_seconds"},
@@ -72,14 +79,14 @@ func TestValidate(t *testing.T) {
 		{
 			name: "enabled server with empty tools.include rejected",
 			manifest: `{
-				"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": [], "resources": false, "prompts": false}}` + parkedPair + `
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": [], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{{Server: "argocd", Rule: "tools-include", Message: "enabled server has no non-empty tools.include"}},
 		},
 		{
 			name: "enabled server missing tools.resources/prompts rejected",
 			manifest: `{
-				"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"]}}` + parkedPair + `
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"]}}` + parkedPair + `
 			}`,
 			want: []Violation{
 				{Server: "argocd", Rule: "tools-policy", Message: "enabled server has no tools.resources policy"},
@@ -89,15 +96,15 @@ func TestValidate(t *testing.T) {
 		{
 			name: "parked server skips tools checks",
 			manifest: `{
-				"gistpad": {"command": "npx", "args": ["-y", "gistpad-mcp@0.5.0"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600},
-				"github": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-github@2025.4.8"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600}
+				"gistpad": {"lazy": true, "command": "npx", "args": ["-y", "gistpad-mcp@0.5.0"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600},
+				"github": {"lazy": true, "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github@2025.4.8"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600}
 			}`,
 		},
 		{
 			name: "parked stdio server still needs lifecycle",
 			manifest: `{
-				"gistpad": {"command": "npx", "args": ["-y", "gistpad-mcp@0.5.0"], "enabled": false, "connect_timeout": 180},
-				"github": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-github@2025.4.8"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600}
+				"gistpad": {"lazy": true, "command": "npx", "args": ["-y", "gistpad-mcp@0.5.0"], "enabled": false, "connect_timeout": 180},
+				"github": {"lazy": true, "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github@2025.4.8"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600}
 			}`,
 			want: []Violation{
 				{Server: "gistpad", Rule: "lifecycle", Message: "missing or non-positive idle_timeout_seconds"},
@@ -107,20 +114,20 @@ func TestValidate(t *testing.T) {
 		{
 			name: "http server missing connect_timeout rejected",
 			manifest: `{
-				"ferryhopper": {"url": "https://mcp.ferryhopper.com/mcp", "tools": {"include": ["get_ports"], "resources": false, "prompts": false}}` + parkedPair + `
+				"ferryhopper": {"lazy": true, "url": "https://mcp.ferryhopper.com/mcp", "tools": {"include": ["get_ports"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{{Server: "ferryhopper", Rule: "connect_timeout", Message: "missing or non-positive connect_timeout"}},
 		},
 		{
 			name: "http server skips lifecycle rules",
 			manifest: `{
-				"ferryhopper": {"url": "https://mcp.ferryhopper.com/mcp", "connect_timeout": 60, "tools": {"include": ["get_ports"], "resources": false, "prompts": false}}` + parkedPair + `
+				"ferryhopper": {"lazy": true, "url": "https://mcp.ferryhopper.com/mcp", "connect_timeout": 60, "tools": {"include": ["get_ports"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 		},
 		{
 			name: "duplicate server missing from manifest",
 			manifest: `{
-				"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}
 			}`,
 			want: []Violation{
 				{Server: "github", Rule: "duplicate", Message: "duplicate server missing from manifest (must stay enabled: false)"},
@@ -130,36 +137,36 @@ func TestValidate(t *testing.T) {
 		{
 			name: "duplicate server must stay parked",
 			manifest: `{
-				"github": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-github@2025.4.8"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}},
-				"gistpad": {"command": "npx", "args": ["-y", "gistpad-mcp@0.5.0"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600}
+				"github": {"lazy": true, "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github@2025.4.8"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}},
+				"gistpad": {"lazy": true, "command": "npx", "args": ["-y", "gistpad-mcp@0.5.0"], "enabled": false, "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600}
 			}`,
 			want: []Violation{{Server: "github", Rule: "duplicate", Message: "duplicate server is not explicitly enabled: false"}},
 		},
 		{
 			name: "npx command with no package argument",
 			manifest: `{
-				"argocd": {"command": "npx", "args": ["-y"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{{Server: "argocd", Rule: "pin", Message: "no package argument found for npx/uvx command"}},
 		},
 		{
 			name: "unpinned package without version",
 			manifest: `{
-				"argocd": {"command": "npx", "args": ["-y", "argocd-mcp"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{{Server: "argocd", Rule: "pin", Message: "unpinned package argument 'argocd-mcp' (no exact version)"}},
 		},
 		{
 			name: "uvx empty version after ==",
 			manifest: `{
-				"plane": {"command": "uvx", "args": ["plane-mcp-server=="], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
+				"plane": {"lazy": true, "command": "uvx", "args": ["plane-mcp-server=="], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{{Server: "plane", Rule: "pin", Message: "unpinned package argument 'plane-mcp-server==' (empty version after '==')"}},
 		},
 		{
 			name: "sh-wrapped pinned package passes",
 			manifest: `{
-				"grafana": {"command": "sh", "args": ["-c", "exec npx -y @leval/mcp-grafana@1.1.7 | grep --line-buffered jsonrpc"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["search_dashboards"], "resources": false, "prompts": false}}` + parkedPair + `
+				"grafana": {"lazy": true, "command": "sh", "args": ["-c", "exec npx -y @leval/mcp-grafana@1.1.7 | grep --line-buffered jsonrpc"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["search_dashboards"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 		},
 		{
@@ -188,7 +195,7 @@ func TestValidate(t *testing.T) {
 
 func TestExecuteValidateCleanAndViolations(t *testing.T) {
 	clean := writeManifest(t, parseManifest(t, `{
-		"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}`+parkedPair+`
+		"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}`+parkedPair+`
 	}`))
 	rc := 1
 	out := captureStdout(t, func() { rc = ExecuteValidate(clean) })
@@ -200,7 +207,7 @@ func TestExecuteValidateCleanAndViolations(t *testing.T) {
 	}
 
 	bad := writeManifest(t, parseManifest(t, `{
-		"argocd": {"command": "npx", "args": ["-y", "argocd-mcp@latest"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}`+parkedPair+`
+		"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@latest"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "tools": {"include": ["x"], "resources": false, "prompts": false}}`+parkedPair+`
 	}`))
 	out = captureStdout(t, func() { rc = ExecuteValidate(bad) })
 	if rc != 1 {
