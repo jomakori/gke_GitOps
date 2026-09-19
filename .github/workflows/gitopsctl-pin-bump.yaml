@@ -1,0 +1,122 @@
+name: Bump the gitopsctl image pin
+
+# The tools image is tagged by commit sha and pushed only on merge to main, so
+# the pin in values.yaml can only name a sha that already exists. This runs
+# after that build and moves both pins — tools.image.tag and the
+# extraInitContainers literal, which cannot be templated — onto the merge
+# commit.
+#
+# The PR is opened with GITHUB_TOKEN, and GitHub suppresses `pull_request`
+# workflows for those (anti-recursion) while `main` requires four checks, so
+# the required workflows are dispatched onto the branch instead. The image
+# build runs with DRY_RUN=true there, so the bump commit builds and reports
+# without pushing a second image.
+
+on:
+  workflow_run:
+    workflows: ["Build and push images"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+env:
+  IMAGE: ghcr.io/jomakori/gitopsctl
+  BRANCH: chore/pin-gitopsctl-image
+
+jobs:
+  bump:
+    name: Bump the gitopsctl image pin
+    runs-on: ubuntu-24.04-arm
+    if: github.event.workflow_run.conclusion == 'success'
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Checkout the merge commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Require an image for this commit
+        # A merge that did not touch the CLI still reports this workflow as
+        # successful, and tagging it would pin an image that does not exist
+        # (ImagePullBackOff on the next sync).
+        run: |
+          set -euo pipefail
+          repo="${IMAGE#ghcr.io/}"
+          token="$(curl -fsS "https://ghcr.io/token?scope=repository:${repo}:pull&service=ghcr.io" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')"
+          code="$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${token}" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.docker.distribution.manifest.v2+json' \
+            "https://ghcr.io/v2/${repo}/manifests/${SHA}")"
+          echo "manifest for ${SHA}: HTTP ${code}"
+          [ "${code}" = "200" ]
+
+      - name: Move both pins onto this commit
+        id: move
+        run: |
+          set -euo pipefail
+          values=services/helm/openagent/values.yaml
+          readme=services/helm/openagent/README.md
+          old="$(sed -n 's/^    tag: \([0-9a-f]\{40\}\)$/\1/p' "$values" | head -1)"
+          if [ -z "${old}" ]; then
+            echo "no pinned tag found in ${values}" >&2
+            exit 1
+          fi
+          if [ "${old}" = "${SHA}" ]; then
+            echo "already pinned to ${SHA}"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The README's generated value table carries the same sha.
+          sed -i "s/${old}/${SHA}/g" "$values" "$readme"
+          if grep -q "${old}" "$values"; then
+            echo "stale sha left in ${values}" >&2
+            exit 1
+          fi
+          grep -q "${SHA}" "$readme"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open or refresh the bump PR
+        if: steps.move.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          short="${SHA:0:12}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "${BRANCH}"
+          git add services/helm/openagent/values.yaml services/helm/openagent/README.md
+          git commit -m "chore(openagent): pin the gitopsctl image to ${short}"
+          git push --force origin "${BRANCH}"
+          if [ -n "$(gh pr list --head "${BRANCH}" --state open --json number --jq '.[0].number')" ]; then
+            echo "bump PR already open for ${BRANCH}"
+            exit 0
+          fi
+          cat > /tmp/bump-pr.md <<'BODY'
+          Automated: moves `tools.image.tag` and the `extraInitContainers` literal
+          onto the gitopsctl image built for this merge commit, so the boot
+          sequence change from that commit actually runs.
+
+          No manual step: this PR is opened with `GITHUB_TOKEN`, which does not
+          trigger `pull_request` workflows, so the required checks are
+          dispatched onto this branch by the same job. The image build runs with
+          `DRY_RUN=true` and pushes nothing.
+          BODY
+          gh pr create --base main --head "${BRANCH}" \
+            --title "chore(openagent): pin the gitopsctl image to ${short}" \
+            --body-file /tmp/bump-pr.md
+
+      - name: Dispatch the required checks onto the branch
+        if: steps.move.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh workflow run helm_lint-test.yaml --ref "${BRANCH}"
+          gh workflow run image-builds.yaml --ref "${BRANCH}" -f DRY_RUN=true

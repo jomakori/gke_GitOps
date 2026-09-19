@@ -40,6 +40,11 @@ on:
         description: "@anthropic-ai/claude-code version to install"
         required: true
         default: "2.1.272"
+      DRY_RUN:
+        description: "Build without pushing — lets the pin-bump workflow satisfy the required image checks on its own branch"
+        required: false
+        default: "false"
+        type: string
   pull_request:
   push:
     branches:
@@ -140,7 +145,7 @@ jobs:
           # Pull requests BUILD but do not PUSH: a broken Dockerfile or a tag that
           # does not resolve surfaces in review, and no PR can publish an image
           # that `main` has not accepted.
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' && inputs.DRY_RUN != 'true' }}
           build-args: |
             OCP_VERSION=${{ steps.build_inputs.outputs.OCP_VERSION }}
             CLAUDE_CODE_VERSION=${{ steps.build_inputs.outputs.CLAUDE_CODE_VERSION }}
@@ -201,7 +206,7 @@ jobs:
           file: .assets/images/gitopsctl/Dockerfile
           platforms: ${{ env.GITOPSCTL_BUILD_PLATFORMS }}
           # Pull requests BUILD but do not PUSH (same policy as the OCP job).
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' && inputs.DRY_RUN != 'true' }}
           tags: |
             ${{ env.GITOPSCTL_IMAGE_NAME }}:${{ github.sha }}
             ${{ env.GITOPSCTL_IMAGE_NAME }}:latest
