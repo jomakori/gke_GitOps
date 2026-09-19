@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gitopsctl/internal/boot"
 	"gitopsctl/internal/mcp"
@@ -23,6 +24,10 @@ func main() {
 		cmdBoot()
 	case "install":
 		cmdInstall(os.Args[2:])
+	case "codegraph":
+		cmdCodegraph(os.Args[2:])
+	case "deps":
+		cmdDeps(os.Args[2:])
 	case "mcp":
 		cmdMCP(os.Args[2:])
 	default:
@@ -37,6 +42,10 @@ func usage() {
 usage:
   gitopsctl boot [--manifest PATH]      run the gateway boot sequence (replaces boot.sh)
   gitopsctl install DEST                 copy this executable to DEST (initContainer seeding)
+  gitopsctl codegraph index PATH [--manifest PATH]
+                                           index one repository (init or sync)
+  gitopsctl deps status                    report whether the system dependency set is installed
+  gitopsctl deps install                   install it on demand (apt download cache on the PVC)
   gitopsctl mcp prewarm [--manifest PATH] [--parallel N]
                                            materialise npx/uvx package caches
   gitopsctl mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
@@ -104,6 +113,95 @@ func install(dest string) error {
 		mode = info.Mode().Perm()
 	}
 	return os.Chmod(dest, mode|0o111)
+}
+
+func cmdDeps(args []string) {
+	if len(args) == 0 {
+		usage()
+		os.Exit(2)
+	}
+	switch args[0] {
+	case "status":
+		if !boot.DepsPresent() {
+			fmt.Println("deps: missing")
+			os.Exit(1)
+		}
+		fmt.Println("deps: present")
+	case "install":
+		if err := boot.InstallDeps(); err != nil {
+			log.Printf("deps install: %v", err)
+			os.Exit(1)
+		}
+	default:
+		usage()
+		os.Exit(2)
+	}
+}
+
+func cmdCodegraph(args []string) {
+	if len(args) == 0 {
+		usage()
+		os.Exit(2)
+	}
+	switch args[0] {
+	case "index":
+		fs := flag.NewFlagSet("index", flag.ExitOnError)
+		manifest := fs.String("manifest", mcp.BootManifest, "rendered MCP manifest path")
+		_ = fs.Parse(manifestFlagFirst(args[1:]))
+		if fs.NArg() != 1 {
+			usage()
+			os.Exit(2)
+		}
+		cmdCodegraphIndex(*manifest, fs.Arg(0))
+	default:
+		usage()
+		os.Exit(2)
+	}
+}
+
+// manifestFlagFirst moves --manifest ahead of PATH for the flag package.
+func manifestFlagFirst(args []string) []string {
+	flags := []string{}
+	rest := []string{}
+	for i := 0; i < len(args); i++ {
+		switch arg := args[i]; {
+		case arg == "--manifest" || arg == "-manifest":
+			if i+1 < len(args) {
+				flags = append(flags, arg, args[i+1])
+				i++
+			} else {
+				flags = append(flags, arg)
+			}
+		case strings.HasPrefix(arg, "--manifest=") || strings.HasPrefix(arg, "-manifest="):
+			flags = append(flags, arg)
+		default:
+			rest = append(rest, arg)
+		}
+	}
+	return append(flags, rest...)
+}
+
+func cmdCodegraphIndex(manifest, path string) {
+	servers, err := mcp.LoadManifest(manifest)
+	if err != nil {
+		log.Printf("codegraph: %v", err)
+		os.Exit(1)
+	}
+	spec, cache := boot.CodegraphFrom(servers)
+	if spec == "" {
+		log.Printf("codegraph: no enabled codegraph server in %s", manifest)
+		os.Exit(1)
+	}
+	verb, err := boot.IndexRepository(os.Environ(), spec, cache, path)
+	if err != nil {
+		log.Printf("codegraph %s: %v", verb, err)
+		os.Exit(1)
+	}
+	if verb == "sync" {
+		fmt.Printf("codegraph: already up to date: %s\n", path)
+		return
+	}
+	fmt.Printf("codegraph: indexed: %s\n", path)
 }
 
 type multiFlag []string

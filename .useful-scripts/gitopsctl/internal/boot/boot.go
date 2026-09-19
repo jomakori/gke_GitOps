@@ -22,6 +22,7 @@ import (
 const (
 	codegraphServer  = "codegraph"
 	codegraphWorkers = 4
+	downloadWorkers  = 4
 	reposDir         = "/opt/data/repos"
 	home             = "/opt/data/home"
 	binDir           = "/opt/data/bin"
@@ -97,34 +98,6 @@ func installMise(env []string) {
 	}
 }
 
-// Desktop-E2E X11 toolchain (mirrors openkite e2e.yml) plus the Rust
-// link-stage dev libraries (.pc files) local `cargo test` needs.
-const systemDepsScript = `set -e
-apt-get update -qq
-apt-get install -y --no-install-recommends xvfb xdotool openbox imagemagick dbus-x11 bats
-apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev \
-  libglib2.0-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
-`
-
-// systemDeps installs systemDepsScript detached: the run takes ~6 minutes, and
-// blocking handover on it puts the rollout past the Deployment's 600s progress
-// deadline, which ArgoCD reports as a failed sync.
-func systemDeps(env []string) {
-	if quietOK("bats", "--version") && quietOK("xdotool", "--version") && quietOK("pkg-config", "--exists", "glib-2.0") {
-		return
-	}
-	cmd := exec.Command("sh", "-c", systemDepsScript)
-	cmd.Env = env
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	if err := cmd.Start(); err != nil {
-		logf("system packages: %v", err)
-		return
-	}
-	logf("system packages installing in the background (pid %d)", cmd.Process.Pid)
-}
-
 func linkShims(env []string) {
 	// /init resets PATH — symlinks into /opt/data/bin (first on PATH) are what
 	// reach MCPs; direct downloads below cover tools mise doesn't ship.
@@ -194,15 +167,6 @@ func contains(list []string, s string) bool {
 // directDownloads covers tools absent from the mise registry, keeping the
 // exact pinned releases (deno v2.9.5 matches drawio's deno.lock v5).
 func directDownloads(env []string) {
-	if !executable(binDir + "/obscura") {
-		_ = extractTarball(
-			"https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz",
-			binDir)
-	}
-	if !quietOK("agent-reach", "--help") {
-		_ = runEnv(env, "uv", "tool", "install",
-			"https://github.com/Panniantong/agent-reach/archive/main.zip")
-	}
 	os.MkdirAll(home+"/.config/yt-dlp", 0o755)
 	cfg := home + "/.config/yt-dlp/config"
 	if data, _ := os.ReadFile(cfg); !strings.Contains(string(data), "--js-runtimes node") {
@@ -216,51 +180,86 @@ func directDownloads(env []string) {
 	_ = os.WriteFile(binDir+"/paddle-ocr",
 		[]byte("#!/bin/bash\nexec mise run paddle-ocr -- \"$@\"\n"), 0o755)
 
-	if !executable(binDir+"/deno") && !executable(home+"/.deno/bin/deno") {
-		// install.sh needs unzip/7z (absent) — release zip extracted via Go's
-		// archive/zip instead.
-		zipPath := "/tmp/deno.zip"
-		resp, err := http.Get("https://github.com/denoland/deno/releases/download/v2.9.5/deno-arm64-unknown-linux-gnu.zip")
-		if err == nil {
-			out, _ := os.Create(zipPath)
-			_, _ = io.Copy(out, resp.Body)
-			resp.Body.Close()
-			out.Close()
-			if zr, err := zip.OpenReader(zipPath); err == nil {
-				for _, f := range zr.File {
-					if f.Name == "deno" {
-						rc, _ := f.Open()
-						dst, _ := os.OpenFile(home+"/.deno/bin/deno",
-							os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
-						_, _ = io.Copy(dst, rc)
-						rc.Close()
-						dst.Close()
-					}
-				}
-				zr.Close()
-			}
+	var wg sync.WaitGroup
+	workers := make(chan struct{}, downloadWorkers)
+	download := func(fn func()) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			workers <- struct{}{}
+			defer func() { <-workers }()
+			fn()
+		}()
+	}
+
+	download(func() {
+		if executable(binDir + "/obscura") {
+			return
 		}
-		_ = os.Remove(zipPath)
-	}
-	if executable(home + "/.deno/bin/deno") {
-		_ = os.Remove(binDir + "/deno")
-		_ = os.Symlink(home+"/.deno/bin/deno", binDir+"/deno")
-	}
+		_ = extractTarball(
+			"https://github.com/h4ckf0r0day/obscura/releases/download/v0.2.0/obscura-aarch64-linux-stealth.tar.gz",
+			binDir)
+	})
+	download(func() {
+		if quietOK("agent-reach", "--help") {
+			return
+		}
+		_ = runEnv(env, "uv", "tool", "install",
+			"https://github.com/Panniantong/agent-reach/archive/main.zip")
+	})
+	download(func() {
+		if !executable(binDir+"/deno") && !executable(home+"/.deno/bin/deno") {
+			// install.sh needs unzip/7z (absent) — release zip extracted via Go's
+			// archive/zip instead.
+			zipPath := "/tmp/deno.zip"
+			resp, err := http.Get("https://github.com/denoland/deno/releases/download/v2.9.5/deno-arm64-unknown-linux-gnu.zip")
+			if err == nil {
+				out, _ := os.Create(zipPath)
+				_, _ = io.Copy(out, resp.Body)
+				resp.Body.Close()
+				out.Close()
+				if zr, err := zip.OpenReader(zipPath); err == nil {
+					for _, f := range zr.File {
+						if f.Name == "deno" {
+							rc, _ := f.Open()
+							dst, _ := os.OpenFile(home+"/.deno/bin/deno",
+								os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
+							_, _ = io.Copy(dst, rc)
+							rc.Close()
+							dst.Close()
+						}
+					}
+					zr.Close()
+				}
+			}
+			_ = os.Remove(zipPath)
+		}
+		if executable(home + "/.deno/bin/deno") {
+			_ = os.Remove(binDir + "/deno")
+			_ = os.Symlink(home+"/.deno/bin/deno", binDir+"/deno")
+		}
+	})
 	// drawio MCP needs a local checkout (remote-URL run never discovers
 	// deno.json).
-	if !exists("/opt/data/drawio-mcp-server/.git") {
-		_ = runEnv(env, "git", "clone", "--depth", "1",
-			"https://github.com/simonkurtz-MSFT/drawio-mcp-server",
-			"/opt/data/drawio-mcp-server")
-	}
+	download(func() {
+		if !exists("/opt/data/drawio-mcp-server/.git") {
+			_ = runEnv(env, "git", "clone", "--depth", "1",
+				"https://github.com/simonkurtz-MSFT/drawio-mcp-server",
+				"/opt/data/drawio-mcp-server")
+		}
+	})
 	// Doppler CLI; gpgv verify skipped (no gnupg as uid 10000).
-	if !executable(binDir + "/doppler") {
+	download(func() {
+		if executable(binDir + "/doppler") {
+			return
+		}
 		if err := extractTarball(
 			"https://cli.doppler.com/download?os=linux&arch=arm64&format=tar",
 			binDir, "doppler"); err != nil {
 			logf("doppler download failed: %v", err)
 		}
-	}
+	})
+	wg.Wait()
 }
 
 func exists(path string) bool {
@@ -290,15 +289,42 @@ func runTimeout(env []string, seconds int, name string, args ...string) error {
 	return cmd.Run()
 }
 
-// codegraphFrom derives the npx spec and cache dir from the rendered manifest,
+// CodegraphFrom derives the npx spec and cache dir from the rendered manifest,
 // so the pin lives in values.yaml only.
-func codegraphFrom(servers map[string]*mcp.Server) (string, string) {
+func CodegraphFrom(servers map[string]*mcp.Server) (string, string) {
 	s := servers[codegraphServer]
 	if s == nil || !s.IsEnabled() || !s.Stdio() {
 		return "", ""
 	}
 	_, spec := mcp.PackageSpec(*s)
 	return spec, mcp.NPMCacheFor(*s)
+}
+
+type codegraphCommand struct {
+	args   []string
+	verb   string
+	budget int
+}
+
+// codegraphCommandFor returns the npx invocation, verb and timeout for indexing path.
+func codegraphCommandFor(spec, path string) codegraphCommand {
+	if exists(filepath.Join(path, ".codegraph")) {
+		return codegraphCommand{args: []string{"-y", spec, "sync", path}, verb: "sync", budget: 120}
+	}
+	return codegraphCommand{args: []string{"-y", spec, "init", "-y", path}, verb: "init", budget: 300}
+}
+
+// IndexRepository runs codegraph init-or-sync for path and returns the verb used.
+func IndexRepository(base []string, spec, cache, path string) (string, error) {
+	cmd := codegraphCommandFor(spec, path)
+	env := append([]string(nil), base...)
+	env = setEnv(env, "CODEGRAPH_TELEMETRY", "0")
+	env = setEnv(env, "npm_config_cache", cache)
+	env = setEnv(env, "npm_config_loglevel", "error")
+	if err := runTimeout(env, cmd.budget, "npx", cmd.args...); err != nil {
+		return cmd.verb, err
+	}
+	return cmd.verb, nil
 }
 
 // codegraphIndexes indexes each git repo under reposDir, or catches an existing
@@ -309,7 +335,7 @@ func codegraphIndexes(env []string, manifest string) {
 		logf("codegraph: %v", err)
 		return
 	}
-	spec, cache := codegraphFrom(servers)
+	spec, cache := CodegraphFrom(servers)
 	if spec == "" {
 		return
 	}
@@ -321,9 +347,6 @@ func codegraphIndexes(env []string, manifest string) {
 	if err != nil {
 		return
 	}
-	env = setEnv(env, "CODEGRAPH_TELEMETRY", "0")
-	env = setEnv(env, "npm_config_cache", cache)
-	env = setEnv(env, "npm_config_loglevel", "error")
 	// One npx per repo, each in its own process tree, so the repos index
 	// concurrently instead of queueing behind the slowest one.
 	var wg sync.WaitGroup
@@ -333,21 +356,18 @@ func codegraphIndexes(env []string, manifest string) {
 		if !e.IsDir() || !exists(filepath.Join(repo, ".git")) {
 			continue
 		}
-		args, verb, budget := []string{"-y", spec, "init", "-y", repo}, "init", 300
-		if exists(filepath.Join(repo, ".codegraph")) {
-			args, verb, budget = []string{"-y", spec, "sync", repo}, "sync", 120
-		}
 		wg.Add(1)
-		go func(name string, args []string, verb string, budget int) {
+		go func(name, repo string) {
 			defer wg.Done()
 			workers <- struct{}{}
 			defer func() { <-workers }()
-			if err := runTimeout(env, budget, "npx", args...); err != nil {
+			verb, err := IndexRepository(env, spec, cache, repo)
+			if err != nil {
 				logf("codegraph %s %s failed (non-fatal): %v", verb, name, err)
 				return
 			}
 			logf("codegraph %s: %s", verb, name)
-		}(e.Name(), args, verb, budget)
+		}(e.Name(), repo)
 	}
 	wg.Wait()
 }
@@ -363,14 +383,22 @@ func chownTree() {
 			if err != nil {
 				return nil
 			}
-			if !onlyRootOwned {
-				_ = os.Chown(p, runtimeUID, runtimeUID)
+			fi, err := d.Info()
+			if err != nil {
 				return nil
 			}
-			if fi, err := d.Info(); err == nil {
-				if sys, ok := fi.Sys().(*syscall.Stat_t); ok && sys.Uid == 0 {
+			sys, ok := fi.Sys().(*syscall.Stat_t)
+			if !ok {
+				return nil
+			}
+			if onlyRootOwned {
+				if sys.Uid == 0 {
 					_ = os.Chown(p, runtimeUID, runtimeUID)
 				}
+				return nil
+			}
+			if sys.Uid != runtimeUID || sys.Gid != runtimeUID {
+				_ = os.Chown(p, runtimeUID, runtimeUID)
 			}
 			return nil
 		})
@@ -442,7 +470,9 @@ func Run(manifest string) error {
 	if !quietOK("mise", "ls") {
 		logf("mise config failed to parse — see " + miseConfig)
 	}
-	systemDeps(env)
+	if !DepsPresent() {
+		logf("system packages not installed (install on demand: gitopsctl deps install)")
+	}
 	linkShims(env)
 	directDownloads(env)
 	prewarm(manifest)
