@@ -615,6 +615,9 @@ hermes-agent:
       #   * connect_timeout — no server rides the 60s default. Package-
       #     launched servers get 180s (a cold npx/uvx resolve + reify races
       #     60s); locally-installed binaries and HTTP endpoints keep 60s.
+      #   * lazy — every server registers its tools from the on-disk schema
+      #     cache and connects on the first call, so a slow handshake never
+      #     sits in the gateway's startup path.
       #   * lifecycle (stdio only) — idle_timeout_seconds and
       #     max_lifetime_seconds recycle a wedged server instead of leaving it
       #     dead until the pod restarts. Deliberately conservative: a recycle
@@ -640,6 +643,7 @@ hermes-agent:
       # boot pre-warm (files/mcp/prewarm.py, invoked from the hermes-agent
       # command) materialises them without ever starting a server.
       codegraph:
+        lazy: true
         # Local code graph; the server only reads a .codegraph/ index, which
         # the boot step builds or catches up. One tool, project path per call.
         command: "npx"
@@ -658,6 +662,7 @@ hermes-agent:
           prompts: false
 
       github:
+        lazy: true
         # Parked: the OpenCode-driven GitHub tooling in
         # templates/opencode.yaml already covers repo
         # access. Kept pinned so re-enabling is a one-line change.
@@ -677,6 +682,7 @@ hermes-agent:
           prompts: false
 
       gistpad:
+        lazy: true
         # Parked: overlaps the github server's surface.
         enabled: false
         command: "npx"
@@ -692,6 +698,7 @@ hermes-agent:
           prompts: false
 
       argocd:
+        lazy: true
         # Re-enabled: this is the server that ran @latest and broke on registry
         # drift, which the pin below now makes impossible by construction. The
         # preflight Job certifies the handshake on every deploy.
@@ -710,6 +717,7 @@ hermes-agent:
           include: [list_applications, get_application, get_application_managed_resources, get_application_resource_tree, get_application_events, sync_application, get_appproject, get_resources]
 
       grafana:
+        lazy: true
         # Parked: @leval/mcp-grafana@1.1.7 writes THREE non-protocol lines to
         # STDOUT (dist/cli.js startup banner, a tool-category summary, and
         # pino's JSON log line). stdout IS the JSON-RPC channel, so the
@@ -741,6 +749,7 @@ hermes-agent:
           include: [search_dashboards, get_dashboard_by_uid, get_dashboard_summary, get_dashboard_panel_queries, list_datasources, get_datasource_by_uid, get_datasource_by_name, query_prometheus, list_prometheus_metric_names, list_prometheus_label_names, list_prometheus_label_values, list_loki_label_names]
 
       doppler:
+        lazy: true
         command: "npx"
         args: ["-y", "@dopplerhq/mcp-server@1.0.5"]
         connect_timeout: 180
@@ -755,6 +764,7 @@ hermes-agent:
           include: [secrets_get, secrets_list, secrets_names, secrets_update, secrets_delete, secrets_download, configs_list, configs_get, projects_list, projects_get, activity_logs_list, workplace_get]
 
       arctic-shift:
+        lazy: true
         # Read-only Reddit search against the Arctic Shift archive API. No
         # auth and no tokens: Reddit's own JSON endpoints answer this
         # cluster's egress IP with a 403 datacenter block page, and its RSS
@@ -788,6 +798,7 @@ hermes-agent:
           prompts: false
 
       obscura:
+        lazy: true
         command: "/opt/data/bin/obscura"
         args: ["mcp", "--stealth"]
         timeout: 120
@@ -802,6 +813,7 @@ hermes-agent:
           include: [browser_navigate, browser_snapshot, browser_markdown, browser_click, browser_type, browser_fill, browser_fill_form, browser_extract, browser_interactive_elements, browser_links, browser_screenshot, browser_scroll, browser_search, browser_evaluate, browser_wait_for_text]
 
       drawio:
+        lazy: true
         # Re-enabled: runs a local deno checkout cloned at boot (see the boot
         # script). No registry package, so no version pin applies.
         command: "sh"
@@ -824,6 +836,7 @@ hermes-agent:
           prompts: false
 
       google-workspace:
+        lazy: true
         command: "uvx"
         args: ["workspace-mcp==1.26.1", "--tool-tier", "complete"]
         # uvx resolves a large dependency tree (google-api-python-client et
@@ -870,6 +883,7 @@ hermes-agent:
           prompts: false
 
       plane:
+        lazy: true
         command: "uvx"
         args: ["plane-mcp-server==0.3.2", "stdio"]
         timeout: 120
@@ -905,6 +919,7 @@ hermes-agent:
           include: [project, workitem, member, state, label, workitem_comment, workitem_attachment, workitem_relation, page]
 
       skiplagged:
+        lazy: true
         # Public remote Streamable-HTTP server. tools.include is the live
         # surface captured when it was pinned into the manifest; the drift
         # CronJob alerts if upstream changes it.
@@ -917,6 +932,7 @@ hermes-agent:
           prompts: false
 
       kiwi:
+        lazy: true
         # Public remote Streamable-HTTP server (see skiplagged).
         url: "https://mcp.kiwi.com"
         timeout: 60
@@ -927,6 +943,7 @@ hermes-agent:
           prompts: false
 
       ferryhopper:
+        lazy: true
         # Public remote Streamable-HTTP server (see skiplagged).
         url: "https://mcp.ferryhopper.com/mcp"
         timeout: 60
@@ -937,6 +954,7 @@ hermes-agent:
           prompts: false
 
       bitwarden:
+        lazy: true
         # Re-enabled: pinned, and the inline block below performs `bw login` /
         # `bw unlock` at spawn. The preflight Job certifies that the unlock
         # yields a usable session — the failure mode that kept this parked.

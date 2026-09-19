@@ -51,6 +51,7 @@ type Server struct {
 	ConnectTimeout     int               `json:"connect_timeout,omitempty"`
 	IdleTimeoutSeconds int               `json:"idle_timeout_seconds,omitempty"`
 	MaxLifetimeSeconds int               `json:"max_lifetime_seconds,omitempty"`
+	Lazy               bool              `json:"lazy,omitempty"`
 	Tools              *ToolsConfig      `json:"tools,omitempty"`
 }
 
