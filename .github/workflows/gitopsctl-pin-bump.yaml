@@ -7,14 +7,14 @@ name: Bump the gitopsctl image pin
 # pin that lags a merge is a boot sequence that is simply not running.
 #
 # Why an admin token instead of GITHUB_TOKEN: main requires the four build/lint
-# checks, and GITHUB_TOKEN never bypasses required checks (the push is rejected
-# with "protected branch hook declined"). GitHub only allows bypass-list actors
-# on organisation repositories, so a personal repo has no way to exempt a bot —
-# the one exception that does exist is the admin bypass that classic protection
-# grants (enforce_admins: false). PIN_BUMP_TOKEN is therefore an admin PAT,
-# fetched from Doppler like every other CI secret. The bump is two lines in a
-# value the image build just produced; if a pull-request requirement is ever
-# added to main, this needs rethinking.
+# checks, and the automatic token never bypasses required checks (the push is
+# rejected with "protected branch hook declined"). GitHub only allows
+# bypass-list actors on organisation repositories, so a personal repo has no way
+# to exempt a bot — the one exception that exists is the admin bypass classic
+# protection already grants (enforce_admins: false). The PAT already in Doppler
+# devops/ci as GITHUB_TOKEN is an admin classic token with `repo` scope, so it
+# is fetched here under a different name (injecting it as GITHUB_TOKEN would
+# silently replace the automatic token for every later step).
 
 on:
   workflow_run:
@@ -82,28 +82,36 @@ jobs:
           grep -q "${SHA}" "$readme"
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Fetch Doppler secrets
+      - name: Install the Doppler CLI
         if: steps.move.outputs.changed == 'true'
-        uses: dopplerhq/secrets-fetch-action@main
-        with:
-          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
-          doppler-project: devops
-          doppler-config: ci
-          inject-env-vars: true
+        uses: dopplerhq/cli-action@master
+
+      - name: Fetch the push token
+        id: pat
+        if: steps.move.outputs.changed == 'true'
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          set -euo pipefail
+          token="$(doppler secrets get GITHUB_TOKEN --project devops --config ci --plain)"
+          if [ -z "${token}" ]; then
+            echo "GITHUB_TOKEN is missing from Doppler devops/ci" >&2
+            exit 1
+          fi
+          echo "::add-mask::${token}"
+          echo "token=${token}" >> "$GITHUB_OUTPUT"
 
       - name: Commit the pin onto main
         if: steps.move.outputs.changed == 'true'
+        env:
+          PUSH_TOKEN: ${{ steps.pat.outputs.token }}
         run: |
           set -euo pipefail
-          if [ -z "${PIN_BUMP_TOKEN:-}" ]; then
-            echo "PIN_BUMP_TOKEN is missing from Doppler devops/ci — a direct push to main needs an admin token" >&2
-            exit 1
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add services/helm/openagent/values.yaml services/helm/openagent/README.md
           git commit -m "chore(openagent): pin the gitopsctl image to ${SHA:0:12}"
-          git remote set-url origin "https://x-access-token:${PIN_BUMP_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           # Rebase rather than force: a push that landed meanwhile wins.
           git fetch origin main
           git rebase origin/main
