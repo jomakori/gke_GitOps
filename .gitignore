@@ -15,7 +15,7 @@ test-gpu.yaml
 .devbox/
 **sisyphus
 services/helm/openagent/src/openagent-discord-bot
-images/gitopsctl/src/
+.assets/images/gitopsctl/src/
 # CodeGraph — local code-graph index (never committed)
 .codegraph/
 # local git worktrees live inside the repo; keep them out of git status and the graph
