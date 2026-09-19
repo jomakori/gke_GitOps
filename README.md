@@ -139,6 +139,24 @@ Add a new secret in Doppler; the ExternalSecret syncs the whole config on its re
 
 Renovate opens dependency-update PRs. The same validations run locally through pre-commit, so a CI failure is something you can reproduce before you push.
 
+## CodeGraph
+
+A local, offline code knowledge graph ([CodeGraph](https://github.com/colbymchenry/codegraph)): a `.codegraph/` SQLite index of files, symbols and edges that agents query over MCP in one call instead of grepping and reading whole files. No service, no network, no key.
+
+The agent stack gets it as `mcp_servers.codegraph` in [`services/helm/openagent/values.yaml`](services/helm/openagent/values.yaml) — a single tool, `codegraph_explore`, which takes the project path per call. Locally, `codegraph install --target opencode --location global --yes` wires the same server for opencode.
+
+```bash
+codegraph init -y     # build .codegraph/ — per working tree, and never automatic
+codegraph status      # files / nodes / edges
+codegraph sync        # force a catch-up (only if the watcher is off)
+
+codegraph explore "how are image tags bumped"   # prefer these over grep/read
+codegraph callers <symbol>
+codegraph impact <symbol>
+```
+
+The server only reads an index — asked about an un-indexed project it declines and tells you to run `codegraph init`, so indexing stays an explicit per-working-tree step (a `git worktree` needs its own; `codegraph.json` excludes `.worktrees/` so worktree copies never bloat the parent graph). After that the file watcher keeps it current, and un-indexed code falls back to grep rather than answering wrong. `.codegraph/` is a local artifact and gitignored.
+
 ## Troubleshooting
 
 - **A failed sync does not retry by itself** — ArgoCD spends the retry budget on the failure; re-sync or push a change.
