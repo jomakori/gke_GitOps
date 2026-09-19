@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,16 +13,20 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"gitopsctl/internal/mcp"
 )
 
 const (
-	home       = "/opt/data/home"
-	binDir     = "/opt/data/bin"
-	miseDir    = "/opt/data/mise"
-	miseConfig = "/mise/mise.toml"
-	runtimeUID = 10000
+	codegraphPkg   = "@colbymchenry/codegraph@1.6.0"
+	codegraphCache = "/opt/data/.npm-mcp/codegraph"
+	reposDir       = "/opt/data/repos"
+	home           = "/opt/data/home"
+	binDir         = "/opt/data/bin"
+	miseDir        = "/opt/data/mise"
+	miseConfig     = "/mise/mise.toml"
+	runtimeUID     = 10000
 )
 
 func logf(format string, args ...any) {
@@ -260,6 +265,58 @@ func prewarm(manifest string) {
 	}
 }
 
+// runTimeout is runEnv with a deadline: a boot step that shells out to a
+// package manager can hang on a cold registry, and nothing here may block
+// handover to hermes.
+func runTimeout(env []string, seconds int, name string, args ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(seconds)*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Env = env
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// codegraphIndexes gives every git repo on the PVC a code graph. The MCP
+// server only READS an index — asked about an un-indexed tree it declines
+// ("Indexing is the user's decision") — so boot is the only place indexing can
+// happen without a human, and the index is what makes an agent's "where is X /
+// who calls Y" query cheaper than reading the files. An existing index is
+// caught up with `sync`, never rebuilt.
+func codegraphIndexes(env []string) {
+	if !quietOK("npx", "--version") {
+		logf("npx missing — codegraph indexes skipped")
+		return
+	}
+	entries, err := os.ReadDir(reposDir)
+	if err != nil {
+		return
+	}
+	// Telemetry off (it prints a notice on every run) and the private cache
+	// the MCP entry declares, so the pre-warm above paid for the download.
+	env = setEnv(env, "CODEGRAPH_TELEMETRY", "0")
+	env = setEnv(env, "npm_config_cache", codegraphCache)
+	env = setEnv(env, "npm_config_loglevel", "error")
+	for _, e := range entries {
+		repo := filepath.Join(reposDir, e.Name())
+		if !e.IsDir() || !exists(filepath.Join(repo, ".git")) {
+			continue
+		}
+		args, verb, budget := []string{"-y", codegraphPkg, "init", "-y", repo}, "init", 300
+		if exists(filepath.Join(repo, ".codegraph")) {
+			args, verb, budget = []string{"-y", codegraphPkg, "sync", repo}, "sync", 120
+		}
+		// Non-fatal and bounded: an index is an optimisation, never a
+		// precondition for the gateway.
+		if err := runTimeout(env, budget, "npx", args...); err != nil {
+			logf("codegraph %s %s failed (non-fatal): %v", verb, e.Name(), err)
+			continue
+		}
+		logf("codegraph %s: %s", verb, e.Name())
+	}
+}
+
 func chownTree() {
 	// uid 10000 owns the runtime tree (npx/uvx/mise shims EACCES otherwise);
 	// missing dirs are fine on first boots.
@@ -346,6 +403,7 @@ func Run(manifest string) error {
 	linkShims(env)
 	directDownloads(env)
 	prewarm(manifest)
+	codegraphIndexes(env)
 	chownTree()
 	opencodeSetup(env)
 	logf("handing over to hermes")
