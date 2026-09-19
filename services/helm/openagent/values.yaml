@@ -639,6 +639,24 @@ hermes-agent:
       # A per-server cache dir keeps installs isolated and re-usable; the
       # boot pre-warm (files/mcp/prewarm.py, invoked from the hermes-agent
       # command) materialises them without ever starting a server.
+      codegraph:
+        # Local code graph; the server only reads a .codegraph/ index, which
+        # the boot step builds or catches up. One tool, project path per call.
+        command: "npx"
+        args: ["-y", "@colbymchenry/codegraph@1.6.0", "serve", "--mcp"]
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
+        env:
+          # Silences the usage-stats notice (stdout is the JSON-RPC channel).
+          CODEGRAPH_TELEMETRY: "0"
+          npm_config_cache: "/opt/data/.npm-mcp/codegraph"
+          npm_config_loglevel: "error"
+        tools:
+          include: [codegraph_explore]
+          resources: false
+          prompts: false
+
       github:
         # Parked: the OpenCode-driven GitHub tooling in
         # templates/opencode.yaml already covers repo

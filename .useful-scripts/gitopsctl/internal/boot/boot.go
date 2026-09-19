@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,16 +13,19 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"gitopsctl/internal/mcp"
 )
 
 const (
-	home       = "/opt/data/home"
-	binDir     = "/opt/data/bin"
-	miseDir    = "/opt/data/mise"
-	miseConfig = "/mise/mise.toml"
-	runtimeUID = 10000
+	codegraphServer = "codegraph"
+	reposDir        = "/opt/data/repos"
+	home            = "/opt/data/home"
+	binDir          = "/opt/data/bin"
+	miseDir         = "/opt/data/mise"
+	miseConfig      = "/mise/mise.toml"
+	runtimeUID      = 10000
 )
 
 func logf(format string, args ...any) {
@@ -260,6 +264,68 @@ func prewarm(manifest string) {
 	}
 }
 
+// runTimeout is runEnv with a deadline, so a registry hang cannot block handover.
+func runTimeout(env []string, seconds int, name string, args ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(seconds)*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Env = env
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// codegraphFrom derives the npx spec and cache dir from the rendered manifest,
+// so the pin lives in values.yaml only.
+func codegraphFrom(servers map[string]*mcp.Server) (string, string) {
+	s := servers[codegraphServer]
+	if s == nil || !s.IsEnabled() || !s.Stdio() {
+		return "", ""
+	}
+	_, spec := mcp.PackageSpec(*s)
+	return spec, mcp.NPMCacheFor(*s)
+}
+
+// codegraphIndexes indexes each git repo under reposDir, or catches an existing
+// index up.
+func codegraphIndexes(env []string, manifest string) {
+	servers, err := mcp.LoadManifest(manifest)
+	if err != nil {
+		logf("codegraph: %v", err)
+		return
+	}
+	spec, cache := codegraphFrom(servers)
+	if spec == "" {
+		return
+	}
+	if !quietOK("npx", "--version") {
+		logf("npx missing — codegraph indexes skipped")
+		return
+	}
+	entries, err := os.ReadDir(reposDir)
+	if err != nil {
+		return
+	}
+	env = setEnv(env, "CODEGRAPH_TELEMETRY", "0")
+	env = setEnv(env, "npm_config_cache", cache)
+	env = setEnv(env, "npm_config_loglevel", "error")
+	for _, e := range entries {
+		repo := filepath.Join(reposDir, e.Name())
+		if !e.IsDir() || !exists(filepath.Join(repo, ".git")) {
+			continue
+		}
+		args, verb, budget := []string{"-y", spec, "init", "-y", repo}, "init", 300
+		if exists(filepath.Join(repo, ".codegraph")) {
+			args, verb, budget = []string{"-y", spec, "sync", repo}, "sync", 120
+		}
+		if err := runTimeout(env, budget, "npx", args...); err != nil {
+			logf("codegraph %s %s failed (non-fatal): %v", verb, e.Name(), err)
+			continue
+		}
+		logf("codegraph %s: %s", verb, e.Name())
+	}
+}
+
 func chownTree() {
 	// uid 10000 owns the runtime tree (npx/uvx/mise shims EACCES otherwise);
 	// missing dirs are fine on first boots.
@@ -346,6 +412,7 @@ func Run(manifest string) error {
 	linkShims(env)
 	directDownloads(env)
 	prewarm(manifest)
+	codegraphIndexes(env, manifest)
 	chownTree()
 	opencodeSetup(env)
 	logf("handing over to hermes")
