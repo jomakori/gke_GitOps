@@ -1,0 +1,118 @@
+name: Bump the gitopsctl image pin
+
+# The tools image is tagged by commit sha and pushed only on merge to main, so
+# the pin in values.yaml can only name a sha that exists after that build. This
+# runs on the build's completion and moves both pins — tools.image.tag and the
+# extraInitContainers literal, which cannot be templated — straight onto main: a
+# pin that lags a merge is a boot sequence that is simply not running.
+#
+# Why an admin token instead of GITHUB_TOKEN: main requires the four build/lint
+# checks, and the automatic token never bypasses required checks (the push is
+# rejected with "protected branch hook declined"). GitHub only allows
+# bypass-list actors on organisation repositories, so a personal repo has no way
+# to exempt a bot — the one exception that exists is the admin bypass classic
+# protection already grants (enforce_admins: false). The PAT already in Doppler
+# devops/ci as GITHUB_TOKEN is an admin classic token with `repo` scope, so it
+# is fetched here under a different name (injecting it as GITHUB_TOKEN would
+# silently replace the automatic token for every later step).
+
+on:
+  workflow_run:
+    workflows: ["Build and push images"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/jomakori/gitopsctl
+
+jobs:
+  bump:
+    name: Bump the gitopsctl image pin
+    runs-on: ubuntu-24.04-arm
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Checkout this commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Require an image for this commit
+        # A merge that did not touch the CLI still reports this workflow as
+        # successful, and pinning it would name an image that does not exist.
+        run: |
+          set -euo pipefail
+          repo="${IMAGE#ghcr.io/}"
+          token="$(curl -fsS "https://ghcr.io/token?scope=repository:${repo}:pull&service=ghcr.io" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')"
+          code="$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${token}" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.docker.distribution.manifest.v2+json' \
+            "https://ghcr.io/v2/${repo}/manifests/${SHA}")"
+          echo "manifest for ${SHA}: HTTP ${code}"
+          [ "${code}" = "200" ]
+
+      - name: Move both pins onto this commit
+        id: move
+        run: |
+          set -euo pipefail
+          values=services/helm/openagent/values.yaml
+          readme=services/helm/openagent/README.md
+          old="$(sed -n 's/^    tag: \([0-9a-f]\{40\}\)$/\1/p' "$values" | head -1)"
+          if [ -z "${old}" ]; then
+            echo "no pinned tag found in ${values}" >&2
+            exit 1
+          fi
+          if [ "${old}" = "${SHA}" ]; then
+            echo "already pinned to ${SHA}"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The README's generated value table carries the same sha.
+          sed -i "s/${old}/${SHA}/g" "$values" "$readme"
+          if grep -q "${old}" "$values"; then
+            echo "stale sha left in ${values}" >&2
+            exit 1
+          fi
+          grep -q "${SHA}" "$readme"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install the Doppler CLI
+        if: steps.move.outputs.changed == 'true'
+        uses: dopplerhq/cli-action@master
+
+      - name: Fetch the push token
+        id: pat
+        if: steps.move.outputs.changed == 'true'
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          set -euo pipefail
+          token="$(doppler secrets get GITHUB_TOKEN --project devops --config ci --plain)"
+          if [ -z "${token}" ]; then
+            echo "GITHUB_TOKEN is missing from Doppler devops/ci" >&2
+            exit 1
+          fi
+          echo "::add-mask::${token}"
+          echo "token=${token}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit the pin onto main
+        if: steps.move.outputs.changed == 'true'
+        env:
+          PUSH_TOKEN: ${{ steps.pat.outputs.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/helm/openagent/values.yaml services/helm/openagent/README.md
+          git commit -m "chore(openagent): pin the gitopsctl image to ${SHA:0:12}"
+          git remote set-url origin "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # Rebase rather than force: a push that landed meanwhile wins.
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
