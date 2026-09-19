@@ -265,9 +265,7 @@ func prewarm(manifest string) {
 	}
 }
 
-// runTimeout is runEnv with a deadline: a boot step that shells out to a
-// package manager can hang on a cold registry, and nothing here may block
-// handover to hermes.
+// runTimeout is runEnv with a deadline, so a registry hang cannot block handover.
 func runTimeout(env []string, seconds int, name string, args ...string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(seconds)*time.Second)
 	defer cancel()
@@ -278,12 +276,8 @@ func runTimeout(env []string, seconds int, name string, args ...string) error {
 	return cmd.Run()
 }
 
-// codegraphIndexes gives every git repo on the PVC a code graph. The MCP
-// server only READS an index — asked about an un-indexed tree it declines
-// ("Indexing is the user's decision") — so boot is the only place indexing can
-// happen without a human, and the index is what makes an agent's "where is X /
-// who calls Y" query cheaper than reading the files. An existing index is
-// caught up with `sync`, never rebuilt.
+// codegraphIndexes indexes each git repo under reposDir, or catches an existing
+// index up.
 func codegraphIndexes(env []string) {
 	if !quietOK("npx", "--version") {
 		logf("npx missing — codegraph indexes skipped")
@@ -293,8 +287,6 @@ func codegraphIndexes(env []string) {
 	if err != nil {
 		return
 	}
-	// Telemetry off (it prints a notice on every run) and the private cache
-	// the MCP entry declares, so the pre-warm above paid for the download.
 	env = setEnv(env, "CODEGRAPH_TELEMETRY", "0")
 	env = setEnv(env, "npm_config_cache", codegraphCache)
 	env = setEnv(env, "npm_config_loglevel", "error")
@@ -307,8 +299,6 @@ func codegraphIndexes(env []string) {
 		if exists(filepath.Join(repo, ".codegraph")) {
 			args, verb, budget = []string{"-y", codegraphPkg, "sync", repo}, "sync", 120
 		}
-		// Non-fatal and bounded: an index is an optimisation, never a
-		// precondition for the gateway.
 		if err := runTimeout(env, budget, "npx", args...); err != nil {
 			logf("codegraph %s %s failed (non-fatal): %v", verb, e.Name(), err)
 			continue

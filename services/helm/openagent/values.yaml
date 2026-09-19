@@ -640,35 +640,18 @@ hermes-agent:
       # boot pre-warm (files/mcp/prewarm.py, invoked from the hermes-agent
       # command) materialises them without ever starting a server.
       codegraph:
-        # Local SQLite code knowledge graph (files/symbols/edges, 30+
-        # languages) queried over MCP instead of grep+read. No service, no
-        # network, no key: the index is a `.codegraph/` directory in the
-        # project itself. Verified from this pod with
-        # skills/mcp-server-gitops/scripts/mcp_probe.py before wiring: 1.6.0
-        # connects and `tools/list` returns exactly [codegraph_explore].
-        #
-        # One tool on purpose — it answers "where is X / who calls Y / what
-        # breaks if I change Z" for a path passed per call, which is why no
-        # `--path` is pinned here (one server serves every repo on the PVC).
-        #
-        # The server only READS an index; it never builds one. Asked about an
-        # un-indexed tree it exits with "Indexing is the user's decision", so
-        # `codegraph init` stays an explicit per-working-tree step (a git
-        # worktree needs its own) and the file watcher is what keeps it fresh
-        # afterwards. Un-indexed code degrades to plain grep, not a wrong
-        # answer — so a missing index costs nothing but the token saving.
+        # Local code graph; the server only reads a .codegraph/ index, which
+        # the boot step builds or catches up. One tool, project path per call.
         command: "npx"
         args: ["-y", "@colbymchenry/codegraph@1.6.0", "serve", "--mcp"]
         connect_timeout: 180
         idle_timeout_seconds: 1800
         max_lifetime_seconds: 21600
         env:
-          npm_config_loglevel: "error"
-          npm_config_cache: "/opt/data/.npm-mcp/codegraph"
-          # The CLI prints an anonymous-usage-stats notice on every start;
-          # off here so it cannot become stdout pollution on the JSON-RPC
-          # channel (Class 2 in mcp-server-gitops).
+          # Silences the usage-stats notice (stdout is the JSON-RPC channel).
           CODEGRAPH_TELEMETRY: "0"
+          npm_config_cache: "/opt/data/.npm-mcp/codegraph"
+          npm_config_loglevel: "error"
         tools:
           include: [codegraph_explore]
           resources: false
