@@ -26,6 +26,8 @@ func main() {
 		cmdInstall(os.Args[2:])
 	case "codegraph":
 		cmdCodegraph(os.Args[2:])
+	case "deps":
+		cmdDeps(os.Args[2:])
 	case "mcp":
 		cmdMCP(os.Args[2:])
 	default:
@@ -42,6 +44,8 @@ usage:
   gitopsctl install DEST                 copy this executable to DEST (initContainer seeding)
   gitopsctl codegraph index PATH [--manifest PATH]
                                            index one repository (init or sync)
+  gitopsctl deps status                    report whether the system dependency set is installed
+  gitopsctl deps install                   install it on demand (apt download cache on the PVC)
   gitopsctl mcp prewarm [--manifest PATH] [--parallel N]
                                            materialise npx/uvx package caches
   gitopsctl mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
@@ -109,6 +113,29 @@ func install(dest string) error {
 		mode = info.Mode().Perm()
 	}
 	return os.Chmod(dest, mode|0o111)
+}
+
+func cmdDeps(args []string) {
+	if len(args) == 0 {
+		usage()
+		os.Exit(2)
+	}
+	switch args[0] {
+	case "status":
+		if !boot.DepsPresent() {
+			fmt.Println("deps: missing")
+			os.Exit(1)
+		}
+		fmt.Println("deps: present")
+	case "install":
+		if err := boot.InstallDeps(); err != nil {
+			log.Printf("deps install: %v", err)
+			os.Exit(1)
+		}
+	default:
+		usage()
+		os.Exit(2)
+	}
 }
 
 func cmdCodegraph(args []string) {
