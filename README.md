@@ -13,7 +13,7 @@
 
 </div>
 
-<img src=".assets/line-gradient.svg" alt="Section divider" width="100%" height="3px">
+<img src=".assets/readme/line-gradient.svg" alt="Section divider" width="100%" height="3px">
 
 Terraform provisions the cluster and bootstraps ArgoCD; **everything after that bootstrap is owned here** — services, apps, ingress and secret wiring — and ArgoCD keeps the cluster in sync with this repository, not with anything applied by hand.
 
