@@ -3,6 +3,7 @@ package boot
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gitopsctl/internal/mcp"
@@ -37,7 +38,7 @@ func load(t *testing.T, body string) map[string]*mcp.Server {
 }
 
 func TestCodegraphFromManifest(t *testing.T) {
-	spec, cache := codegraphFrom(load(t, manifestFixture))
+	spec, cache := CodegraphFrom(load(t, manifestFixture))
 	if spec != "@colbymchenry/codegraph@1.6.0" {
 		t.Errorf("spec = %q, want the pinned package", spec)
 	}
@@ -47,8 +48,35 @@ func TestCodegraphFromManifest(t *testing.T) {
 }
 
 func TestCodegraphFromManifestAbsent(t *testing.T) {
-	spec, cache := codegraphFrom(load(t, `{"gistpad":{"command":"npx","args":["-y","x@1"]}}`))
+	spec, cache := CodegraphFrom(load(t, `{"gistpad":{"command":"npx","args":["-y","x@1"]}}`))
 	if spec != "" || cache != "" {
 		t.Errorf("got (%q,%q), want empty when no codegraph entry exists", spec, cache)
+	}
+}
+
+func TestCodegraphCommandForInitVsSync(t *testing.T) {
+	spec := "@colbymchenry/codegraph@1.6.0"
+	dir := t.TempDir()
+
+	cmd := codegraphCommandFor(spec, dir)
+	if cmd.verb != "init" {
+		t.Errorf("verb = %q, want init for an unindexed path", cmd.verb)
+	}
+	if want := "-y " + spec + " init -y " + dir; strings.Join(cmd.args, " ") != want {
+		t.Errorf("args = %v, want %q", cmd.args, want)
+	}
+
+	if err := os.Mkdir(filepath.Join(dir, ".codegraph"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd = codegraphCommandFor(spec, dir)
+	if cmd.verb != "sync" {
+		t.Errorf("verb = %q, want sync for an indexed path", cmd.verb)
+	}
+	if want := "-y " + spec + " sync " + dir; strings.Join(cmd.args, " ") != want {
+		t.Errorf("args = %v, want %q", cmd.args, want)
+	}
+	if cmd.budget != 120 {
+		t.Errorf("budget = %d, want 120 for sync", cmd.budget)
 	}
 }
