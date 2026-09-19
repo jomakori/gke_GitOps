@@ -95,19 +95,32 @@ func installMise(env []string) {
 	}
 }
 
+// Desktop-E2E X11 toolchain (mirrors openkite e2e.yml) plus the Rust
+// link-stage dev libraries (.pc files) local `cargo test` needs.
+const systemDepsScript = `set -e
+apt-get update -qq
+apt-get install -y --no-install-recommends xvfb xdotool openbox imagemagick dbus-x11 bats
+apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev \
+  libglib2.0-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
+`
+
+// systemDeps installs systemDepsScript detached: the run takes ~6 minutes, and
+// blocking handover on it puts the rollout past the Deployment's 600s progress
+// deadline, which ArgoCD reports as a failed sync.
 func systemDeps(env []string) {
-	if !quietOK("bats", "--version") || !quietOK("xdotool", "--version") {
-		_ = runEnv(env, "apt-get", "update", "-qq")
-		// Desktop-E2E X11 toolchain; mirrors openkite e2e.yml apt list.
-		_ = runEnv(env, "apt-get", "install", "-y", "--no-install-recommends",
-			"xvfb", "xdotool", "openbox", "imagemagick", "dbus-x11", "bats")
+	if quietOK("bats", "--version") && quietOK("xdotool", "--version") && quietOK("pkg-config", "--exists", "glib-2.0") {
+		return
 	}
-	if !quietOK("pkg-config", "--exists", "glib-2.0") {
-		// Rust link-stage build deps (.pc files) for local `cargo test`.
-		_ = runEnv(env, "apt-get", "install", "-y", "--no-install-recommends",
-			"libwebkit2gtk-4.1-dev", "libgtk-3-dev", "libglib2.0-dev",
-			"libayatana-appindicator3-dev", "librsvg2-dev", "libxdo-dev", "libssl-dev")
+	cmd := exec.Command("sh", "-c", systemDepsScript)
+	cmd.Env = env
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		logf("system packages: %v", err)
+		return
 	}
+	logf("system packages installing in the background (pid %d)", cmd.Process.Pid)
 }
 
 func linkShims(env []string) {
