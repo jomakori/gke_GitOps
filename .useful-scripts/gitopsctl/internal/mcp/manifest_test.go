@@ -81,9 +81,9 @@ func TestPackageSpec(t *testing.T) {
 		{"no package", Server{Command: "sh", Args: []string{"-c", "cd /tmp && sleep 1"}}, "", ""},
 	}
 	for _, c := range cases {
-		kind, spec := packageSpec(c.server)
+		kind, spec := PackageSpec(c.server)
 		if kind != c.wantKind || spec != c.wantSpec {
-			t.Errorf("%s: packageSpec = (%q,%q), want (%q,%q)", c.name, kind, spec, c.wantKind, c.wantSpec)
+			t.Errorf("%s: PackageSpec = (%q,%q), want (%q,%q)", c.name, kind, spec, c.wantKind, c.wantSpec)
 		}
 	}
 }

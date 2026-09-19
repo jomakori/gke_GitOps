@@ -23,9 +23,9 @@ func prewarmLog(format string, args ...any) {
 	fmt.Printf("[mcp-prewarm] %s\n", fmt.Sprintf(format, args...))
 }
 
-// packageSpec returns (kind, spec) for an npx/uvx server, else ("", ""),
+// PackageSpec returns (kind, spec) for an npx/uvx server, else ("", ""),
 // handling shell-wrapped forms (sh -c "exec npx -y pkg | grep jsonrpc").
-func packageSpec(server Server) (string, string) {
+func PackageSpec(server Server) (string, string) {
 	parts := []string{server.Command}
 	parts = append(parts, server.Args...)
 	tokens := tokenRe.Split(strings.Join(parts, " "), -1)
@@ -193,7 +193,7 @@ func Prewarm(manifestPath string, parallel int) int {
 		if server == nil {
 			continue
 		}
-		kind, spec := packageSpec(*server)
+		kind, spec := PackageSpec(*server)
 		if kind == "" {
 			continue
 		}

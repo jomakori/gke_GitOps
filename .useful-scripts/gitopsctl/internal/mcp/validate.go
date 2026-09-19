@@ -87,7 +87,7 @@ func Validate(servers map[string]*Server) []Violation {
 
 		// Rule 1 — stdio package arguments must be pinned to an exact version.
 		if stdio {
-			kind, spec := packageSpec(*server)
+			kind, spec := PackageSpec(*server)
 			if (server.Command == "npx" || server.Command == "uvx") && kind == "" {
 				violations = append(violations, Violation{Server: name, Rule: "pin", Message: "no package argument found for npx/uvx command"})
 			}

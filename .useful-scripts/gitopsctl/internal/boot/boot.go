@@ -19,14 +19,13 @@ import (
 )
 
 const (
-	codegraphPkg   = "@colbymchenry/codegraph@1.6.0"
-	codegraphCache = "/opt/data/.npm-mcp/codegraph"
-	reposDir       = "/opt/data/repos"
-	home           = "/opt/data/home"
-	binDir         = "/opt/data/bin"
-	miseDir        = "/opt/data/mise"
-	miseConfig     = "/mise/mise.toml"
-	runtimeUID     = 10000
+	codegraphServer = "codegraph"
+	reposDir        = "/opt/data/repos"
+	home            = "/opt/data/home"
+	binDir          = "/opt/data/bin"
+	miseDir         = "/opt/data/mise"
+	miseConfig      = "/mise/mise.toml"
+	runtimeUID      = 10000
 )
 
 func logf(format string, args ...any) {
@@ -276,9 +275,29 @@ func runTimeout(env []string, seconds int, name string, args ...string) error {
 	return cmd.Run()
 }
 
+// codegraphFrom derives the npx spec and cache dir from the rendered manifest,
+// so the pin lives in values.yaml only.
+func codegraphFrom(servers map[string]*mcp.Server) (string, string) {
+	s := servers[codegraphServer]
+	if s == nil || !s.IsEnabled() || !s.Stdio() {
+		return "", ""
+	}
+	_, spec := mcp.PackageSpec(*s)
+	return spec, mcp.NPMCacheFor(*s)
+}
+
 // codegraphIndexes indexes each git repo under reposDir, or catches an existing
 // index up.
-func codegraphIndexes(env []string) {
+func codegraphIndexes(env []string, manifest string) {
+	servers, err := mcp.LoadManifest(manifest)
+	if err != nil {
+		logf("codegraph: %v", err)
+		return
+	}
+	spec, cache := codegraphFrom(servers)
+	if spec == "" {
+		return
+	}
 	if !quietOK("npx", "--version") {
 		logf("npx missing — codegraph indexes skipped")
 		return
@@ -288,16 +307,16 @@ func codegraphIndexes(env []string) {
 		return
 	}
 	env = setEnv(env, "CODEGRAPH_TELEMETRY", "0")
-	env = setEnv(env, "npm_config_cache", codegraphCache)
+	env = setEnv(env, "npm_config_cache", cache)
 	env = setEnv(env, "npm_config_loglevel", "error")
 	for _, e := range entries {
 		repo := filepath.Join(reposDir, e.Name())
 		if !e.IsDir() || !exists(filepath.Join(repo, ".git")) {
 			continue
 		}
-		args, verb, budget := []string{"-y", codegraphPkg, "init", "-y", repo}, "init", 300
+		args, verb, budget := []string{"-y", spec, "init", "-y", repo}, "init", 300
 		if exists(filepath.Join(repo, ".codegraph")) {
-			args, verb, budget = []string{"-y", codegraphPkg, "sync", repo}, "sync", 120
+			args, verb, budget = []string{"-y", spec, "sync", repo}, "sync", 120
 		}
 		if err := runTimeout(env, budget, "npx", args...); err != nil {
 			logf("codegraph %s %s failed (non-fatal): %v", verb, e.Name(), err)
@@ -393,7 +412,7 @@ func Run(manifest string) error {
 	linkShims(env)
 	directDownloads(env)
 	prewarm(manifest)
-	codegraphIndexes(env)
+	codegraphIndexes(env, manifest)
 	chownTree()
 	opencodeSetup(env)
 	logf("handing over to hermes")
