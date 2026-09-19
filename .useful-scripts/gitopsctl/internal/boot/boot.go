@@ -290,15 +290,42 @@ func runTimeout(env []string, seconds int, name string, args ...string) error {
 	return cmd.Run()
 }
 
-// codegraphFrom derives the npx spec and cache dir from the rendered manifest,
+// CodegraphFrom derives the npx spec and cache dir from the rendered manifest,
 // so the pin lives in values.yaml only.
-func codegraphFrom(servers map[string]*mcp.Server) (string, string) {
+func CodegraphFrom(servers map[string]*mcp.Server) (string, string) {
 	s := servers[codegraphServer]
 	if s == nil || !s.IsEnabled() || !s.Stdio() {
 		return "", ""
 	}
 	_, spec := mcp.PackageSpec(*s)
 	return spec, mcp.NPMCacheFor(*s)
+}
+
+type codegraphCommand struct {
+	args   []string
+	verb   string
+	budget int
+}
+
+// codegraphCommandFor returns the npx invocation, verb and timeout for indexing path.
+func codegraphCommandFor(spec, path string) codegraphCommand {
+	if exists(filepath.Join(path, ".codegraph")) {
+		return codegraphCommand{args: []string{"-y", spec, "sync", path}, verb: "sync", budget: 120}
+	}
+	return codegraphCommand{args: []string{"-y", spec, "init", "-y", path}, verb: "init", budget: 300}
+}
+
+// IndexRepository runs codegraph init-or-sync for path and returns the verb used.
+func IndexRepository(base []string, spec, cache, path string) (string, error) {
+	cmd := codegraphCommandFor(spec, path)
+	env := append([]string(nil), base...)
+	env = setEnv(env, "CODEGRAPH_TELEMETRY", "0")
+	env = setEnv(env, "npm_config_cache", cache)
+	env = setEnv(env, "npm_config_loglevel", "error")
+	if err := runTimeout(env, cmd.budget, "npx", cmd.args...); err != nil {
+		return cmd.verb, err
+	}
+	return cmd.verb, nil
 }
 
 // codegraphIndexes indexes each git repo under reposDir, or catches an existing
@@ -309,7 +336,7 @@ func codegraphIndexes(env []string, manifest string) {
 		logf("codegraph: %v", err)
 		return
 	}
-	spec, cache := codegraphFrom(servers)
+	spec, cache := CodegraphFrom(servers)
 	if spec == "" {
 		return
 	}
@@ -321,9 +348,6 @@ func codegraphIndexes(env []string, manifest string) {
 	if err != nil {
 		return
 	}
-	env = setEnv(env, "CODEGRAPH_TELEMETRY", "0")
-	env = setEnv(env, "npm_config_cache", cache)
-	env = setEnv(env, "npm_config_loglevel", "error")
 	// One npx per repo, each in its own process tree, so the repos index
 	// concurrently instead of queueing behind the slowest one.
 	var wg sync.WaitGroup
@@ -333,21 +357,18 @@ func codegraphIndexes(env []string, manifest string) {
 		if !e.IsDir() || !exists(filepath.Join(repo, ".git")) {
 			continue
 		}
-		args, verb, budget := []string{"-y", spec, "init", "-y", repo}, "init", 300
-		if exists(filepath.Join(repo, ".codegraph")) {
-			args, verb, budget = []string{"-y", spec, "sync", repo}, "sync", 120
-		}
 		wg.Add(1)
-		go func(name string, args []string, verb string, budget int) {
+		go func(name, repo string) {
 			defer wg.Done()
 			workers <- struct{}{}
 			defer func() { <-workers }()
-			if err := runTimeout(env, budget, "npx", args...); err != nil {
+			verb, err := IndexRepository(env, spec, cache, repo)
+			if err != nil {
 				logf("codegraph %s %s failed (non-fatal): %v", verb, name, err)
 				return
 			}
 			logf("codegraph %s: %s", verb, name)
-		}(e.Name(), args, verb, budget)
+		}(e.Name(), repo)
 	}
 	wg.Wait()
 }
