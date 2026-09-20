@@ -657,7 +657,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraInitContainers[1].command[1] | string | `"-c"` |  |
 | hermes-agent.extraInitContainers[1].command[2] | string | `"set -eu\nif [ \"${OMO_PROVISION_ENABLED}\" = \"true\" ]; then\n  mkdir -p /opt/data/plugins\n  rm -rf /opt/data/plugins/omo\n  git clone --depth 1 --branch \"${OMO_PROVISION_REF}\" \"${OMO_PROVISION_REPOSITORY}\" /opt/data/plugins/omo\n  chown -R 10000:10000 /opt/data/plugins/omo\nfi\n"` |  |
 | hermes-agent.extraInitContainers[1].env[0].name | string | `"OMO_PROVISION_ENABLED"` |  |
-| hermes-agent.extraInitContainers[1].env[0].value | string | `"false"` |  |
+| hermes-agent.extraInitContainers[1].env[0].value | string | `"true"` |  |
 | hermes-agent.extraInitContainers[1].env[1].name | string | `"OMO_PROVISION_REPOSITORY"` |  |
 | hermes-agent.extraInitContainers[1].env[1].value | string | `"https://github.com/jomakori/hermes-omo-plugin.git"` |  |
 | hermes-agent.extraInitContainers[1].env[2].name | string | `"OMO_PROVISION_REF"` |  |

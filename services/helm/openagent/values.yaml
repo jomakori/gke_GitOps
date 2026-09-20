@@ -1161,7 +1161,7 @@ hermes-agent:
         runAsGroup: 10000
       env:
         - name: OMO_PROVISION_ENABLED
-          value: "false"
+          value: "true"
         - name: OMO_PROVISION_REPOSITORY
           value: "https://github.com/jomakori/hermes-omo-plugin.git"
         - name: OMO_PROVISION_REF
