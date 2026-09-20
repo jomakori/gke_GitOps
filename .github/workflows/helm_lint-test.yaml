@@ -190,6 +190,13 @@ jobs:
           # hook. Static policy lives in the binary, not in a Python script.
           .useful-scripts/validate_mcp_manifest.sh
 
+      - name: OpenCode removal guard
+        # OpenCode was retired in favour of the native OMO plugin. Fails if an
+        # opencode reference reappears in the openagent chart or the gitopsctl
+        # boot binary; the local dev workstation (~/.config/opencode) is
+        # deliberately allowed.
+        run: .useful-scripts/check_no_opencode.sh
+
       - name: Go build + test + vet
         # Cheap fail-fast gate for the stdlib-only gitopsctl Go module. Runs on
         # every PR (no chart-path filtering) so a broken build/test/vet is

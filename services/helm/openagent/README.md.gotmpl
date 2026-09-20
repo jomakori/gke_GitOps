@@ -36,7 +36,7 @@ openagent/                       ← umbrella
 │   ├── hermes.yaml              ← hermes mise config
 │   ├── hooks.yaml               ← MCP manifest CM + preflight Job + drift CronJob
 │   ├── k8s-gitops-context.yaml  ← skill ConfigMap
-│   ├── opencode.yaml            ← OMO agent fleet (agents, categories, fallbacks)
+│   ├── omo-config.yaml          ← OMO agent fleet (roster, chains, categories)
 │   ├── secrets.yaml             ← ExternalSecrets, GHCR pull secret, litellm/pg creds
 │   └── vpa.yaml                 ← VerticalPodAutoscaler
 ├── values.yaml                  ← full config surface
@@ -55,9 +55,9 @@ The gateway is **build-free in-cluster**: the agent tooling and the MCP verifier
 
 ### OMO agent fleet
 
-The AI workforce is an OMO (Oh My OpenAgent) fleet generated into the `openagent-opencode-config` ConfigMap (`templates/opencode.yaml`) from the `opencode:` values block — the single source of truth for agent → model → fallback chains, category routing, and the Claude escalation policy. Model IDs live only in `litellm.proxy_config.model_list`; the template iterates it to build `opencode.json` provider models, so a model appears exactly once. Chains use the OMO `models` array (primary-first); runtime fallback on 429/5xx lives in `opencode.runtimeFallback`.
+The AI workforce is an OMO (Oh My OpenAgent) fleet implemented as the `hermes-omo-plugin`, which launches named subagents natively through Hermes' subagent lifecycle — no OpenCode server, no `opencode` tool, no `omo.jsonc`. The roster (agent → model → fallback chains, category routing, and the Claude escalation policy) is defined in the `omo:` values block and rendered into the `openagent-omo-config` ConfigMap (`templates/omo-config.yaml`). Model IDs live only in `litellm.proxy_config.model_list`; a model appears exactly once. Chains use the `omo.chains` array (primary-first); runtime fallback on 429/5xx is owned by the plugin's `runtime_fallback` state machine.
 
-Agent roles: sisyphus (orchestrator), hephaestus (coder), oracle (architect), prometheus (planner), metis (analyzer), momus (reviewer), atlas (coordinator), explore (explorer), librarian (researcher), multimodal-looker (vision), sisyphus-junior (trivial). Writing work routes via the `writing` category / sisyphus. Each agent and category carries a primary model plus a fallback chain; Claude is escalation-only.
+Agent roles: sisyphus (Sisyphus · Ultraworker, orchestrator), hephaestus (Hephaestus · Deep Agent), prometheus (Prometheus · Plan Builder), atlas (Atlas · Plan Executor), metis (Metis · Plan Consultant), momus (Momus · Plan Critic), oracle (Oracle · Architecture/Reasoning), librarian (Librarian · Research), explore (Explore · Repository Exploration), multimodal-looker (Multimodal-Looker · Multimodal Analysis), sisyphus-junior (Sisyphus-Junior · Specialized Execution Worker). Writing work routes via the `writing` category / sisyphus. Each agent and category carries a primary model plus a fallback chain; Claude is escalation-only.
 
 ### Skills
 

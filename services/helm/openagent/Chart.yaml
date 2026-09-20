@@ -27,8 +27,3 @@ dependencies:
     version: 0.2.0
     repository: file://charts/claude-proxy
     condition: claude-proxy.enabled
-
-  - name: opencode-server
-    version: 0.1.0
-    repository: file://charts/opencode-server
-    condition: opencode-server.enabled
