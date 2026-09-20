@@ -199,6 +199,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.delegation.model | string | `"minimax-m3"` |  |
 | hermes-agent.config.delegation.provider | string | `"litellm"` |  |
 | hermes-agent.config.delegation.reasoning_effort | string | `"medium"` |  |
+| hermes-agent.config.delegation.subagent_auto_approve | bool | `true` |  |
 | hermes-agent.config.fallback_providers[0].model | string | `"deepseek-v4-pro"` |  |
 | hermes-agent.config.fallback_providers[0].provider | string | `"litellm"` |  |
 | hermes-agent.config.fallback_providers[1].model | string | `"claude/sonnet-5"` |  |

@@ -559,6 +559,13 @@ hermes-agent:
       api_key: ${LITELLM_MASTER_KEY}
       max_iterations: 30
       reasoning_effort: medium
+      # Workers run unattended: subagent threads carry no interactive approval
+      # channel (the delegate path installs a non-interactive callback), so
+      # without this Hermes auto-DENIES every dangerous command a subagent runs.
+      # Enabled deliberately: the fleet may now run destructive commands without
+      # asking. Read-only agents stay constrained by the plugin's pre_tool_call
+      # guard — this flag only decides the dangerous-command gate.
+      subagent_auto_approve: true
       # OMO nesting needs depth 3: Hermes(0) -> Sisyphus(1) -> Prometheus(2) ->
       # Metis(3). Hermes derives a child's role from depth vs this cap and
       # IGNORES any role the caller passes, so at the default (1) every child is
