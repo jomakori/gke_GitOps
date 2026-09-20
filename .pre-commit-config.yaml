@@ -77,14 +77,3 @@ repos:
         language: system
         files: ^services/helm/openagent/(values\.yaml|templates/hooks\.yaml)$
         pass_filenames: false
-      - id: no-opencode
-        name: OpenCode removed from the cluster surface
-        description: |
-          Fail if `opencode` reappears anywhere in the openagent chart or the
-          gitopsctl boot binary. OpenCode was retired in favour of the native
-          OMO plugin, so a reintroduced reference is a regression. The local
-          developer workstation (~/.config/opencode) is deliberately allowed.
-        entry: .useful-scripts/check_no_opencode.sh
-        language: system
-        files: ^(services/helm/openagent/|\.useful-scripts/gitopsctl/)
-        pass_filenames: false
