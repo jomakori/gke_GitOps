@@ -416,48 +416,12 @@ func chownTree() {
 	// the whole volume, so boot stays fast on multi-GB data.
 	for _, path := range []string{
 		"/opt/data/repos", "/opt/data/wt", "/opt/data/.local",
-		"/opt/data/.config", "/opt/data/.omo",
+		"/opt/data/.config", "/opt/data/plugins",
 	} {
 		wg.Add(1)
 		go walk(path, true)
 	}
 	wg.Wait()
-}
-
-func opencodeSetup(env []string) {
-	// opencode CLI → PVC (npm; survives restarts like the mise shims).
-	if !executable(binDir + "/opencode") {
-		env = setEnv(env, "NPM_CONFIG_PREFIX", "/opt/data/npm-global")
-		_ = runEnv(env, "npm", "install", "-g", "opencode-ai")
-		_ = os.Symlink("/opt/data/npm-global/bin/opencode", binDir+"/opencode")
-	}
-	// Plugin: clone into the default profile's plugins dir (HERMES_HOME=/opt/data).
-	if !exists("/opt/data/plugins/opencode/.git") {
-		_ = os.MkdirAll("/opt/data/plugins", 0o755)
-		_ = runEnv(env, "git", "clone", "--depth", "1",
-			"https://github.com/zaycruz/hermes-opencode-plugin.git",
-			"/opt/data/plugins/opencode")
-	}
-	// Plugin skill → skills tree (opencode-driven-development).
-	_ = os.MkdirAll("/opt/data/skills/software-development/opencode-driven-development", 0o755)
-	if src, err := os.ReadFile("/opt/data/plugins/opencode/SKILL.md"); err == nil {
-		_ = os.WriteFile("/opt/data/skills/software-development/opencode-driven-development/SKILL.md",
-			src, 0o644)
-	}
-	// OMO normalizes ~/.omo/omo.jsonc (migrations, model dedupe) → copy the
-	// mounted template to a writable path each boot, then chown to uid 10000.
-	_ = os.MkdirAll("/opt/data/.omo", 0o755)
-	if tmpl, err := os.ReadFile("/opt/opencode/omo.jsonc"); err == nil {
-		_ = os.WriteFile("/opt/data/.omo/omo.jsonc", tmpl, 0o644)
-	}
-	for _, path := range []string{"/opt/data/plugins", "/opt/data/.omo"} {
-		_ = filepath.WalkDir(path, func(p string, d os.DirEntry, err error) error {
-			if err == nil {
-				_ = os.Chown(p, runtimeUID, runtimeUID)
-			}
-			return nil
-		})
-	}
 }
 
 // Run executes the boot sequence, then replaces the process with hermes
@@ -478,7 +442,6 @@ func Run(manifest string) error {
 	prewarm(manifest)
 	codegraphIndexes(env, manifest)
 	chownTree()
-	opencodeSetup(env)
 	logf("handing over to hermes")
 	return syscall.Exec("/init", []string{"/init", "hermes", "gateway", "run"}, env)
 }

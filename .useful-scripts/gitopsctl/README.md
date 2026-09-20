@@ -16,7 +16,7 @@ One binary, one command family, plus the sibling repo-side scripts staged to fol
 | `validate litellm-config\|mcp-manifest\|selectors` | repo-side | staged — shell (`.useful-scripts/validate_litellm_config.sh`, `validate_mcp_manifest.sh`, `check_selectors.sh`) |
 | `skill render-local` | repo-side | staged — shell (`.useful-scripts/render_local_skill.sh`) |
 
-`boot` reconstructs the old `boot.sh` python flow 1:1 (mise install, system deps, MCP pre-warm, chown, opencode setup) and hands over to `/init hermes gateway run`. `mcp verify` mirrors the MCP client's stdio + Streamable HTTP handshake so a preflight PASS means a runtime PASS; `--mode validate` is the static policy lint (pins, timeouts, lifecycle, parked duplicates, tool surface) with no network.
+`boot` reconstructs the old `boot.sh` python flow 1:1 (mise install, system deps, MCP pre-warm, chown) and hands over to `/init hermes gateway run`. `mcp verify` mirrors the MCP client's stdio + Streamable HTTP handshake so a preflight PASS means a runtime PASS; `--mode validate` is the static policy lint (pins, timeouts, lifecycle, parked duplicates, tool surface) with no network.
 
 ## Setup
 

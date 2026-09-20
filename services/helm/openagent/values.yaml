@@ -107,8 +107,8 @@ litellm:
       drop_params: true
     router_settings:
       # Plain model access ONLY — OMO owns both fallback layers (per-agent
-      # fallback_models chains + runtime_fallback on 429/5xx inside opencode
-      # runs). Cooldowns/retries here would fight OMO's runtime fallback
+      # fallback_models chains + runtime_fallback on 429/5xx inside OMO
+      # orchestration). Cooldowns/retries here would fight OMO's runtime fallback
       # (double-retry delays, cooldown storms). Hermes-side requests ride the
       # Hermes fallback_providers chain instead. User-mandated 09-07.
       disable_cooldowns: true
@@ -116,46 +116,6 @@ litellm:
       routing_strategy: least-busy
       request_timeout: 180
     model_list:
-      - model_name: opencode/big-pickle
-        litellm_params:
-          model: openai/big-pickle
-          api_key: os.environ/OPENCODE_API_KEY
-          api_base: os.environ/OPENCODE_API_BASE
-          rpm: 4
-          merge_reasoning_content_in_choices: true
-          order: 1
-      # nemotron-3-ultra-free: most capable free opencode model (verified
-      # 08-24: correct code output, clean content). Replaces the unavailable
-      # deepseek-v4-flash-free.
-      - model_name: opencode/nemotron-3-ultra-free
-        litellm_params:
-          model: openai/nemotron-3-ultra-free
-          api_key: os.environ/OPENCODE_API_KEY
-          api_base: os.environ/OPENCODE_API_BASE
-          rpm: 4
-          order: 1
-          use_chat_completions_api: true
-          merge_reasoning_content_in_choices: true
-      # laguna-s-2.1-free: clean fast free model (verified 08-24: content
-      # direct, no reasoning wrapper). Replaces the dead north-mini-code-free.
-      - model_name: opencode/laguna-s-2.1-free
-        litellm_params:
-          model: openai/laguna-s-2.1-free
-          api_key: os.environ/OPENCODE_API_KEY
-          api_base: os.environ/OPENCODE_API_BASE
-          rpm: 4
-          order: 1
-          use_chat_completions_api: true
-          merge_reasoning_content_in_choices: true
-      - model_name: opencode/mimo-v2.5-free
-        litellm_params:
-          model: openai/mimo-v2.5-free
-          api_key: os.environ/OPENCODE_API_KEY
-          api_base: os.environ/OPENCODE_API_BASE
-          rpm: 4
-          order: 1
-          use_chat_completions_api: true
-          merge_reasoning_content_in_choices: true
       - model_name: anthropic/claude-opus-4-7
         litellm_params:
           model: anthropic/claude-opus-4-7
@@ -296,10 +256,9 @@ litellm:
           input_cost_per_token: 0.000001
           output_cost_per_token: 0.000005
           cache_read_input_token_cost: 0.0000001
-      # Slash-free Claude aliases — OpenCode custom-provider model ids cannot
-      # contain "/" (opencode parses provider/model on the slash). LiteLLM must
-      # expose claude-opus-5 / claude-sonnet-5 / claude-haiku-4-5 as literal
-      # model_names for the opencode.json agent config (templates/opencode.yaml).
+      # Slash-free Claude aliases — mirror the slash variants above as literal
+      # model_names for the OMO chains (litellm/<alias>, see the omo: block),
+      # which reference claude-opus-5 / claude-sonnet-5 / claude-haiku-4-5.
       - model_name: claude-opus-5
         litellm_params:
           model: openai/claude-opus-5
@@ -430,15 +389,18 @@ hermes-agent:
       # default). Explicit pin preserves the capped behavior when bootstrap
       # re-seeds config.yaml from chart values on every pod start.
       max_turns: 90
-      # Sisyphus = Hermes default profile (HERMES_HOME=/opt/data) — the
-      # orchestrator that fields ALL prompts. Heavy engineering is dispatched
-      # to the `opencode` tool (OpenCode + OMO agents run as subprocesses);
-      # lightweight subagent work uses `delegate_task`. Fleet/agent config no
-      # longer lives in this chart — OpenCode reads its own omo.jsonc +
-      # opencode.json ConfigMaps (templates/opencode.yaml).
+      # Hermes = the sole user-facing persona (HERMES_HOME=/opt/data) — the
+      # communicator that fields ALL prompts, classifies, dispatches via the
+      # native `omo` tool, and synthesizes worker results. The OMO roster and
+      # chains live under hermes-agent.config.plugins.entries.omo.settings
+      # (the path Hermes' ctx.get_config reads); personas live in the
+      # hermes-omo-plugin.
       system_prompt: |
-        You are Sisyphus — OMO Orchestrator. You field ALL prompts and are the
-        sole Discord-facing interface. Classify every request BEFORE acting.
+        You are Hermes — the communicator. You field ALL prompts and are the
+        SOLE user-facing persona. You never act as a worker yourself, and a
+        worker (Sisyphus, Hephaestus, Oracle, …) never addresses the user
+        directly — you synthesize its results and speak for it. Classify every
+        request BEFORE acting.
 
         ## Classification
 
@@ -466,15 +428,22 @@ hermes-agent:
 
         - Quick work (< 3 tool calls): do it yourself (read_file, terminal, web).
         - Simple focused subtask / non-coding: `delegate_task`.
-        - Real engineering (multi-file, refactor, bugfix, tests): `opencode`
-          (action="run"). OpenCode + OMO agents execute internally (Sisyphus,
-          Hephaestus, Oracle, … — see the opencode-driven-development skill).
+        - Real engineering (multi-file, refactor, bugfix, tests): `omo`
+          (action="dispatch"). The OMO orchestrator runs the agent fleet
+          internally (Sisyphus, Hephaestus, Oracle, … — see the OMO roster).
           Inject project conventions + memory context into the prompt.
-        - After every opencode dispatch: check returned `status` (completed /
-          error / timeout), read `text` summary, verify `file_diffs` against
-          the request, update memory/todos, then report to the user.
-        - Max concurrency: 8 for opencode runs. Do not fire parallel opencode
-          runs against the same directory/repo — serialize those.
+        - After every omo dispatch: check returned `status` (completed /
+          error / timeout), read the result summary, verify changes against
+          the request, update memory/todos, then synthesize and report to the
+          user as Hermes.
+        - Max concurrency: 8 for omo dispatches. Do not fire parallel omo
+          dispatches against the same directory/repo — serialize those.
+
+        ## Identity
+
+        - You are always Hermes to the user. Never present a worker persona as
+          the assistant or let raw worker output reach the user — synthesize it
+          first, then speak.
 
         ## Approval Gates (BLOCK these without asking)
 
@@ -502,7 +471,7 @@ hermes-agent:
         - Repo paths, secrets chain (Doppler → ESO → pods)
         - Sync wave order, helm chart patterns, service registration
         - Istio networking, Cloudflare tunnel, Terraform execution order
-        - OpenAgent architecture (umbrella chart, opencode agent execution, Claude proxy)
+        - OpenAgent architecture (umbrella chart, native OMO orchestration, Claude proxy)
         - Critical gotchas (SNI, ExternalSecret patterns, storage limitations)
 
         NEVER operate on cluster resources without reading the context first.
@@ -590,6 +559,18 @@ hermes-agent:
       api_key: ${LITELLM_MASTER_KEY}
       max_iterations: 30
       reasoning_effort: medium
+      # Workers run unattended: subagent threads carry no interactive approval
+      # channel (the delegate path installs a non-interactive callback), so
+      # without this Hermes auto-DENIES every dangerous command a subagent runs.
+      # Enabled deliberately: the fleet may now run destructive commands without
+      # asking. Read-only agents stay constrained by the plugin's pre_tool_call
+      # guard — this flag only decides the dangerous-command gate.
+      subagent_auto_approve: true
+      # OMO nesting needs depth 3: Hermes(0) -> Sisyphus(1) -> Prometheus(2) ->
+      # Metis(3). Hermes derives a child's role from depth vs this cap and
+      # IGNORES any role the caller passes, so at the default (1) every child is
+      # a leaf and Sisyphus cannot delegate at all.
+      max_spawn_depth: 3
 
     auxiliary:
       vision:
@@ -599,7 +580,89 @@ hermes-agent:
     plugins:
       enabled:
         - discord-platform
-        - opencode
+        - omo
+      entries:
+        omo:
+          settings:
+            mcp_enabled: true
+            max_fallback_attempts: 3
+            cooldown_seconds: 30
+            restore_primary_after_cooldown: true
+            chains:
+              sisyphus:
+                - litellm/deepseek-v4-flash-direct
+                - litellm/claude-sonnet-5
+                - litellm/bytedance-glm-5.2
+              hephaestus:
+                - litellm/minimax-m3
+                - litellm/glm-5.3
+                - litellm/claude-sonnet-5
+                - litellm/bytedance-dola-seed-2.0-code
+              prometheus:
+                - litellm/minimax-m3
+                - litellm/deepseek-v4-pro
+                - litellm/claude-sonnet-5
+                - litellm/bytedance-glm-5.2
+              atlas:
+                - litellm/minimax-m3
+                - litellm/deepseek-v4-pro
+                - litellm/claude-sonnet-5
+                - litellm/bytedance-dola-seed-2.0-pro
+              metis:
+                - litellm/minimax-m3
+                - litellm/deepseek-v4-pro
+                - litellm/claude-sonnet-5
+                - litellm/bytedance-glm-5.2
+              momus:
+                - litellm/minimax-m3
+                - litellm/glm-5.3
+                - litellm/claude-sonnet-5
+                - litellm/bytedance-dola-seed-2.0-pro
+              oracle:
+                - litellm/claude-opus-5
+                - litellm/glm-5.3
+                - litellm/bytedance-seed-code
+              librarian:
+                - litellm/deepseek-v4-flash
+                - litellm/minimax-m3
+                - litellm/claude-haiku-4-5
+                - litellm/bytedance-deepseek-v4-flash
+              explore:
+                - litellm/deepseek-v4-flash
+                - litellm/minimax-m3
+                - litellm/claude-haiku-4-5
+                - litellm/bytedance-deepseek-v4-flash
+              multimodal-looker:
+                - litellm/gemini-3.6-flash
+                - litellm/qwen3-6-plus
+                - litellm/claude-sonnet-5
+                - litellm/bytedance-seed-code
+              sisyphus-junior:
+                - litellm/deepseek-v4-flash
+                - litellm/minimax-m3
+                - litellm/claude-haiku-4-5
+                - litellm/bytedance-deepseek-v4-flash
+            categories:
+              quick:
+                - litellm/deepseek-v4-flash
+                - litellm/minimax-m3
+                - litellm/claude-haiku-4-5
+              deep:
+                - litellm/minimax-m3
+                - litellm/glm-5.3
+                - litellm/claude-sonnet-5
+                - litellm/bytedance-dola-seed-2.0-pro
+              ultrabrain:
+                - litellm/claude-opus-5
+                - litellm/glm-5.3
+                - litellm/bytedance-seed-code
+              visual-engineering:
+                - litellm/gemini-3.6-flash
+                - litellm/qwen3-6-plus
+                - litellm/claude-sonnet-5
+              writing:
+                - litellm/minimax-m3
+                - litellm/claude-sonnet-5
     mcp_servers:
       # ── Manifest = single source of truth ──────────────────────────────
       # Hermes reads these entries from config.yaml; the bootstrap init
@@ -632,7 +695,7 @@ hermes-agent:
       # npx-launched servers get a PRIVATE npm cache (env.npm_config_cache).
       # The MCP client runs `npx -y <pkg>`, which installs the package at
       # every startup. By default that lands in the shared PVC cache
-      # (/opt/data/.npm), which the gateway, opencode-server and dispatched
+      # (/opt/data/.npm), which the gateway and dispatched
       # agents all write to — sometimes as different users (agents run as
       # root). Concurrent installs corrupt each other, and the fallout is
       # invisible at the pod level: `npm error ENOTEMPTY ... rename`,
@@ -663,9 +726,8 @@ hermes-agent:
 
       github:
         lazy: true
-        # Parked: the OpenCode-driven GitHub tooling in
-        # templates/opencode.yaml already covers repo
-        # access. Kept pinned so re-enabling is a one-line change.
+        # Parked: repo access is covered by the OMO fleet's MCP tooling.
+        # Kept pinned so re-enabling is a one-line change.
         enabled: false
         command: "npx"
         args: ["-y", "@modelcontextprotocol/server-github@2025.4.8"]
@@ -961,7 +1023,7 @@ hermes-agent:
         command: "sh"
         args:
           - "-c"
-          - |
+          - |-
             BW_CLIENTID=$BW_CLIENTID BW_CLIENTSECRET=$BW_CLIENTSECRET bw login --apikey 2>/dev/null
             export BW_SESSION=$(BW_PASSWORD=$BW_PASSWORD bw unlock --passwordenv BW_PASSWORD 2>/dev/null | grep "BW_SESSION=" | sed "s/.*BW_SESSION=\"//;s/\".*//")
             exec npx -y @bitwarden/mcp-server@2026.7.0
@@ -1018,11 +1080,6 @@ hermes-agent:
         secretKeyRef:
           name: openagent-secrets
           key: API_SERVER_KEY
-    # Point the opencode plugin at the server pod instead of a local child
-    # process (see charts/opencode-server for why). Unset = old behaviour, so
-    # this is safe if the server is disabled.
-    - name: OPENCODE_SERVER_URL
-      value: http://opencode-server:4096
     - name: API_SERVER_HOST
       value: "0.0.0.0"
     - name: API_SERVER_PORT
@@ -1040,9 +1097,6 @@ hermes-agent:
     - name: hermes-hooks
       configMap:
         name: openagent-hermes-hooks
-    - name: opencode-config
-      configMap:
-        name: openagent-opencode-config
     - name: k8s-gitops-context
       configMap:
         name: openagent-k8s-gitops-context
@@ -1065,14 +1119,6 @@ hermes-agent:
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
-      readOnly: true
-    - name: opencode-config
-      mountPath: /opt/data/.config/opencode/opencode.json
-      subPath: opencode.json
-      readOnly: true
-    - name: opencode-config
-      mountPath: /opt/opencode/omo.jsonc
-      subPath: omo.jsonc
       readOnly: true
     - name: k8s-gitops-context
       mountPath: /opt/data/memories/k8s-gitops-context.md
@@ -1110,6 +1156,37 @@ hermes-agent:
       volumeMounts:
         - name: tools
           mountPath: /opt/tools
+    # Provisions the hermes-omo-plugin onto the shared PVC. The env below is the
+    # ONLY switch — subchart values are not templated, so this block cannot read
+    # the omo: values. Flip OMO_PROVISION_ENABLED to "true" (and confirm
+    # OMO_PROVISION_REPOSITORY exists) to provision; until then it no-ops.
+    - name: provision-omo-plugin
+      image: alpine/git:2.45.2
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        runAsUser: 10000
+        runAsGroup: 10000
+      env:
+        - name: OMO_PROVISION_ENABLED
+          value: "true"
+        - name: OMO_PROVISION_REPOSITORY
+          value: "https://github.com/jomakori/hermes-omo-plugin.git"
+        - name: OMO_PROVISION_REF
+          value: "main"
+      command:
+        - sh
+        - -c
+        - |
+          set -eu
+          if [ "${OMO_PROVISION_ENABLED}" = "true" ]; then
+            mkdir -p /opt/data/plugins
+            rm -rf /opt/data/plugins/omo
+            git clone --depth 1 --branch "${OMO_PROVISION_REF}" "${OMO_PROVISION_REPOSITORY}" /opt/data/plugins/omo
+            chown -R 10000:10000 /opt/data/plugins/omo
+          fi
+      volumeMounts:
+        - name: data
+          mountPath: /opt/data
   command:
     # gitopsctl boot (installed into the tools emptyDir by the
     # install-gitopsctl initContainer) replaces the old boot.sh shim.
@@ -1158,8 +1235,7 @@ hermes-agent:
     # looking enabled. The VPA owns this number from here, bounded 3Gi-8Gi (see
     # the vpa block at the bottom of this file).
     #
-    # 3Gi to start, down from 6Gi: the agent workload now runs in
-    # charts/opencode-server, and this container's measured idle/peak is
+    # 3Gi to start, down from 6Gi: this container's measured idle/peak is
     # ~1.7-2.2Gi. If the data disagrees, the autoscaler raises it.
     requests:
       cpu: "2"
@@ -1213,18 +1289,6 @@ hermes-webui:
 claude-proxy:
   enabled: true
 
-# ── OpenCode server ─────────────────────────────────────────────────
-# The agent runtime runs as its own pod, not as a child of the gateway. A heavy
-# `opencode` run used to OOM-kill the gateway container (exit 137), which
-# restarted it and killed the very runs it was orchestrating — dispatches were
-# lost mid-handoff that way. With the server separated, the gateway only carries
-# a thin client and agent memory is budgeted where it is visible.
-#
-# Charts: charts/opencode-server. The plugin reaches it through the env var
-# below; with that unset the plugin spawns a local child (the old behaviour).
-opencode-server:
-  enabled: true
-
 # ── Shared DB ───────────────────────────────────────────
 # DB/role creation (SGScript openagent-pg-init) lives in this chart.
 # The SGCluster openagent-pg + its SGPostgresConfig/SGPoolingConfig are
@@ -1265,10 +1329,9 @@ vpa:
   enabled: true
   updateMode: "Auto"
   targets:
-    # The gateway. Agents no longer run inside it (see charts/opencode-server),
-    # so it should be free to shrink; its own history will keep the recommendation
-    # where the work actually is. `hermes-doctor` is deliberately NOT listed —
-    # it falls to the `"*"` policy and keeps its manifest values.
+    # The gateway. Its own history keeps the recommendation where the work
+    # actually is. `hermes-doctor` is deliberately NOT listed — it falls to
+    # the `"*"` policy and keeps its manifest values.
     - name: openagent-hermes-agent
       containers:
         - name: hermes-agent
@@ -1276,86 +1339,3 @@ vpa:
           minMemory: 512Mi
           maxCpu: "2"
           maxMemory: 8Gi
-    # The agent runtime — bursty, and the reason the ceiling is 8Gi.
-    - name: opencode-server
-      containers:
-        - name: opencode-server
-          minCpu: 50m
-          minMemory: 512Mi
-          maxCpu: "2"
-          maxMemory: 8Gi
-# ── OpenCode / OMO fleet config ───────────────────────────────────────────
-# Single source of truth for the opencode agent fleet, model chains, MCP
-# tool gating, and OMO runtime settings. Rendered into the opencode-config
-# ConfigMap (configmap-opencode-config.yaml).
-#
-# DRY principle:
-#   - Model IDs: appear ONLY in litellm.proxy_config.model_list (above).
-#     The template iterates that list to build opencode.json provider.models.
-#   - MCP servers: plane + github are whitelisted from
-#     hermes-agent.config.mcp_servers (above) — NOT duplicated here.
-#   - Fleet chains + runtime policy: defined here once, rendered into both
-#     opencode.json (tools/agent gating) and omo.jsonc (chains + [opencode]).
-opencode:
-  plugin: "oh-my-openagent@5.0.0-beta.48"
-  defaultAgent: sisyphus
-  defaultModel: "litellm/deepseek-v4-flash-direct"
-
-  # Agents that get plane + github MCP tool access in opencode.json.
-  # All others are opted out (tools.*: false globally, per-agent opt-in).
-  mcpToolAgents: [sisyphus, hephaestus, prometheus, atlas]
-
-  # OMO fleet categories — primary model + fallback chain.
-  # Chain field = "models" (array, primary-first, per OMO schema).
-  # All model refs are "litellm/<litellm.model_list.model_name>".
-  categories:
-    quick:
-      models: ["litellm/deepseek-v4-flash", "litellm/minimax-m3", "litellm/claude-haiku-4-5"]
-    default:
-      models: ["litellm/minimax-m3", "litellm/glm-5.3", "litellm/claude-sonnet-5", "litellm/bytedance-glm-5.2"]
-    deep:
-      models: ["litellm/minimax-m3", "litellm/glm-5.3", "litellm/claude-sonnet-5", "litellm/bytedance-dola-seed-2.0-pro"]
-    ultrabrain:
-      models: ["litellm/claude-opus-5", "litellm/glm-5.3", "litellm/bytedance-seed-code"]
-    visual-engineering:
-      models: ["litellm/gemini-3.6-flash", "litellm/qwen3-6-plus", "litellm/claude-sonnet-5"]
-    writing:
-      models: ["litellm/minimax-m3", "litellm/claude-sonnet-5"]
-
-  # OMO fleet agents — primary model + fallback chain.
-  agents:
-    sisyphus:
-      models: ["litellm/deepseek-v4-flash-direct", "litellm/claude-sonnet-5", "litellm/bytedance-glm-5.2"]
-    hephaestus:
-      models: ["litellm/minimax-m3", "litellm/glm-5.3", "litellm/claude-sonnet-5", "litellm/bytedance-dola-seed-2.0-code"]
-    oracle:
-      models: ["litellm/claude-opus-5", "litellm/glm-5.3", "litellm/bytedance-seed-code"]
-    prometheus:
-      models: ["litellm/minimax-m3", "litellm/deepseek-v4-pro", "litellm/claude-sonnet-5", "litellm/bytedance-glm-5.2"]
-    metis:
-      models: ["litellm/minimax-m3", "litellm/deepseek-v4-pro", "litellm/claude-sonnet-5", "litellm/bytedance-glm-5.2"]
-    momus:
-      models: ["litellm/minimax-m3", "litellm/glm-5.3", "litellm/claude-sonnet-5", "litellm/bytedance-dola-seed-2.0-pro"]
-    atlas:
-      models: ["litellm/minimax-m3", "litellm/deepseek-v4-pro", "litellm/claude-sonnet-5", "litellm/bytedance-dola-seed-2.0-pro"]
-    explore:
-      models: ["litellm/deepseek-v4-flash", "litellm/minimax-m3", "litellm/claude-haiku-4-5", "litellm/bytedance-deepseek-v4-flash"]
-    librarian:
-      models: ["litellm/deepseek-v4-flash", "litellm/minimax-m3", "litellm/claude-haiku-4-5", "litellm/bytedance-deepseek-v4-flash"]
-    multimodal-looker:
-      models: ["litellm/gemini-3.6-flash", "litellm/qwen3-6-plus", "litellm/claude-sonnet-5", "litellm/bytedance-seed-code"]
-    sisyphus-junior:
-      models: ["litellm/deepseek-v4-flash", "litellm/minimax-m3", "litellm/claude-haiku-4-5", "litellm/bytedance-deepseek-v4-flash"]
-
-  # OMO runtime — [opencode] block in omo.jsonc.
-  backgroundTask:
-    defaultConcurrency: 8
-
-  runtimeFallback:
-    enabled: true
-    retry_on_errors: [400, 401, 403, 404, 429, 500, 502, 503, 504]
-    max_fallback_attempts: 3
-    cooldown_seconds: 30
-    timeout_seconds: 30
-    notify_on_fallback: false
-    restore_primary_after_cooldown: true
