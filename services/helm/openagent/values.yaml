@@ -592,7 +592,7 @@ hermes-agent:
             # back; `retry_on_errors` is the status set that triggers a walk.
             runtime_fallback:
               enabled: true
-              retry_on_errors: [400, 401, 403, 404, 429, 500, 502, 503, 504, 529]
+              retry_on_errors: [400, 401, 402, 403, 404, 429, 500, 502, 503, 504, 529]
               max_fallback_attempts: 3
               cooldown_seconds: 30
               restore_primary_after_cooldown: true
