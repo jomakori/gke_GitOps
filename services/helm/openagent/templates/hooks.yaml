@@ -34,8 +34,8 @@ data:
     import aiohttp
 
     # ── Config ────────────────────────────────────────────────────────
-    _DASHBOARD_BASE = os.environ.get(
-        "DASHBOARD_BASE_URL", "https://openagent.maklab.net"
+    _WEBUI_BASE = os.environ.get(
+        "WEBUI_BASE_URL", "https://openagent.maklab.net"
     )
     _DISCORD_API = "https://discord.com/api/v10"
 
@@ -77,7 +77,7 @@ data:
         # ids from state.db, and its canonical permalink route is /session/<id>
         # (NOT /chat/<id> — see index.html base-href + sessions.js self-heal).
         # /session/{session_id} opens the exact agent conversation in the webui.
-        url = f"{_DASHBOARD_BASE}/session/{session_id}"
+        url = f"{_WEBUI_BASE}/session/{session_id}"
         # For Discord threads, chat_id is already the thread channel ID.
         api_url = f"{_DISCORD_API}/channels/{chat_id}/messages"
         headers = {

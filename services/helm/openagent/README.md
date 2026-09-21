@@ -104,10 +104,9 @@ Browser
       → Istio Ingress Gateway
         → openagent-hermes-workspace.openagent:3000 (Web UI)
           → openagent-hermes-api.openagent:8642 (API, chat/sessions)
-          → openagent-hermes-agent.openagent:9119 (Dashboard, config/skills)
 ```
 
-The web UI connects to two gateway backends: the API server for chat/sessions and the dashboard for config/skills. The dashboard uses cookie-based basic auth with credentials from the `svc_openagent` Doppler config. See the `k8s-gitops-context` skill for connectivity modes and troubleshooting.
+The web UI runs in gateway mode as a pure HTTP client of the API server (`HERMES_WEBUI_GATEWAY_BASE_URL` → `openagent-hermes-api:8642`). It does **not** talk to the Hermes built-in dashboard, which is disabled (`HERMES_DASHBOARD=0`): that dashboard runs as a second Hermes process and each process loads the whole MCP fleet, doubling memory and boot contention for an in-cluster-only admin UI. See the `k8s-gitops-context` skill for connectivity modes and troubleshooting.
 
 ### Namespaces & secrets
 
@@ -621,42 +620,29 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraEnv[0].name | string | `"DISCORD_BOT_TOKEN"` |  |
 | hermes-agent.extraEnv[0].valueFrom.secretKeyRef.key | string | `"DISCORD_BOT_TOKEN"` |  |
 | hermes-agent.extraEnv[0].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
-| hermes-agent.extraEnv[10].name | string | `"API_SERVER_KEY"` |  |
-| hermes-agent.extraEnv[10].valueFrom.secretKeyRef.key | string | `"API_SERVER_KEY"` |  |
-| hermes-agent.extraEnv[10].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
-| hermes-agent.extraEnv[11].name | string | `"API_SERVER_HOST"` |  |
-| hermes-agent.extraEnv[11].value | string | `"0.0.0.0"` |  |
-| hermes-agent.extraEnv[12].name | string | `"API_SERVER_PORT"` |  |
-| hermes-agent.extraEnv[12].value | string | `"8642"` |  |
-| hermes-agent.extraEnv[13].name | string | `"API_SERVER_CORS_ORIGINS"` |  |
-| hermes-agent.extraEnv[13].value | string | `"https://openagent.maklab.net"` |  |
-| hermes-agent.extraEnv[14].name | string | `"CLAUDE_PROXY_API_KEY"` |  |
-| hermes-agent.extraEnv[14].valueFrom.secretKeyRef.key | string | `"CLAUDE_PROXY_API_KEY"` |  |
-| hermes-agent.extraEnv[14].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
-| hermes-agent.extraEnv[15].name | string | `"DASHBOARD_BASE_URL"` |  |
-| hermes-agent.extraEnv[15].value | string | `"https://openagent.maklab.net"` |  |
+| hermes-agent.extraEnv[10].name | string | `"WEBUI_BASE_URL"` |  |
+| hermes-agent.extraEnv[10].value | string | `"https://openagent.maklab.net"` |  |
 | hermes-agent.extraEnv[1].name | string | `"DISCORD_BOT_CLIENT_ID"` |  |
 | hermes-agent.extraEnv[1].valueFrom.secretKeyRef.key | string | `"DISCORD_BOT_CLIENT_ID"` |  |
 | hermes-agent.extraEnv[1].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
 | hermes-agent.extraEnv[2].name | string | `"HERMES_DASHBOARD"` |  |
 | hermes-agent.extraEnv[2].value | string | `"0"` |  |
-| hermes-agent.extraEnv[3].name | string | `"HERMES_DASHBOARD_HOST"` |  |
-| hermes-agent.extraEnv[3].value | string | `"0.0.0.0"` |  |
-| hermes-agent.extraEnv[4].name | string | `"HERMES_DASHBOARD_PORT"` |  |
-| hermes-agent.extraEnv[4].value | string | `"9119"` |  |
-| hermes-agent.extraEnv[5].name | string | `"HERMES_DASHBOARD_BASIC_AUTH_USERNAME"` |  |
-| hermes-agent.extraEnv[5].valueFrom.secretKeyRef.key | string | `"HERMES_DASHBOARD_BASIC_AUTH_USERNAME"` |  |
+| hermes-agent.extraEnv[3].name | string | `"DISCORD_ALLOW_ALL_USERS"` |  |
+| hermes-agent.extraEnv[3].value | string | `"true"` |  |
+| hermes-agent.extraEnv[4].name | string | `"API_SERVER_ENABLED"` |  |
+| hermes-agent.extraEnv[4].value | string | `"true"` |  |
+| hermes-agent.extraEnv[5].name | string | `"API_SERVER_KEY"` |  |
+| hermes-agent.extraEnv[5].valueFrom.secretKeyRef.key | string | `"API_SERVER_KEY"` |  |
 | hermes-agent.extraEnv[5].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
-| hermes-agent.extraEnv[6].name | string | `"HERMES_DASHBOARD_BASIC_AUTH_PASSWORD"` |  |
-| hermes-agent.extraEnv[6].valueFrom.secretKeyRef.key | string | `"HERMES_DASHBOARD_BASIC_AUTH_PASSWORD"` |  |
-| hermes-agent.extraEnv[6].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
-| hermes-agent.extraEnv[7].name | string | `"HERMES_DASHBOARD_BASIC_AUTH_SECRET"` |  |
-| hermes-agent.extraEnv[7].valueFrom.secretKeyRef.key | string | `"HERMES_DASHBOARD_BASIC_AUTH_SECRET"` |  |
-| hermes-agent.extraEnv[7].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
-| hermes-agent.extraEnv[8].name | string | `"DISCORD_ALLOW_ALL_USERS"` |  |
-| hermes-agent.extraEnv[8].value | string | `"true"` |  |
-| hermes-agent.extraEnv[9].name | string | `"API_SERVER_ENABLED"` |  |
-| hermes-agent.extraEnv[9].value | string | `"true"` |  |
+| hermes-agent.extraEnv[6].name | string | `"API_SERVER_HOST"` |  |
+| hermes-agent.extraEnv[6].value | string | `"0.0.0.0"` |  |
+| hermes-agent.extraEnv[7].name | string | `"API_SERVER_PORT"` |  |
+| hermes-agent.extraEnv[7].value | string | `"8642"` |  |
+| hermes-agent.extraEnv[8].name | string | `"API_SERVER_CORS_ORIGINS"` |  |
+| hermes-agent.extraEnv[8].value | string | `"https://openagent.maklab.net"` |  |
+| hermes-agent.extraEnv[9].name | string | `"CLAUDE_PROXY_API_KEY"` |  |
+| hermes-agent.extraEnv[9].valueFrom.secretKeyRef.key | string | `"CLAUDE_PROXY_API_KEY"` |  |
+| hermes-agent.extraEnv[9].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
 | hermes-agent.extraInitContainers[0].args[0] | string | `"install"` |  |
 | hermes-agent.extraInitContainers[0].args[1] | string | `"/opt/tools/gitopsctl"` |  |
 | hermes-agent.extraInitContainers[0].image | string | `"ghcr.io/jomakori/gitopsctl:4b67e9edb325edc3b190e5e60f5dc2347689f435"` |  |
@@ -695,17 +681,9 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumeMounts[3].mountPath | string | `"/opt/tools"` |  |
 | hermes-agent.extraVolumeMounts[3].name | string | `"tools"` |  |
 | hermes-agent.extraVolumeMounts[3].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[4].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard-auth.pth"` |  |
-| hermes-agent.extraVolumeMounts[4].name | string | `"dashboard-auth"` |  |
+| hermes-agent.extraVolumeMounts[4].mountPath | string | `"/opt/data/mcp-verify"` |  |
+| hermes-agent.extraVolumeMounts[4].name | string | `"mcp-verify"` |  |
 | hermes-agent.extraVolumeMounts[4].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[4].subPath | string | `"dashboard-auth.pth"` |  |
-| hermes-agent.extraVolumeMounts[5].mountPath | string | `"/opt/hermes/.venv/lib/python3.13/site-packages/dashboard_auth_patch.py"` |  |
-| hermes-agent.extraVolumeMounts[5].name | string | `"dashboard-auth"` |  |
-| hermes-agent.extraVolumeMounts[5].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[5].subPath | string | `"dashboard_auth_patch.py"` |  |
-| hermes-agent.extraVolumeMounts[6].mountPath | string | `"/opt/data/mcp-verify"` |  |
-| hermes-agent.extraVolumeMounts[6].name | string | `"mcp-verify"` |  |
-| hermes-agent.extraVolumeMounts[6].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumes[0].configMap.name | string | `"openagent-hermes-hooks"` |  |
 | hermes-agent.extraVolumes[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumes[1].configMap.name | string | `"openagent-k8s-gitops-context"` |  |
@@ -714,10 +692,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumes[2].name | string | `"hermes-mise-config"` |  |
 | hermes-agent.extraVolumes[3].emptyDir | object | `{}` |  |
 | hermes-agent.extraVolumes[3].name | string | `"tools"` |  |
-| hermes-agent.extraVolumes[4].configMap.name | string | `"openagent-dashboard-auth"` |  |
-| hermes-agent.extraVolumes[4].name | string | `"dashboard-auth"` |  |
-| hermes-agent.extraVolumes[5].configMap.name | string | `"openagent-mcp-manifest"` |  |
-| hermes-agent.extraVolumes[5].name | string | `"mcp-verify"` |  |
+| hermes-agent.extraVolumes[4].configMap.name | string | `"openagent-mcp-manifest"` |  |
+| hermes-agent.extraVolumes[4].name | string | `"mcp-verify"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
 | hermes-agent.image.tag | string | `"v2026.9.11"` |  |
@@ -735,7 +711,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.resources.limits.memory | string | `"3Gi"` |  |
 | hermes-agent.resources.requests.cpu | string | `"2"` |  |
 | hermes-agent.resources.requests.memory | string | `"3Gi"` |  |
-| hermes-agent.service.enabled | bool | `true` |  |
+| hermes-agent.service.enabled | bool | `false` |  |
 | hermes-agent.service.port | int | `9119` |  |
 | hermes-webui.enabled | bool | `true` |  |
 | hermes.enabled | bool | `true` |  |
