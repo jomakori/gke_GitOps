@@ -71,8 +71,10 @@ repos:
         description: |
           Render the MCP manifest ConfigMap from values.yaml and run the
           gitopsctl `mcp verify --mode validate` static policy (pins,
-          timeouts, lifecycle, parked duplicates, tool surface). Same binary
-          as the CI step. Skips when the Go toolchain is absent.
+          timeouts, lifecycle, parked duplicates, tool surface, each npx
+          server's own package cache, a uvx server's toolchain env, auth-probe
+          declarations). Same binary as the CI step. Skips when the Go
+          toolchain is absent.
         entry: .useful-scripts/validate_mcp_manifest.sh
         language: system
         files: ^services/helm/openagent/(values\.yaml|templates/hooks\.yaml)$
