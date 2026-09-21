@@ -43,7 +43,14 @@ litellm:
   resources:
     requests:
       cpu: 100m
-      memory: 512Mi
+      # 1.5Gi, not 512Mi. HPA memory utilisation is a percentage of the
+      # container's REQUEST, so `targetMemoryUtilizationPercentage: 70` against
+      # a 512Mi request means a 358Mi target — unreachable when the pod actually
+      # uses ~1Gi. The HPA therefore reported ~197% and sat at maxReplicas
+      # indefinitely, parking ~4Gi of the node's memory on a rule it could never
+      # satisfy. 70% of 1.5Gi (~1.05Gi) is a target the fleet can meet, so it can
+      # scale back toward minReplicas and release that memory.
+      memory: 1.5Gi
     limits:
       cpu: 2000m
       memory: 4Gi
@@ -63,8 +70,13 @@ litellm:
     targetCPUUtilizationPercentage: 70
     # Memory HPA (same pattern as argocd-repo-server in-cluster). Litellm is
     # memory-bound (Python + prisma + uvicorn), CPU is mostly idle even under
-    # load. Trigger at 70% of 4Gi limit = ~2.8Gi per pod; live max 1.7Gi →
-    # ~1.1Gi headroom before scaling, not too tight.
+    # load.
+    #
+    # HPA memory utilisation is measured against the container's REQUEST, never
+    # its limit. This comment previously said "70% of 4Gi limit = ~2.8Gi per
+    # pod", which made the trigger look comfortable when it was really 70% of a
+    # 512Mi request (358Mi) against ~1Gi of real usage — hence a permanent 197%
+    # and maxReplicas forever. The request above is the number that matters.
     targetMemoryUtilizationPercentage: 70
   migrationJob:
     enabled: false # disabled: litellm/proxy/prisma_migration.py leaks memory
