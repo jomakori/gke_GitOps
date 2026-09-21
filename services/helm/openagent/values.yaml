@@ -1070,8 +1070,14 @@ hermes-agent:
         secretKeyRef:
           name: openagent-secrets
           key: DISCORD_BOT_CLIENT_ID
+    # Off on purpose. The dashboard is a second full Hermes process, and each
+    # Hermes process loads every configured MCP server — so enabling it doubles
+    # the MCP fleet (13 extra stdio children, ~800MiB) and doubles the boot-time
+    # contention that was breaking stdio pipes. The gateway serves the agent;
+    # the only thing lost is the web UI's config/skills backend, which read
+    # `openagent-hermes-agent:9119`.
     - name: HERMES_DASHBOARD
-      value: "1"
+      value: "0"
     - name: HERMES_DASHBOARD_HOST
       value: "0.0.0.0"
     - name: HERMES_DASHBOARD_PORT
@@ -1213,36 +1219,42 @@ hermes-agent:
     - /opt/tools/gitopsctl
     - boot
   args: []
-  # Startup + readiness probes on the Hermes Web UI dashboard (0.0.0.0:9119).
-  # The gateway only starts listening there AFTER a ~10 min boot (apt
-  # systemDeps → mise install → MCP prewarm → `boot: handing over to hermes`
-  # → s6 → `HERMES_DASHBOARD_READY port=9119`). Before this landed the pod
-  # reported Ready immediately while nothing served :9119, so the
-  # `openagent-hermes-agent:9119` / `openagent-hermes-api:8642` endpoints
-  # listed it ready ~10 min early. startupProbe gates readiness, so the pod
-  # only flips Ready once the dashboard actually answers; readiness failures
-  # never restart a pod.
+  # Startup + readiness probes on the gateway's own API server (0.0.0.0:8642,
+  # `/health`). These previously targeted the dashboard on :9119, which is now
+  # disabled (HERMES_DASHBOARD below): the dashboard runs as a *second* Hermes
+  # process, and every Hermes process loads the entire MCP fleet. Two processes
+  # meant two of every MCP server — 13 extra stdio children and roughly 800MiB
+  # on a node already under memory pressure — and the boot-time contention was
+  # breaking stdio pipes, surfacing as clustered MCP `Connection closed` drops.
+  # The gateway is the process actually doing the work and answers `/health` on
+  # 8642, so it is also the more honest readiness gate.
+  #
+  # The gateway only listens there AFTER the ~10 min boot (apt systemDeps →
+  # mise install → MCP prewarm → codegraph indexing → `boot: handing over to
+  # hermes`). Before this gating landed the pod reported Ready immediately
+  # while nothing served, so the `openagent-hermes-agent` endpoints listed it
+  # ready ~10 min early. startupProbe gates readiness, so the pod only flips
+  # Ready once the gateway actually answers; readiness failures never restart
+  # a pod.
   #
   # No livenessProbe: the image's s6-overlay already supervises and restarts
-  # `hermes gateway run` on crash. A 9119 liveness would couple the whole
-  # pod's lifecycle to the dashboard (a *separate* s6 service) — if the
-  # dashboard alone died, s6 restarts just it, while a liveness probe would
-  # kill-restart the entire pod (dropping in-flight orchestration).
+  # `hermes gateway run` on crash, so a liveness probe would duplicate that
+  # while adding a way to kill-restart the whole pod (dropping in-flight
+  # orchestration).
   probes:
     startup:
       httpGet:
-        path: /
-        port: 9119
+        path: /health
+        port: 8642
       # ~20 min budget = 120 failures × 10s. Measured boot is ~10 min, so
-      # ~2× headroom; the dashboard answers `/` with a 302 redirect, and
-      # httpGet counts any 2xx/3xx as success.
+      # ~2× headroom; httpGet counts any 2xx/3xx as success.
       periodSeconds: 10
       failureThreshold: 120
       timeoutSeconds: 3
     readiness:
       httpGet:
-        path: /
-        port: 9119
+        path: /health
+        port: 8642
       # 3 failures × 10s = 30s before the pod is un-Ready; readiness never
       # restarts, so this only gates the endpoints, not the pod lifecycle.
       periodSeconds: 10

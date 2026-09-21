@@ -1,4 +1,4 @@
-suite: hermes-agent gateway probes (9119 dashboard)
+suite: hermes-agent gateway probes (8642 gateway API)
 templates:
   - charts/hermes-agent/templates/deployment.yaml
   - charts/hermes-agent/templates/configmap.yaml
@@ -30,10 +30,9 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent
-      # s6-overlay already restarts `hermes gateway run` on crash; a 9119
-      # liveness would couple whole-pod lifecycle to the dashboard (a separate
-      # s6 service) and kill-restart the pod when s6 would restart only the
-      # dashboard. Assert it stays absent.
+      # s6-overlay already restarts `hermes gateway run` on crash, so a
+      # liveness probe would add nothing but a way to kill-restart the pod.
+      # Assert it stays absent.
       - notExists:
           path: spec.template.spec.containers[0].livenessProbe
         documentSelector:
@@ -41,13 +40,13 @@ tests:
           value: openagent-hermes-agent
       - equal:
           path: spec.template.spec.containers[0].startupProbe.httpGet.path
-          value: /
+          value: /health
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent
       - equal:
           path: spec.template.spec.containers[0].startupProbe.httpGet.port
-          value: 9119
+          value: 8642
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent
@@ -72,13 +71,13 @@ tests:
           value: openagent-hermes-agent
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.path
-          value: /
+          value: /health
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.port
-          value: 9119
+          value: 8642
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent
