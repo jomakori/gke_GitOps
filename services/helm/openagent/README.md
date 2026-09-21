@@ -955,7 +955,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.resources.limits.cpu | string | `"2000m"` |  |
 | litellm.resources.limits.memory | string | `"4Gi"` |  |
 | litellm.resources.requests.cpu | string | `"100m"` |  |
-| litellm.resources.requests.memory | string | `"512Mi"` |  |
+| litellm.resources.requests.memory | string | `"1.5Gi"` |  |
 | litellm.service.port | int | `4000` |  |
 | litellmVirtualService.destination.host | string | `"openagent-litellm.openagent.svc.cluster.local"` |  |
 | litellmVirtualService.destination.port | int | `4000` |  |
