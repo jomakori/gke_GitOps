@@ -93,10 +93,9 @@ Browser
       → Istio Ingress Gateway
         → openagent-hermes-workspace.openagent:3000 (Web UI)
           → openagent-hermes-api.openagent:8642 (API, chat/sessions)
-          → openagent-hermes-agent.openagent:9119 (Dashboard, config/skills)
 ```
 
-The web UI connects to two gateway backends: the API server for chat/sessions and the dashboard for config/skills. The dashboard uses cookie-based basic auth with credentials from the `svc_openagent` Doppler config. See the `k8s-gitops-context` skill for connectivity modes and troubleshooting.
+The web UI runs in gateway mode as a pure HTTP client of the API server (`HERMES_WEBUI_GATEWAY_BASE_URL` → `openagent-hermes-api:8642`). It does **not** talk to the Hermes built-in dashboard, which is disabled (`HERMES_DASHBOARD=0`): that dashboard runs as a second Hermes process and each process loads the whole MCP fleet, doubling memory and boot contention for an in-cluster-only admin UI. See the `k8s-gitops-context` skill for connectivity modes and troubleshooting.
 
 ### Namespaces & secrets
 

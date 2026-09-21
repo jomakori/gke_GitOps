@@ -1071,32 +1071,18 @@ hermes-agent:
           name: openagent-secrets
           key: DISCORD_BOT_CLIENT_ID
     # Off on purpose. The dashboard is a second full Hermes process, and each
-    # Hermes process loads every configured MCP server — so enabling it doubles
-    # the MCP fleet (13 extra stdio children, ~800MiB) and doubles the boot-time
-    # contention that was breaking stdio pipes. The gateway serves the agent;
-    # the only thing lost is the web UI's config/skills backend, which read
-    # `openagent-hermes-agent:9119`.
+    # Hermes process loads every configured MCP server — so enabling it doubled
+    # the MCP fleet (13 extra stdio children; the pod measured 1596MiB / 107
+    # processes with it on, 604MiB / 61 off) on a node already short of memory.
+    #
+    # Nothing user-facing depends on it: the WebUI reaches the agent through the
+    # API server on 8642 (`HERMES_WEBUI_GATEWAY_BASE_URL`), and the external
+    # `dashboard:` route serves the WebUI on 3000 — so :9119 was only ever an
+    # in-cluster admin UI. The HERMES_DASHBOARD_HOST/_PORT/_BASIC_AUTH_* vars,
+    # DASHBOARD_BASE_URL, the dashboard-auth patch and the agent Service that
+    # exposed :9119 are removed with it; re-enabling means restoring those too.
     - name: HERMES_DASHBOARD
       value: "0"
-    - name: HERMES_DASHBOARD_HOST
-      value: "0.0.0.0"
-    - name: HERMES_DASHBOARD_PORT
-      value: "9119"
-    - name: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
-      valueFrom:
-        secretKeyRef:
-          name: openagent-secrets
-          key: HERMES_DASHBOARD_BASIC_AUTH_USERNAME
-    - name: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: openagent-secrets
-          key: HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
-    - name: HERMES_DASHBOARD_BASIC_AUTH_SECRET
-      valueFrom:
-        secretKeyRef:
-          name: openagent-secrets
-          key: HERMES_DASHBOARD_BASIC_AUTH_SECRET
     - name: DISCORD_ALLOW_ALL_USERS
       value: "true"
     - name: API_SERVER_ENABLED
@@ -1117,7 +1103,10 @@ hermes-agent:
         secretKeyRef:
           name: openagent-secrets
           key: CLAUDE_PROXY_API_KEY
-    - name: DASHBOARD_BASE_URL
+    # Read by the Discord session-link hook (templates/hooks.yaml) to build the
+    # link it posts. Named for what it points at — the WebUI, not the removed
+    # Hermes dashboard it used to be called after.
+    - name: WEBUI_BASE_URL
       value: "https://openagent.maklab.net"
   extraVolumes:
     - name: hermes-hooks
@@ -1133,9 +1122,6 @@ hermes-agent:
     # (prebuilt tools image — no in-cluster Go build).
     - name: tools
       emptyDir: {}
-    - name: dashboard-auth
-      configMap:
-        name: openagent-dashboard-auth
     # The MCP manifest, rendered from this file's mcp_servers by
     # templates/hooks.yaml. Mounting it (rather than duplicating the package
     # list in the boot flow) keeps the manifest the single source of truth.
@@ -1155,14 +1141,6 @@ hermes-agent:
       readOnly: true
     - name: tools
       mountPath: /opt/tools
-      readOnly: true
-    - name: dashboard-auth
-      mountPath: /opt/hermes/.venv/lib/python3.13/site-packages/dashboard-auth.pth
-      subPath: dashboard-auth.pth
-      readOnly: true
-    - name: dashboard-auth
-      mountPath: /opt/hermes/.venv/lib/python3.13/site-packages/dashboard_auth_patch.py
-      subPath: dashboard_auth_patch.py
       readOnly: true
     - name: mcp-verify
       mountPath: /opt/data/mcp-verify
@@ -1279,7 +1257,12 @@ hermes-agent:
     - secretRef:
         name: openagent-secrets
   service:
-    enabled: true
+    # No Service: the only port the OCI subchart maps is 9119, which served the
+    # dashboard only, and the dashboard is off (HERMES_DASHBOARD above). The
+    # WebUI and everything else reach the agent through `openagent-hermes-api`
+    # (8642), which this chart defines separately. Leaving this enabled would
+    # publish a port with nothing behind it.
+    enabled: false
     port: 9119
 
 # ── MCP verification (manifest certification) ──────────────────────
