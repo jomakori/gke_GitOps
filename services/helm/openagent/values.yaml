@@ -1343,6 +1343,16 @@ vpa:
     - name: openagent-hermes-agent
       containers:
         - name: hermes-agent
+          # RequestsOnly, not the default RequestsAndLimits. The gateway is idle
+          # most of the day and bursts hard at boot (13 MCP servers start
+          # together). With requests == limits the VPA's decayed-average target
+          # becomes a hard cap: it pinned CPU at 109m — 80% of cgroup periods
+          # throttled — and discovery timed out at 120s with 8-9 servers still
+          # connecting. RequestsOnly keeps VPA's sizing for scheduling while the
+          # manifest's 2000m limit survives, so the burst is not throttled. It
+          # also stops the VPA pulling the memory limit below the manifest's
+          # 3Gi, which would OOM a pod that peaks near 2Gi at boot.
+          controlledValues: RequestsOnly
           minCpu: 50m
           minMemory: 512Mi
           maxCpu: "2"

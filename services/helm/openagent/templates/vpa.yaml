@@ -5,14 +5,30 @@ Auto` so sizing comes from observed usage instead of hand-tuned limits.
 WHY THE POLICIES ARE STRUCTURED THIS WAY (these are the traps that make a VPA
 look enabled while doing nothing, or doing the wrong thing):
 
-  1. requests == limits for every managed container. VPA refuses to apply a
-     recommendation to a container that sets a limit different from its
-     request, and there is no error — it simply does nothing. The application
-     containers pin the two together in the values files on purpose.
+  1. requests == limits for every managed container *in the default mode*.
+     VPA refuses to apply a recommendation to a container that sets a limit
+     different from its request, and there is no error — it simply does
+     nothing. The application containers pin the two together in the values
+     files on purpose.
      (Note also: VPA is not compatible with workloads that define *pod-level*
      `resources`; the admission controller can refuse to create the pod when
      container-level values exceed the pod-level stanza. These two Deployments
      use container-level resources only.)
+
+     The escape hatch is `controlledValues: RequestsOnly`, which tells VPA to
+     size the request and leave the limit alone. That is what a bursty
+     workload needs and it is why the gateway sets it: with requests ==
+     limits, the recommendation *is* the ceiling, so a decayed-average target
+     sized from idle time becomes a hard cap. Observed directly on
+     `openagent-hermes-agent` — Auto + requests == limits pinned CPU at 109m
+     (80% of periods throttled, 8.9 ks throttled), starving the 13 MCP
+     servers that start together at boot until discovery timed out at 120s.
+     The throttling was self-sustaining: a container capped at 109m can never
+     observe using more, so the recommender kept re-deriving 109m.
+     `maxAllowed` does not rescue this — it only bounds the recommendation
+     from above; it never grants the ceiling. Under RequestsOnly the identical
+     history produced a 109m *request* with the manifest's 2000m limit intact,
+     so the boot burst can use the CPU it needs.
 
   2. Bounds are per container, and `"*"` is a DEFAULT, not a blanket. Per the
      API (`ContainerResourcePolicy.ContainerName`): "Name of the container or
@@ -56,6 +72,10 @@ spec:
     containerPolicies:
       {{- range .containers }}
       - containerName: {{ .name | quote }}
+        {{- with .controlledValues }}
+        # RequestsOnly: VPA sizes the request, the manifest keeps the limit.
+        controlledValues: {{ . | quote }}
+        {{- end }}
         minAllowed:
           cpu: {{ .minCpu | quote }}
           memory: {{ .minMemory | quote }}

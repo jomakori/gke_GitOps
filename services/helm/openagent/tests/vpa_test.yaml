@@ -1,0 +1,48 @@
+suite: openagent VPA — the gateway is sized with RequestsOnly
+templates:
+  - templates/vpa.yaml
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: sizes the gateway request without letting the VPA cap its limit
+    asserts:
+      - isKind:
+          of: VerticalPodAutoscaler
+      - equal:
+          path: spec.targetRef.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.updatePolicy.updateMode
+          value: Auto
+      - equal:
+          path: spec.resourcePolicy.containerPolicies[0].containerName
+          value: hermes-agent
+      # RequestsOnly keeps the manifest's 2000m limit. Under the default
+      # RequestsAndLimits the recommendation *is* the ceiling, so the
+      # decayed-average target pinned CPU at 109m — 80% of cgroup periods
+      # throttled — and the MCP servers starting together at boot could not
+      # connect inside the 120s discovery budget.
+      - equal:
+          path: spec.resourcePolicy.containerPolicies[0].controlledValues
+          value: RequestsOnly
+      - equal:
+          path: spec.resourcePolicy.containerPolicies[0].minAllowed.cpu
+          value: 50m
+      - equal:
+          path: spec.resourcePolicy.containerPolicies[0].maxAllowed.cpu
+          value: "2"
+      - equal:
+          path: spec.resourcePolicy.containerPolicies[0].maxAllowed.memory
+          value: 8Gi
+
+  - it: keeps the catch-all policy Off as a string, not a YAML 1.1 boolean
+    asserts:
+      # `mode: Off` unquoted parses as boolean false, and the VPA webhook then
+      # rejects the whole object — so the bounds silently never land.
+      - equal:
+          path: spec.resourcePolicy.containerPolicies[1].containerName
+          value: "*"
+      - equal:
+          path: spec.resourcePolicy.containerPolicies[1].mode
+          value: "Off"
