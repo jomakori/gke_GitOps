@@ -30,6 +30,25 @@ EXTRA_VALUES="${1:-}"
 FAILURES=0
 WARNINGS=0
 
+# Reading the rendered ConfigMap needs PyYAML. The agent image's bare python3
+# does not have it while CI's does, so this hook was green in CI and red on
+# every local commit — resolve an interpreter that can import yaml instead of
+# assuming the PATH provides one. Override with PYTHON=<interpreter>.
+has_yaml() { "$1" -c 'import yaml' >/dev/null 2>&1; }
+PY=python3
+if ! has_yaml "$PY"; then
+  for candidate in ${PYTHON:-} /opt/hermes/.venv/bin/python /opt/data/paddleocr-venv/bin/python; do
+    if [ -x "$candidate" ] && has_yaml "$candidate"; then
+      PY="$candidate"
+      break
+    fi
+  done
+fi
+if ! has_yaml "$PY"; then
+  echo -e "${RED}No interpreter with PyYAML ('$PY')${RESET} — set PYTHON=<interpreter> or install pyyaml." >&2
+  exit 1
+fi
+
 cleanup() {
   rm -f /tmp/litellm-config-validate-*.yaml 2>/dev/null || true
   rm -f /tmp/litellm-config-validate.py 2>/dev/null || true
@@ -79,7 +98,7 @@ helm template test-litellm "${HELM_ARGS[@]}" > /tmp/litellm-config-validate-full
 # ── Extract ConfigMap ─────────────────────────────────────────────────
 echo -e "${GREEN}── Extracting LiteLLM ConfigMap${RESET}"
 
-python3 -c "
+"$PY" -c "
 import yaml, sys
 
 with open('/tmp/litellm-config-validate-full.yaml') as f:
@@ -114,7 +133,7 @@ print(f'Config size: {len(config_yaml)} bytes')
 echo ""
 echo -e "${GREEN}── Running validations${RESET}"
 
-python3 << 'PYEOF'
+"$PY" << 'PYEOF'
 import yaml, sys, os
 from collections import Counter
 

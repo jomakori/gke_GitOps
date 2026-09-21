@@ -32,6 +32,7 @@ data:
     gh = "2.97.0"
     doppler = "3.76.1"
     yq = "4.53.6"
+    jq = "latest"     # the k8s_* operator scripts parse kubectl JSON with it
     tirith = "0.3.3"
     # ── media / misc ──
     yt-dlp = "latest"
