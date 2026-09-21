@@ -1180,7 +1180,7 @@ hermes-agent:
     # Subchart values cannot be templated, so this image is a literal copy of
     # tools.image above — bump both together.
     - name: install-gitopsctl
-      image: ghcr.io/jomakori/gitopsctl:4b67e9edb325edc3b190e5e60f5dc2347689f435
+      image: ghcr.io/jomakori/gitopsctl:dab8bebe51b7f03127f2cc7d145faa35c5bcea4f
       imagePullPolicy: IfNotPresent
       args: ["install", "/opt/tools/gitopsctl"]
       securityContext:
