@@ -81,9 +81,10 @@ func parseBody(body string) map[string]any {
 	return nil
 }
 
-// HandshakeHTTP performs initialize + notifications/initialized + a
-// cursor-walking tools/list over Streamable HTTP, bounded by timeoutSec.
-func HandshakeHTTP(server Server, timeoutSec int, environ []string) ([]string, string, error) {
+// openHTTP resolves the server's URL and headers, then completes initialize +
+// notifications/initialized — the request context the handshake and the auth
+// probe both need.
+func openHTTP(server Server, environ []string, timeout time.Duration) (string, map[string]string, string, error) {
 	missing := map[string]bool{}
 	processEnv := map[string]string{}
 	for _, kv := range environ {
@@ -96,7 +97,6 @@ func HandshakeHTTP(server Server, timeoutSec int, environ []string) ([]string, s
 	for k, v := range server.Headers {
 		headers[k] = Expand(v, processEnv, missing)
 	}
-	timeout := time.Duration(timeoutSec) * time.Second
 
 	initPayload := map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "initialize",
@@ -108,16 +108,60 @@ func HandshakeHTTP(server Server, timeoutSec int, environ []string) ([]string, s
 	}
 	resp, err := postJSON(url, initPayload, "", headers, timeout)
 	if err != nil {
-		return nil, "", &VerifyError{Msg: "initialize HTTP: " + err.Error()}
+		return "", nil, "", &VerifyError{Msg: "initialize HTTP: " + err.Error()}
 	}
 	if resp.status >= 400 || resp.message == nil {
-		return nil, "", &VerifyError{Msg: fmt.Sprintf("initialize HTTP %d: %s", resp.status, snippet(resp.body))}
+		return "", nil, "", &VerifyError{Msg: fmt.Sprintf("initialize HTTP %d: %s", resp.status, snippet(resp.body))}
 	}
 	if errMsg, ok := resp.message["error"]; ok && errMsg != nil {
-		return nil, "", &VerifyError{Msg: fmt.Sprintf("initialize error: %v", errMsg)}
+		return "", nil, "", &VerifyError{Msg: fmt.Sprintf("initialize error: %v", errMsg)}
 	}
 	session := resp.header.Get("Mcp-Session-Id")
 	_, _ = postJSON(url, map[string]any{"jsonrpc": "2.0", "method": "notifications/initialized"}, session, headers, timeout)
+	return url, headers, session, nil
+}
+
+// ProbeHTTP runs a server's declared auth probe: one initialize, then a single
+// tools/call. See AuthProbe for why the handshake alone is not evidence.
+func ProbeHTTP(server Server, timeoutSec int, environ []string, probe AuthProbe) error {
+	timeout := time.Duration(timeoutSec) * time.Second
+	url, headers, session, err := openHTTP(server, environ, timeout)
+	if err != nil {
+		return err
+	}
+	args := probe.Args
+	if args == nil {
+		args = map[string]any{}
+	}
+	payload := map[string]any{
+		"jsonrpc": "2.0", "id": probeRPCID, "method": "tools/call",
+		"params": map[string]any{"name": probe.Tool, "arguments": args},
+	}
+	resp, err := postJSON(url, payload, session, headers, timeout)
+	if err != nil {
+		return &VerifyError{Msg: fmt.Sprintf("tools/call %s HTTP: %v", probe.Tool, err)}
+	}
+	if resp.status >= 400 || resp.message == nil {
+		return &VerifyError{Msg: fmt.Sprintf("tools/call %s HTTP %d: %s", probe.Tool, resp.status, snippet(resp.body))}
+	}
+	if errMsg, ok := resp.message["error"]; ok && errMsg != nil {
+		return &VerifyError{Msg: fmt.Sprintf("tools/call %s error: %v", probe.Tool, errMsg)}
+	}
+	result, _ := resp.message["result"].(map[string]any)
+	if isErr, _ := result["isError"].(bool); isErr {
+		return &VerifyError{Msg: fmt.Sprintf("tools/call %s returned isError: %s", probe.Tool, snippet(toolText(result)))}
+	}
+	return nil
+}
+
+// HandshakeHTTP performs initialize + notifications/initialized + a
+// cursor-walking tools/list over Streamable HTTP, bounded by timeoutSec.
+func HandshakeHTTP(server Server, timeoutSec int, environ []string) ([]string, string, error) {
+	timeout := time.Duration(timeoutSec) * time.Second
+	url, headers, session, err := openHTTP(server, environ, timeout)
+	if err != nil {
+		return nil, "", err
+	}
 
 	var tools []string
 	var cursor string

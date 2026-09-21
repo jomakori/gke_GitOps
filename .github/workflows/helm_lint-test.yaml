@@ -172,7 +172,7 @@ jobs:
         run: |
           .useful-scripts/validate_litellm_config.sh
 
-      - name: Validate MCP manifest (pins/timeouts/lifecycle/tool surface)
+      - name: Validate MCP manifest (pins/timeouts/lifecycle/cache/env/probes)
         # Runs on every PR; on a manual dispatch it can be switched off. NB: the
         # other validation steps in this workflow use `if: inputs.X != false`
         # alone, and `inputs` is empty on pull_request events - GitHub then
@@ -183,11 +183,13 @@ jobs:
           # Static lint of the rendered MCP manifest ConfigMap: every stdio
           # package pinned (no @latest), every server bounded by
           # connect_timeout, every stdio server carrying a recycle lifecycle,
-          # parked servers kept as enabled:false, and every enabled server
+          # parked servers kept as enabled:false, every enabled server
           # declaring tools.include + resources/prompts — the surface the
-          # preflight Job and drift CronJob certify at runtime. Same binary
-          # (gitopsctl mcp verify --mode validate) runs as a pre-commit
-          # hook. Static policy lives in the binary, not in a Python script.
+          # preflight Job and drift CronJob certify at runtime — every npx
+          # server declaring its OWN npm_config_cache, every uvx server
+          # declaring its toolchain layout, and every auth_probe naming a
+          # declared tool. Static policy lives in the binary, not in a Python
+          # script.
           .useful-scripts/validate_mcp_manifest.sh
 
       - name: Go build + test + vet

@@ -221,6 +221,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.argocd.args[0] | string | `"-y"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[1] | string | `"argocd-mcp@0.9.0"` |  |
 | hermes-agent.config.mcp_servers.argocd.args[2] | string | `"stdio"` |  |
+| hermes-agent.config.mcp_servers.argocd.auth_probe.args.limit | int | `1` |  |
+| hermes-agent.config.mcp_servers.argocd.auth_probe.tool | string | `"list_applications"` |  |
 | hermes-agent.config.mcp_servers.argocd.command | string | `"npx"` |  |
 | hermes-agent.config.mcp_servers.argocd.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.argocd.env.ARGOCD_API_TOKEN | string | `"${MCP_ARGOCD_TOKEN}"` |  |
@@ -241,11 +243,13 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.argocd.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.bitwarden.args[0] | string | `"-c"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.args[1] | string | `"BW_CLIENTID=$BW_CLIENTID BW_CLIENTSECRET=$BW_CLIENTSECRET bw login --apikey 2>/dev/null\nexport BW_SESSION=$(BW_PASSWORD=$BW_PASSWORD bw unlock --passwordenv BW_PASSWORD 2>/dev/null | grep \"BW_SESSION=\" | sed \"s/.*BW_SESSION=\\\"//;s/\\\".*//\")\nexec npx -y @bitwarden/mcp-server@2026.7.0"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.auth_probe.tool | string | `"status"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.command | string | `"sh"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_CLIENTID | string | `"${BW_CLIENTID}"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_CLIENTSECRET | string | `"${BW_CLIENTSECRET}"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_PASSWORD | string | `"${BW_PASSWORD}"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.env.npm_config_cache | string | `"/opt/data/.npm-mcp/bitwarden"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.idle_timeout_seconds | int | `1800` |  |
 | hermes-agent.config.mcp_servers.bitwarden.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.bitwarden.max_lifetime_seconds | int | `21600` |  |
@@ -282,6 +286,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.codegraph.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.doppler.args[0] | string | `"-y"` |  |
 | hermes-agent.config.mcp_servers.doppler.args[1] | string | `"@dopplerhq/mcp-server@1.0.5"` |  |
+| hermes-agent.config.mcp_servers.doppler.auth_probe.tool | string | `"workplace_get"` |  |
 | hermes-agent.config.mcp_servers.doppler.command | string | `"npx"` |  |
 | hermes-agent.config.mcp_servers.doppler.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.doppler.env.DOPPLER_TOKEN | string | `"${MCP_DOPPLER_TOKEN}"` |  |
@@ -373,6 +378,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.google-workspace.args[0] | string | `"workspace-mcp==1.26.1"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.args[1] | string | `"--tool-tier"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.args[2] | string | `"complete"` |  |
+| hermes-agent.config.mcp_servers.google-workspace.auth_probe.args.user_google_email | string | `"joe3rdwash@gmail.com"` |  |
+| hermes-agent.config.mcp_servers.google-workspace.auth_probe.tool | string | `"list_calendars"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.command | string | `"uvx"` |  |
 | hermes-agent.config.mcp_servers.google-workspace.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.google-workspace.env.GOOGLE_OAUTH_CLIENT_ID | string | `"${GOOGLE_OAUTH_CLIENT_ID}"` |  |
@@ -428,6 +435,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.google-workspace.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.grafana.args[0] | string | `"-c"` |  |
 | hermes-agent.config.mcp_servers.grafana.args[1] | string | `"exec npx -y @leval/mcp-grafana@1.1.7 | grep --line-buffered jsonrpc"` |  |
+| hermes-agent.config.mcp_servers.grafana.auth_probe.args.query | string | `""` |  |
+| hermes-agent.config.mcp_servers.grafana.auth_probe.tool | string | `"search_dashboards"` |  |
 | hermes-agent.config.mcp_servers.grafana.command | string | `"sh"` |  |
 | hermes-agent.config.mcp_servers.grafana.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_SERVICE_ACCOUNT_TOKEN | string | `"${MCP_GRAFANA_TOKEN}"` |  |
@@ -485,6 +494,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.obscura.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.plane.args[0] | string | `"plane-mcp-server==0.3.2"` |  |
 | hermes-agent.config.mcp_servers.plane.args[1] | string | `"stdio"` |  |
+| hermes-agent.config.mcp_servers.plane.auth_probe.args.action | string | `"list"` |  |
+| hermes-agent.config.mcp_servers.plane.auth_probe.tool | string | `"project"` |  |
 | hermes-agent.config.mcp_servers.plane.command | string | `"uvx"` |  |
 | hermes-agent.config.mcp_servers.plane.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.plane.env.HOME | string | `"/opt/data/home"` |  |
