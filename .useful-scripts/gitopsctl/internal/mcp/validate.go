@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -146,9 +147,56 @@ func Validate(servers map[string]*Server) []Violation {
 				violations = append(violations, Violation{Server: name, Rule: "tools-include", Message: "enabled server has no non-empty tools.include"})
 			}
 		}
+
+		// Rule 7 — a package-launched server declares its OWN package cache.
+		// The MCP client spawns children with a filtered env: PATH/HOME/... plus
+		// only what the entry declares. npm's cache is therefore HOME-derived, and
+		// the gateway's baseline HOME (/opt/data) is the PVC dir every process —
+		// gateway, coding agents, root-running jobs — installs into, so concurrent
+		// installs corrupt each other and one interrupted reify leaves a
+		// node_modules every later start SKIPS ("Cannot read package.json ... ENOENT").
+		// A per-server cache is the fix; the path is pinned literally so a
+		// copy-pasted entry cannot silently share another server's cache.
+		if stdio {
+			kind, _ := PackageSpec(*server)
+			switch kind {
+			case "npm":
+				want := "/opt/data/.npm-mcp/" + name
+				if got := server.Env["npm_config_cache"]; got != want {
+					violations = append(violations, Violation{Server: name, Rule: "npm-cache", Message: fmt.Sprintf("npm_config_cache is %q, want the private per-server cache %q", got, want)})
+				}
+			case "uv":
+				// Rule 8 — a uvx server pins its whole toolchain layout. uv resolves
+				// the tool dir from HOME when UV_TOOL_DIR is absent, so the verifier
+				// Jobs (HOME=/opt/data/home) and the gateway (HOME=/opt/data) read
+				// DIFFERENT directories: the Jobs certify a warm install the gateway
+				// cannot see and re-resolve fails inside the connect window. Declaring
+				// them makes both contexts identical by construction.
+				for _, key := range []string{"HOME", "PATH", "UV_CACHE_DIR", "UV_TOOL_DIR", "UV_TOOL_BIN_DIR"} {
+					if server.Env[key] == "" {
+						violations = append(violations, Violation{Server: name, Rule: "uv-env", Message: fmt.Sprintf("uvx server does not declare %s", key)})
+					}
+				}
+			}
+		}
+
+		// Rule 9 — an auth probe must name a tool the server actually declares.
+		// A typo here fails silently in the worst way: tools/list still matches,
+		// the probe never runs, and the gate reports green.
+		if server.AuthProbe != nil {
+			probe := server.AuthProbe
+			switch {
+			case !enabled:
+				violations = append(violations, Violation{Server: name, Rule: "auth-probe", Message: "auth_probe declared on a parked server (it can never run)"})
+			case probe.Tool == "":
+				violations = append(violations, Violation{Server: name, Rule: "auth-probe", Message: "auth_probe has no tool"})
+			case !slices.Contains(DeclaredTools(*server), probe.Tool):
+				violations = append(violations, Violation{Server: name, Rule: "auth-probe", Message: fmt.Sprintf("auth_probe tool %q is not in tools.include", probe.Tool)})
+			}
+		}
 	}
 
-	// Rule 7 — duplicates stay parked: present, and explicitly enabled: false.
+	// Rule 10 — duplicates stay parked: present, and explicitly enabled: false.
 	for _, name := range duplicateServers {
 		server := servers[name]
 		if server == nil {

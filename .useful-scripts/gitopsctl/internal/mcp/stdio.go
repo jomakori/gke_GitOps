@@ -245,23 +245,14 @@ func toolItems(v any) []string {
 	return out
 }
 
-// HandshakeStdio performs initialize + notifications/initialized + a
-// cursor-walking tools/list over stdio, bounded by timeoutSec.
-func HandshakeStdio(server Server, timeoutSec int, environ []string) ([]string, string, error) {
+// openStdio starts the child and completes initialize + notifications/
+// initialized, returning the live connection. Shared by the handshake and the
+// auth probe so both speak the client's exact opening sequence.
+func openStdio(server Server, environ []string, deadline time.Time) (*Stdio, string, error) {
 	client, err := NewStdio(server, environ)
 	if err != nil {
 		return nil, "", &VerifyError{Msg: "start: " + err.Error()}
 	}
-	deadline := time.Now().Add(time.Duration(timeoutSec) * time.Second)
-	warn := ""
-	defer func() {
-		client.Close()
-		if warn != "" {
-			client.diagMu.Lock()
-			client.diag = append(client.diag, warn)
-			client.diagMu.Unlock()
-		}
-	}()
 	if err := client.Send(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "initialize",
 		"params": map[string]any{
@@ -282,6 +273,98 @@ func HandshakeStdio(server Server, timeoutSec int, environ []string) ([]string, 
 	}
 	if err := client.Send(map[string]any{"jsonrpc": "2.0", "method": "notifications/initialized"}); err != nil {
 		return nil, joinLines(client.Stderr()), &VerifyError{Msg: "notifications/initialized write: " + err.Error(), Stderr: joinLines(client.Stderr())}
+	}
+	return client, joinLines(client.Stderr()), nil
+}
+
+// ProbeStdio runs a server's declared auth probe: its own connection, one
+// initialize, then a single tools/call. This is the only check that exercises
+// the CREDENTIAL rather than the protocol — see AuthProbe for why that gap
+// matters.
+func ProbeStdio(server Server, timeoutSec int, environ []string, probe AuthProbe) error {
+	client, stderr, err := openStdio(server, environ, time.Now().Add(time.Duration(timeoutSec)*time.Second))
+	if client == nil {
+		return err
+	}
+	defer client.Close()
+	if err != nil {
+		return err
+	}
+	deadline := time.Now().Add(time.Duration(timeoutSec) * time.Second)
+	if err := callToolStdio(client, probe, deadline); err != nil {
+		if ve, ok := err.(*VerifyError); ok && ve.Stderr == "" {
+			ve.Stderr = stderr
+		}
+		return err
+	}
+	return nil
+}
+
+// callToolStdio sends tools/call and treats both a JSON-RPC error and an
+// isError result as failure — servers report a dead credential the second way
+// (google-workspace answers with isError + an "ACTION REQUIRED" text block).
+func callToolStdio(c *Stdio, probe AuthProbe, deadline time.Time) error {
+	args := probe.Args
+	if args == nil {
+		args = map[string]any{}
+	}
+	if err := c.Send(map[string]any{
+		"jsonrpc": "2.0", "id": probeRPCID, "method": "tools/call",
+		"params": map[string]any{"name": probe.Tool, "arguments": args},
+	}); err != nil {
+		return &VerifyError{Msg: "tools/call write: " + err.Error()}
+	}
+	response, err := c.Read(probeRPCID, deadline)
+	if err != nil {
+		return &VerifyError{Msg: fmt.Sprintf("tools/call %s: %v", probe.Tool, err)}
+	}
+	if errMsg, ok := response["error"]; ok && errMsg != nil {
+		return &VerifyError{Msg: fmt.Sprintf("tools/call %s error: %v", probe.Tool, errMsg)}
+	}
+	result, _ := response["result"].(map[string]any)
+	if isErr, _ := result["isError"].(bool); isErr {
+		return &VerifyError{Msg: fmt.Sprintf("tools/call %s returned isError: %s", probe.Tool, snippet(toolText(result)))}
+	}
+	return nil
+}
+
+// toolText flattens an MCP content array into one bounded line, which is what
+// carries the real reason on failure (an OAuth consent URL, a 401 body).
+func toolText(result map[string]any) string {
+	parts := make([]string, 0, 4)
+	if list, ok := result["content"].([]any); ok {
+		for _, item := range list {
+			entry, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			if text, ok := entry["text"].(string); ok && text != "" {
+				parts = append(parts, text)
+			}
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// HandshakeStdio performs initialize + notifications/initialized + a
+// cursor-walking tools/list over stdio, bounded by timeoutSec.
+func HandshakeStdio(server Server, timeoutSec int, environ []string) ([]string, string, error) {
+	deadline := time.Now().Add(time.Duration(timeoutSec) * time.Second)
+	client, stderr, err := openStdio(server, environ, deadline)
+	if client == nil {
+		return nil, stderr, err
+	}
+	warn := ""
+	defer func() {
+		client.Close()
+		if warn != "" {
+			client.diagMu.Lock()
+			client.diag = append(client.diag, warn)
+			client.diagMu.Unlock()
+		}
+	}()
+	if err != nil {
+		return nil, stderr, err
 	}
 	tools, err := listToolsStdio(client, deadline)
 	if err != nil {

@@ -50,7 +50,8 @@ usage:
                                            materialise npx/uvx package caches
   gitopsctl mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
                                            handshake MCP servers and certify tools
-                                           (validate = static manifest policy lint, no network)`)
+                                           (validate = static manifest policy lint, no network;
+                                            drift = also runs each server's declared auth_probe)`)
 }
 
 func cmdBoot() {

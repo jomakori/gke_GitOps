@@ -20,6 +20,11 @@ import (
 	"strings"
 )
 
+// probeRPCID is the JSON-RPC id the auth probe uses. Distinct from the
+// handshake's ids so a stale frame from an earlier request can never be read
+// as the probe's answer.
+const probeRPCID = 4242
+
 const ProtocolVersion = "2024-11-05"
 
 // DefaultManifest is where the preflight/drift jobs mount the rendered
@@ -41,6 +46,23 @@ type ToolsConfig struct {
 	Resources *bool    `json:"resources,omitempty"`
 }
 
+// AuthProbe is an optional read-only tool call the drift verifier makes after
+// a successful handshake. A handshake proves the child speaks JSON-RPC and
+// lists its tools; it says nothing about the credential the server will use on
+// the first real call, because most servers authenticate lazily per tool call.
+// A revoked token or a partial OAuth grant therefore passes every handshake
+// while every tool fails (hit live: google-workspace's stored grant covered
+// Drive only, so tools/list reported 122 tools and 33 of the 35 declared ones
+// answered "ACTION REQUIRED: Google Authentication Needed").
+//
+// Probes run in DRIFT mode only. A dead third-party credential must alert
+// within one cron interval, not block an unrelated deploy: a failing preflight
+// consumes the app's retry budget and strands the sync.
+type AuthProbe struct {
+	Tool string         `json:"tool"`
+	Args map[string]any `json:"args,omitempty"`
+}
+
 type Server struct {
 	Command            string            `json:"command,omitempty"`
 	Args               []string          `json:"args,omitempty"`
@@ -53,6 +75,7 @@ type Server struct {
 	MaxLifetimeSeconds int               `json:"max_lifetime_seconds,omitempty"`
 	Lazy               bool              `json:"lazy,omitempty"`
 	Tools              *ToolsConfig      `json:"tools,omitempty"`
+	AuthProbe          *AuthProbe        `json:"auth_probe,omitempty"`
 }
 
 func (s Server) IsEnabled() bool { return s.Enabled == nil || *s.Enabled }

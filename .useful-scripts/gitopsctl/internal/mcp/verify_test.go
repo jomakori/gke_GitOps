@@ -122,3 +122,95 @@ func TestExecuteHangingServerBounded(t *testing.T) {
 		t.Fatalf("hanger should FAIL:\n%s", out)
 	}
 }
+
+// probedServer wraps the fake server with an auth probe on tool_b, optionally
+// making every tools/call answer isError — the shape a dead credential takes.
+func probedServer(t *testing.T, toolError string) *Server {
+	t.Helper()
+	server := fakeServer(t, false)
+	if toolError != "" {
+		server.Env["FAKE_MCP_TOOL_ERROR"] = toolError
+	}
+	server.AuthProbe = &AuthProbe{Tool: "tool_b"}
+	return server
+}
+
+// TestExecuteDriftRunsAuthProbe is the regression test for the finding this
+// probe exists for: a server whose handshake and tool list are perfect while
+// every real call fails on auth (google-workspace's stored OAuth grant covered
+// Drive only, so 33 of 35 declared tools answered "ACTION REQUIRED").
+func TestExecuteDriftRunsAuthProbe(t *testing.T) {
+	healthy := writeManifest(t, map[string]*Server{"fake": probedServer(t, "")})
+	rc := 1
+	out := captureStdout(t, func() { rc = Execute(healthy, "drift", nil) })
+	if rc != 0 {
+		t.Fatalf("drift (healthy probe) rc = %d, want 0\n%s", rc, out)
+	}
+	if out != "" {
+		t.Fatalf("drift must stay quiet when everything matches:\n%s", out)
+	}
+
+	broken := writeManifest(t, map[string]*Server{"fake": probedServer(t, "ACTION REQUIRED: authorize Google Workspace")})
+	out = captureStdout(t, func() { rc = Execute(broken, "drift", nil) })
+	if rc != 1 {
+		t.Fatalf("drift (dead credential) rc = %d, want 1\n%s", rc, out)
+	}
+	if !strings.Contains(out, "auth probe tool_b") || !strings.Contains(out, "ACTION REQUIRED") {
+		t.Fatalf("probe failure must name the probe and surface the server's reason:\n%s", out)
+	}
+}
+
+// TestExecutePreflightSkipsAuthProbe pins the blast radius: a dead third-party
+// credential must alert on the drift cron, not fail a deploy's sync (a failing
+// PostSync hook consumes the app's retry budget and strands it OutOfSync).
+func TestExecutePreflightSkipsAuthProbe(t *testing.T) {
+	manifest := writeManifest(t, map[string]*Server{"fake": probedServer(t, "ACTION REQUIRED")})
+	rc := 1
+	out := captureStdout(t, func() { rc = Execute(manifest, "preflight", nil) })
+	if rc != 0 {
+		t.Fatalf("preflight rc = %d, want 0 (probes are drift-only)\n%s", rc, out)
+	}
+	if strings.Contains(out, "auth probe") {
+		t.Fatalf("preflight must not run probes:\n%s", out)
+	}
+}
+
+// TestExecuteRetriesTransientFailure covers the other half of the noise: kiwi
+// answered 503 once and two uv-linked servers lost their window to a shared
+// install lock, each reporting a healthy server as drifted.
+func TestExecuteRetriesTransientFailure(t *testing.T) {
+	server := fakeServer(t, false)
+	server.Env["FAKE_MCP_FAIL_ONCE_MARKER"] = filepath.Join(t.TempDir(), "failed-once")
+	manifest := writeManifest(t, map[string]*Server{"fake": server})
+
+	rc := 1
+	out := captureStdout(t, func() { rc = Execute(manifest, "preflight", nil) })
+	if rc != 0 {
+		t.Fatalf("rc = %d, want 0 after retry\n%s", rc, out)
+	}
+	if !strings.Contains(out, "RETRY fake") || !strings.Contains(out, "PASS fake 2 tools") {
+		t.Fatalf("expected a RETRY line then a PASS:\n%s", out)
+	}
+}
+
+// TestExecuteUnresolvedPlaceholderFails pins the check that would have saved the
+// doppler outage: a `${VAR}` that resolves nowhere reaches the server as the
+// literal string, and the only symptom was the server's own "Cached token
+// appears invalid" — i.e. it read as a dead credential, not a missing key.
+func TestExecuteUnresolvedPlaceholderFails(t *testing.T) {
+	server := fakeServer(t, false)
+	server.Env["MCP_ABSENT_TOKEN"] = "${MCP_ABSENT_TOKEN}"
+	manifest := writeManifest(t, map[string]*Server{"fake": server})
+
+	rc := 1
+	out := captureStdout(t, func() { rc = Execute(manifest, "preflight", nil) })
+	if rc != 1 {
+		t.Fatalf("rc = %d, want 1\n%s", rc, out)
+	}
+	if !strings.Contains(out, "FAIL fake: unresolved env placeholder(s): MCP_ABSENT_TOKEN") {
+		t.Fatalf("expected a named unresolved placeholder:\n%s", out)
+	}
+	if strings.Contains(out, "PASS fake") {
+		t.Fatalf("a server with an unresolved placeholder must not also report PASS:\n%s", out)
+	}
+}
