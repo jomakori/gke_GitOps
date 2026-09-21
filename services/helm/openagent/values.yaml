@@ -585,9 +585,17 @@ hermes-agent:
         omo:
           settings:
             mcp_enabled: true
-            max_fallback_attempts: 3
-            cooldown_seconds: 30
-            restore_primary_after_cooldown: true
+            # Fallback-model layer, mirroring the old `opencode.runtimeFallback`
+            # block. Per-agent and per-category chains live under `chains:` /
+            # `categories:` below; this governs how a chain is walked when a
+            # model call fails. `enabled: false` fails fast instead of falling
+            # back; `retry_on_errors` is the status set that triggers a walk.
+            runtime_fallback:
+              enabled: true
+              retry_on_errors: [400, 401, 403, 404, 429, 500, 502, 503, 504, 529]
+              max_fallback_attempts: 3
+              cooldown_seconds: 30
+              restore_primary_after_cooldown: true
             chains:
               sisyphus:
                 - litellm/deepseek-v4-flash-direct
