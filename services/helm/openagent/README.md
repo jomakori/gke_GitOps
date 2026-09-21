@@ -639,7 +639,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraEnv[1].valueFrom.secretKeyRef.key | string | `"DISCORD_BOT_CLIENT_ID"` |  |
 | hermes-agent.extraEnv[1].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
 | hermes-agent.extraEnv[2].name | string | `"HERMES_DASHBOARD"` |  |
-| hermes-agent.extraEnv[2].value | string | `"1"` |  |
+| hermes-agent.extraEnv[2].value | string | `"0"` |  |
 | hermes-agent.extraEnv[3].name | string | `"HERMES_DASHBOARD_HOST"` |  |
 | hermes-agent.extraEnv[3].value | string | `"0.0.0.0"` |  |
 | hermes-agent.extraEnv[4].name | string | `"HERMES_DASHBOARD_PORT"` |  |
@@ -722,13 +722,13 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
 | hermes-agent.image.tag | string | `"v2026.9.11"` |  |
 | hermes-agent.probes.readiness.failureThreshold | int | `3` |  |
-| hermes-agent.probes.readiness.httpGet.path | string | `"/"` |  |
-| hermes-agent.probes.readiness.httpGet.port | int | `9119` |  |
+| hermes-agent.probes.readiness.httpGet.path | string | `"/health"` |  |
+| hermes-agent.probes.readiness.httpGet.port | int | `8642` |  |
 | hermes-agent.probes.readiness.periodSeconds | int | `10` |  |
 | hermes-agent.probes.readiness.timeoutSeconds | int | `3` |  |
 | hermes-agent.probes.startup.failureThreshold | int | `120` |  |
-| hermes-agent.probes.startup.httpGet.path | string | `"/"` |  |
-| hermes-agent.probes.startup.httpGet.port | int | `9119` |  |
+| hermes-agent.probes.startup.httpGet.path | string | `"/health"` |  |
+| hermes-agent.probes.startup.httpGet.port | int | `8642` |  |
 | hermes-agent.probes.startup.periodSeconds | int | `10` |  |
 | hermes-agent.probes.startup.timeoutSeconds | int | `3` |  |
 | hermes-agent.resources.limits.cpu | string | `"2"` |  |
