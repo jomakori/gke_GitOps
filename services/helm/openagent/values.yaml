@@ -688,7 +688,7 @@ hermes-agent:
       # Hermes reads these entries from config.yaml; the bootstrap init
       # container re-seeds that file from this chart on every pod start
       # (overwrite: true), so live edits are reverted. Change the manifest
-      # here. Three invariants are enforced by
+      # here. These invariants are enforced by
       # gitopsctl `mcp verify --mode validate` (CI + pre-commit) and proven in
       # cluster by the preflight hook Job + drift CronJob (templates/hooks.yaml):
       #
@@ -707,24 +707,46 @@ hermes-agent:
       #     drops that server's tools until it reconnects, so 30 min idle is
       #     longer than any normal interactive gap and the 6 h cap only bounds
       #     a genuinely unbounded leak.
+      #   * package cache (npx only) — the entry declares its OWN
+      #     env.npm_config_cache at /opt/data/.npm-mcp/<server-name>, literally.
+      #     The client spawns children with a filtered env (PATH/HOME + only
+      #     what the entry declares, never the gateway's NPM_CONFIG_CACHE), so
+      #     npm falls back to a HOME-derived cache: the gateway's HOME is
+      #     /opt/data, i.e. the shared PVC dir every process installs into.
+      #     A server without its own cache lands there and one interrupted
+      #     reify leaves a node_modules that every later start SKIPS
+      #     ("Could not read package.json ... ENOENT") — bitwarden ran that way
+      #     for weeks, invisible, because tools/list still answered.
+      #   * uv toolchain layout (uvx only) — HOME, PATH, UV_CACHE_DIR,
+      #     UV_TOOL_DIR and UV_TOOL_BIN_DIR are declared explicitly. uv derives
+      #     the tool dir from HOME, and the gateway's HOME (/opt/data) differs
+      #     from the verifier Jobs' (/opt/data/home), so an undeclared server is
+      #     certified against a directory the gateway never reads. Declaring
+      #     them makes both contexts identical by construction.
       #
       # Servers marked `enabled: false` are PARKED, not deleted: the pinned
       # package, env mapping and tool surface stay so re-enabling is a
       # one-line change, and the lint fails if a parked server disappears.
       #
-      # npx-launched servers get a PRIVATE npm cache (env.npm_config_cache).
-      # The MCP client runs `npx -y <pkg>`, which installs the package at
-      # every startup. By default that lands in the shared PVC cache
-      # (/opt/data/.npm), which the gateway and dispatched
-      # agents all write to — sometimes as different users (agents run as
-      # root). Concurrent installs corrupt each other, and the fallout is
+      # An entry may declare an `auth_probe` (tool + args): one read-only call
+      # the drift CronJob makes after a green handshake. A handshake certifies
+      # the PROTOCOL, never the credential — servers authenticate lazily per
+      # tool call, so a revoked token or a partial OAuth grant lists every tool
+      # and answers none. google-workspace's stored grant covered Drive only:
+      # 122 tools discovered, 33 of the 35 declared ones reporting "ACTION
+      # REQUIRED", and every gate green. Probes run in drift mode ONLY, so a
+      # dead third-party credential alerts within one interval instead of
+      # failing an unrelated deploy's sync.
+      #
+      # npx-launched servers get their private cache as described above; the
+      # shared PVC cache (/opt/data/.npm) is what the rule exists to keep clear
+      # of. Concurrent installs corrupt each other, and the fallout is
       # invisible at the pod level: `npm error ENOTEMPTY ... rename`,
-      # `Cannot find module .../fastmcp/dist/FastMCP.js` (partial install),
-      # or `sh: 1: mcp-grafana: Permission denied` (a root-owned bin), all
+      # `Cannot find module .../fastmcp/dist/FastMCP.js` (partial install), or
+      # `sh: 1: mcp-grafana: Permission denied` (a root-owned bin), all
       # surfacing only as `Failed to connect to MCP server '<name>'`.
-      # A per-server cache dir keeps installs isolated and re-usable; the
-      # boot pre-warm (files/mcp/prewarm.py, invoked from the hermes-agent
-      # command) materialises them without ever starting a server.
+      # The boot pre-warm (gitopsctl mcp prewarm, invoked from the hermes-agent
+      # command) materialises the private caches without starting a server.
       codegraph:
         lazy: true
         # Local code graph; the server only reads a .codegraph/ index, which
@@ -793,6 +815,7 @@ hermes-agent:
           ARGOCD_API_TOKEN: "${MCP_ARGOCD_TOKEN}"
           ARGOCD_BASE_URL: "${MCP_ARGOCD_URL}"
           npm_config_cache: "/opt/data/.npm-mcp/argocd"
+        auth_probe: {tool: list_applications, args: {limit: 1}}
         tools:
           resources: false
           prompts: false
@@ -825,6 +848,7 @@ hermes-agent:
           GRAFANA_URL: "${MCP_GRAFANA_URL}"
           GRAFANA_SERVICE_ACCOUNT_TOKEN: "${MCP_GRAFANA_TOKEN}"
           npm_config_cache: "/opt/data/.npm-mcp/grafana"
+        auth_probe: {tool: search_dashboards, args: {query: ""}}
         tools:
           resources: false
           prompts: false
@@ -840,6 +864,7 @@ hermes-agent:
         env:
           DOPPLER_TOKEN: "${MCP_DOPPLER_TOKEN}"
           npm_config_cache: "/opt/data/.npm-mcp/doppler"
+        auth_probe: {tool: workplace_get}
         tools:
           resources: false
           prompts: false
@@ -959,6 +984,7 @@ hermes-agent:
           NPM_CONFIG_CACHE: /opt/data/home/.npm
           GOOGLE_OAUTH_CLIENT_ID: "${GOOGLE_OAUTH_CLIENT_ID}"
           GOOGLE_OAUTH_CLIENT_SECRET: "${GOOGLE_OAUTH_CLIENT_SECRET}"
+        auth_probe: {tool: list_calendars, args: {user_google_email: joe3rdwash@gmail.com}}
         tools:
           include: [create_doc, get_doc_content, get_doc_as_markdown, inspect_doc_structure, batch_update_doc, modify_doc_text, find_and_replace_doc, create_table_with_data, debug_table_structure, update_paragraph_style, update_doc_headers_footers, export_doc_to_pdf, list_docs_in_folder, create_drive_file, create_drive_folder, list_drive_items, search_drive_files, get_drive_file_permissions, get_drive_shareable_link, manage_drive_access, import_to_google_doc, update_drive_file, copy_drive_file, get_drive_file_content, create_spreadsheet, read_sheet_values, modify_sheet_values, get_spreadsheet_info, search_gmail_messages, get_gmail_message_content, send_gmail_message, draft_gmail_message, get_events, manage_event, list_calendars]
           resources: false
@@ -995,6 +1021,7 @@ hermes-agent:
           PLANE_WORKSPACE_SLUG: "${PLANE_WORKSPACE_SLUG}"
           PLANE_INTERNAL_BASE_URL: "http://plane-api.plane.svc.cluster.local:8000"
           PLANE_BASE_URL: "https://plane.maklab.net"
+        auth_probe: {tool: project, args: {action: list}}
         tools:
           resources: false
           prompts: false
@@ -1054,6 +1081,8 @@ hermes-agent:
           BW_CLIENTID: "${BW_CLIENTID}"
           BW_CLIENTSECRET: "${BW_CLIENTSECRET}"
           BW_PASSWORD: "${BW_PASSWORD}"
+          npm_config_cache: "/opt/data/.npm-mcp/bitwarden"
+        auth_probe: {tool: status}
         tools:
           resources: false
           prompts: false
