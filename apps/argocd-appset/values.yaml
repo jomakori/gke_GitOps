@@ -131,3 +131,36 @@ apps:
         value: "{{ .Values.storageClass }}"
       - name: targetRevision
         value: "{{ .Values.targetRevision }}"
+
+  # Persistent host for merged work on jomakori/openkite, so a UI change is
+  # viewable without opening a throwaway PR. Reuses the per-PR preview workload
+  # chart with the long-lived `main` tag published by openkite's image workflow,
+  # into the shared preview namespace so it inherits the wildcard Certificate and
+  # the existing Gateway. Unlike a generated pr-<N> Application, nothing prunes
+  # it on merge.
+  openkite-main:
+    enable: true
+    syncWave: "6"
+    helmPath: apps/helm/openkite-preview
+    destNamespace: openkite-preview
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    retryLimit: 5
+    # No `gateways` block: the chart renders its own VirtualService bound to the
+    # shared preview Gateway, so the appset must not add a second one for the
+    # same host. No CreateNamespace either: the namespace is created and owned by
+    # the openkite-preview app chart.
+    parameters:
+      - name: fullnameOverride
+        value: openkite-main
+      - name: image.repository
+        value: ghcr.io/jomakori/openkite
+      - name: image.tag
+        value: main
+      - name: ingress.host
+        value: main.openkite.maklab.net
+      - name: replicaCount
+        value: "1"
