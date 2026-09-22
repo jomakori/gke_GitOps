@@ -571,6 +571,11 @@ hermes-agent:
       api_key: ${LITELLM_MASTER_KEY}
       max_iterations: 30
       reasoning_effort: medium
+      # Concurrent delegated children. The router prompt tells Hermes to cap OMO
+      # fan-out at 8, and the plugin's own graph default (max_parallel: 4) stays
+      # under it; unset, the host default of 10 applies and the real ceiling is
+      # only implied.
+      max_concurrent_children: 8
       # A pinned child (provider + base_url above) never inherits the parent's chain,
       # so declare one here or delegated subagents run with no failover at all.
       fallback_providers:
