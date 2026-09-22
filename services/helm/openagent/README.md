@@ -193,6 +193,12 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.compression.threshold | float | `0.35` |  |
 | hermes-agent.config.delegation.api_key | string | `"${LITELLM_MASTER_KEY}"` |  |
 | hermes-agent.config.delegation.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
+| hermes-agent.config.delegation.fallback_providers[0].model | string | `"deepseek-v4-pro"` |  |
+| hermes-agent.config.delegation.fallback_providers[0].provider | string | `"litellm"` |  |
+| hermes-agent.config.delegation.fallback_providers[1].model | string | `"claude/sonnet-5"` |  |
+| hermes-agent.config.delegation.fallback_providers[1].provider | string | `"litellm"` |  |
+| hermes-agent.config.delegation.fallback_providers[2].model | string | `"bytedance-glm-5.2"` |  |
+| hermes-agent.config.delegation.fallback_providers[2].provider | string | `"litellm"` |  |
 | hermes-agent.config.delegation.max_iterations | int | `30` |  |
 | hermes-agent.config.delegation.max_spawn_depth | int | `3` |  |
 | hermes-agent.config.delegation.model | string | `"minimax-m3"` |  |
