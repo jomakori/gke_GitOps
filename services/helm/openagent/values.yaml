@@ -992,6 +992,15 @@ hermes-agent:
           MISE_CONFIG_FILE: /mise/mise.toml
           MISE_DATA_DIR: /opt/data/mise
           MISE_CACHE_DIR: /opt/data/mise-cache
+          # The tool's default file sandbox is $HOME/.workspace-mcp/attachments,
+          # and this child runs as root while the agent runs as `hermes` — so the
+          # directory is root-owned and every file the agent writes is refused:
+          # import_to_google_doc and the file-based Drive uploads answer "path is
+          # outside permitted directories" for anything the agent can actually
+          # produce. Point the sandbox at a PVC directory both users can write.
+          # Its URL fetcher also refuses localhost and private ranges, so a file
+          # path is the only way in.
+          ALLOWED_FILE_DIRS: /opt/data/tmp
           UV_CACHE_DIR: /opt/data/home/.cache/uv
           UV_TOOL_DIR: /opt/data/home/.local/share/uv/tools
           UV_TOOL_BIN_DIR: /opt/data/home/.local/bin
