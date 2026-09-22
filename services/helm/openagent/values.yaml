@@ -571,6 +571,15 @@ hermes-agent:
       api_key: ${LITELLM_MASTER_KEY}
       max_iterations: 30
       reasoning_effort: medium
+      # A pinned child (provider + base_url above) never inherits the parent's chain,
+      # so declare one here or delegated subagents run with no failover at all.
+      fallback_providers:
+        - provider: litellm
+          model: deepseek-v4-pro
+        - provider: litellm
+          model: claude/sonnet-5
+        - provider: litellm
+          model: bytedance-glm-5.2
       # Workers run unattended: subagent threads carry no interactive approval
       # channel (the delegate path installs a non-interactive callback), so
       # without this Hermes auto-DENIES every dangerous command a subagent runs.
