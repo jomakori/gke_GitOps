@@ -610,7 +610,6 @@ hermes-agent:
       entries:
         omo:
           settings:
-            mcp_enabled: true
             # Fallback-model layer, mirroring the old `opencode.runtimeFallback`
             # block. Per-agent and per-category chains live under `chains:` /
             # `categories:` below; this governs how a chain is walked when a
