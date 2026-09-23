@@ -57,8 +57,19 @@ litellm:
   db:
     deployStandalone: false
     useExisting: true
-    endpoint: "openagent-pg.openagent.svc.cluster.local"
+    # Centralized cluster. `pg-main-primary` is an ExternalName to the read-write
+    # service `pg-main`, which since StackGres connection pooling was enabled
+    # resolves to pgbouncer (pg-main-0:6432) rather than straight to Postgres.
+    # Same endpoint shape Plane uses.
+    endpoint: "pg-main-primary.data.svc.cluster.local"
     database: "litellm"
+    # `?pgbouncer=true` is required by the pooling above, not cosmetic: the pooler
+    # runs in `transaction` mode, so Prisma must stop using server-side prepared
+    # statements — a statement prepared in one pooled session is not valid in the
+    # next one, which fails as `prepared statement "s0" already exists` or
+    # `does not exist` under load. Prisma's documented flag for this is
+    # `pgbouncer=true`. Costs nothing on a direct connection, correct on a pooled one.
+    url: "postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?pgbouncer=true"
     secret:
       name: "openagent-litellm-secrets"
       usernameKey: "OPENAGENT_PG_USER"
