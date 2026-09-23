@@ -7,7 +7,7 @@ A Helm chart for StackGres - a PostgreSQL operator
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://stackgres.io/downloads/stackgres-k8s/stackgres/helm/ | stackgres-operator | 1.18.6 |
+| https://stackgres.io/downloads/stackgres-k8s/stackgres/helm/ | stackgresOperator(stackgres-operator) | 1.18.6 |
 
 ## Under the hood
 
@@ -114,30 +114,29 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.version | string | `"18"` |  |
 | renderClusters | bool | `true` |  |
 | renderOperator | bool | `true` |  |
-| stackgres-operator.adminui.service.exposeHTTP | bool | `false` |  |
-| stackgres-operator.adminui.service.type | string | `"ClusterIP"` |  |
-| stackgres-operator.authentication.createAdminSecret | bool | `false` |  |
-| stackgres-operator.authentication.type | string | `"jwt"` |  |
-| stackgres-operator.cert.autoapprove | bool | `true` |  |
-| stackgres-operator.cert.certDuration | int | `730` |  |
-| stackgres-operator.cert.createForCollector | bool | `true` |  |
-| stackgres-operator.cert.createForOperator | bool | `true` |  |
-| stackgres-operator.cert.createForWebApi | bool | `true` |  |
-| stackgres-operator.cert.regenerateCert | bool | `true` |  |
-| stackgres-operator.cert.regenerateWebCert | bool | `true` |  |
-| stackgres-operator.cert.regenerateWebRsa | bool | `true` |  |
-| stackgres-operator.enabled | bool | `true` |  |
-| stackgres-operator.extensions.cache.enabled | bool | `true` |  |
-| stackgres-operator.extensions.cache.persistentVolume.accessModes[0] | string | `"ReadWriteOnce"` |  |
-| stackgres-operator.extensions.cache.persistentVolume.size | string | `"1Gi"` |  |
-| stackgres-operator.extensions.cache.persistentVolume.storageClass | string | `"local-path"` |  |
-| stackgres-operator.extensions.cache.preloadedExtensions[0] | string | `"x86_64/linux/timescaledb-1\\\\.7\\\\.4-pg12"` |  |
-| stackgres-operator.extensions.repositoryUrls[0] | string | `"https://extensions.stackgres.io/postgres/repository"` |  |
-| stackgres-operator.grafana.autoEmbed | bool | `true` |  |
-| stackgres-operator.grafana.password | string | `nil` |  |
-| stackgres-operator.grafana.schema | string | `"http"` |  |
-| stackgres-operator.grafana.user | string | `nil` |  |
-| stackgres-operator.operator.resources.limits.memory | string | `"1Gi"` |  |
-| stackgres-operator.operator.resources.requests.cpu | string | `"100m"` |  |
-| stackgres-operator.operator.resources.requests.memory | string | `"256Mi"` |  |
-| stackgres-operator.rbac.create | bool | `true` |  |
+| stackgresOperator.adminui.service.exposeHTTP | bool | `false` |  |
+| stackgresOperator.adminui.service.type | string | `"ClusterIP"` |  |
+| stackgresOperator.authentication.createAdminSecret | bool | `false` |  |
+| stackgresOperator.authentication.type | string | `"jwt"` |  |
+| stackgresOperator.cert.autoapprove | bool | `true` |  |
+| stackgresOperator.cert.certDuration | int | `730` |  |
+| stackgresOperator.cert.createForCollector | bool | `true` |  |
+| stackgresOperator.cert.createForOperator | bool | `true` |  |
+| stackgresOperator.cert.createForWebApi | bool | `true` |  |
+| stackgresOperator.cert.regenerateCert | bool | `true` |  |
+| stackgresOperator.cert.regenerateWebCert | bool | `true` |  |
+| stackgresOperator.cert.regenerateWebRsa | bool | `true` |  |
+| stackgresOperator.enabled | bool | `true` |  |
+| stackgresOperator.extensions.cache.enabled | bool | `true` |  |
+| stackgresOperator.extensions.cache.persistentVolume.size | string | `"1Gi"` |  |
+| stackgresOperator.extensions.cache.persistentVolume.storageClass | string | `"local-path"` |  |
+| stackgresOperator.extensions.cache.preloadedExtensions[0] | string | `"x86_64/linux/timescaledb-1\\.7\\.4-pg12"` |  |
+| stackgresOperator.extensions.repositoryUrls[0] | string | `"https://extensions.stackgres.io/postgres/repository"` |  |
+| stackgresOperator.grafana.autoEmbed | bool | `true` |  |
+| stackgresOperator.grafana.password | string | `nil` |  |
+| stackgresOperator.grafana.schema | string | `"http"` |  |
+| stackgresOperator.grafana.user | string | `nil` |  |
+| stackgresOperator.operator.resources.limits.memory | string | `"1Gi"` |  |
+| stackgresOperator.operator.resources.requests.cpu | string | `"100m"` |  |
+| stackgresOperator.operator.resources.requests.memory | string | `"256Mi"` |  |
+| stackgresOperator.rbac.create | bool | `true` |  |
