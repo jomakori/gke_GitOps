@@ -8,8 +8,22 @@ renderClusters: true
 
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
 #
-# Subchart values MUST nest under the dependency NAME `stackgres-operator`
-# (Chart.yaml declares no alias, so a `stackgresOperator:` key never reaches it).
+# The upstream subchart is declared with `alias: stackgresOperator` in Chart.yaml,
+# so its values nest under this camelCase name and `condition:` reads the very same
+# key. Before that alias existed the entire block below was silently dead: a
+# top-level values key only reaches a subchart when it matches the dependency's
+# `name` or `alias`, and neither matched this spelling. Helm accepted it,
+# `helm lint` / `helm template` / `kubeconform` all passed, ArgoCD reported Synced,
+# and the only observable symptom was the live SGConfig disagreeing with git.
+#
+# Cost of that dead config, verified against the live SGConfig CR (the only place
+# it was observable):
+#   authentication.createAdminSecret  wanted false → was effectively true
+#   extensions.cache.enabled          wanted true  → was effectively false
+#   grafana.autoEmbed                 wanted true  → was effectively false
+# `extensions.cache.enabled: true` is also what creates the operator's extensions
+# cache StatefulSet and its 1Gi local-path PVC, so this block gates that workload.
+#
 # Every pod here is BestEffort without these, and the operator was OOMKilled
 # (158 restarts) with its webhook fail-closed — which blocks ArgoCD from syncing
 # ANY StackGres resource cluster-wide.
@@ -17,7 +31,8 @@ renderClusters: true
 # Deployments are created at runtime by the operator from the SGConfig CR, so
 # their resources are not settable here (tracked separately).
 # CPU limits deliberately omitted (CFS throttling); the memory limit is the real ceiling.
-stackgres-operator:
+stackgresOperator:
+  enabled: true
   operator:
     resources:
       requests:
@@ -25,8 +40,6 @@ stackgres-operator:
         memory: 256Mi
       limits:
         memory: 1Gi
-stackgresOperator:
-  enabled: true
   # opt for virtualService
   adminui:
     service:
@@ -73,18 +86,15 @@ stackgresOperator:
     cache:
       enabled: true
       preloadedExtensions:
-        - x86_64/linux/timescaledb-1\.7\.4-pg12
+        - x86_64/linux/timescaledb-1\\.7\\.4-pg12
       persistentVolume:
         size: 1Gi
         accessModes:
         - ReadWriteOnce
         storageClass: local-path
-
-  # ┌─────────────────────────────────────────────────────────────────────────────┐
-  # │   Backup Storage Configuration                                             │
-  # └─────────────────────────────────────────────────────────────────────────────┘
-  backupStorage:
-    enabled: false
+# NOTE: no `backupStorage` key — the upstream stackgres-operator chart has no such
+# value, so it was inert under any nesting. Per-cluster SGObjectStorage is the
+# real backup configuration (see postgres.clusters.*.backups below).
 
 # StackGres clusters owned by this chart. Each entry = one SGCluster +
 # SGPostgresConfig + SGPoolingConfig + optional SGObjectStorage/backups.
