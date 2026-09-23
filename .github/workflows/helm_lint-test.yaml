@@ -179,6 +179,27 @@ jobs:
         run: |
           .useful-scripts/check_values_reachability.py
 
+      - name: Workload policy (resources / probes / PDB) — ADVISORY
+        # What no other gate here can see: a container with no requests/limits, no
+        # probes, or a multi-pod workload with no PodDisruptionBudget renders
+        # byte-perfect, passes helm lint, kubeconform and every schema check, and
+        # still cannot be scheduled sensibly or drained safely. It is ADVISORY on
+        # purpose — the repo has ~75 such gaps today and a gate that fails 75 times
+        # on day one gets deleted rather than fixed. Add `--strict` to the line below
+        # once the count reaches zero; the script supports both modes so that switch
+        # is one word.
+        run: |
+          set -euo pipefail
+          outdir=$(mktemp -d)
+          charts=$(find services/helm -maxdepth 2 -name Chart.yaml -printf '%h\n' | sort)
+          for chart in $charts; do
+            helm dependency update "$chart" >/dev/null 2>&1 || true
+            name=$(basename "$chart")
+            helm template "$name" "$chart" --skip-schema-validation --validate=false \
+              > "$outdir/$name.yaml" 2>/dev/null || echo "::warning::render failed for $chart"
+          done
+          .useful-scripts/check_workload_policy.py "$outdir"
+
       - name: Run Lint
         env:
           chart_input: ${{ inputs.chart }}
