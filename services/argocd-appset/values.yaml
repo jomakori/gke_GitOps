@@ -229,8 +229,11 @@ services:
       - ApplyOutOfSyncOnly=true
       - RespectIgnoreDifferences=true
       - ServerSideApply=true
-    retryLimit: 2
-    retryMaxDuration: 3m
+    # Raised from 2/3m for the same reason as postgresClusters below: an operator
+    # rollout makes the sgcluster/sgscript admission webhooks unavailable, so a sync
+    # started during the rollout burns its budget and never self-recovers.
+    retryLimit: 5
+    retryMaxDuration: 5m
     skipCrds: true
     ignoreDifferences:
       - group: apiextensions.k8s.io
@@ -265,14 +268,31 @@ services:
         value: "false"
       - name: renderClusters
         value: "true"
+      # Disables the upstream operator subchart for this clusters-only Application.
+      # The key must stay in step with services/helm/postgres-operator/Chart.yaml:
+      # `condition:` and this parameter both read the dependency alias
+      # `stackgresOperator`. Renaming one without the other silently re-enables the
+      # subchart here, and this Application would then render the operator into the
+      # same namespace as the postgres-operator Application (two apps, one
+      # Deployment). The alias is also what makes the chart's `stackgresOperator:`
+      # values block reach the subchart at all.
       - name: stackgresOperator.enabled
         value: "false"
     syncOptions:
       - ApplyOutOfSyncOnly=true
       - RespectIgnoreDifferences=true
       - ServerSideApply=true
-    retryLimit: 2
-    retryMaxDuration: 3m
+    # selfHeal made explicit (the helper defaulted it true implicitly) so the
+    # drift-correction behaviour of the database ApplicationSet is visible here.
+    selfHeal: true
+    # retryLimit/retryMaxDuration raised from 2/3m: this app owns both databases,
+    # and its dependencies are the most outage-coupled in the repo (every SGCluster
+    # write needs the operator's mutating webhook, which is unavailable for the
+    # whole duration of an operator rollout). At 2/3m a sync attempted in that
+    # window exhausts its budget and then waits for a new revision - exactly when
+    # nobody is pushing commits. Same reasoning (and same values) as `openagent`.
+    retryLimit: 5
+    retryMaxDuration: 5m
     ignoreDifferences:
       - group: external-secrets.io
         kind: ExternalSecret

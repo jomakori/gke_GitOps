@@ -40,6 +40,13 @@ on:
       - opened
       - reopened
       - synchronize
+  push:
+    # Post-merge guard. Without this the workflow only ever ran for PRs whose diff
+    # touched a chart, so a change that merged (or a chart whose render only breaks
+    # against the live cluster) was never re-rendered on main. Pushes to main lint
+    # and render every chart (see the Discover step's condition below).
+    branches:
+      - main
 
 jobs:
   lint-test:
@@ -149,11 +156,28 @@ jobs:
 
       - name: Discover all charts
         id: discover
-        if: github.event_name == 'workflow_dispatch' && inputs.chart == ''
+        # PRs use the changed-files list; a push to main and a manual dispatch with
+        # no `chart` input both lint/render every chart.
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.chart == '')
         run: |
           # Manual dispatch with no `chart` input — lint all charts.
           files=$(find services/helm -maxdepth 2 -name Chart.yaml -printf '%h ')
           echo "value=${files}" >> "$GITHUB_OUTPUT"
+
+      - name: Check chart values reachability (no silently dead subchart config)
+        # Runs on every PR, every push to main and every dispatch: it is a repo-wide
+        # static check (~1s), and its whole point is to catch values that LOOK wired
+        # but never arrive. The failure it was written for: a chart nesting ~65 lines
+        # under `stackgresOperator:` while its dependency is named
+        # `stackgres-operator` with no alias, so `authentication.createAdminSecret`,
+        # `extensions.cache.enabled` and `grafana.autoEmbed` silently never applied.
+        # Rendered output, helm lint, kubeconform and the live argo sync all stayed
+        # green; only a diff of the live object against upstream defaults showed it.
+        # PR-only execution would miss exactly this kind of change when it lands.
+        # Dependency-free by design (no PyYAML): a gate that needs its own bootstrap
+        # tends to get skipped rather than fixed.
+        run: |
+          .useful-scripts/check_values_reachability.py
 
       - name: Run Lint
         env:
