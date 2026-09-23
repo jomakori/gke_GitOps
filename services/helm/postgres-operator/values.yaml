@@ -7,6 +7,24 @@ renderOperator: true
 renderClusters: true
 
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
+#
+# Subchart values MUST nest under the dependency NAME `stackgres-operator`
+# (Chart.yaml declares no alias, so a `stackgresOperator:` key never reaches it).
+# Every pod here is BestEffort without these, and the operator was OOMKilled
+# (158 restarts) with its webhook fail-closed — which blocks ArgoCD from syncing
+# ANY StackGres resource cluster-wide.
+# NOTE: the chart renders ONLY the operator Deployment; the restapi/adminui
+# Deployments are created at runtime by the operator from the SGConfig CR, so
+# their resources are not settable here (tracked separately).
+# CPU limits deliberately omitted (CFS throttling); the memory limit is the real ceiling.
+stackgres-operator:
+  operator:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
 stackgresOperator:
   enabled: true
   # opt for virtualService
