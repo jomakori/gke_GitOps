@@ -119,6 +119,7 @@ postgres:
       instances: 1
       storage: 15Gi
       version: "18"
+      profile: "development"
       # No `profile:` key here — it would be dead config. `spec.profile` is not a
       # field in the SGCluster schema; the API accepted it (spec preserves unknown
       # fields) and the operator ignored it, so the cluster silently ran the
@@ -189,6 +190,7 @@ postgres:
       instances: 1
       storage: 5Gi
       version: "18"
+      profile: "development"
       disableMetricsExporter: true
       disableConnectionPooling: true
       configName: openagent-pg-config

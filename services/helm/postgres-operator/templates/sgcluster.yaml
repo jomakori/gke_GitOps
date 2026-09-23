@@ -20,13 +20,14 @@ spec:
   instances: {{ $c.instances }}
   postgres:
     version: {{ $c.version | quote }}
-  # No `profile:`/`sgInstanceProfile:` here. `spec.profile` is not an SGCluster
-  # field: the API stored it (spec preserves unknown fields) and the operator ignored
-  # it, so the cluster silently ran the operator's own `<cluster>-default` profile.
-  # The real field is `spec.sgInstanceProfile`, which must name an SGInstanceProfile
-  # CR — none exists, because the operator creates `<cluster>-default` itself, so
-  # inventing a name here would break the cluster. The appset still ignores
-  # `/spec/sgInstanceProfile`; per-container resources below are what applies today.
+  # `profile` IS a real SGCluster field and it DOES apply — verified against the live CRD,
+  # after an earlier version of this change wrongly called it dead config. Default
+  # `production`; this cluster runs `development`, which is why the live pods show
+  # `resources: {}`: that profile unsets the resource requirements. Removing the value
+  # would let ArgoCD prune the field (it is not in ignoreDifferences), flipping resource
+  # and anti-affinity defaults, and the CRD itself warns that changing it "may require a
+  # restart" — on the primary database serving Plane and LiteLLM. Passed through as-is.
+  profile: {{ $c.profile | quote }}
   pods:
     persistentVolume:
       size: {{ $c.storage }}

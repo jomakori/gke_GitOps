@@ -325,8 +325,9 @@ services:
           - /spec/postgres/ssl
           - /spec/postgresServices
           - /spec/replication
-          # Stays ignored: no SGInstanceProfile CR exists to point at (the operator
-          # creates `<cluster>-default` itself), so there is no correct value to apply.
+          # Stays ignored: `sgInstanceProfile` must name an SGInstanceProfile CR and there
+          # is none in git to point at (the operator creates `<cluster>-default` itself).
+          # Not to be confused with `profile`, which DOES apply — see the chart.
           - /spec/sgInstanceProfile
           # Stays ignored, and it is vestigial either way: the SGCluster CRD in
           # StackGres 1.18 has NO `spec.users` field (verified against the live CRD
