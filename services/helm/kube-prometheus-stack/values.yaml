@@ -44,6 +44,20 @@ kube-prometheus-stack:
     service:
       port: 15017
     prometheusSpec:
+      # resources, at last: with none this pod is BestEffort — the kernel's first choice
+      # on a contended node — measured at 987 restarts with `resources: {}`, replaying
+      # its WAL and being OOMKilled (exit 137) every ~13 minutes. Requests stop it being
+      # the designated victim; the memory limit turns a runaway TSDB into one restarted
+      # pod instead of a dead node.
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1Gi
+        limits:
+          memory: 3Gi
+      # Bound the TSDB as well: 10d of time retention with no size cap let head and
+      # compaction grow unbounded on a 30Gi volume.
+      retentionSize: 24GB
       # Prometheus StorageSpec for persistent data on AWS EBS
       # ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/storage.md
       storageSpec:
@@ -82,6 +96,14 @@ kube-prometheus-stack:
   # │   Grafana Configuration                                                     │
   # └─────────────────────────────────────────────────────────────────────────────┘
   grafana:
+    # Same failure as Prometheus, smaller numbers: 184 restarts on grafana plus 89/78 on
+    # its two sidecars, all BestEffort with `resources: {}`.
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
     admin:
       existingSecret: "grafana-admin-credentials"
       userKey: "ADMIN_USER"

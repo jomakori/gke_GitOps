@@ -49,32 +49,6 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | dopplerConfig | string | `"svc_postgres_operator"` |  |
-| postgres.clusters.openagent-pg.backups.bucket | string | `"stackgres-pg-main"` |  |
-| postgres.clusters.openagent-pg.backups.createStorageAccountSecret | bool | `true` |  |
-| postgres.clusters.openagent-pg.backups.credentialsSecret | string | `"pg-secrets"` |  |
-| postgres.clusters.openagent-pg.backups.credentialsSecretManagedByOperator | bool | `true` |  |
-| postgres.clusters.openagent-pg.backups.cronSchedule | string | `"0 2 */2 * *"` |  |
-| postgres.clusters.openagent-pg.backups.enabled | bool | `true` |  |
-| postgres.clusters.openagent-pg.backups.endpoint | string | `"https://f8caac5c12d315d3690fd6df74cacdb9.r2.cloudflarestorage.com"` |  |
-| postgres.clusters.openagent-pg.backups.region | string | `"auto"` |  |
-| postgres.clusters.openagent-pg.backups.retention | int | `4` |  |
-| postgres.clusters.openagent-pg.configName | string | `"openagent-pg-config"` |  |
-| postgres.clusters.openagent-pg.disableConnectionPooling | bool | `true` |  |
-| postgres.clusters.openagent-pg.disableMetricsExporter | bool | `true` |  |
-| postgres.clusters.openagent-pg.instances | int | `1` |  |
-| postgres.clusters.openagent-pg.managedSqlScript | string | `"openagent-pg-init"` |  |
-| postgres.clusters.openagent-pg.namespace | string | `"openagent"` |  |
-| postgres.clusters.openagent-pg.poolingConfigName | string | `"openagent-pg-pooling"` |  |
-| postgres.clusters.openagent-pg.resources.cluster-controller.cpu | string | `"200m"` |  |
-| postgres.clusters.openagent-pg.resources.cluster-controller.memory | string | `"384Mi"` |  |
-| postgres.clusters.openagent-pg.resources.patroni.cpu | string | `"500m"` |  |
-| postgres.clusters.openagent-pg.resources.patroni.memory | string | `"1Gi"` |  |
-| postgres.clusters.openagent-pg.resources.postgres-util.cpu | string | `"100m"` |  |
-| postgres.clusters.openagent-pg.resources.postgres-util.memory | string | `"128Mi"` |  |
-| postgres.clusters.openagent-pg.storage | string | `"5Gi"` |  |
-| postgres.clusters.openagent-pg.storageClass | string | `"local-path"` |  |
-| postgres.clusters.openagent-pg.syncWave | string | `"-1"` |  |
-| postgres.clusters.openagent-pg.version | string | `"18"` |  |
 | postgres.clusters.pg-main.backups.bucket | string | `"stackgres-pg-main"` |  |
 | postgres.clusters.pg-main.backups.createStorageAccountSecret | bool | `false` |  |
 | postgres.clusters.pg-main.backups.credentialsSecret | string | `"pg-secrets"` |  |
@@ -91,6 +65,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.managedSqlScript | string | `"plane-pg-init"` |  |
 | postgres.clusters.pg-main.namespace | string | `"data"` |  |
 | postgres.clusters.pg-main.poolingConfigName | string | `"pg-main-pooling"` |  |
+| postgres.clusters.pg-main.profile | string | `"development"` |  |
 | postgres.clusters.pg-main.resources.cluster-controller.cpu | string | `"200m"` |  |
 | postgres.clusters.pg-main.resources.cluster-controller.memory | string | `"384Mi"` |  |
 | postgres.clusters.pg-main.resources.patroni.cpu | string | `"1000m"` |  |
