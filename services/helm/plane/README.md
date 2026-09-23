@@ -102,12 +102,16 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | minio.affinity | object | `{}` |  |
 | minio.annotations | object | `{}` |  |
 | minio.assign_cluster_ip | bool | `false` |  |
+| minio.cpuLimit | string | `"1000m"` |  |
+| minio.cpuRequest | string | `"100m"` |  |
 | minio.env.minio_endpoint_ssl | bool | `false` |  |
 | minio.image | string | `"minio/minio:latest"` |  |
 | minio.image_mc | string | `"minio/mc:latest"` |  |
 | minio.init_image | string | `"busybox"` |  |
 | minio.labels | object | `{}` |  |
 | minio.local_setup | bool | `true` |  |
+| minio.memoryLimit | string | `"1Gi"` |  |
+| minio.memoryRequest | string | `"256Mi"` |  |
 | minio.nodeSelector | object | `{}` |  |
 | minio.pullPolicy | string | `"IfNotPresent"` |  |
 | minio.root_password | string | `"password"` |  |
@@ -131,6 +135,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | rabbitmq.affinity | object | `{}` |  |
 | rabbitmq.annotations | object | `{}` |  |
 | rabbitmq.assign_cluster_ip | bool | `false` |  |
+| rabbitmq.cpuLimit | string | `"1000m"` |  |
+| rabbitmq.cpuRequest | string | `"200m"` |  |
 | rabbitmq.default_password | string | `"plane"` |  |
 | rabbitmq.default_user | string | `"plane"` |  |
 | rabbitmq.external_rabbitmq_url | string | `""` |  |
@@ -138,6 +144,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | rabbitmq.labels | object | `{}` |  |
 | rabbitmq.local_setup | bool | `true` |  |
 | rabbitmq.managementPort | int | `15672` |  |
+| rabbitmq.memoryLimit | string | `"2Gi"` |  |
+| rabbitmq.memoryRequest | string | `"512Mi"` |  |
 | rabbitmq.nodeSelector | object | `{}` |  |
 | rabbitmq.pullPolicy | string | `"IfNotPresent"` |  |
 | rabbitmq.servicePort | int | `5672` |  |

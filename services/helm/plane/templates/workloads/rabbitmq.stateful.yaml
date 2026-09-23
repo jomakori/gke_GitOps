@@ -48,6 +48,13 @@ spec:
         name: {{ .Release.Name }}-rabbitmq
         stdin: true
         tty: true
+        resources:
+          requests:
+            memory: {{ .Values.rabbitmq.memoryRequest | default "512Mi" | quote }}
+            cpu: {{ .Values.rabbitmq.cpuRequest | default "200m" | quote }}
+          limits:
+            memory: {{ .Values.rabbitmq.memoryLimit | default "2Gi" | quote }}
+            cpu: {{ .Values.rabbitmq.cpuLimit | default "1000m" | quote }}
         envFrom:
           - secretRef:
               name: {{ if not (empty .Values.external_secrets.rabbitmq_existingSecret) }}{{ .Values.external_secrets.rabbitmq_existingSecret }}{{ else }}{{ .Release.Name }}-rabbitmq-secrets{{ end }}
