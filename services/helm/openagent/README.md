@@ -755,10 +755,11 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.autoscaling.targetMemoryUtilizationPercentage | int | `70` |  |
 | litellm.db.database | string | `"litellm"` |  |
 | litellm.db.deployStandalone | bool | `false` |  |
-| litellm.db.endpoint | string | `"openagent-pg.openagent.svc.cluster.local"` |  |
+| litellm.db.endpoint | string | `"pg-main-primary.data.svc.cluster.local"` |  |
 | litellm.db.secret.name | string | `"openagent-litellm-secrets"` |  |
 | litellm.db.secret.passwordKey | string | `"OPENAGENT_PG_PASSWORD"` |  |
 | litellm.db.secret.usernameKey | string | `"OPENAGENT_PG_USER"` |  |
+| litellm.db.url | string | `"postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?pgbouncer=true"` |  |
 | litellm.db.useExisting | bool | `true` |  |
 | litellm.enabled | bool | `true` |  |
 | litellm.environmentSecrets[0] | string | `"openagent-secrets"` |  |
