@@ -20,6 +20,13 @@ spec:
   instances: {{ $c.instances }}
   postgres:
     version: {{ $c.version | quote }}
+  # `profile` IS a real SGCluster field and it DOES apply — verified against the live CRD,
+  # after an earlier version of this change wrongly called it dead config. Default
+  # `production`; this cluster runs `development`, which is why the live pods show
+  # `resources: {}`: that profile unsets the resource requirements. Removing the value
+  # would let ArgoCD prune the field (it is not in ignoreDifferences), flipping resource
+  # and anti-affinity defaults, and the CRD itself warns that changing it "may require a
+  # restart" — on the primary database serving Plane and LiteLLM. Passed through as-is.
   profile: {{ $c.profile | quote }}
   pods:
     persistentVolume:
@@ -56,6 +63,13 @@ spec:
     scripts:
       - id: 0
         sgScript: {{ $c.managedSqlScript }}
+      # The operator's OWN script for this cluster (StackGres auto-creates
+      # `<cluster>-default`, ownerReference = the cluster). It carries the prometheus
+      # exporter init and StackGres' password-update step. Referenced explicitly
+      # because the appset no longer ignores `/spec/managedSql`: a one-entry list
+      # would have silently dropped it, stopping password maintenance.
+      - id: 1
+        sgScript: {{ $name }}-default
   {{- end }}
 ---
 {{- end }}
