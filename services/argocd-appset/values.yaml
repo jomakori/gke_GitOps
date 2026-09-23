@@ -325,9 +325,24 @@ services:
           - /spec/postgres/ssl
           - /spec/postgresServices
           - /spec/replication
+          # Stays ignored: no SGInstanceProfile CR exists to point at (the operator
+          # creates `<cluster>-default` itself), so there is no correct value to apply.
           - /spec/sgInstanceProfile
+          # Stays ignored, and it is vestigial either way: the SGCluster CRD in
+          # StackGres 1.18 has NO `spec.users` field (verified against the live CRD
+          # schema), which is why role provisioning goes through the managedSql
+          # SGScript below instead. Kept only so the list still reads as "we thought
+          # about users".
           - /spec/users
-          - /spec/managedSql
+          # NOT ignored any more. This is the one path that actually provisions the
+          # database roles: the chart renders an SGScript (from its `users:` block —
+          # passwordKey/initSqlKey) and the cluster has to reference it. While this was
+          # ignored, the live cluster kept referencing scripts from a since-deleted
+          # Application while the chart's own SGScript sat unreferenced, so a role
+          # declared in git was never created. The chart now also references the
+          # operator's auto-created `<cluster>-default` script, because un-ignoring
+          # alone would have dropped that reference (it carries the exporter init and
+          # StackGres' own password-update step, which the chart does not model).
         jqPathExpressions:
           - .spec.configurations.backups[].reconciliationTimeout
       - group: stackgres.io
@@ -351,9 +366,10 @@ services:
           - /spec/postgres/ssl
           - /spec/postgresServices
           - /spec/replication
+          # See the pg-main entry above: `/spec/users` is a non-existent CRD field and
+          # `/spec/managedSql` is now managed (this cluster is retired by the next PR).
           - /spec/sgInstanceProfile
           - /spec/users
-          - /spec/managedSql
         jqPathExpressions:
           - .spec.configurations.backups[].reconciliationTimeout
 

@@ -119,7 +119,14 @@ postgres:
       instances: 1
       storage: 15Gi
       version: "18"
-      profile: "development"
+      # No `profile:` key here — it would be dead config. `spec.profile` is not a
+      # field in the SGCluster schema; the API accepted it (spec preserves unknown
+      # fields) and the operator ignored it, so the cluster silently ran the
+      # operator's own `pg-main-default` profile. The correct field is
+      # `spec.sgInstanceProfile`, and it is only worth setting once an
+      # SGInstanceProfile CR exists to point at — none does, which is why the appset
+      # still ignores that path. Per-container resources below are the mechanism that
+      # actually applies here.
       disableMetricsExporter: true
       # Connection pooling ENABLED 2026-09-23: StackGres runs pgbouncer in front of
       # the primary, so consumers get multiplexed connections. SGPoolingConfig
@@ -182,7 +189,6 @@ postgres:
       instances: 1
       storage: 5Gi
       version: "18"
-      profile: "development"
       disableMetricsExporter: true
       disableConnectionPooling: true
       configName: openagent-pg-config

@@ -20,7 +20,13 @@ spec:
   instances: {{ $c.instances }}
   postgres:
     version: {{ $c.version | quote }}
-  profile: {{ $c.profile | quote }}
+  # No `profile:`/`sgInstanceProfile:` here. `spec.profile` is not an SGCluster
+  # field: the API stored it (spec preserves unknown fields) and the operator ignored
+  # it, so the cluster silently ran the operator's own `<cluster>-default` profile.
+  # The real field is `spec.sgInstanceProfile`, which must name an SGInstanceProfile
+  # CR — none exists, because the operator creates `<cluster>-default` itself, so
+  # inventing a name here would break the cluster. The appset still ignores
+  # `/spec/sgInstanceProfile`; per-container resources below are what applies today.
   pods:
     persistentVolume:
       size: {{ $c.storage }}
@@ -56,6 +62,13 @@ spec:
     scripts:
       - id: 0
         sgScript: {{ $c.managedSqlScript }}
+      # The operator's OWN script for this cluster (StackGres auto-creates
+      # `<cluster>-default`, ownerReference = the cluster). It carries the prometheus
+      # exporter init and StackGres' password-update step. Referenced explicitly
+      # because the appset no longer ignores `/spec/managedSql`: a one-entry list
+      # would have silently dropped it, stopping password maintenance.
+      - id: 1
+        sgScript: {{ $name }}-default
   {{- end }}
 ---
 {{- end }}

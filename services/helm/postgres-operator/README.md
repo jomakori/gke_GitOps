@@ -65,7 +65,6 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.openagent-pg.managedSqlScript | string | `"openagent-pg-init"` |  |
 | postgres.clusters.openagent-pg.namespace | string | `"openagent"` |  |
 | postgres.clusters.openagent-pg.poolingConfigName | string | `"openagent-pg-pooling"` |  |
-| postgres.clusters.openagent-pg.profile | string | `"development"` |  |
 | postgres.clusters.openagent-pg.resources.cluster-controller.cpu | string | `"200m"` |  |
 | postgres.clusters.openagent-pg.resources.cluster-controller.memory | string | `"384Mi"` |  |
 | postgres.clusters.openagent-pg.resources.patroni.cpu | string | `"500m"` |  |
@@ -92,7 +91,6 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.managedSqlScript | string | `"plane-pg-init"` |  |
 | postgres.clusters.pg-main.namespace | string | `"data"` |  |
 | postgres.clusters.pg-main.poolingConfigName | string | `"pg-main-pooling"` |  |
-| postgres.clusters.pg-main.profile | string | `"development"` |  |
 | postgres.clusters.pg-main.resources.cluster-controller.cpu | string | `"200m"` |  |
 | postgres.clusters.pg-main.resources.cluster-controller.memory | string | `"384Mi"` |  |
 | postgres.clusters.pg-main.resources.patroni.cpu | string | `"1000m"` |  |
