@@ -1382,14 +1382,10 @@ claude-proxy:
   enabled: true
 
 # ── Shared DB ───────────────────────────────────────────
-# DB/role creation (SGScript openagent-pg-init) lives in this chart.
-# The SGCluster openagent-pg + its SGPostgresConfig/SGPoolingConfig are
-# deployed by services/helm/postgres-operator (values.postgres.clusters).
-# The cluster STAYS in this namespace — litellm's endpoint is unchanged.
-postgres:
-  enabled: true
-  clusterName: "openagent-pg"
-  userName: "openagent"
+# The `openagent-pg` cluster is gone; LiteLLM writes to the centralised `pg-main`
+# cluster (ns data). Its role (`openagent`) and bootstrap SQL are declared in
+# services/helm/postgres-operator, as a `users:` shorthand entry that renders into the
+# SGScript the cluster now references — that chart owns DB provisioning, this one does not.
 
 # ── Dashboard (VirtualService) ─────────────────────────────────────
 dashboard:

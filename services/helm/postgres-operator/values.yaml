@@ -184,50 +184,11 @@ postgres:
         credentialsSecret: pg-secrets          # in ns data, rendered by this chart (dataFrom find-all)
         credentialsSecretManagedByOperator: false
         createStorageAccountSecret: false
-    openagent-pg:
-      namespace: openagent
-      storageClass: local-path
-      instances: 1
-      storage: 5Gi
-      version: "18"
-      profile: "development"
-      disableMetricsExporter: true
-      disableConnectionPooling: true
-      configName: openagent-pg-config
-      poolingConfigName: openagent-pg-pooling
-      # Resource discipline: profile values are the pod total; without explicit
-      # per-container resources StackGres leaves every container unset (BestEffort).
-      resources:
-        cluster-controller:
-          cpu: "200m"
-          memory: 384Mi
-        patroni:
-          cpu: "500m"
-          memory: 1Gi
-        postgres-util:
-          cpu: "100m"
-          memory: 128Mi
-      managedSqlScript: openagent-pg-init     # rendered by openagent chart (creds owner; incl. role creation)
-      syncWave: "-1"
-      backups:
-        enabled: true
-        # FAILURE MODE — seen 2026-09-23, and it is silent: a backup run takes the
-        # `stackgres.io/lockPod` annotation on the SGCluster. If that run's pod is
-        # garbage-collected before the ~4h lock timeout expires, the lock outlives its
-        # owner, every subsequent scheduled run fails to acquire it, and the chain
-        # stops. Nothing watches SGBackup status, so the only symptom is the newest
-        # restore point quietly ageing (pg-main sat at 2026-09-21 for two days).
-        # Recovery: let the timeout expire, or remove the three
-        # `stackgres.io/lockPod` / `lockServiceAccount` / `lockTimeout` annotations
-        # from the SGCluster, then re-run — a manual SGBackup CR completes in ~2 min.
-        # Verified after clearing: 46.7 MB compressed / 217 MB uncompressed, and the
-        # scheduled chain resumed. Worth an alert on `sgbackup.status.process.status
-        # == Failed` (there is none today).
-        cronSchedule: "0 2 */2 * *"           # EVERY 2 DAYS @02:00 (user requirement)
-        retention: 4
-        bucket: stackgres-pg-main          # shared bucket (only one exists; StackGres keys are cluster-prefixed)
-        endpoint: https://f8caac5c12d315d3690fd6df74cacdb9.r2.cloudflarestorage.com
-        region: auto
-        credentialsSecret: pg-secrets         # in ns openagent, rendered by this chart (below)
-        credentialsSecretManagedByOperator: true
-        createStorageAccountSecret: true
+    # `openagent-pg` (ns openagent) is DELETED. There is one cluster: `pg-main`.
+    # LiteLLM — the only consumer — was migrated onto pg-main through the pooler
+    # (drop+restore under a write-free window, verified 73/73 tables and 46,062 rows
+    # identical on both sides, then real spend rows observed landing on the new
+    # cluster). Plane was already there, so nothing pointed at the retired cluster.
+    # Its R2 backups are deliberately LEFT IN PLACE: they are the last copy of the
+    # pre-migration state, and deleting a backup of data we just moved is the one
+    # irreversible act here that buys nothing.
