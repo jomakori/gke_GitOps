@@ -86,6 +86,18 @@ postgres:
       disableConnectionPooling: true
       configName: pg-main-config
       poolingConfigName: pg-main-pooling
+      # Resource discipline: profile values are the pod total; without explicit
+      # per-container resources StackGres leaves every container unset (BestEffort).
+      resources:
+        cluster-controller:
+          cpu: "200m"
+          memory: 384Mi
+        patroni:
+          cpu: "1000m"
+          memory: 2Gi
+        postgres-util:
+          cpu: "100m"
+          memory: 128Mi
       managedSqlScript: plane-pg-init    # SGScript rendered by this chart from users below
       users:
         - name: plane
@@ -114,6 +126,18 @@ postgres:
       disableConnectionPooling: true
       configName: openagent-pg-config
       poolingConfigName: openagent-pg-pooling
+      # Resource discipline: profile values are the pod total; without explicit
+      # per-container resources StackGres leaves every container unset (BestEffort).
+      resources:
+        cluster-controller:
+          cpu: "200m"
+          memory: 384Mi
+        patroni:
+          cpu: "500m"
+          memory: 1Gi
+        postgres-util:
+          cpu: "100m"
+          memory: 128Mi
       managedSqlScript: openagent-pg-init     # rendered by openagent chart (creds owner; incl. role creation)
       syncWave: "-1"
       backups:

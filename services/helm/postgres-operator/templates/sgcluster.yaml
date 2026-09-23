@@ -29,6 +29,19 @@ spec:
       {{- end }}
     disableMetricsExporter: {{ $c.disableMetricsExporter }}
     disableConnectionPooling: {{ $c.disableConnectionPooling }}
+{{- if $c.resources }}
+    resources:
+      containers:
+      {{- range $cn, $cr := $c.resources }}
+        {{ $cn }}:
+          requests:
+            cpu: {{ $cr.cpu | quote }}
+            memory: {{ $cr.memory | quote }}
+          limits:
+            cpu: {{ $cr.cpu | quote }}
+            memory: {{ $cr.memory | quote }}
+      {{- end }}
+{{- end }}
   configurations:
     sgPostgresConfig: {{ $c.configName | quote }}
     sgPoolingConfig: {{ $c.poolingConfigName | quote }}
