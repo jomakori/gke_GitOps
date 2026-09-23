@@ -66,6 +66,12 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.openagent-pg.namespace | string | `"openagent"` |  |
 | postgres.clusters.openagent-pg.poolingConfigName | string | `"openagent-pg-pooling"` |  |
 | postgres.clusters.openagent-pg.profile | string | `"development"` |  |
+| postgres.clusters.openagent-pg.resources.cluster-controller.cpu | string | `"200m"` |  |
+| postgres.clusters.openagent-pg.resources.cluster-controller.memory | string | `"384Mi"` |  |
+| postgres.clusters.openagent-pg.resources.patroni.cpu | string | `"500m"` |  |
+| postgres.clusters.openagent-pg.resources.patroni.memory | string | `"1Gi"` |  |
+| postgres.clusters.openagent-pg.resources.postgres-util.cpu | string | `"100m"` |  |
+| postgres.clusters.openagent-pg.resources.postgres-util.memory | string | `"128Mi"` |  |
 | postgres.clusters.openagent-pg.storage | string | `"5Gi"` |  |
 | postgres.clusters.openagent-pg.storageClass | string | `"local-path"` |  |
 | postgres.clusters.openagent-pg.syncWave | string | `"-1"` |  |
@@ -87,6 +93,12 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.namespace | string | `"data"` |  |
 | postgres.clusters.pg-main.poolingConfigName | string | `"pg-main-pooling"` |  |
 | postgres.clusters.pg-main.profile | string | `"development"` |  |
+| postgres.clusters.pg-main.resources.cluster-controller.cpu | string | `"200m"` |  |
+| postgres.clusters.pg-main.resources.cluster-controller.memory | string | `"384Mi"` |  |
+| postgres.clusters.pg-main.resources.patroni.cpu | string | `"1000m"` |  |
+| postgres.clusters.pg-main.resources.patroni.memory | string | `"2Gi"` |  |
+| postgres.clusters.pg-main.resources.postgres-util.cpu | string | `"100m"` |  |
+| postgres.clusters.pg-main.resources.postgres-util.memory | string | `"128Mi"` |  |
 | postgres.clusters.pg-main.storage | string | `"15Gi"` |  |
 | postgres.clusters.pg-main.storageClass | string | `"local-path"` |  |
 | postgres.clusters.pg-main.users[0].databases[0].name | string | `"plane"` |  |
@@ -96,6 +108,9 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.version | string | `"18"` |  |
 | renderClusters | bool | `true` |  |
 | renderOperator | bool | `true` |  |
+| stackgres-operator.operator.resources.limits.memory | string | `"1Gi"` |  |
+| stackgres-operator.operator.resources.requests.cpu | string | `"100m"` |  |
+| stackgres-operator.operator.resources.requests.memory | string | `"256Mi"` |  |
 | stackgresOperator.adminui.service.exposeHTTP | bool | `false` |  |
 | stackgresOperator.adminui.service.type | string | `"ClusterIP"` |  |
 | stackgresOperator.authentication.createAdminSecret | bool | `false` |  |
