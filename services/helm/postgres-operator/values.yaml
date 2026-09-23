@@ -119,15 +119,14 @@ postgres:
       instances: 1
       storage: 15Gi
       version: "18"
-      profile: "development"
-      # No `profile:` key here — it would be dead config. `spec.profile` is not a
-      # field in the SGCluster schema; the API accepted it (spec preserves unknown
-      # fields) and the operator ignored it, so the cluster silently ran the
-      # operator's own `pg-main-default` profile. The correct field is
-      # `spec.sgInstanceProfile`, and it is only worth setting once an
-      # SGInstanceProfile CR exists to point at — none does, which is why the appset
-      # still ignores that path. Per-container resources below are the mechanism that
-      # actually applies here.
+      profile: "production"
+      # `development` UNSETS the resource requirements below, so the SGCluster carries
+      # `spec.pods.resources` (verified on the live object) while the pods report
+      # `resources: {}` and run BestEffort — first victim on a node that is one 15.66 GiB
+      # VM advertising itself as 4x15.66 GiB, where the kernel already OOM-killed mongod
+      # twice today. `production` (the CRD default) is what makes the per-container
+      # requests/limits apply. The CRD warns a change here "may require a restart" —
+      # with `updateStrategy: OnDelete` that means the pod is replaced deliberately.
       disableMetricsExporter: true
       # Connection pooling ENABLED 2026-09-23: StackGres runs pgbouncer in front of
       # the primary, so consumers get multiplexed connections. SGPoolingConfig

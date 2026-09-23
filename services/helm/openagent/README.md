@@ -980,9 +980,6 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | mcpVerification.preflight.enabled | bool | `true` |  |
 | mcpVerification.preflight.toolchainWaitSeconds | int | `300` |  |
 | namespace | string | `"openagent"` |  |
-| postgres.clusterName | string | `"openagent-pg"` |  |
-| postgres.enabled | bool | `true` |  |
-| postgres.userName | string | `"openagent"` |  |
 | runtimeMode | string | `"cluster"` |  |
 | storageClass | string | `"local-path"` |  |
 | tools.image.pullPolicy | string | `"IfNotPresent"` |  |
