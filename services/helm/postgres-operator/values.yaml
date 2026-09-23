@@ -85,12 +85,22 @@ stackgresOperator:
       - https://extensions.stackgres.io/postgres/repository
     cache:
       enabled: true
+      # Single-escaped (one backslash per dot separator), matching the CRD default
+      # and the upstream chart. Double-escaped survives JSON encoding as a literal
+      # backslash, so the pattern matches nothing and the cache silently never
+      # preloads the extension.
       preloadedExtensions:
-        - x86_64/linux/timescaledb-1\\.7\\.4-pg12
+        - x86_64/linux/timescaledb-1\.7\.4-pg12
+      # Only `size` and `storageClass` exist in the SGConfig schema for
+      # extensions.cache.persistentVolume; `accessModes` is rejected by strict
+      # decoding (it belongs to the extensions-cache StatefulSet's
+      # volumeClaimTemplate, which the subchart renders itself). Carrying it here
+      # made the pre-sync `install-sgconfig` hook Job fail, which blocks the ENTIRE
+      # Application: the operator Deployment, the extensions-cache StatefulSet and
+      # the SGConfig itself never applied. Verified by server-side dry-run of the
+      # exact fragment the hook applies.
       persistentVolume:
         size: 1Gi
-        accessModes:
-        - ReadWriteOnce
         storageClass: local-path
 # NOTE: no `backupStorage` key — the upstream stackgres-operator chart has no such
 # value, so it was inert under any nesting. Per-cluster SGObjectStorage is the
