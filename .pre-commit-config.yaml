@@ -66,6 +66,31 @@ repos:
         language: system
         files: ^services/helm/openagent/
         pass_filenames: false
+      - id: chart-values-reachability
+        name: chart values reachability (no dead subchart config)
+        description: |
+          Fail when a chart declares a top-level values.yaml key that can
+          never reach anything: not a dependency `name`/`alias` from
+          Chart.yaml, and no template reading `.Values.<key>`.
+
+          This is the only gate that catches the "looks wired, never
+          arrived" failure class. Values nested under the wrong spelling
+          (e.g. `stackgresOperator:` for a dependency named
+          `stackgres-operator`) are valid YAML, render fine, and pass helm
+          lint / helm template / kubeconform / ArgoCD sync — the config is
+          simply never delivered. The postgres-operator chart carried ~65
+          such lines (authentication.createAdminSecret, extensions.cache.*,
+          grafana.autoEmbed); the only observable symptom was the live
+          SGConfig disagreeing with git.
+
+          CONVENTION THIS ENFORCES: a values key belongs either under a
+          dependency's name/alias (to be routed to that subchart) or in a
+          template's `.Values.<key>` (to be consumed by this chart). Never
+          under a spelling that is neither.
+        entry: .useful-scripts/check_values_reachability.py
+        language: system
+        files: ^services/helm/.*/(values\.yaml|Chart\.yaml)$
+        pass_filenames: false
       - id: mcp-manifest-validate
         name: MCP manifest static policy (gitopsctl validate)
         description: |
