@@ -7,6 +7,24 @@ renderOperator: true
 renderClusters: true
 
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
+#
+# Subchart values MUST nest under the dependency NAME `stackgres-operator`
+# (Chart.yaml declares no alias, so a `stackgresOperator:` key never reaches it).
+# Every pod here is BestEffort without these, and the operator was OOMKilled
+# (158 restarts) with its webhook fail-closed — which blocks ArgoCD from syncing
+# ANY StackGres resource cluster-wide.
+# NOTE: the chart renders ONLY the operator Deployment; the restapi/adminui
+# Deployments are created at runtime by the operator from the SGConfig CR, so
+# their resources are not settable here (tracked separately).
+# CPU limits deliberately omitted (CFS throttling); the memory limit is the real ceiling.
+stackgres-operator:
+  operator:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
 stackgresOperator:
   enabled: true
   # opt for virtualService
@@ -86,6 +104,18 @@ postgres:
       disableConnectionPooling: true
       configName: pg-main-config
       poolingConfigName: pg-main-pooling
+      # Resource discipline: profile values are the pod total; without explicit
+      # per-container resources StackGres leaves every container unset (BestEffort).
+      resources:
+        cluster-controller:
+          cpu: "200m"
+          memory: 384Mi
+        patroni:
+          cpu: "1000m"
+          memory: 2Gi
+        postgres-util:
+          cpu: "100m"
+          memory: 128Mi
       managedSqlScript: plane-pg-init    # SGScript rendered by this chart from users below
       users:
         - name: plane
@@ -114,6 +144,18 @@ postgres:
       disableConnectionPooling: true
       configName: openagent-pg-config
       poolingConfigName: openagent-pg-pooling
+      # Resource discipline: profile values are the pod total; without explicit
+      # per-container resources StackGres leaves every container unset (BestEffort).
+      resources:
+        cluster-controller:
+          cpu: "200m"
+          memory: 384Mi
+        patroni:
+          cpu: "500m"
+          memory: 1Gi
+        postgres-util:
+          cpu: "100m"
+          memory: 128Mi
       managedSqlScript: openagent-pg-init     # rendered by openagent chart (creds owner; incl. role creation)
       syncWave: "-1"
       backups:
