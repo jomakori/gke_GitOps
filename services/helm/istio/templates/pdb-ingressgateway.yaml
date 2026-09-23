@@ -1,0 +1,16 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+# Selector mirrors the upstream istio gateway Deployment's own labels (verified against
+# the live object: app=istio-ingressgateway, istio=ingressgateway). A PDB whose selector
+# matches nothing is worse than none: it looks like protection and enforces nothing.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: istio-ingressgateway
+  namespace: istio-system
+spec:
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable | default 1 }}
+  selector:
+    matchLabels:
+      app: istio-ingressgateway
+      istio: ingressgateway
+{{- end }}

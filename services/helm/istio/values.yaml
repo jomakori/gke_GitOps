@@ -131,3 +131,9 @@ virtualServices:
     destination:
       host: openagent-hermes-agent.openagent.svc.cluster.local
       port: 9119
+
+# PodDisruptionBudget for the ingress gateway. It runs 2 replicas and fronts every
+# request into the cluster, but had no PDB — a node drain could take both.
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1

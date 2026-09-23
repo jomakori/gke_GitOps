@@ -1,0 +1,15 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+# Selector mirrors the upstream cloudflared Deployment's labels (verified live:
+# app.kubernetes.io/instance=cloudflare-tunnel, app.kubernetes.io/name=cloudflare-tunnel).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cloudflare-tunnel
+  namespace: cloudflare-tunnel
+spec:
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: cloudflare-tunnel
+      app.kubernetes.io/name: cloudflare-tunnel
+{{- end }}

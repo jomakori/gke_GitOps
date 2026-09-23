@@ -67,6 +67,9 @@ Prometheus TSDB uses a 30Gi PVC via the `local-path` storage class. Alertmanager
 | kube-prometheus-stack.grafana.adminPassword | string | `"changeme"` |  |
 | kube-prometheus-stack.grafana.adminUser | string | `"admin"` |  |
 | kube-prometheus-stack.grafana.enabled | bool | `true` |  |
+| kube-prometheus-stack.grafana.resources.limits.memory | string | `"512Mi"` |  |
+| kube-prometheus-stack.grafana.resources.requests.cpu | string | `"100m"` |  |
+| kube-prometheus-stack.grafana.resources.requests.memory | string | `"256Mi"` |  |
 | kube-prometheus-stack.kubeControllerManager.enabled | bool | `false` |  |
 | kube-prometheus-stack.kubeEtcd.enabled | bool | `false` |  |
 | kube-prometheus-stack.kubeSchedulerAlerting.enabled | bool | `false` |  |
@@ -79,6 +82,10 @@ Prometheus TSDB uses a 30Gi PVC via the `local-path` storage class. Alertmanager
 | kube-prometheus-stack.prometheus.kubelet.serviceMonitor.relabelings[0].replacement | string | `"$1"` |  |
 | kube-prometheus-stack.prometheus.kubelet.serviceMonitor.relabelings[0].sourceLabels[0] | string | `"__meta_kubernetes_pod_node_name"` |  |
 | kube-prometheus-stack.prometheus.kubelet.serviceMonitor.relabelings[0].targetLabel | string | `"kubernetes_node"` |  |
+| kube-prometheus-stack.prometheus.prometheusSpec.resources.limits.memory | string | `"3Gi"` |  |
+| kube-prometheus-stack.prometheus.prometheusSpec.resources.requests.cpu | string | `"250m"` |  |
+| kube-prometheus-stack.prometheus.prometheusSpec.resources.requests.memory | string | `"1Gi"` |  |
+| kube-prometheus-stack.prometheus.prometheusSpec.retentionSize | string | `"24GB"` |  |
 | kube-prometheus-stack.prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | kube-prometheus-stack.prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage | string | `"30Gi"` |  |
 | kube-prometheus-stack.prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName | string | `"local-path"` |  |
