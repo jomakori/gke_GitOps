@@ -626,7 +626,6 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
                 - litellm/bytedance-glm-5.2
-                - litellm/deepseek-v4-flash-direct
               hephaestus:
                 - litellm/minimax-m3
                 - litellm/glm-5.3
@@ -663,17 +662,17 @@ hermes-agent:
                 - litellm/bytedance-seed-code
                 - litellm/deepseek-v4-flash-direct
               librarian:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
                 - litellm/bytedance-deepseek-v4-flash
-                - litellm/deepseek-v4-flash-direct
               explore:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
                 - litellm/bytedance-deepseek-v4-flash
-                - litellm/deepseek-v4-flash-direct
               multimodal-looker:
                 - litellm/gemini-3.6-flash
                 - litellm/qwen3-6-plus
@@ -681,17 +680,17 @@ hermes-agent:
                 - litellm/bytedance-seed-code
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
                 - litellm/bytedance-deepseek-v4-flash
-                - litellm/deepseek-v4-flash-direct
             categories:
               quick:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/deepseek-v4-flash-direct
               deep:
                 - litellm/minimax-m3
                 - litellm/glm-5.3
