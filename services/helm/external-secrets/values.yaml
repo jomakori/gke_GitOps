@@ -44,3 +44,9 @@ clusterSecretStores:
   zurabase-prd:
     project: zurabase
     config: prd
+
+# PodDisruptionBudget for the secrets controller. 2 replicas; every workload's secrets
+# depend on it, and without a PDB a drain can remove both.
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1

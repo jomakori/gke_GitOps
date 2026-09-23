@@ -29,3 +29,9 @@ cloudflare-tunnel:
 
   # Tunnel name - must match Terraform-created tunnel
   tunnelName: maklab-cluster
+
+# PodDisruptionBudget for the tunnel connector. 2 replicas, and it is the only path in
+# from the internet — without a PDB a drain takes both connectors at once.
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1

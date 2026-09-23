@@ -65,7 +65,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.managedSqlScript | string | `"plane-pg-init"` |  |
 | postgres.clusters.pg-main.namespace | string | `"data"` |  |
 | postgres.clusters.pg-main.poolingConfigName | string | `"pg-main-pooling"` |  |
-| postgres.clusters.pg-main.profile | string | `"development"` |  |
+| postgres.clusters.pg-main.profile | string | `"production"` |  |
 | postgres.clusters.pg-main.resources.cluster-controller.cpu | string | `"200m"` |  |
 | postgres.clusters.pg-main.resources.cluster-controller.memory | string | `"384Mi"` |  |
 | postgres.clusters.pg-main.resources.patroni.cpu | string | `"1000m"` |  |

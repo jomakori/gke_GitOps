@@ -1437,3 +1437,10 @@ vpa:
           minMemory: 512Mi
           maxCpu: "2"
           maxMemory: 8Gi
+
+# PodDisruptionBudget for LiteLLM, which is HPA-scaled (min 2, max 4) and is the stack's
+# only LLM gateway. It had no PDB while running 4/4 replicas.
+litellm:
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1

@@ -1,0 +1,15 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+# Selector mirrors the upstream external-secrets Deployment's labels (verified live:
+# app.kubernetes.io/instance=external-secrets, app.kubernetes.io/name=external-secrets).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: external-secrets
+  namespace: external-secrets
+spec:
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: external-secrets
+      app.kubernetes.io/name: external-secrets
+{{- end }}
