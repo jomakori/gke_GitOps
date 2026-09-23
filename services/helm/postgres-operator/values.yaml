@@ -111,11 +111,22 @@ postgres:
       version: "18"
       profile: "development"
       disableMetricsExporter: true
-      disableConnectionPooling: true
+      # Connection pooling ENABLED 2026-09-23: StackGres runs pgbouncer in front of
+      # the primary, so consumers get multiplexed connections. SGPoolingConfig
+      # `pg-main-pooling` carries pool_mode=transaction (see
+      # templates/sgpoolingconfig.yaml). Transaction pooling disables prepared
+      # statements, so any client that uses them must opt in:
+      #   Prisma/LiteLLM → `?pgbouncer=true` in the connection URL
+      # (set via litellm.db.url in services/helm/openagent/values.yaml).
+      # NOTE: with pooling on, the read-write service `pg-main` resolves to the
+      # pooler; a direct-to-postgres path is still available through the
+      # per-instance services if a client cannot tolerate transaction pooling.
+      disableConnectionPooling: false
       configName: pg-main-config
       poolingConfigName: pg-main-pooling
       # Resource discipline: profile values are the pod total; without explicit
       # per-container resources StackGres leaves every container unset (BestEffort).
+      # pgbouncer is listed because pooling is now enabled.
       resources:
         cluster-controller:
           cpu: "200m"
@@ -126,6 +137,9 @@ postgres:
         postgres-util:
           cpu: "100m"
           memory: 128Mi
+        pgbouncer:
+          cpu: "250m"
+          memory: 128Mi
       managedSqlScript: plane-pg-init    # SGScript rendered by this chart from users below
       users:
         - name: plane
@@ -133,6 +147,15 @@ postgres:
           initSqlKey: PLANE_INIT_SQL
           databases:
             - name: plane
+        # LiteLLM migrated off the retired per-service cluster (openagent-pg) onto
+        # this centralized one. The user `openagent` keeps its EXISTING password
+        # (Doppler OPENAGENT_PG_PASSWORD in svc_openagent → openagent-litellm-secrets),
+        # so no consumer credential has to change — only the host does.
+        - name: openagent
+          passwordKey: OPENAGENT_PG_PASSWORD
+          initSqlKey: OPENAGENT_INIT_SQL
+          databases:
+            - name: litellm
       backups:
         enabled: true
         cronSchedule: "0 2 */2 * *"           # EVERY 2 DAYS @02:00 (centralized cluster — user requirement)
