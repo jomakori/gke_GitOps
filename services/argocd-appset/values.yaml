@@ -346,34 +346,10 @@ services:
           # StackGres' own password-update step, which the chart does not model).
         jqPathExpressions:
           - .spec.configurations.backups[].reconciliationTimeout
-      - group: stackgres.io
-        kind: SGPostgresConfig
-        name: openagent-pg-config
-        namespace: openagent
-        jsonPointers:
-          - /spec/postgresql.conf
-      - group: stackgres.io
-        kind: SGCluster
-        name: openagent-pg
-        namespace: openagent
-        jsonPointers:
-          - /metadata/annotations/stackgres.io~1operatorVersion
-          - /spec/configurations/observability
-          - /spec/pods/disableEnvoy
-          - /spec/pods/disablePostgresUtil
-          - /spec/pods/managementPolicy
-          - /spec/pods/updateStrategy
-          - /spec/postgres/flavor
-          - /spec/postgres/ssl
-          - /spec/postgresServices
-          - /spec/replication
-          # See the pg-main entry above: `/spec/users` is a non-existent CRD field and
-          # `/spec/managedSql` is now managed (this cluster is retired by the next PR).
-          - /spec/sgInstanceProfile
-          - /spec/users
-        jqPathExpressions:
-          - .spec.configurations.backups[].reconciliationTimeout
-
+      # The `openagent-pg` SGCluster + its SGPostgresConfig/pooling objects used to be
+      # ignored here. Both are gone from the cluster list, so the entries would ignore
+      # nothing — ArgoCD prunes them (prune: true, no ownerReference makes that unsafe).
+      # There is one Postgres cluster now: `pg-main` (ns data).
 # Plane.so — kanban backend. Workloads only; pg-main cluster + creds are
   # owned by the postgres-operator chart (postgresClusters app).
   plane:
