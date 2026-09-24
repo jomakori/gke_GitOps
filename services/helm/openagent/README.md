@@ -774,6 +774,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.migrationJob.resources.limits.memory | string | `"4Gi"` |  |
 | litellm.migrationJob.resources.requests.cpu | string | `"50m"` |  |
 | litellm.migrationJob.resources.requests.memory | string | `"64Mi"` |  |
+| litellm.pdb.enabled | bool | `true` |  |
+| litellm.pdb.maxUnavailable | int | `1` |  |
 | litellm.proxy_config.general_settings.master_key | string | `"os.environ/LITELLM_MASTER_KEY"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].forward_headers | bool | `true` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].include_subpath | bool | `true` |  |
