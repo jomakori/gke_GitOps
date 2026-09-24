@@ -1,0 +1,78 @@
+name: Pin openkite prod to the latest release
+
+# openkite publishes v<X.Y.Z> from a workflow in ANOTHER repository, and
+# workflow_run cannot cross repositories, so this polls the release list instead.
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: read
+
+concurrency:
+  group: openkite-pin-bump
+  cancel-in-progress: false
+
+env:
+  VALUES: apps/helm/values.yaml
+
+jobs:
+  bump:
+    name: Move the prod tag
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Resolve the latest release and the current pin
+        id: r
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          latest="$(gh api repos/jomakori/openkite/releases/latest --jq .tag_name)"
+          if ! [[ "$latest" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=Unexpected release tag::'${latest}' is not v<major>.<minor>.<patch>."
+            exit 1
+          fi
+          current="$(python3 "$GITHUB_WORKSPACE/.github/scripts/pin_read.py" "$VALUES")"
+          {
+            echo "latest=${latest}"
+            echo "current=${current}"
+          } >> "$GITHUB_OUTPUT"
+          echo "latest: ${latest} · pinned: ${current:-<none>}"
+
+      - name: Check the image exists before pinning to it
+        if: steps.r.outputs.current != steps.r.outputs.latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ghcr.io/jomakori/openkite
+        run: |
+          set -euo pipefail
+          # A pin to a tag with no image behind it is ImagePullBackOff, so read the manifest first.
+          curl -fsS -o /dev/null \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.docker.distribution.manifest.v2+json' \
+            "https://${IMAGE%/*}/v2/${IMAGE#*/}/manifests/${{ steps.r.outputs.latest }}"
+          echo "manifest present: ${{ steps.r.outputs.latest }}"
+
+      - name: Move the pin
+        if: steps.r.outputs.current != steps.r.outputs.latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.r.outputs.latest }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/pin_write.py "$VALUES" "$TAG"
+          if git diff --quiet; then
+            echo "No change; nothing to pin."
+            exit 0
+          fi
+          git config user.name "pin-bump[bot]"
+          git config user.email "pin-bump@users.noreply.github.com"
+          git add "$VALUES"
+          git commit -m "chore(apps): pin openkite prod to ${TAG}"
+          git push origin HEAD:main
