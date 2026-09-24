@@ -136,15 +136,10 @@ apps:
           - /metadata/argocd.argoproj.io/sync-wave
     enable_preview: true
     preview:
-      # PRs on this repo are the preview source; only a PR carrying `label`
-      # becomes one (the image gate in jomakori/openkite pr-image.yml).
       repo: openkite
+      # Only a PR carrying this label becomes a preview (the image gate in
+      # jomakori/openkite pr-image.yml applies it after a successful push).
       label: preview
-      # Values are placeholders, not Helm templates: preview.yml sets
-      # goTemplate: true, so the ApplicationSet controller substitutes these.
-      namespaceTemplate: "openkite-pr{{ .number }}"
-      subdomainTemplate: "pr{{ .number }}"
-      tagTemplate: "pr-{{ .number }}"
     parameters:
       - name: appName
         value: "openkite"

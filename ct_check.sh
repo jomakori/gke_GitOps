@@ -41,15 +41,8 @@ else
   fi
   IFS=' ' read -r -a files_array <<< "$changed_files"
   for file in "${files_array[@]}"; do
-    # Resolve a changed file to its CHART directory by walking up to the nearest
-    # ancestor that has a Chart.yaml.
-    #
-    # Deriving it from a fixed pattern (dirname + sed on `argocd-appset|helm/<one
-    # segment>`) only ever worked for files sitting exactly one level below the
-    # chart root: a change under apps/helm/templates/ resolved to
-    # apps/helm/templates, which is not a chart, and helm then died on a path with
-    # no Chart.yaml — failing CI for a correct change. Walking up needs no
-    # knowledge of the layout and cannot resolve to a non-chart.
+    # Walk up to the nearest Chart.yaml: a pattern match resolved files below the
+    # chart root to a directory that is not a chart.
     helm_dir=$(dirname "$file")
     while [[ "$helm_dir" != "." && "$helm_dir" != "/" && ! -f "$helm_dir/Chart.yaml" ]]; do
       helm_dir=$(dirname "$helm_dir")
@@ -75,11 +68,8 @@ for dir in "${helm_dirs[@]}"; do
   echo ""
   echo -e "${BLUE}── ${chart_name} ──${RESET}"
 
-  # A chart that cannot render from its own values alone (spec-driven charts
-  # render nothing until told WHICH spec, e.g. apps/helm needs appName) declares
-  # its CI render inputs in .ci-values.yaml. Without this, `helm template` on such
-  # a chart fails with "appName must be set" and every PR touching it fails CI —
-  # which is how this was found.
+  # .ci-values.yaml holds the render inputs a spec-driven chart needs (e.g. apps/helm
+  # cannot render without appName).
   extra_values=()
   if [[ -f "$dir/.ci-values.yaml" ]]; then
     echo "  → using $dir/.ci-values.yaml"

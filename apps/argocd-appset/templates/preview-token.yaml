@@ -1,16 +1,6 @@
-{{- /*
-  GitHub token for each preview generator declared in this chart's values.
-
-  Lives with its only consumers (the preview.yml ApplicationSets' tokenRef), which
-  is the convention every other ExternalSecret in this repo follows — none of them
-  has a standalone secret chart. The value comes from Doppler
-  devops/svc_argocd/ARGOCD_GITHUB_TOKEN via the ClusterSecretStore
-  `doppler-svc-argocd`; nothing secret is in this repo.
-
-  One Secret per preview-enabled app rather than one shared Secret, so the token's
-  scope is per repo and revoking/widening one app's access cannot silently widen
-  another's. All of them read the same remote key today.
-*/}}
+{{- /* GitHub token for each preview generator's tokenRef, one Secret per app so the
+       token's scope stays per repo. Lives with its only consumer, like every other
+       ExternalSecret here. Value: Doppler devops/svc_argocd/ARGOCD_GITHUB_TOKEN. */}}
 {{- $root := . }}
 {{- range $key, $cfg := .Values.apps }}
 {{- if and $cfg.enable $cfg.enable_preview }}
@@ -23,8 +13,6 @@ apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: {{ $secretName }}
-  # Explicitly the ArgoCD namespace: that is where the ApplicationSet lives and
-  # where its tokenRef resolves. Not .Release.Namespace, which follows the parent.
   namespace: {{ $root.Values.argoNamespace | default "argocd" }}
   annotations:
     argocd.argoproj.io/sync-wave: "-1"

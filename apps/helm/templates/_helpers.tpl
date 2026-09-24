@@ -337,15 +337,8 @@ spec:
               number: 80
 {{- end }}
 
-{{- /* ═════════════════════════════════════════════════════════════ */}}
-{{- /* Cloudflare Access gate (enable_private)                        */}}
-{{- /* Same DENY-except-valid-CF-Access-JWT rule the istio chart's    */}}
-{{- /* `virtualServices.<name>.enablePrivate` renders, but declared   */}}
-{{- /* per HOST rather than per route: a dynamically generated host   */}}
-{{- /* (pr<N>.maklab.net) has no entry in that chart to hang off, and  */}}
-{{- /* Istio wildcards match the label SUFFIX, so `pr*.maklab.net`     */}}
-{{- /* cannot be one static policy.                                   */}}
-{{- /* ═════════════════════════════════════════════════════════════ */}}
+{{- /* Cloudflare Access gate: same rule the istio chart renders for enablePrivate,
+       declared per exact host because a generated host has no route to hang off. */}}
 {{- if and $enableDomain $enableIstio $enablePrivate }}
 ---
 apiVersion: security.istio.io/v1
