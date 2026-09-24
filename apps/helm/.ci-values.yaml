@@ -1,14 +1,5 @@
-# CI render inputs for this chart.
-#
-# `ct_check.sh` and the lint workflow render a chart from its own values alone.
-# This chart is spec-driven: templates/app.yaml renders exactly one app, named by
-# `appName`, so a render with no appName fails with "appName must be set" — and
-# every PR touching apps/helm failed CI for that reason, whatever it changed.
-#
-# ArgoCD never uses this file (the Applications pass appName explicitly in their
-# helm parameters, and valueFiles lists only values.yaml).
+# CI render inputs: this chart renders one app, named by appName. ArgoCD passes it
+# as a helm parameter; a bare `helm template` needs this file.
 appName: demoApi
 demoApi:
-  # One environment is enough to exercise every template branch; staging would
-  # double the render for no extra coverage.
   enable_staging: false

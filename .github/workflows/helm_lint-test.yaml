@@ -278,10 +278,8 @@ jobs:
           else
             for f in ${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}; do
               if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
-                # Walk up to the nearest ancestor with a Chart.yaml: the old
-                # dirname+pattern form only resolved files one level below the chart
-                # root, so a change under apps/helm/templates/ resolved to a
-                # directory that is not a chart.
+                # Walk up to the nearest Chart.yaml (pattern matching resolved files
+                # below the chart root to a non-chart directory).
                 d=$(dirname "$f")
                 while [ "$d" != "." ] && [ "$d" != "/" ] && [ ! -f "$d/Chart.yaml" ]; do d=$(dirname "$d"); done
                 [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
@@ -291,10 +289,7 @@ jobs:
           if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
           for d in "${helm_dirs[@]}"; do
             [ -f "$d/Chart.yaml" ] || continue
-            # Charts that cannot render from their own values alone (spec-driven
-            # charts that need a selector, e.g. apps/helm needs appName) declare
-            # their CI render inputs here; without them the render fails and every
-            # PR touching the chart fails CI.
+            # Render inputs for charts that need one (apps/helm needs appName).
             cv=()
             if [ -f "$d/.ci-values.yaml" ]; then cv=(-f "$d/.ci-values.yaml"); fi
             helm dependency update "$d" > /dev/null 2>&1

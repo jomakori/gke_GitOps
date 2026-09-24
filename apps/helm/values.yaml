@@ -75,14 +75,12 @@ notesUi:
       size: 1Gi
 
 openkite:
-  # Prod only. Previews re-render this same spec with the environment's tag and
-  # subdomain overridden per PR (see apps/argocd-appset/templates/preview.yml),
-  # which is the whole point of one spec and two entry points.
+  # Prod only; previews re-render this spec at per-PR coordinates.
   enable_staging: false
   enable_istio: true
-  # Cloudflare Access: DENY anything without a valid Access JWT for this host.
+  # Cloudflare Access: DENY anything without a valid JWT for this host.
   enable_private: true
-  # Not the shared ECR registry: openkite publishes to GHCR (release.yml).
+  # GHCR, not the shared ECR registry.
   image:
     repository: ghcr.io/jomakori/openkite
   istio:
@@ -92,12 +90,10 @@ openkite:
     retryTimeout: 5s
   environments:
     production:
-      # The released image, not a floating tag: this is the value the pin-bump
-      # workflow rewrites on every release, and it mirrors the git tag exactly.
+      # Released image; the pin-bump workflow rewrites this on every release.
       tag: v0.32.1
   service:
-    # The container serves on 8080; the Service is port 80 and the VirtualService
-    # routes to 80, so the number here is the container/target port.
+    # Container port: the Service is 80 and routes here.
     port: 8080
     resourceRequests:
       cpu: 100m

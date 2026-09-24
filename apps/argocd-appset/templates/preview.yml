@@ -1,23 +1,6 @@
-{{- /*
-  ── Generic PR-preview generator ─────────────────────────────────────────────
-  One ApplicationSet per app that opts in with `enable_preview: true` in this
-  chart's values. Nothing here is app-specific: the repo, label, and the
-  namespace/subdomain/tag shapes all come from the app's own registry entry, so
-  giving a future app previews is a values change and this file is not touched.
-
-  Each admitted PR re-renders the SAME workload the prod Application renders — the
-  app's spec in apps/helm (`helmPath`). That is the point: a preview is the prod
-  definition at one PR's coordinates (image tag, subdomain, namespace), never a
-  second chart that can drift from it.
-
-  Placeholders like `{{ .number }}` survive Helm untouched: `goTemplate: true`
-  makes them the controller's to substitute, and they are quoted in the parameters
-  below so Helm writes them through as literal strings.
-
-  The generator is label-gated. The app repo's own image workflow applies the label,
-  and only after its push succeeded — so a preview can never reference a tag that
-  was never built, which is the ImagePullBackOff an unfiltered generator produces.
-*/}}
+{{- /* Generic PR-preview generator: one ApplicationSet per app with enable_preview.
+       Each admitted PR re-renders the app's own apps/helm spec (helmPath) at per-PR
+       coordinates, so a preview cannot drift from prod. */}}
 {{- $root := . }}
 {{- range $key, $cfg := .Values.apps }}
 {{- if and $cfg.enable $cfg.enable_preview }}
@@ -28,14 +11,12 @@
 {{- $envName := $p.environment | default "production" }}
 {{- $label := $p.label | default "preview" }}
 {{- $nsTemplate := $p.namespaceTemplate | default (printf "%s-pr{{ .number }}" $kebabKey) }}
-{{- $subdomainTemplate := $p.subdomainTemplate | default "pr{{ .number }}" }}
+{{- /* App-scoped by default: preview hosts for two apps must not collide. */}}
+{{- $subdomainTemplate := $p.subdomainTemplate | default (printf "pr{{ .number }}-%s" $kebabKey) }}
 {{- $tagTemplate := $p.tagTemplate | default "pr-{{ .number }}" }}
 {{- $domain := $p.domain | default ($root.Values.clusterDomain | default "maklab.net") }}
 {{- $hostTemplate := printf "%s.%s" $subdomainTemplate $domain }}
 {{- $tokenSecretName := $p.tokenSecretName | default (printf "argocd-github-token-%s" $kebabKey) }}
-{{- /* applications.yaml injects <key>.enable_domain for a public gateway; a preview
-       renders the same spec, so it must carry the same parameter or it renders no
-       VirtualService and is unreachable. */}}
 {{- $extraParams := list }}
 {{- if (($cfg.gateways | default dict).enable_public) }}
 {{-   $extraParams = append $extraParams (dict "name" (printf "%s.enable_domain" $key) "value" "true") }}
@@ -59,6 +40,8 @@ spec:
           tokenRef:
             secretName: {{ $tokenSecretName | quote }}
             key: {{ $p.tokenSecretKey | default "token" | quote }}
+          # Label gate: applied by the app repo's image workflow, and only after
+          # its push succeeded — so no preview references an unbuilt tag.
           labels:
             - {{ $label | quote }}
         requeueAfterSeconds: {{ $p.requeueAfterSeconds | default 60 }}
@@ -86,17 +69,13 @@ spec:
             - name: {{ .name }}
               value: {{ tpl .value $root | quote }}
             {{- end }}
-            # Per-PR coordinates: the only three things a preview changes.
             - name: {{ printf "%s.environments.%s.tag" $key $envName }}
               value: {{ $tagTemplate | quote }}
             - name: {{ printf "%s.environments.%s.subdomain" $key $envName }}
               value: {{ $subdomainTemplate | quote }}
             - name: {{ printf "%s.namespaceOverride" $key }}
               value: {{ $nsTemplate | quote }}
-            # The generated Application owns its namespace (declared by the workload
-            # chart), so closing the PR prunes namespace + workload together.
-            # CreateNamespace is deliberately NOT used: it creates a namespace the
-            # Application does not track, which then outlives the preview.
+            # The Application owns its namespace, so closing the PR prunes both.
             - name: {{ printf "%s.createNamespace" $key }}
               value: "true"
       destination:
@@ -113,9 +92,6 @@ spec:
             factor: 2
             maxDuration: 3m
   syncPolicy:
-    # Do not keep generated Applications that stop matching the generator (PR
-    # closed or label withdrawn) — with the finalizer above, that is what makes
-    # teardown automatic.
     preserveResourcesOnDeletion: false
 {{- end }}
 {{- end }}
