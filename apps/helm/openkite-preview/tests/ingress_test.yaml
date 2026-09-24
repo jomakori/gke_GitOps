@@ -5,24 +5,23 @@ tests:
   - it: routes the per-PR host
     release:
       name: openkite-preview-42
-      namespace: openkite-preview
+      namespace: openkite-preview-42
     set:
       fullnameOverride: openkite-preview-42
-      ingress.host: pr-42.openkite.maklab.net
+      ingress.host: pr42-openkite.maklab.net
     asserts:
       - equal:
           path: spec.rules[0].host
-          value: pr-42.openkite.maklab.net
+          value: pr42-openkite.maklab.net
 
-  - it: terminates TLS for the two-level wildcard (not *.maklab.net)
+  - it: carries no TLS Secret, because the cluster gateway terminates TLS for the host
+    # The *.maklab.net wildcard Secret lives in istio-system and a Secret cannot be
+    # referenced across namespaces, so a per-PR Ingress has nothing to terminate TLS
+    # with. Per-PR Ingresses are disabled for the same reason routing goes through
+    # the gateway: a plain Ingress would serve the preview without the Access challenge.
     release:
       name: openkite-preview-42
-      namespace: openkite-preview
+      namespace: openkite-preview-42
     asserts:
-      - equal:
-          path: spec.tls[0].secretName
-          value: wildcard-openkite-maklab-net-tls
-      - equal:
-          path: spec.tls[0].hosts
-          value:
-            - "*.openkite.maklab.net"
+      - isEmpty:
+          path: spec.tls

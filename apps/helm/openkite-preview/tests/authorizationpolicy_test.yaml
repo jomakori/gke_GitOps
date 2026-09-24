@@ -1,0 +1,80 @@
+suite: test openkite-preview Cloudflare Access gate
+templates:
+  - authorizationpolicy.yaml
+tests:
+  - it: denies the preview host unless a request principal is present
+    release:
+      name: openkite-preview-42
+      namespace: openkite-preview-42
+    set:
+      fullnameOverride: openkite-preview-42
+      ingress.host: pr42-openkite.maklab.net
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: AuthorizationPolicy
+      - isAPIVersion:
+          of: security.istio.io/v1
+      - equal:
+          path: metadata.name
+          value: openkite-preview-42-require-cf-access
+      - equal:
+          path: metadata.namespace
+          value: istio-system
+      - equal:
+          path: spec.action
+          value: DENY
+      - equal:
+          path: spec.selector.matchLabels.istio
+          value: ingressgateway
+      - equal:
+          path: spec.rules[0].from[0].source.notRequestPrincipals
+          value:
+            - "*"
+      - equal:
+          path: spec.rules[0].to[0].operation.hosts
+          value:
+            - pr42-openkite.maklab.net
+
+  - it: gates the host exactly, never with a wildcard
+    # A wildcard here is the failure that matters: `*.maklab.net` would deny every
+    # host in the zone (including the ones that are deliberately public, and the
+    # Access login redirect itself), and a mid-label wildcard would not match at all.
+    # Neither is expressible accidentally: assert the host is the literal preview host.
+    release:
+      name: openkite-preview-7
+      namespace: openkite-preview-7
+    set:
+      fullnameOverride: openkite-preview-7
+      ingress.host: pr7-openkite.maklab.net
+    asserts:
+      - equal:
+          path: spec.rules[0].to[0].operation.hosts[0]
+          value: pr7-openkite.maklab.net
+      - notMatchRegex:
+          path: spec.rules[0].to[0].operation.hosts[0]
+          pattern: '\*'
+
+  - it: follows the host a preview is deployed with
+    release:
+      name: openkite-preview-9
+      namespace: openkite-preview-9
+    set:
+      fullnameOverride: openkite-preview-9
+      ingress.host: pr9-openkite.maklab.net
+    asserts:
+      - equal:
+          path: spec.rules[0].to[0].operation.hosts[0]
+          value: pr9-openkite.maklab.net
+
+  - it: renders nothing when istio routing is off
+    release:
+      name: openkite-preview-42
+      namespace: openkite-preview-42
+    set:
+      fullnameOverride: openkite-preview-42
+      istio.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

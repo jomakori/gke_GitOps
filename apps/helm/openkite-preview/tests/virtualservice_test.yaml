@@ -2,28 +2,28 @@ suite: test openkite-preview virtualservice
 templates:
   - virtualservice.yaml
 tests:
-  - it: binds the per-PR host to the shared preview gateway
+  - it: binds the per-PR host to the cluster gateway
     release:
       name: openkite-preview-42
-      namespace: openkite-preview
+      namespace: openkite-preview-42
     set:
       fullnameOverride: openkite-preview-42
-      ingress.host: pr-42.openkite.maklab.net
+      ingress.host: pr42-openkite.maklab.net
     asserts:
       - equal:
           path: spec.hosts[0]
-          value: pr-42.openkite.maklab.net
+          value: pr42-openkite.maklab.net
       - equal:
           path: spec.gateways[0]
-          value: openkite-preview/openkite-preview-gateway
+          value: istio-system/maklab-gateway
 
   - it: routes to the per-PR Service in the release namespace
     release:
       name: openkite-preview-42
-      namespace: openkite-preview
+      namespace: openkite-preview-42
     set:
       fullnameOverride: openkite-preview-42
     asserts:
       - equal:
           path: spec.http[0].route[0].destination.host
-          value: openkite-preview-42.openkite-preview.svc.cluster.local
+          value: openkite-preview-42.openkite-preview-42.svc.cluster.local

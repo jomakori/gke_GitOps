@@ -3,7 +3,7 @@
 #   --set fullnameOverride=openkite-preview-<N>
 #   --set image.repository=ghcr.io/jomakori/openkite
 #   --set image.tag=pr-<N>
-#   --set ingress.host=pr-<N>.openkite.maklab.net
+#   --set ingress.host=pr<N>-openkite.maklab.net
 #   --set replicaCount=1
 
 # Base name override (the ApplicationSet passes the numeric PR id).
@@ -13,10 +13,10 @@ fullnameOverride: ""
 # Deliver the namespace this release deploys into.
 #
 # `false` when the release lands in a namespace another Application already owns
-# — the shared preview namespace, whose Gateway and wildcard Certificate must not
-# be adopted a second time. The ApplicationSet sets it `true` for every per-PR
-# Application, so a preview owns its own namespace and closing the PR prunes the
-# namespace together with the Deployment/Service/VirtualService.
+# — the shared preview namespace. The ApplicationSet sets it `true` for every
+# per-PR Application, so a preview owns its own namespace and closing the PR
+# prunes the namespace together with the Deployment/Service/VirtualService and
+# the preview's own AuthorizationPolicy.
 namespace:
   create: false
 
@@ -40,25 +40,31 @@ service:
 
 ingress:
   enabled: true
-  # Injected per PR: pr-<N>.openkite.maklab.net
-  host: openkite.maklab.net
+  # Injected per PR: pr<N>-openkite.maklab.net
+  host: pr1-openkite.maklab.net
   className: ""
   path: /
   pathType: Prefix
   annotations: {}
-  # Two-level wildcard. *.maklab.net does NOT match pr-<N>.openkite.maklab.net;
-  # this Secret is issued once in the shared preview namespace (see
-  # apps/openkite-preview/templates/certificate.yaml).
-  tls:
-    - secretName: wildcard-openkite-maklab-net-tls
-      hosts:
-        - "*.openkite.maklab.net"
+  # Left empty on purpose. The preview host is served by the cluster gateway,
+  # which terminates TLS with the `*.maklab.net` wildcard; a Secret cannot be
+  # referenced across namespaces, and the per-PR Ingress is disabled anyway
+  # (see the ApplicationSet's `ingress.enabled=false`) because a plain Ingress
+  # reaches the pod without passing the Cloudflare Access challenge or the mesh
+  # DENY policy — i.e. it would serve the preview unauthenticated.
+  tls: []
 
-# Istio routing (the cluster's actual ingress). The shared Gateway is owned by
-# the openkite-preview app chart.
+# Istio routing (the cluster's actual ingress). The gateway is the cluster's own;
+# it serves `*.maklab.net`, which matches every preview host.
 istio:
   enabled: true
-  gateway: openkite-preview/openkite-preview-gateway
+  gateway: istio-system/maklab-gateway
+  # The Cloudflare Access DENY policy targets the gateway pods, and a policy binds
+  # to the pods in its own namespace — so it is rendered into istio-system next to
+  # the gateway it protects, not into the preview namespace.
+  policyNamespace: istio-system
+  gatewaySelector:
+    istio: ingressgateway
   timeout: 30s
   retryAttempts: 3
   retryTimeout: 5s

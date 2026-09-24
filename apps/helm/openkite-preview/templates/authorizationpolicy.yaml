@@ -1,0 +1,38 @@
+{{- if .Values.istio.enabled }}
+{{- /*
+  Cloudflare Access gate for this preview's host.
+
+  Previews have no host shape a wildcard can express: `pr<N>-openkite.maklab.net`
+  is ONE label under the zone, so the only suffix shared with anything else is the
+  whole zone (`*.maklab.net` would gate every host in it), and Istio matches
+  `operation.hosts` as exact or leading-`*.` suffix, never mid-label. So the gate
+  is rendered per preview, with the preview it protects: it appears when the
+  Application appears and is pruned with the namespace when the PR closes.
+
+  Same DENY rule the cluster's static private hosts use — deny anything without a
+  request principal. The RequestAuthentication that validates the Cloudflare Access
+  JWT is the cluster-wide one in istio-system; this policy only has to insist it is
+  present. It lives in istio-system because a policy binds to the pods in its own
+  namespace, and the ingress gateway pods are there.
+*/}}
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ include "openkite-preview.fullname" . }}-require-cf-access
+  namespace: {{ .Values.istio.policyNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    matchLabels:
+      {{- toYaml .Values.istio.gatewaySelector | nindent 6 }}
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notRequestPrincipals: ["*"]
+      to:
+        - operation:
+            hosts:
+              - {{ required "ingress.host is required" .Values.ingress.host | quote }}
+{{- end }}

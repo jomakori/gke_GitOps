@@ -1,6 +1,8 @@
 {{- if .Values.istio.enabled }}
-# Istio routing for the preview host. Binds to the shared preview Gateway
-# (owned by apps/openkite-preview) which serves *.openkite.maklab.net.
+# Istio routing for the preview host. Binds to the cluster's own gateway
+# (istio-system/maklab-gateway, hosts *.maklab.net), which terminates TLS with the
+# wildcard Certificate it already holds. The Cloudflare Access gate for this host
+# is rendered separately (templates/authorizationpolicy.yaml).
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
