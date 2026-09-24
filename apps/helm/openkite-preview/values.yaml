@@ -10,6 +10,16 @@
 nameOverride: ""
 fullnameOverride: ""
 
+# Deliver the namespace this release deploys into.
+#
+# `false` when the release lands in a namespace another Application already owns
+# — the shared preview namespace, whose Gateway and wildcard Certificate must not
+# be adopted a second time. The ApplicationSet sets it `true` for every per-PR
+# Application, so a preview owns its own namespace and closing the PR prunes the
+# namespace together with the Deployment/Service/VirtualService.
+namespace:
+  create: false
+
 replicaCount: 1
 
 image:

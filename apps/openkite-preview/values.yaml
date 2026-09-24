@@ -17,10 +17,20 @@ targetRevision: ""
 # ApplicationSet name (one resource fans out one Application per open PR).
 appName: openkite-preview
 
-# Shared namespace for every preview workload. The wildcard TLS Secret and the
-# Istio Gateway live here so per-PR Ingresses can reference them without
-# duplicating certificates; per-PR resources are uniquely named instead.
+# Shared preview INFRASTRUCTURE namespace — the resources that must exist
+# exactly once and must outlive every PR: the wildcard TLS Secret, the Istio
+# Gateway, and the generator's GitHub token Secret. Owned by this chart's
+# Application, never by a generated per-PR Application.
 namespace: openkite-preview
+
+# Destination namespace for each generated preview Application: one namespace
+# per PR. The preview namespace is rendered by the workload chart
+# (`namespace.create=true`) rather than created by ArgoCD's CreateNamespace sync
+# option, because CreateNamespace creates a namespace the Application does not
+# track — deleting the Application then prunes the Deployment/Service/
+# VirtualService but strands the namespace. Declared in the chart, the namespace
+# is a managed resource and goes with everything else.
+namespaceTemplate: "openkite-preview-{{ .number }}"
 
 # GitHub Pull Request generator source.
 github:
@@ -43,6 +53,18 @@ githubToken:
   remoteKey: ARGOCD_GITHUB_TOKEN
   dopplerConfig: svc_argocd
   refreshInterval: 24h
+
+# Image gate - the ONLY label that makes a PR eligible for a preview.
+# jomakori/openkite's .github/workflows/pr-image.yml applies it when (and only
+# when) ghcr.io/jomakori/openkite:pr-<N> was pushed, and removes it when a new
+# head's build fails. A PR that never produced an image renders no Application
+# here at all, so nothing is deployed for it.
+#
+# Do NOT apply it by hand to opt a PR in: the label is a claim that the image
+# exists, not a request to build one. A hand-applied label for a PR whose image
+# was never pushed puts the preview back in the ImagePullBackOff state the gate
+# removes. Unlabelling a PR tears its preview down on the next reconcile.
+previewLabel: preview
 
 # Helm chart rendered for each open PR (lives in this repo).
 chartPath: apps/helm/openkite-preview

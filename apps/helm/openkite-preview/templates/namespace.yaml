@@ -1,0 +1,23 @@
+{{- if .Values.namespace.create }}
+# ── Per-PR preview namespace ───────────────────────────────────────────────
+# Declared here rather than delegated to ArgoCD's `CreateNamespace=true` sync
+# option. Verified on the live cluster (throwaway Application, 2026-09-24):
+# CreateNamespace creates the namespace WITHOUT adding it to the Application's
+# resource tree, so deleting the Application cascades the Deployment, Service and
+# VirtualService away and STRANDS the empty namespace — one abandoned namespace
+# per closed PR, exactly the orphan class this chart exists to avoid. A namespace
+# declared in the chart is an ordinary managed resource and is pruned with
+# everything else.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace | quote }}
+  labels:
+    # Same enrolment as the shared preview namespace: the Gateway routes into
+    # this namespace, so the workload has to be in the mesh.
+    istio.io/dataplane-mode: ambient
+    app.kubernetes.io/part-of: openkite
+  annotations:
+    # Applied before the namespaced resources below, which need it to exist.
+    argocd.argoproj.io/sync-wave: "-1"
+{{- end }}

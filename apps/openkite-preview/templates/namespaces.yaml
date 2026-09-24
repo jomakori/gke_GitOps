@@ -1,7 +1,9 @@
-# ── Shared preview namespace ───────────────────────────────────────────────
-# Every PR preview deploys here (isolated by unique per-PR resource names, not
-# per-PR namespaces) so the wildcard TLS Secret is issued exactly once and the
-# per-PR Ingress can reference it in-namespace.
+# ── Shared preview infrastructure namespace ────────────────────────────────
+# Holds only what must exist exactly once and outlive every PR: the wildcard TLS
+# Secret (issued from certificate.yaml), the Istio Gateway, and the generator's
+# GitHub token Secret. Preview workloads do NOT deploy here — each generated
+# per-PR Application has its own namespace (Values.namespaceTemplate), rendered
+# by the workload chart so it is pruned when the PR closes.
 apiVersion: v1
 kind: Namespace
 metadata:

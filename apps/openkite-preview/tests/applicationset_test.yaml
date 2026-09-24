@@ -22,6 +22,24 @@ tests:
           path: spec.generators[0].pullRequest.github.tokenRef.secretName
           value: argocd-github-token
 
+  - it: gates previews on the PR label the image build applies, and nothing else
+    asserts:
+      - equal:
+          path: spec.generators[0].pullRequest.github.labels
+          value:
+            - preview
+      - lengthEqual:
+          path: spec.generators[0].pullRequest.github.labels
+          count: 1
+
+  - it: renders the gate label from one value so the gate has a single source
+    set:
+      previewLabel: preview-gate
+    asserts:
+      - equal:
+          path: spec.generators[0].pullRequest.github.labels[0]
+          value: preview-gate
+
   - it: names each Application from the sanitized numeric PR id and cascade-deletes on close
     asserts:
       - equal:
@@ -48,3 +66,30 @@ tests:
       - equal:
           path: spec.template.spec.source.helm.parameters[3].value
           value: "pr-{{ .number }}.openkite.maklab.net"
+
+  - it: deploys each preview into its own per-PR namespace
+    asserts:
+      - equal:
+          path: spec.template.spec.destination.namespace
+          value: "openkite-preview-{{ .number }}"
+      - equal:
+          path: spec.template.spec.source.helm.parameters[5].name
+          value: namespace.create
+      - equal:
+          path: spec.template.spec.source.helm.parameters[5].value
+          value: "true"
+
+  - it: renders no per-PR Ingress, because the wildcard TLS Secret cannot follow it
+    asserts:
+      - equal:
+          path: spec.template.spec.source.helm.parameters[6].name
+          value: ingress.enabled
+      - equal:
+          path: spec.template.spec.source.helm.parameters[6].value
+          value: "false"
+
+  - it: keeps the shared infra namespace separate from the per-PR destinations
+    asserts:
+      - notEqual:
+          path: spec.template.spec.destination.namespace
+          value: openkite-preview
