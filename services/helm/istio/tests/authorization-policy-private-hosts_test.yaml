@@ -1,0 +1,146 @@
+suite: test istio chart — CF Access deny policy for hosts this chart does not route
+# Preview hostnames (`pr-<N>.openkite.maklab.net`) are generated per pull request
+# by the ApplicationSet in apps/openkite-preview, so they can never be a
+# `virtualServices` entry here: that entry also declares the host's route, and
+# this chart is not what routes a preview. They are gated through `privateHosts`
+# instead, which renders the SAME DENY rule with no route.
+#
+# These tests exist so a future edit cannot silently ungate previews (drop the
+# values entry, drop the template) or widen the gate onto hosts that are
+# deliberately public (a `*` that swallows more than one label, an entry for
+# another domain). Two of them are the negative half of that: the public host on
+# the same ingress gateway stays ungated.
+templates:
+  - authorization-policy-private-hosts.yaml
+  - authorization-policy-private.yaml
+  - request-authentication.yaml
+release:
+  name: my-release
+  namespace: istio-system
+set:
+  # Real values, so the wildcard gate is asserted against the JWKS validation it
+  # depends on. `audienceTag` is empty by default and request-authentication.yaml
+  # renders nothing without it.
+  cloudflare.access.teamDomain: jmaklab
+  cloudflare.access.audienceTag: aud-draw,aud-openagent,aud-preview-wildcard
+tests:
+  - it: renders the preview host gate as a DENY-except-valid-JWT policy
+    documentSelector:
+      path: metadata.name
+      value: require-cf-access-wildcard-openkite-maklab-net
+    asserts:
+      - isKind:
+          of: AuthorizationPolicy
+      - isAPIVersion:
+          of: security.istio.io/v1
+      - equal:
+          path: metadata.namespace
+          value: istio-system
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "2"
+      - equal:
+          path: spec.action
+          value: DENY
+      - equal:
+          path: spec.selector.matchLabels.istio
+          value: ingressgateway
+      - equal:
+          path: spec.rules[0].from[0].source.notRequestPrincipals
+          value:
+            - "*"
+      - equal:
+          path: spec.rules[0].to[0].operation.hosts
+          value:
+            - "*.openkite.maklab.net"
+
+  # The gate covers `pr-<N>` only because Istio reads a leading `*` in a host as a
+  # suffix match. An edit to a literal host (e.g. the one PR that happened to be
+  # open when this was written) would ungate every other preview: assert the entry
+  # is a wildcard over exactly one label of the preview domain.
+  - it: keeps the preview entry a single-label wildcard, not a literal PR host
+    documentSelector:
+      path: metadata.name
+      value: require-cf-access-wildcard-openkite-maklab-net
+    asserts:
+      - matchRegex:
+          path: spec.rules[0].to[0].operation.hosts[0]
+          pattern: ^\*\.openkite\.maklab\.net$
+      - notMatchRegex:
+          path: spec.rules[0].to[0].operation.hosts[0]
+          pattern: ^[^*]
+
+  # Negative half, per-VirtualService template: argocd.maklab.net is enabled on
+  # the same gateway and deliberately public (`enablePrivate` unset), so it must
+  # not name a policy. Asserted with the flag explicitly off, so the test keeps
+  # testing the mechanism if the default ever flips.
+  - it: does not gate the public argocd.maklab.net host on the same gateway
+    set:
+      virtualServices.argocd.enablePrivate: false
+      virtualServices.excalidash.enablePrivate: true
+    asserts:
+      # One policy, and it is draw.maklab.net (the VS that opted in): no policy
+      # carries argocd.maklab.net.
+      - hasDocuments:
+          count: 1
+        template: authorization-policy-private.yaml
+      - equal:
+          path: spec.rules[0].to[0].operation.hosts
+          value:
+            - draw.maklab.net
+        template: authorization-policy-private.yaml
+
+  # Negative half, privateHosts template: the wildcard stays inside its own
+  # domain — it must not be widened to a bare `*.maklab.net`, which Istio would
+  # read as a suffix match over every host on the gateway, preview or not.
+  - it: does not widen the preview gate onto non-preview hosts
+    documentSelector:
+      path: metadata.name
+      value: require-cf-access-wildcard-openkite-maklab-net
+    asserts:
+      - notContains:
+          path: spec.rules[0].to[0].operation.hosts
+          content: "*.maklab.net"
+      - notContains:
+          path: spec.rules[0].to[0].operation.hosts
+          content: openagent.maklab.net
+      - notContains:
+          path: spec.rules[0].to[0].operation.hosts
+          content: argocd.maklab.net
+      # `*.openkite.maklab.net` does not match its own parent — the apex is a
+      # different host and is not part of this change.
+      - notContains:
+          path: spec.rules[0].to[0].operation.hosts
+          content: openkite.maklab.net
+
+  # The gate is inert without JWKS validation at the gateway: if the JWT is never
+  # extracted there is no `requestPrincipal`, and the policy above denies every
+  # request, authenticated ones included.
+  - it: extracts the CF Access JWT from the header Access actually sets
+    documentSelector:
+      path: metadata.name
+      value: cf-access-jwt
+    asserts:
+      - equal:
+          path: spec.jwtRules[0].issuer
+          value: https://jmaklab.cloudflareaccess.com
+      - equal:
+          path: spec.jwtRules[0].fromHeaders
+          value:
+            - name: Cf-Access-Jwt-Assertion
+      - equal:
+          path: spec.jwtRules[0].audiences
+          value:
+            - aud-draw
+            - aud-openagent
+            - aud-preview-wildcard
+
+  # An empty list is a legitimate "no extra private hosts" state rather than an
+  # error, so removing the values entry removes the gate.
+  - it: renders no policy when privateHosts is empty
+    set:
+      privateHosts: []
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: authorization-policy-private-hosts.yaml
