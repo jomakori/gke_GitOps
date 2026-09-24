@@ -15,14 +15,13 @@ concurrency:
   group: openkite-pin-bump
   cancel-in-progress: false
 
+env:
+  VALUES: apps/helm/values.yaml
+
 jobs:
   bump:
     name: Move the prod tag
     runs-on: ubuntu-24.04
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      VALUES: apps/helm/values.yaml
-      IMAGE: ghcr.io/jomakori/openkite
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +29,8 @@ jobs:
 
       - name: Resolve the latest release and the current pin
         id: r
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           latest="$(gh api repos/jomakori/openkite/releases/latest --jq .tag_name)"
@@ -37,13 +38,7 @@ jobs:
             echo "::error title=Unexpected release tag::'${latest}' is not v<major>.<minor>.<patch>."
             exit 1
           fi
-          current="$(python3 - "$VALUES" <<'INNER'
-          import re, sys
-          s = open(sys.argv[1]).read()
-          m = re.search(r"^openkite:\n(?:.*\n)*?    production:\n      tag: (\S+)$", s, re.M)
-          print(m.group(1) if m else "")
-          INNER
-          )"
+          current="$(python3 "$GITHUB_WORKSPACE/.github/scripts/pin_read.py" "$VALUES")"
           {
             echo "latest=${latest}"
             echo "current=${current}"
@@ -52,10 +47,12 @@ jobs:
 
       - name: Check the image exists before pinning to it
         if: steps.r.outputs.current != steps.r.outputs.latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ghcr.io/jomakori/openkite
         run: |
           set -euo pipefail
-          # A pin to a tag with no image behind it is ImagePullBackOff, so read the
-          # manifest first.
+          # A pin to a tag with no image behind it is ImagePullBackOff, so read the manifest first.
           curl -fsS -o /dev/null \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H 'Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.docker.distribution.manifest.v2+json' \
@@ -65,18 +62,11 @@ jobs:
       - name: Move the pin
         if: steps.r.outputs.current != steps.r.outputs.latest
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.r.outputs.latest }}
         run: |
           set -euo pipefail
-          python3 - "$VALUES" "$TAG" <<'INNER'
-          import re, sys
-          path, tag = sys.argv[1], sys.argv[2]
-          s = open(path).read()
-          new, n = re.subn(r"(^openkite:\n(?:.*\n)*?    production:\n      tag: )\S+$",
-                           lambda m: m.group(1) + tag, s, flags=re.M)
-          assert n == 1, f"expected exactly one openkite production tag, found {n}"
-          open(path, "w").write(new)
-          INNER
+          python3 .github/scripts/pin_write.py "$VALUES" "$TAG"
           if git diff --quiet; then
             echo "No change; nothing to pin."
             exit 0
