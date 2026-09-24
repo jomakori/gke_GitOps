@@ -41,11 +41,22 @@ else
   fi
   IFS=' ' read -r -a files_array <<< "$changed_files"
   for file in "${files_array[@]}"; do
-    if [[ "$file" == *"/argocd-appset/"* || "$file" == *"/helm/"* ]]; then
-      helm_dir=$(dirname "$file" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
-      if [[ ! " ${helm_dirs[@]} " =~ " ${helm_dir} " ]]; then
-        helm_dirs+=("$helm_dir")
-      fi
+    # Resolve a changed file to its CHART directory by walking up to the nearest
+    # ancestor that has a Chart.yaml.
+    #
+    # Deriving it from a fixed pattern (dirname + sed on `argocd-appset|helm/<one
+    # segment>`) only ever worked for files sitting exactly one level below the
+    # chart root: a change under apps/helm/templates/ resolved to
+    # apps/helm/templates, which is not a chart, and helm then died on a path with
+    # no Chart.yaml — failing CI for a correct change. Walking up needs no
+    # knowledge of the layout and cannot resolve to a non-chart.
+    helm_dir=$(dirname "$file")
+    while [[ "$helm_dir" != "." && "$helm_dir" != "/" && ! -f "$helm_dir/Chart.yaml" ]]; do
+      helm_dir=$(dirname "$helm_dir")
+    done
+    [[ -f "$helm_dir/Chart.yaml" ]] || continue
+    if [[ ! " ${helm_dirs[@]} " =~ " ${helm_dir} " ]]; then
+      helm_dirs+=("$helm_dir")
     fi
   done
 fi
@@ -64,6 +75,17 @@ for dir in "${helm_dirs[@]}"; do
   echo ""
   echo -e "${BLUE}── ${chart_name} ──${RESET}"
 
+  # A chart that cannot render from its own values alone (spec-driven charts
+  # render nothing until told WHICH spec, e.g. apps/helm needs appName) declares
+  # its CI render inputs in .ci-values.yaml. Without this, `helm template` on such
+  # a chart fails with "appName must be set" and every PR touching it fails CI —
+  # which is how this was found.
+  extra_values=()
+  if [[ -f "$dir/.ci-values.yaml" ]]; then
+    echo "  → using $dir/.ci-values.yaml"
+    extra_values=(-f "$dir/.ci-values.yaml")
+  fi
+
   # Run helm dependency update (pulls OCI charts, links file:// deps)
   if [[ -f "$dir/Chart.yaml" ]]; then
     echo "  → helm dependency update"
@@ -79,15 +101,15 @@ for dir in "${helm_dirs[@]}"; do
   # Helm lint (schema + YAML validation; may fail for umbrella charts
   # with strict subchart schemas — that's expected, template test catches it)
   echo "  → helm lint"
-  helm lint "$dir" --quiet 2>&1 || {
+  helm lint "$dir" "${extra_values[@]}" --quiet 2>&1 || {
     echo -e "  ⚠ helm lint warnings (expected for umbrella charts with strict subchart schemas)"
   }
 
   # Helm template dry-run (skip schema validation for strict subcharts)
   echo "  → helm template --dry-run"
-  if ! helm template "$dir" --skip-schema-validation --debug > /dev/null 2>&1; then
+  if ! helm template "$dir" --skip-schema-validation "${extra_values[@]}" --debug > /dev/null 2>&1; then
     echo -e "${RED}  ✗ helm template failed (see above)${RESET}"
-    helm template "$dir" --skip-schema-validation 2>&1 | tail -20
+    helm template "$dir" --skip-schema-validation "${extra_values[@]}" 2>&1 | tail -20
     exit 1
   fi
 

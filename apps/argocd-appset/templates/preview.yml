@@ -1,0 +1,121 @@
+{{- /*
+  ── Generic PR-preview generator ─────────────────────────────────────────────
+  One ApplicationSet per app that opts in with `enable_preview: true` in this
+  chart's values. Nothing here is app-specific: the repo, label, and the
+  namespace/subdomain/tag shapes all come from the app's own registry entry, so
+  giving a future app previews is a values change and this file is not touched.
+
+  Each admitted PR re-renders the SAME workload the prod Application renders — the
+  app's spec in apps/helm (`helmPath`). That is the point: a preview is the prod
+  definition at one PR's coordinates (image tag, subdomain, namespace), never a
+  second chart that can drift from it.
+
+  Placeholders like `{{ .number }}` survive Helm untouched: `goTemplate: true`
+  makes them the controller's to substitute, and they are quoted in the parameters
+  below so Helm writes them through as literal strings.
+
+  The generator is label-gated. The app repo's own image workflow applies the label,
+  and only after its push succeeded — so a preview can never reference a tag that
+  was never built, which is the ImagePullBackOff an unfiltered generator produces.
+*/}}
+{{- $root := . }}
+{{- range $key, $cfg := .Values.apps }}
+{{- if and $cfg.enable $cfg.enable_preview }}
+{{- $p := $cfg.preview | default dict }}
+{{- $kebabKey := include "kebab" $key }}
+{{- $repo := required (printf "apps.%s.preview.repo is required when enable_preview is true" $key) $p.repo }}
+{{- $owner := $p.owner | default "jomakori" }}
+{{- $envName := $p.environment | default "production" }}
+{{- $label := $p.label | default "preview" }}
+{{- $nsTemplate := $p.namespaceTemplate | default (printf "%s-pr{{ .number }}" $kebabKey) }}
+{{- $subdomainTemplate := $p.subdomainTemplate | default "pr{{ .number }}" }}
+{{- $tagTemplate := $p.tagTemplate | default "pr-{{ .number }}" }}
+{{- $domain := $p.domain | default ($root.Values.clusterDomain | default "maklab.net") }}
+{{- $hostTemplate := printf "%s.%s" $subdomainTemplate $domain }}
+{{- $tokenSecretName := $p.tokenSecretName | default (printf "argocd-github-token-%s" $kebabKey) }}
+{{- /* applications.yaml injects <key>.enable_domain for a public gateway; a preview
+       renders the same spec, so it must carry the same parameter or it renders no
+       VirtualService and is unreachable. */}}
+{{- $extraParams := list }}
+{{- if (($cfg.gateways | default dict).enable_public) }}
+{{-   $extraParams = append $extraParams (dict "name" (printf "%s.enable_domain" $key) "value" "true") }}
+{{- end }}
+{{- $mergedParams := concat ($cfg.parameters | default list) $extraParams }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ printf "%s-preview" $kebabKey }}
+  namespace: {{ $root.Values.argoNamespace | default "argocd" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $cfg.syncWave | default "0" | quote }}
+spec:
+  goTemplate: true
+  generators:
+    - pullRequest:
+        github:
+          owner: {{ $owner | quote }}
+          repo: {{ $repo | quote }}
+          tokenRef:
+            secretName: {{ $tokenSecretName | quote }}
+            key: {{ $p.tokenSecretKey | default "token" | quote }}
+          labels:
+            - {{ $label | quote }}
+        requeueAfterSeconds: {{ $p.requeueAfterSeconds | default 60 }}
+  template:
+    metadata:
+      name: {{ $nsTemplate | quote }}
+      labels:
+        app.kubernetes.io/name: {{ $key | quote }}
+        app.kubernetes.io/part-of: {{ $kebabKey | quote }}
+      annotations:
+        preview-url: {{ printf "https://%s" $hostTemplate | quote }}
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: {{ $cfg.argoProject | default ($root.Values.argoProject | default "default") }}
+      source:
+        repoURL: {{ $root.Values.repoUrl | quote }}
+        targetRevision: {{ $root.Values.targetRevision | default "main" | quote }}
+        path: {{ $cfg.helmPath | quote }}
+        helm:
+          valueFiles:
+            - values.yaml
+          parameters:
+            {{- range $mergedParams }}
+            - name: {{ .name }}
+              value: {{ tpl .value $root | quote }}
+            {{- end }}
+            # Per-PR coordinates: the only three things a preview changes.
+            - name: {{ printf "%s.environments.%s.tag" $key $envName }}
+              value: {{ $tagTemplate | quote }}
+            - name: {{ printf "%s.environments.%s.subdomain" $key $envName }}
+              value: {{ $subdomainTemplate | quote }}
+            - name: {{ printf "%s.namespaceOverride" $key }}
+              value: {{ $nsTemplate | quote }}
+            # The generated Application owns its namespace (declared by the workload
+            # chart), so closing the PR prunes namespace + workload together.
+            # CreateNamespace is deliberately NOT used: it creates a namespace the
+            # Application does not track, which then outlives the preview.
+            - name: {{ printf "%s.createNamespace" $key }}
+              value: "true"
+      destination:
+        server: {{ $root.Values.clusterServer | default "https://kubernetes.default.svc" | quote }}
+        namespace: {{ $nsTemplate | quote }}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+  syncPolicy:
+    # Do not keep generated Applications that stop matching the generator (PR
+    # closed or label withdrawn) — with the finalizer above, that is what makes
+    # teardown automatic.
+    preserveResourcesOnDeletion: false
+{{- end }}
+{{- end }}

@@ -26,6 +26,8 @@
 
 {{- /* App-level defaults (enable_staging, enable_domain, enable_istio, scaling, service) */}}
 {{- $enableStaging := ne (printf "%v" $app.enable_staging) "false" }}
+{{- $enablePrivate   := ne (printf "%v" ($app.enable_private | default false)) "false" }}
+{{- $createNamespace := ne (printf "%v" ($app.createNamespace | default false)) "false" }}
 {{- $enableDomain  := ne (printf "%v" $app.enable_domain) "false" }}
 {{- $enableIstio   := ne (printf "%v" ($app.enable_istio | default true)) "false" }}
 {{- $enableScaling := $app.enable_scaling }}
@@ -35,14 +37,14 @@
 {{- end }}
 {{- $svc          := $app.service }}
 {{- $svcReplicas  := $svc.replicas | default 1 }}
-{{- $imageRepo    := printf "%s/%s" $registry $kebabName }}
+{{- $imageRepo    := ($app.image | default dict).repository | default (printf "%s/%s" $registry $kebabName) }}
 
 {{- range $envName, $env := $app.environments }}
 {{- /* Skip staging when enable_staging is false */}}
 {{- if or (eq $envName "production") (and $enableStaging (eq $envName "staging")) }}
 
 {{- /* ── Env-level defaults ───────────────────────────────────── */}}
-{{- $namespace   := printf "%s-%s" $kebabName $envName }}
+{{- $namespace   := $app.namespaceOverride | default (printf "%s-%s" $kebabName $envName) }}
 {{- $defSub      := ternary $kebabName (printf "staging.%s" $kebabName) (eq $envName "production") }}
 {{- $subdomain   := $env.subdomain | default $defSub }}
 {{- $tag         := $env.tag | default "latest" }}
@@ -54,6 +56,18 @@
 {{- $retryAttempts := $istioSpec.retryAttempts | default 3 }}
 {{- $retryTimeout  := $istioSpec.retryTimeout | default "5s" }}
 {{- $requestTimeout := $istioSpec.requestTimeout | default "30s" }}
+
+{{- if $createNamespace }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $namespace }}
+  labels:
+    app: {{ $appName }}
+    env: {{ $envName }}
+    istio.io/dataplane-mode: ambient
+{{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
 {{- /* ServiceAccount + Registry Secret                              */}}
@@ -87,6 +101,7 @@ type: kubernetes.io/dockercfg
 {{- /* ═════════════════════════════════════════════════════════════ */}}
 {{- /* ExternalSecret — pulls from Doppler via ClusterSecretStore    */}}
 {{- /* ═════════════════════════════════════════════════════════════ */}}
+{{- if $env.dopplerConfig }}
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -106,6 +121,7 @@ spec:
     - find:
         name:
           regexp: .*
+{{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
 {{- /* Database Resources (conditional on enable_db)                  */}}
@@ -247,6 +263,10 @@ spec:
             requests:
               memory: {{ $svc.resourceRequests.memory }}
               cpu: {{ $svc.resourceRequests.cpu }}
+          {{- with $svc.resourceLimits }}
+            limits:
+              {{- toYaml . | nindent 14 }}
+          {{- end }}
           envFrom:
           - secretRef:
               name: {{ $namespace }}-vars
@@ -315,6 +335,42 @@ spec:
             host: {{ $kebabName }}-{{ $envName }}.{{ $namespace }}.svc.cluster.local
             port:
               number: 80
+{{- end }}
+
+{{- /* ═════════════════════════════════════════════════════════════ */}}
+{{- /* Cloudflare Access gate (enable_private)                        */}}
+{{- /* Same DENY-except-valid-CF-Access-JWT rule the istio chart's    */}}
+{{- /* `virtualServices.<name>.enablePrivate` renders, but declared   */}}
+{{- /* per HOST rather than per route: a dynamically generated host   */}}
+{{- /* (pr<N>.maklab.net) has no entry in that chart to hang off, and  */}}
+{{- /* Istio wildcards match the label SUFFIX, so `pr*.maklab.net`     */}}
+{{- /* cannot be one static policy.                                   */}}
+{{- /* ═════════════════════════════════════════════════════════════ */}}
+{{- if and $enableDomain $enableIstio $enablePrivate }}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: require-cf-access-{{ printf "%s-%s" $subdomain (replace "." "-" $domain) }}
+  namespace: {{ index (splitList "/" $gatewayRef) 0 }}
+  labels:
+    app: {{ $appName }}
+    env: {{ $envName }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notRequestPrincipals: ["*"]
+      to:
+        - operation:
+            hosts:
+              - {{ $fullDomain | quote }}
 {{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}

@@ -278,7 +278,12 @@ jobs:
           else
             for f in ${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}; do
               if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
-                d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
+                # Walk up to the nearest ancestor with a Chart.yaml: the old
+                # dirname+pattern form only resolved files one level below the chart
+                # root, so a change under apps/helm/templates/ resolved to a
+                # directory that is not a chart.
+                d=$(dirname "$f")
+                while [ "$d" != "." ] && [ "$d" != "/" ] && [ ! -f "$d/Chart.yaml" ]; do d=$(dirname "$d"); done
                 [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
               fi
             done
@@ -286,9 +291,15 @@ jobs:
           if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
           for d in "${helm_dirs[@]}"; do
             [ -f "$d/Chart.yaml" ] || continue
+            # Charts that cannot render from their own values alone (spec-driven
+            # charts that need a selector, e.g. apps/helm needs appName) declare
+            # their CI render inputs here; without them the render fails and every
+            # PR touching the chart fails CI.
+            cv=()
+            if [ -f "$d/.ci-values.yaml" ]; then cv=(-f "$d/.ci-values.yaml"); fi
             helm dependency update "$d" > /dev/null 2>&1
             .useful-scripts/patch_hermes_schema.sh "$d" > /dev/null
-            helm template "$d" --skip-schema-validation --validate=false > /tmp/rendered.yaml
+            helm template "$d" --skip-schema-validation --validate=false "${cv[@]}" > /tmp/rendered.yaml
             # -ignore-missing-schemas: skip CRDs (ExternalSecret, SGCluster,
             # VirtualService, etc.) — their schemas aren't in kubeconform's
             # built-in K8s set. Without this flag, every chart with CRDs
@@ -314,7 +325,12 @@ jobs:
           else
             for f in ${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}; do
               if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
-                d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
+                # Walk up to the nearest ancestor with a Chart.yaml: the old
+                # dirname+pattern form only resolved files one level below the chart
+                # root, so a change under apps/helm/templates/ resolved to a
+                # directory that is not a chart.
+                d=$(dirname "$f")
+                while [ "$d" != "." ] && [ "$d" != "/" ] && [ ! -f "$d/Chart.yaml" ]; do d=$(dirname "$d"); done
                 [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
               fi
             done
@@ -343,7 +359,12 @@ jobs:
           else
             for f in ${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}; do
               if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
-                d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
+                # Walk up to the nearest ancestor with a Chart.yaml: the old
+                # dirname+pattern form only resolved files one level below the chart
+                # root, so a change under apps/helm/templates/ resolved to a
+                # directory that is not a chart.
+                d=$(dirname "$f")
+                while [ "$d" != "." ] && [ "$d" != "/" ] && [ ! -f "$d/Chart.yaml" ]; do d=$(dirname "$d"); done
                 [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
               fi
             done
@@ -351,9 +372,15 @@ jobs:
           if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
           for d in "${helm_dirs[@]}"; do
             [ -f "$d/Chart.yaml" ] || continue
+            # Charts that cannot render from their own values alone (spec-driven
+            # charts that need a selector, e.g. apps/helm needs appName) declare
+            # their CI render inputs here; without them the render fails and every
+            # PR touching the chart fails CI.
+            cv=()
+            if [ -f "$d/.ci-values.yaml" ]; then cv=(-f "$d/.ci-values.yaml"); fi
             helm dependency update "$d" > /dev/null 2>&1
             .useful-scripts/patch_hermes_schema.sh "$d" > /dev/null
-            helm template "$d" --skip-schema-validation --validate=false > /tmp/rendered.yaml
+            helm template "$d" --skip-schema-validation --validate=false "${cv[@]}" > /tmp/rendered.yaml
             .useful-scripts/check_selectors.sh /tmp/rendered.yaml
           done
 
