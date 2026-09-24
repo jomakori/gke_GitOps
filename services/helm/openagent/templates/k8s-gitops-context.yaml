@@ -724,8 +724,14 @@ data:
     > state machine (auto-switch on 400/401/403/404/429/5xx, 3 attempts, 30s
     > cooldown, restore primary after cooldown). LiteLLM router_settings is
     > PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — cooldowns/
-    > retries there would fight OMO's runtime fallback. Hermes-side requests
-    > ride Hermes `fallback_providers` instead. Model ids are LiteLLM aliases.
+    > retries there would fight OMO's runtime fallback. The top-level Hermes
+    > agent (and cron/API runs) ride the top-level Hermes `fallback_providers`
+    > chain; delegated children carry ONE backup only
+    > (`delegation.fallback_providers: [deepseek-v4-flash-direct]`) — this
+    > plugin's per-agent chains own the escalation, and the single hop keeps a
+    > child alive when the delegation primary is out. The full 3-entry list it
+    > replaced made every engine attempt re-probe the whole delegation list.
+    > Model ids are LiteLLM aliases.
 
     | OMO Agent | Role | Primary (LiteLLM alias) | Fallback chain |
     |-------|------|-------|----------|
@@ -811,7 +817,7 @@ data:
 
     **Kilo Gateway** (base `https://api.kilo.ai/api/gateway/v1`, Bearer `KILO_API_KEY`): GLM 5.3 / Kimi K3 / MiniMax M3 / Gemini 3.6 Flash / Qwen 3.6 Plus route through it (OpenRouter-style IDs). DeepSeek stays native; Claude stays claude-proxy (escalation only). `KILO_API_KEY` lives in Doppler `svc_openagent`.
 
-    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — no cooldown/retry machinery at the gateway (it would fight OMO's runtime fallback). OMO owns both layers inside the plugin: per-agent model chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on 400/401/403/404/429/5xx, 3 attempts, 30s cooldown, restore-primary). Hermes-side requests ride Hermes `fallback_providers` (deepseek-v4-pro → claude/sonnet-5 → bytedance-glm-5.2).
+    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — no cooldown/retry machinery at the gateway (it would fight OMO's runtime fallback). OMO owns both layers inside the plugin: per-agent model chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on 400/401/403/404/429/5xx, 3 attempts, 30s cooldown, restore-primary). The top-level Hermes agent rides Hermes `fallback_providers` (deepseek-v4-pro → claude/sonnet-5 → bytedance-glm-5.2); **delegated children declare one backup** (`delegation.fallback_providers: [deepseek-v4-flash-direct]`) — the plugin's per-agent chains own the escalation ladder for workers, and that single credit-independent hop is what keeps a plain `delegate_task` child alive when the delegation primary is out (verified live: Kilo 402 on `minimax-m3`, the backup answered 200). The 3-entry list it replaced made every engine attempt re-walk the whole delegation list from scratch, dead models included. **`agent.api_max_retries: 1`**: one attempt per model, then the next fallback layer (a 429/402 fails over eagerly; 5xx/transport reach the retries-exhausted path on the first attempt). The host default of 3 replayed a 429/5xx against the model that had just refused it — the error cycle seen on 2026-09-24, where workers burned 3 extra calls on a session-limited Claude and a BYOK-throttled ByteDance key.
 
     ### Hermes Dashboard & Workspace
 

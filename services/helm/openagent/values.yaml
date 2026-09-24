@@ -89,6 +89,12 @@ litellm:
     # 512Mi request (358Mi) against ~1Gi of real usage — hence a permanent 197%
     # and maxReplicas forever. The request above is the number that matters.
     targetMemoryUtilizationPercentage: 70
+  # Chart-native PDB (upstream `pdb` key). This is the stack's only LLM
+  # gateway and it is HPA-scaled; with no PDB a single node drain can evict
+  # every replica at once. The subchart renders the selector itself.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
   migrationJob:
     enabled: false # disabled: litellm/proxy/prisma_migration.py leaks memory
     # after migrations complete, OOMKilling the pod with exit 137. With
@@ -412,6 +418,9 @@ hermes-agent:
       # default). Explicit pin preserves the capped behavior when bootstrap
       # re-seeds config.yaml from chart values on every pod start.
       max_turns: 90
+      # One attempt per model, then the next fallback layer — the host default
+      # of 3 replays a 429/5xx against the model that just refused it.
+      api_max_retries: 1
       # Hermes = the sole user-facing persona (HERMES_HOME=/opt/data) — the
       # communicator that fields ALL prompts, classifies, dispatches via the
       # native `omo` tool, and synthesizes worker results. The OMO roster and
@@ -587,15 +596,13 @@ hermes-agent:
       # under it; unset, the host default of 10 applies and the real ceiling is
       # only implied.
       max_concurrent_children: 8
-      # A pinned child (provider + base_url above) never inherits the parent's chain,
-      # so declare one here or delegated subagents run with no failover at all.
+      # One backup, not a second ladder: the OMO engine's per-agent chains own
+      # the escalation for delegated work, but a plain delegate_task child still
+      # needs a live route when the delegation primary is down (Kilo 402). This
+      # is the same credit-independent last resort every per-agent chain ends on.
       fallback_providers:
         - provider: litellm
-          model: deepseek-v4-pro
-        - provider: litellm
-          model: claude/sonnet-5
-        - provider: litellm
-          model: bytedance-glm-5.2
+          model: deepseek-v4-flash-direct
       # Workers run unattended: subagent threads carry no interactive approval
       # channel (the delegate path installs a non-interactive callback), so
       # without this Hermes auto-DENIES every dangerous command a subagent runs.
@@ -1440,7 +1447,3 @@ vpa:
 
 # PodDisruptionBudget for LiteLLM, which is HPA-scaled (min 2, max 4) and is the stack's
 # only LLM gateway. It had no PDB while running 4/4 replicas.
-litellm:
-  podDisruptionBudget:
-    enabled: true
-    maxUnavailable: 1

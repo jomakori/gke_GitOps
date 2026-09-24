@@ -77,3 +77,5 @@ Internet → Cloudflare edge (CDN, WAF, DDOS protection)
 | cloudflare-tunnel.replicaCount | int | `2` |  |
 | cloudflare-tunnel.tunnelName | string | `"maklab-cluster"` |  |
 | dopplerConfig | string | `"svc_cloudflare"` |  |
+| podDisruptionBudget.enabled | bool | `true` |  |
+| podDisruptionBudget.maxUnavailable | int | `1` |  |
