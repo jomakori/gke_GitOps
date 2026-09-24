@@ -1,0 +1,41 @@
+suite: litellm image is pinned to one immutable digest
+# The gateway ran `litellm:main-stable` under `imagePullPolicy: IfNotPresent`, so
+# each node kept whatever that tag first resolved to. On 2026-09-23 the four
+# replicas spanned three builds (1.91.1 / 1.92.0 / 1.98.0, one cached digest per
+# node) while the tag itself already pointed at a fourth (1.102.1) — a gateway
+# whose build changes on restart, with nothing to roll back to. The rendered
+# Deployment must therefore carry a digest.
+#
+# The second test is the same assertion one level up: the digest only exists in
+# the render if our `litellm:` values block actually reached the subchart. A
+# duplicate top-level `litellm:` key (yaml last-wins REPLACES, never merges)
+# drops the block silently and the chart's own defaults take over — which is how
+# #292 shipped a render with no model_list and a `litellm-database:<appVersion>`
+# image while lint, kubeconform and the schema checks all stayed green.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: pins the litellm Deployment image to name:tag@digest
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: '^ghcr\.io/berriai/litellm:[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$'
+        # Selected by container name, not `metadata.name`: several documents in
+        # this release are named `openagent-litellm` (Service, HPA, PDB), and a
+        # selector that matches more than one document fails as
+        # "multiple indexes found".
+        documentSelector:
+          path: spec.template.spec.containers[0].name
+          value: litellm
+          skipEmptyTemplates: true
+
+  - it: renders the model_list from values.yaml (the litellm values block reached the subchart)
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "deepseek-v4-pro-direct"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true

@@ -763,7 +763,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.fullnameOverride | string | `"openagent-litellm"` |  |
 | litellm.image.pullPolicy | string | `"IfNotPresent"` |  |
 | litellm.image.repository | string | `"ghcr.io/berriai/litellm"` |  |
-| litellm.image.tag | string | `"main-stable"` |  |
+| litellm.image.tag | string | `"1.98.0@sha256:20b5044b619055374061a6d5b7b08754cad75aeabbf82ddf4f69cc0cf80ddaf4"` |  |
 | litellm.masterkeySecretKey | string | `"masterkey"` |  |
 | litellm.masterkeySecretName | string | `"openagent-litellm-masterkey"` |  |
 | litellm.migrationJob.enabled | bool | `false` |  |
