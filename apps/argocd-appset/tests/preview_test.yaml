@@ -1,0 +1,89 @@
+suite: preview generator (generic, spec-driven)
+templates:
+  - templates/preview.yml
+tests:
+  - it: emits one ApplicationSet for the app that opted in with enable_preview
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ApplicationSet
+      - equal:
+          path: metadata.name
+          value: openkite-preview
+      - equal:
+          path: metadata.namespace
+          value: argocd
+      - equal:
+          path: spec.goTemplate
+          value: true
+      - equal:
+          path: spec.generators[0].pullRequest.github.owner
+          value: jomakori
+      - equal:
+          path: spec.generators[0].pullRequest.github.repo
+          value: openkite
+      - equal:
+          path: spec.generators[0].pullRequest.github.labels[0]
+          value: preview
+      - equal:
+          path: spec.generators[0].pullRequest.github.tokenRef.secretName
+          value: argocd-github-token-openkite
+      - equal:
+          path: spec.generators[0].pullRequest.requeueAfterSeconds
+          value: 60
+
+  - it: renders the SAME workload spec as prod, at per-PR coordinates
+    asserts:
+      - equal:
+          path: spec.template.spec.source.path
+          value: apps/helm/
+      - matchRegex:
+          path: spec.template.metadata.name
+          pattern: openkite-pr\{\{ \.number \}\}
+      - matchRegex:
+          path: spec.template.metadata.annotations.preview-url
+          pattern: https://pr\{\{ \.number \}\}.maklab.net
+      - matchRegex:
+          path: spec.template.spec.destination.namespace
+          pattern: openkite-pr\{\{ \.number \}\}
+      - contains:
+          path: spec.template.spec.source.helm.parameters
+          content:
+            name: appName
+            value: openkite
+      - contains:
+          path: spec.template.spec.source.helm.parameters
+          content:
+            name: openkite.environments.production.tag
+            value: pr-{{ .number }}
+      - contains:
+          path: spec.template.spec.source.helm.parameters
+          content:
+            name: openkite.environments.production.subdomain
+            value: pr{{ .number }}
+      - contains:
+          path: spec.template.spec.source.helm.parameters
+          content:
+            name: openkite.namespaceOverride
+            value: openkite-pr{{ .number }}
+      - contains:
+          path: spec.template.spec.source.helm.parameters
+          content:
+            name: openkite.createNamespace
+            value: "true"
+
+  - it: carries the public-gateway parameter, or the preview would render no VirtualService
+    asserts:
+      - contains:
+          path: spec.template.spec.source.helm.parameters
+          content:
+            name: openkite.enable_domain
+            value: "true"
+
+  - it: is opt-in - an app without enable_preview produces no generator at all
+    set:
+      apps.openkite.enable_preview: false
+    asserts:
+      - hasDocuments:
+          count: 0
