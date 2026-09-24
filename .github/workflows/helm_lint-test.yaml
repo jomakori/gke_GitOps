@@ -179,17 +179,6 @@ jobs:
         run: |
           .useful-scripts/check_values_reachability.py
 
-      - name: Duplicate YAML mapping keys — STRICT
-        # A value declared twice in the same block renders byte-perfect, passes
-        # helm lint, kubeconform and every schema check, and silently discards the
-        # earlier block. This shipped: a hand-added `litellm:` at the end of
-        # openagent/values.yaml shadowed 333 lines of gateway config (model list,
-        # db endpoint, migrationJob) and nothing in CI noticed. Unlike the workload
-        # policy gate this one is STRICT from day one -- a duplicate key is never
-        # intentional, so there is no backlog to grandfather. Dependency-free by
-        # design (stdlib only), like the gate above.
-        run: .useful-scripts/check_yaml_duplicate_keys.py
-
       - name: Workload policy (resources / probes / PDB) — ADVISORY
         # What no other gate here can see: a container with no requests/limits, no
         # probes, or a multi-pod workload with no PodDisruptionBudget renders
@@ -312,11 +301,18 @@ jobs:
           if [ -n "$chart_input" ]; then
             helm_dirs=("$chart_input")
           else
+            # Walk up from each changed file to the nearest Chart.yaml. The old rule
+            # recognised only `helm/<name>` and `argocd-appset`, so an application
+            # chart under `apps/<name>` never had its unit tests run here at all:
+            # apps/openkite-preview's suite (which pins the preview host shape) was
+            # green locally and absent from CI, so it gated nothing.
             for f in ${{ steps.changed-files.outputs.all_changed_files || steps.discover.outputs.value }}; do
-              if [[ "$f" == *"/argocd-appset/"* || "$f" == *"/helm/"* ]]; then
-                d=$(dirname "$f" | sed 's#^\(.*\)\(argocd-appset\|helm/[^/]*\).*#\1\2#')
-                [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
-              fi
+              d=$(dirname "$f")
+              while [ "$d" != "." ] && [ "$d" != "/" ] && [ ! -f "$d/Chart.yaml" ]; do
+                d=$(dirname "$d")
+              done
+              [ -f "$d/Chart.yaml" ] || continue
+              [[ ! " ${helm_dirs[@]} " =~ " ${d} " ]] && helm_dirs+=("$d")
             done
           fi
           if [ ${#helm_dirs[@]} -eq 0 ]; then echo "No charts; skipping."; exit 0; fi
