@@ -596,10 +596,13 @@ hermes-agent:
       # under it; unset, the host default of 10 applies and the real ceiling is
       # only implied.
       max_concurrent_children: 8
-      # Empty = no child-level chain: the OMO engine owns fallback for delegated
-      # work. A declared chain made every engine attempt re-probe the whole
-      # delegation list from scratch, dead models included.
-      fallback_providers: []
+      # One backup, not a second ladder: the OMO engine's per-agent chains own
+      # the escalation for delegated work, but a plain delegate_task child still
+      # needs a live route when the delegation primary is down (Kilo 402). This
+      # is the same credit-independent last resort every per-agent chain ends on.
+      fallback_providers:
+        - provider: litellm
+          model: deepseek-v4-flash-direct
       # Workers run unattended: subagent threads carry no interactive approval
       # channel (the delegate path installs a non-interactive callback), so
       # without this Hermes auto-DENIES every dangerous command a subagent runs.
