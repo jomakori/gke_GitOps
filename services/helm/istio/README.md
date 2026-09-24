@@ -133,6 +133,8 @@ Two layers of VirtualServices exist:
 | istiod.profile | string | `"ambient"` |  |
 | istiod.telemetry.enabled | bool | `true` |  |
 | istiod.telemetry.v2.prometheus.enabled | bool | `true` |  |
+| podDisruptionBudget.enabled | bool | `true` |  |
+| podDisruptionBudget.maxUnavailable | int | `1` |  |
 | virtualServices.argocd.destination.host | string | `"argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |

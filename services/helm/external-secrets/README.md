@@ -100,3 +100,5 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | external-secrets.replicaCount | int | `2` |  |
 | external-secrets.serviceAccount.create | bool | `true` |  |
 | external-secrets.webhook.certManager.enabled | bool | `false` |  |
+| podDisruptionBudget.enabled | bool | `true` |  |
+| podDisruptionBudget.maxUnavailable | int | `1` |  |

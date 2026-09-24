@@ -89,6 +89,12 @@ litellm:
     # 512Mi request (358Mi) against ~1Gi of real usage — hence a permanent 197%
     # and maxReplicas forever. The request above is the number that matters.
     targetMemoryUtilizationPercentage: 70
+  # Chart-native PDB (upstream `pdb` key). This is the stack's only LLM
+  # gateway and it is HPA-scaled; with no PDB a single node drain can evict
+  # every replica at once. The subchart renders the selector itself.
+  pdb:
+    enabled: true
+    maxUnavailable: 1
   migrationJob:
     enabled: false # disabled: litellm/proxy/prisma_migration.py leaks memory
     # after migrations complete, OOMKilling the pod with exit 137. With
@@ -1440,7 +1446,3 @@ vpa:
 
 # PodDisruptionBudget for LiteLLM, which is HPA-scaled (min 2, max 4) and is the stack's
 # only LLM gateway. It had no PDB while running 4/4 replicas.
-litellm:
-  podDisruptionBudget:
-    enabled: true
-    maxUnavailable: 1
