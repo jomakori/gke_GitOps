@@ -13,7 +13,7 @@ Istio umbrella chart — base CRDs, control plane, ingress gateway, and config (
 
 ## Under the hood
 
-This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), **istiod** (control plane), and **ingress-gateway** — plus 9 local templates for networking, TLS, and auth configuration. It is the single entry point for all cluster ingress.
+This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), **istiod** (control plane), and **ingress-gateway** — plus 10 local templates for networking, TLS, and auth configuration. It is the single entry point for all cluster ingress.
 
 ### Hybrid chart structure
 
@@ -22,7 +22,7 @@ This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), *
 - `istiod` — Control plane in ambient mode, STRICT mTLS
 - `gateway` (aliased `ingress-gateway`) — Ingress gateway deployment with NodePort service
 
-**Local templates (9):**
+**Local templates (10):**
 
 | Template | Purpose |
 |----------|---------|
@@ -33,6 +33,7 @@ This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), *
 | `peer-authentication.yaml` | STRICT mTLS mesh-wide |
 | `request-authentication.yaml` | CF Access JWT validation (conditional on `cloudflare.access.audienceTag`) |
 | `authorization-policy-private.yaml` | DENY rules per private VS (conditional on `enablePrivate: true`) |
+| `authorization-policy-private-hosts.yaml` | DENY rules per `privateHosts` entry — private hosts this chart does not route (wildcards allowed) |
 | `cloudflare-external-secret.yaml` | ExternalSecret for `CF_API_TOKEN` in `istio-system` |
 | `cloudflare-external-secret-certmanager.yaml` | ExternalSecret for `CF_API_TOKEN` in `cert-manager` namespace |
 
@@ -54,6 +55,24 @@ Services that require authenticated access opt in via `enablePrivate: true` in t
 3. `authorization-policy-private.yaml` creates a DENY rule per private host — traffic without a valid JWT is rejected.
 
 `enable_public` and `enable_private` are mutually exclusive. The argocd-appset template fails if both are set on the same service.
+
+### Gating a host this chart does not route
+
+`enablePrivate` covers hosts that also have a `virtualServices` entry here. A host whose **route** lives
+elsewhere — an ApplicationSet-generated preview host per pull request, for example — is listed in
+`privateHosts` instead. Each entry renders the same `require-cf-access-<host>` DENY rule
+(`authorization-policy-private-hosts.yaml`). Wildcards are allowed, because Istio treats
+`*.example.com` in a policy's `operation.hosts` as a suffix match:
+
+```yaml
+privateHosts:
+  - "*.openkite.maklab.net"
+```
+
+The Cloudflare side of the gate is the matching Access application in `devops_Terraform`
+(`6-cloudflare-access.tf`). Both halves are required: the Access application is what makes the browser
+authenticate and issue `Cf-Access-Jwt-Assertion`, and this policy is what rejects a request whose JWT is
+missing or whose audience is absent from `cloudflare.access.audienceTag`.
 
 ### VirtualServices
 
@@ -135,6 +154,7 @@ Two layers of VirtualServices exist:
 | istiod.telemetry.v2.prometheus.enabled | bool | `true` |  |
 | podDisruptionBudget.enabled | bool | `true` |  |
 | podDisruptionBudget.maxUnavailable | int | `1` |  |
+| privateHosts | list | `["*.openkite.maklab.net"]` | Extra hosts that get the private DENY policy without a VirtualService here. |
 | virtualServices.argocd.destination.host | string | `"argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |
