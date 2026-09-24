@@ -3,7 +3,7 @@
 Per-PR preview infrastructure for [jomakori/openkite](https://github.com/jomakori/openkite).
 One ArgoCD `ApplicationSet` (GitHub **Pull Request generator**) renders one preview
 `Application` per **labelled** open PR, deploying `apps/helm/openkite-preview` into
-that PR's OWN namespace at `pr-<num>.openkite.maklab.net`. When a PR closes, merges
+that PR's OWN namespace at `pr<num>-openkite.maklab.net`. When a PR closes, merges
 or loses the label, the generated Application is deleted and its
 `resources-finalizer` cascades cleanup of the namespace and everything in it.
 Nothing is ever written back to the repo.
@@ -17,8 +17,6 @@ apps/openkite-preview/
 ├── templates/
 │   ├── _helpers.tpl
 │   ├── namespaces.yaml        ← shared preview namespace (ambient)
-│   ├── certificate.yaml       ← cert-manager wildcard *.openkite.maklab.net
-│   ├── gateway.yaml           ← Istio Gateway serving the 2-level wildcard
 │   └── applicationset.yaml    ← PR-generator ApplicationSet
 └── tests/
     └── applicationset_test.yaml
@@ -49,13 +47,12 @@ GitHub PR (jomakori/openkite)
       └─ filters on that label — unlabelled PRs are skipped entirely
     → Application openkite-preview-<N>   (helm: apps/helm/openkite-preview)
       image:     ghcr.io/jomakori/openkite:pr-<N>
-      host:      pr-<N>.openkite.maklab.net      (Gateway + Certificate, this chart)
-      namespace: openkite-preview-<N>            (its own, pruned with the preview)
+      host:      pr<N>-openkite.maklab.net    (cluster gateway, no per-preview TLS)
+      namespace: openkite-preview-<N>         (its own, pruned with the preview)
 ```
 
 The shared `openkite-preview` namespace keeps only what must exist exactly once and
-outlive every PR: the wildcard TLS Secret, the Istio Gateway and the generator's
-token.
+outlive every PR — today the generator's GitHub token.
 
 ## The image gate
 
@@ -79,7 +76,7 @@ Consequences worth knowing:
   (`applicationset/services/pull_request/github.go` → `containLabels`): every
   label listed is required. Unlabelling a PR removes its Application on the next
   reconcile (`requeueAfterSeconds`), and the `resources-finalizer` prunes the
-  namespace, Deployment, Service and VirtualService with it.
+  namespace, Deployment, Service, VirtualService and AuthorizationPolicy with it.
 - Teardown lag is bounded by `requeueAfterSeconds` (60s) plus the prune. There is
   no second teardown mechanism: closing a PR and unlabelling one take the same
   path.
@@ -95,12 +92,24 @@ committed here.
 
 ## Domain and TLS
 
-`pr-<num>.openkite.maklab.net` is a **two-level** subdomain. The cluster's
-`*.maklab.net` wildcard matches only one label, so it does **not** cover preview
-hosts. This chart therefore issues a dedicated cert-manager `Certificate` for
-`*.openkite.maklab.net` and serves it from a dedicated Istio `Gateway`
-(`openkite-preview-gateway`). ExternalDNS watches the Gateway host and creates
-the wildcard record in Cloudflare.
+The preview host is **one label** under the zone — `pr<num>-openkite.maklab.net` —
+and that is a hard requirement, not a preference:
+
+- Universal SSL covers the zone apex plus exactly **one** subdomain level, and Total
+  TLS does not issue certificates for hostnames served through Cloudflare Tunnel.
+  A two-level preview host (`pr-134.openkite.maklab.net`) is therefore served **no
+  certificate at all**: the TLS handshake fails at the Edge before any Cloudflare
+  Access policy or mesh policy can run, and the gate looks broken while being
+  correctly configured. Fixing that means a paid Advanced Certificate Manager
+  subscription for the zone.
+- At one label the preview reuses what the cluster already has: the
+  `istio-system/maklab-gateway` Gateway (hosts `*.maklab.net`) and its
+  `wildcard-maklab-net-tls` Certificate, which cert-manager renews. This chart
+  deliberately declares no Gateway, no Certificate and no TLS Secret of its own.
+- The PR id leads the label, which keeps the Cloudflare Access side expressible as
+  one wildcard application (`pr*-openkite.maklab.net` — Cloudflare allows one
+  wildcard per label). The mesh-side gate is per preview, in the workload chart,
+  because Istio matches hosts as exact or leading-`*.` suffix only.
 
 ## Lifecycle
 
@@ -134,29 +143,25 @@ kubectl -n argocd delete application openkite-preview-131 openkite-preview-132 o
 kubectl -n argocd delete application openkite-preview-<N>
 ```
 
-Do NOT delete the `openkite-preview` namespace with them: it holds the wildcard
-Certificate, the Gateway and the generator token, and is owned by this chart's
-Application, so ArgoCD would recreate it. Deleting the Applications removes only
-what each preview owns.
+Do NOT delete the `openkite-preview` namespace with them: it holds the generator
+token and is owned by this chart's Application, so ArgoCD would recreate it.
+Deleting the Applications removes only what each preview owns.
 
 ## Values
 
 | Key | Description |
 |-----|-------------|
 | `appName` | ApplicationSet name (default `openkite-preview`) |
-| `namespace` | shared preview INFRASTRUCTURE namespace — wildcard Certificate, Gateway, token (default `openkite-preview`) |
+| `namespace` | shared preview namespace — generator token (default `openkite-preview`) |
 | `namespaceTemplate` | destination namespace per PR (default `openkite-preview-{{ .number }}`) |
 | `github.owner` / `github.repo` | PR source repository (`jomakori/openkite`) |
 | `github.tokenSecretName` / `github.tokenSecretKey` | `argocd-github-token` / `token` |
 | `previewLabel` | the only label that makes a PR eligible for a preview (default `preview`) |
 | `chartPath` | per-PR chart (`apps/helm/openkite-preview`) |
-| `previewDomain` | `openkite.maklab.net` |
-| `nameTemplate` / `hostTemplate` / `tagTemplate` | goTemplate strings (`.number` = PR id) |
+| `nameTemplate` / `hostTemplate` / `tagTemplate` | goTemplate strings (`.number` = PR id); `hostTemplate` must stay one label under the zone |
 | `image.repository` | `ghcr.io/jomakori/openkite` |
 | `replicaCount` | preview replicas |
 | `requeueAfterSeconds` | PR poll interval |
-| `tls.*` | wildcard Certificate name / secret / issuer |
-| `gateway.*` | shared Gateway name and ingress selector |
 
 ## Validate
 

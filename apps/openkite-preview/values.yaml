@@ -17,10 +17,15 @@ targetRevision: ""
 # ApplicationSet name (one resource fans out one Application per open PR).
 appName: openkite-preview
 
-# Shared preview INFRASTRUCTURE namespace — the resources that must exist
-# exactly once and must outlive every PR: the wildcard TLS Secret, the Istio
-# Gateway, and the generator's GitHub token Secret. Owned by this chart's
-# Application, never by a generated per-PR Application.
+# Shared preview namespace — the resources that must exist exactly once and must
+# outlive every PR: the generator's GitHub token Secret (templates/
+# externalsecret.yaml). Owned by this chart's Application, never by a generated
+# per-PR Application.
+#
+# Routing and TLS deliberately do NOT live here. Previews are served by the
+# cluster's own `istio-system/maklab-gateway` (hosts `*.maklab.net`) with the
+# `wildcard-maklab-net-tls` Secret that gateway already holds, so a preview needs
+# no gateway, no Certificate and no Secret of its own.
 namespace: openkite-preview
 
 # Destination namespace for each generated preview Application: one namespace
@@ -69,14 +74,22 @@ previewLabel: preview
 # Helm chart rendered for each open PR (lives in this repo).
 chartPath: apps/helm/openkite-preview
 
-# Preview domain. pr-<num>.openkite.maklab.net is a TWO-level subdomain, so
-# *.maklab.net does NOT match it — TLS is issued for *.openkite.maklab.net.
-previewDomain: openkite.maklab.net
-
 # goTemplate strings evaluated by the ApplicationSet controller (NOT Helm):
 #   {{ .number }} is the numeric PR id — always DNS-safe (sanitized by nature).
+#
+# The host is ONE label under the zone (`pr131-openkite.maklab.net`), which is
+# what makes the preview edge work without buying anything: Universal SSL covers
+# the zone apex plus a single subdomain level, and the cluster's own
+# `*.maklab.net` wildcard Certificate covers the same depth. A two-level host
+# (`pr-131.openkite.maklab.net`) is served no certificate at all — Universal SSL
+# stops at one level and Total TLS does not issue for Tunnel hostnames — so it
+# needs a paid Advanced Certificate Manager subscription for the zone.
+#
+# The PR id leads the label so a preview URL sorts and reads by PR, and the
+# shape stays one wildcard away from a Cloudflare Access application
+# (`pr*-openkite.maklab.net` — one wildcard per label is allowed).
 nameTemplate: "openkite-preview-{{ .number }}"
-hostTemplate: "pr-{{ .number }}.openkite.maklab.net"
+hostTemplate: "pr{{ .number }}-openkite.maklab.net"
 tagTemplate: "pr-{{ .number }}"
 
 # Image consumed by each preview (published by OKT-74 as :pr-<N>).
@@ -88,16 +101,3 @@ replicaCount: 1
 
 # How often the Pull Request generator is re-evaluated (seconds).
 requeueAfterSeconds: 60
-
-# TLS terminated at the shared Istio Gateway. The Certificate covers the whole
-# 2-level wildcard, issued by the cluster's letsencrypt-prod ClusterIssuer.
-tls:
-  certificateName: wildcard-openkite-maklab-net
-  secretName: wildcard-openkite-maklab-net-tls
-  issuerName: letsencrypt-prod
-
-# Shared Istio Gateway selecting the cluster ingress gateway.
-gateway:
-  name: openkite-preview-gateway
-  selector:
-    istio: ingressgateway

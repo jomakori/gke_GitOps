@@ -4,7 +4,7 @@
 # and admits only those carrying the image-gate label (Values.previewLabel).
 # Each admitted item renders the openkite-preview chart with:
 #   image     → ghcr.io/jomakori/openkite:pr-<N>   (OKT-74 publishes this tag)
-#   host      → pr-<N>.openkite.maklab.net
+#   host      → pr<N>-openkite.maklab.net   (one label under the zone)
 #   namespace → openkite-preview-<N>   (its own, see Values.namespaceTemplate)
 # When a PR closes, merges, or loses the label, the generator drops the item,
 # the generated Application is deleted, and its `resources-finalizer` cascades

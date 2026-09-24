@@ -52,7 +52,7 @@ tests:
           path: spec.syncPolicy.preserveResourcesOnDeletion
           value: false
 
-  - it: injects the pr-<N> image tag and preview host
+  - it: injects the pr-<N> image tag and the one-level preview host
     asserts:
       - equal:
           path: spec.template.spec.source.helm.parameters[2].name
@@ -65,7 +65,23 @@ tests:
           value: ingress.host
       - equal:
           path: spec.template.spec.source.helm.parameters[3].value
-          value: "pr-{{ .number }}.openkite.maklab.net"
+          value: "pr{{ .number }}-openkite.maklab.net"
+
+  - it: keeps the preview host at ONE label under the zone so standard cert coverage applies
+    # A two-level host (pr-<N>.openkite.maklab.net) is served no certificate at the
+    # Cloudflare edge — Universal SSL covers the apex plus a single label, and Total
+    # TLS skips Tunnel hostnames — which silently breaks the Access gate. The label
+    # count is the property that keeps the preview edge free; assert it directly.
+    asserts:
+      - equal:
+          path: spec.template.spec.source.helm.parameters[3].value
+          value: "pr{{ .number }}-openkite.maklab.net"
+      - notMatchRegex:
+          path: spec.template.spec.source.helm.parameters[3].value
+          pattern: '\.openkite\.maklab\.net$'
+      - notMatchRegex:
+          path: spec.template.spec.source.helm.parameters[3].value
+          pattern: '\*'
 
   - it: deploys each preview into its own per-PR namespace
     asserts:
@@ -79,7 +95,7 @@ tests:
           path: spec.template.spec.source.helm.parameters[5].value
           value: "true"
 
-  - it: renders no per-PR Ingress, because the wildcard TLS Secret cannot follow it
+  - it: renders no per-PR Ingress, so no path reaches the pod without the Access challenge
     asserts:
       - equal:
           path: spec.template.spec.source.helm.parameters[6].name
