@@ -70,20 +70,24 @@ tests:
           path: spec.rules[0].to[0].operation.hosts[0]
           pattern: ^[^*]
 
-  # Negative half, per-VirtualService template: argocd.maklab.net is enabled on
-  # the same gateway and deliberately public (`enablePrivate` unset), so it must
-  # not name a policy. Asserted with the flag explicitly off, so the test keeps
-  # testing the mechanism if the default ever flips.
-  - it: does not gate the public argocd.maklab.net host on the same gateway
+  # The whole gate as an inventory: exactly one policy from the per-VirtualService
+  # template and exactly one from the privateHosts template. The counts are the
+  # tripwire — the way a non-preview host gets silently gated is someone adding
+  # it to `privateHosts`, and that now fails here instead of shipping.
+  - it: gates exactly the preview wildcard and the opted-in VirtualService host
     set:
       virtualServices.argocd.enablePrivate: false
       virtualServices.excalidash.enablePrivate: true
     asserts:
-      # One policy, and it is draw.maklab.net (the VS that opted in): no policy
-      # carries argocd.maklab.net.
+      - hasDocuments:
+          count: 1
+        template: authorization-policy-private-hosts.yaml
       - hasDocuments:
           count: 1
         template: authorization-policy-private.yaml
+      # One policy, and it is draw.maklab.net (the VS that opted in): no policy
+      # carries argocd.maklab.net, which is enabled on the same gateway and
+      # deliberately public.
       - equal:
           path: spec.rules[0].to[0].operation.hosts
           value:
