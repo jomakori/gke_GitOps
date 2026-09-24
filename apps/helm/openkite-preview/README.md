@@ -1,8 +1,8 @@
 # openkite-preview
 
 Per-PR preview **workload** chart for [jomakori/openkite](https://github.com/jomakori/openkite).
-Rendered once per open PR by the `openkite-preview` ApplicationSet
-(`apps/openkite-preview`). It is not deployed directly.
+Rendered once per eligible (image-gated, see `apps/openkite-preview`) PR by the
+`openkite-preview` ApplicationSet. It is not deployed directly.
 
 ## Injected values
 
@@ -15,25 +15,45 @@ The ApplicationSet passes per-PR Helm parameters:
 | `image.tag` | `pr-42` | PR image tag (OKT-74) |
 | `ingress.host` | `pr-42.openkite.maklab.net` | preview host |
 | `replicaCount` | `1` | replicas |
-
-The chart deploys into the shared `openkite-preview` namespace (isolated by the
-unique per-PR names), so the wildcard TLS Secret is issued exactly once and the
-per-PR Ingress can reference it in-namespace.
+| `namespace.create` | `true` (per-PR) | render the per-PR Namespace |
 
 ## Resources
 
 | Resource | Notes |
 |----------|-------|
+| `Namespace` | only when `namespace.create`; per-PR, `istio.io/dataplane-mode: ambient`, sync-wave `-1` |
 | `Deployment` | image `repository:tag`, `intent: apps` nodeSelector, readiness/liveness probes |
 | `Service` | ClusterIP, port 80 → container port `service.targetPort` |
-| `Ingress` | per-PR host + TLS `*.openkite.maklab.net` (`wildcard-openkite-maklab-net-tls`) |
 | `VirtualService` | Istio routing (the cluster's ingress) to the shared `openkite-preview-gateway` |
+| `Ingress` | only when `ingress.enabled`; a release in a namespace holding the wildcard TLS Secret |
+
+The ApplicationSet sets `namespace.create=true`, so each preview owns its
+namespace and closing the PR prunes the namespace with the Deployment, Service and
+VirtualService. A release that lands in a namespace another Application owns (the
+shared preview namespace) leaves `namespace.create=false` and adopts nothing.
+
+## Per-PR namespace
+
+One namespace per PR, not one shared namespace with per-PR resource names: the
+namespace is what makes teardown complete. It is declared in the chart rather than
+delegated to ArgoCD's `CreateNamespace=true` sync option, because CreateNamespace
+creates a namespace ArgoCD does **not** track — deleting the Application then
+prunes the namespaced resources and strands the namespace. Verified on the live
+cluster: a throwaway Application with `CreateNamespace=true` and the
+`resources-finalizer` left its namespace `Active` after the Application was gone.
 
 ## TLS
 
 `*.maklab.net` does **not** match the two-level `pr-<N>.openkite.maklab.net` host,
-so ingress TLS targets the dedicated `*.openkite.maklab.net` wildcard Secret
-(issued once by `apps/openkite-preview/templates/certificate.yaml`).
+so TLS comes from the dedicated `*.openkite.maklab.net` wildcard Secret issued once
+by `apps/openkite-preview/templates/certificate.yaml` into the shared preview
+namespace, where the shared `openkite-preview-gateway` presents it via
+`credentialName`. The Gateway terminates TLS; a per-PR `VirtualService` only binds
+its host to that Gateway.
+
+A per-PR `Ingress` is therefore **not** rendered (`ingress.enabled=false` from the
+ApplicationSet): an Ingress's TLS Secret has to live in the Ingress's own
+namespace, and the wildcard Secret deliberately exists only in the shared one.
 
 ## Values
 
@@ -46,6 +66,7 @@ so ingress TLS targets the dedicated `*.openkite.maklab.net` wildcard Secret
 | `image.tag` | `latest` | image tag (per-PR `pr-<N>`) |
 | `image.pullPolicy` | `IfNotPresent` | image pull policy |
 | `imagePullSecrets` | `[]` | image pull secrets |
+| `namespace.create` | `false` | render the Namespace this release deploys into (per-PR `true`) |
 | `service.type` | `ClusterIP` | Service type |
 | `service.port` | `80` | Service port |
 | `service.targetPort` | `8080` | container port |
