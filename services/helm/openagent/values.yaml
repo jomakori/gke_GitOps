@@ -36,7 +36,8 @@ litellm:
   fullnameOverride: "openagent-litellm"
   image:
     repository: ghcr.io/berriai/litellm
-    tag: "main-stable"
+    # Immutable: upstream republishes `main-stable`, and IfNotPresent keeps one cached build per node.
+    tag: "1.98.0@sha256:20b5044b619055374061a6d5b7b08754cad75aeabbf82ddf4f69cc0cf80ddaf4"
     pullPolicy: IfNotPresent
   service:
     port: 4000
