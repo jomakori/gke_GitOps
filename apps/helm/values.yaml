@@ -80,16 +80,17 @@ openkite:
   enable_istio: true
   # Cloudflare Access: DENY anything without a valid JWT for this host.
   enable_private: true
-  # ── Cluster read (OKT-130) ───────────────────────────────────────────
-  # Read-only RBAC (get/list/watch, no writes, no exec) for the pod's own
-  # ServiceAccount — the identity the console reads the cluster with. Previews
-  # never get it (the chart refuses to grant a preview namespace, see
-  # app.manifests in templates/_helpers.tpl). `secrets` is deliberately
-  # excluded: cluster-wide Secret read is its own decision, not a side effect of
-  # this one, and setting `cluster_read.secrets` fails the render rather than
-  # silently doing nothing.
-  cluster_read:
+  # ── Cluster access (OKT-130) ─────────────────────────────────────────
+  # The console reads the cluster with a kubeconfig delivered by External
+  # Secrets from Doppler — not with the pod's ServiceAccount, because
+  # `list secrets` returns values rather than keys, so an SA read role could
+  # only grant every Secret or none. Previews never get it (see app.manifests
+  # in templates/_helpers.tpl).
+  kubeconfig:
     enabled: true
+    store: doppler-svc-tailscale
+    secretName: TAILSCALE_KUBECONFIG
+    mountPath: /etc/openkite/kubeconfig
   # GHCR, not the shared ECR registry.
   image:
     repository: ghcr.io/jomakori/openkite

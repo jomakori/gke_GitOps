@@ -39,15 +39,22 @@
 {{- $svcReplicas  := $svc.replicas | default 1 }}
 {{- $imageRepo    := ($app.image | default dict).repository | default (printf "%s/%s" $registry $kebabName) }}
 
-{{- /* Cluster read (OKT-130). Two gates, both required: the spec opts in, and
-       the environment is not a preview. `namespaceOverride` is the preview
-       coordinate (apps/argocd-appset/templates/preview.yml) and it cannot be
-       omitted by a preview without clobbering the prod namespace, so it is the
-       gate that cannot be forgotten. A preview runs unreviewed PR code and must
-       never hold cluster-wide read. */}}
-{{- $clusterRead   := $app.cluster_read | default dict }}
-{{- $isPreview     := ne (printf "%v" ($app.namespaceOverride | default "")) "" }}
-{{- $clusterReadOn := and (ne (printf "%v" ($clusterRead.enabled | default false)) "false") (not $isPreview) }}
+{{- /* Cluster access for a console host (OKT-130). The identity is a kubeconfig
+       delivered by External Secrets from Doppler, not the pod's ServiceAccount:
+       `list secrets` returns values rather than keys, so an SA read role could
+       only grant every Secret in the cluster or none.
+       Two gates, both required: the spec opts in, and the environment is not a
+       preview. `namespaceOverride` is the preview coordinate
+       (apps/argocd-appset/templates/preview.yml) and a preview cannot omit it
+       without clobbering the prod namespace, so it is the gate that cannot be
+       forgotten. A preview runs unreviewed PR code and must never hold cluster
+       credentials. */}}
+{{- $kubeconfig      := $app.kubeconfig | default dict }}
+{{- $isPreview       := ne (printf "%v" ($app.namespaceOverride | default "")) "" }}
+{{- $kubeconfigOn    := and (ne (printf "%v" ($kubeconfig.enabled | default false)) "false") (not $isPreview) }}
+{{- $kubeconfigKey   := $kubeconfig.secretName | default "TAILSCALE_KUBECONFIG" }}
+{{- $kubeconfigPath  := $kubeconfig.mountPath | default "/etc/openkite/kubeconfig" }}
+{{- $kubeconfigStore := $kubeconfig.store | default "doppler-svc-tailscale" }}
 
 {{- range $envName, $env := $app.environments }}
 {{- /* Skip staging when enable_staging is false */}}
@@ -101,86 +108,6 @@ metadata:
 secrets:
   - name: {{ $imagePullSecret }}
 {{- end }}
-{{- /* ── Console read RBAC (OKT-130) ──────────────────────────────── */}}
-{{- /* Read-only, opt-in per app spec, NEVER for a preview (the $isPreview gate
-       above).
-       Kinds are the union of every Api:: call site in the console, not the nav
-       alone: the shell starts cluster-wide reflectors (Api::<T>::all), so a
-       namespaced Role would 403 them, and nodes/namespaces are cluster-scoped
-       and cannot be granted by a Role at all. `secrets` is deliberately
-       excluded — `list secrets` returns the values, not just the keys, so that
-       grant is its own decision (values.yaml). */}}
-{{- /* The secrets half is held back on purpose, so the flag is made loud rather
-       than a silent no-op: `list secrets` returns the values, not the keys.
-       Adding it later is purely additive — a second ClusterRole + binding named
-       <namespace>-console-secrets-read, gated on this flag and on
-       enable_private. */}}
-{{- if ne (printf "%v" ($clusterRead.secrets | default false)) "false" }}
-{{- fail (printf "app '%s': cluster_read.secrets is not implemented in this chart — cluster-wide Secret read returns the values, not just the keys, so it is a separate security decision held back pending sign-off (OKT-130). To add it: a second ClusterRole + ClusterRoleBinding %s-console-secrets-read gated on this flag and on enable_private." $appName $namespace) }}
-{{- end }}
-{{- if $clusterReadOn }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: {{ $namespace }}-console-read
-  labels:
-    app: {{ $appName }}
-    env: {{ $envName }}
-rules:
-  # core/v1 — namespaced kinds the console reflects.
-  - apiGroups: [""]
-    resources:
-      - pods
-      - services
-      - configmaps
-      - persistentvolumeclaims
-    verbs: ["get", "list", "watch"]
-  # Pod logs are a subresource the console reads; nothing lists them.
-  - apiGroups: [""]
-    resources: ["pods/log"]
-    verbs: ["get"]
-  # Cluster-scoped: nodes are a nav item, namespaces drive the topbar filter.
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["namespaces"]
-    verbs: ["get", "list"]
-  # Inspector Events tab lists events; nothing gets or watches one.
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["list"]
-  - apiGroups: ["apps"]
-    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["batch"]
-    resources: ["jobs", "cronjobs"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses"]
-    verbs: ["get", "list", "watch"]
-  # Argo CD plugin read (the nav item `applications` is enabled).
-  - apiGroups: ["argoproj.io"]
-    resources: ["applications"]
-    verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{ $namespace }}-console-read
-  labels:
-    app: {{ $appName }}
-    env: {{ $envName }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: {{ $namespace }}-console-read
-subjects:
-  - kind: ServiceAccount
-    name: {{ $namespace }}-sa
-    namespace: {{ $namespace }}
-{{- end }}
 
 {{- if $imagePullSecret }}
 ---
@@ -220,6 +147,29 @@ spec:
     - find:
         name:
           regexp: .*
+{{- end }}
+
+{{- /* ── Console kubeconfig (OKT-130) ─────────────────────────────── */}}
+{{- if $kubeconfigOn }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $namespace }}-kubeconfig
+  namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: {{ $kubeconfigStore }}
+  refreshInterval: 24h
+  target:
+    name: {{ $namespace }}-kubeconfig
+  data:
+    - secretKey: kubeconfig
+      remoteRef:
+        key: {{ $kubeconfigKey }}
 {{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
@@ -371,16 +321,37 @@ spec:
           envFrom:
           - secretRef:
               name: {{ $namespace }}-vars
-          {{- if and $svc.storage $svc.storage.size }}
+          {{- if $kubeconfigOn }}
+          env:
+          - name: KUBECONFIG
+            value: {{ $kubeconfigPath }}
+          {{- end }}
+          {{- if or (and $svc.storage $svc.storage.size) $kubeconfigOn }}
           volumeMounts:
+          {{- if and $svc.storage $svc.storage.size }}
           - name: data
             mountPath: /data
           {{- end }}
-      {{- if and $svc.storage $svc.storage.size }}
+          {{- if $kubeconfigOn }}
+          - name: kubeconfig
+            mountPath: {{ $kubeconfigPath }}
+            subPath: kubeconfig
+            readOnly: true
+          {{- end }}
+          {{- end }}
+      {{- if or (and $svc.storage $svc.storage.size) $kubeconfigOn }}
       volumes:
+      {{- if and $svc.storage $svc.storage.size }}
       - name: data
         persistentVolumeClaim:
           claimName: {{ $namespace }}-pvc
+      {{- end }}
+      {{- if $kubeconfigOn }}
+      - name: kubeconfig
+        secret:
+          secretName: {{ $namespace }}-kubeconfig
+          defaultMode: 0400
+      {{- end }}
       {{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
