@@ -27,6 +27,7 @@ One template renders an `Application` per entry in `values.yaml`. An entry names
 | Resource | Created when |
 |---|---|
 | ServiceAccount + image pull Secret | always |
+| ClusterRole + ClusterRoleBinding (read-only) | `cluster_read.enabled` (and never for a preview) |
 | ExternalSecret | the environment sets `dopplerConfig` |
 | Deployment | always |
 | Service | always (ClusterIP for the mesh; NodePort fallback) |

@@ -102,7 +102,8 @@ secrets:
   - name: {{ $imagePullSecret }}
 {{- end }}
 {{- /* ── Console read RBAC (OKT-130) ──────────────────────────────── */}}
-{{- /* Read-only, opt-in per app spec, NEVER for a preview ($isPreview below).
+{{- /* Read-only, opt-in per app spec, NEVER for a preview (the $isPreview gate
+       above).
        Kinds are the union of every Api:: call site in the console, not the nav
        alone: the shell starts cluster-wide reflectors (Api::<T>::all), so a
        namespaced Role would 403 them, and nodes/namespaces are cluster-scoped
