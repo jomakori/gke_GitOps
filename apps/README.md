@@ -27,7 +27,7 @@ One template renders an `Application` per entry in `values.yaml`. An entry names
 | Resource | Created when |
 |---|---|
 | ServiceAccount + image pull Secret | always |
-| ClusterRole + ClusterRoleBinding (read-only) | `cluster_read.enabled` (and never for a preview) |
+| ExternalSecret → kubeconfig mount (`KUBECONFIG`) | `kubeconfig.enabled` (and never for a preview) |
 | ExternalSecret | the environment sets `dopplerConfig` |
 | Deployment | always |
 | Service | always (ClusterIP for the mesh; NodePort fallback) |
@@ -39,7 +39,7 @@ Multi-environment (staging + production) is supported per app. A workload that n
 
 ### openkite-preview
 
-A per-PR preview system registered like any other app. It renders an `ApplicationSet` using the GitHub Pull Request generator to create one preview `Application` per open PR on `jomakori/openkite` **that carries the `preview` label** (applied by that repo's image workflow only once the `pr-<N>` image is published), at `pr-<num>.<clusterDomain>`, and deletes it when the PR closes or loses the label. It also owns the wildcard TLS `Certificate` and Istio `Gateway` for that host, and consumes the GitHub token ExternalSecret. See [openkite-preview/README.md](openkite-preview/README.md).
+A per-PR preview system registered like any other app. It renders an `ApplicationSet` using the GitHub Pull Request generator to create one preview `Application` per open PR on `jomakori/openkite` **that carries the `preview` label** (applied by that repo's image workflow only once the `pr-<N>` image is published), at `pr<num>-<clusterDomain>`-shaped hosts, and deletes it when the PR closes or loses the label. It also owns the wildcard TLS `Certificate` and Istio `Gateway` for that host, and consumes the GitHub token ExternalSecret. See [openkite-preview/README.md](openkite-preview/README.md).
 
 ## Adding an app
 
