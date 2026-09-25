@@ -913,6 +913,14 @@ hermes-agent:
           GRAFANA_URL: "${MCP_GRAFANA_URL}"
           GRAFANA_SERVICE_ACCOUNT_TOKEN: "${MCP_GRAFANA_TOKEN}"
           npm_config_cache: "/opt/data/.npm-mcp/grafana"
+          # Shell-launched entry: the MCP child's filtered env carries PATH and
+          # HOME but not MISE_*, and the first PATH entries here are mise shims.
+          # Declared rather than inherited (gitopsctl rule `shell-env`).
+          HOME: /opt/data/home
+          PATH: /opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          MISE_CONFIG_FILE: /mise/mise.toml
+          MISE_DATA_DIR: /opt/data/mise
+          MISE_CACHE_DIR: /opt/data/mise-cache
         auth_probe: {tool: search_dashboards, args: {query: ""}}
         tools:
           resources: false
@@ -998,6 +1006,18 @@ hermes-agent:
         connect_timeout: 120
         idle_timeout_seconds: 1800
         max_lifetime_seconds: 21600
+        # `sh -c` resolves binary names from PATH, and the MCP child's env is
+        # FILTERED — mcp_tool.py's _SAFE_ENV_KEYS carries PATH/HOME but not
+        # MISE_*. /opt/data/bin/deno is a mise shim and happens to resolve
+        # without these today, but the identical shape killed bitwarden with
+        # "mise ERROR bw is not a valid shim", so a shell entry declares the
+        # layout instead of inheriting it (gitopsctl rule `shell-env`).
+        env:
+          HOME: /opt/data/home
+          PATH: /opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          MISE_CONFIG_FILE: /mise/mise.toml
+          MISE_DATA_DIR: /opt/data/mise
+          MISE_CACHE_DIR: /opt/data/mise-cache
         tools:
           # Exact names, not a glob: the verifier compares declared tools
           # literally against the live tools/list result, so "*" (legal for
