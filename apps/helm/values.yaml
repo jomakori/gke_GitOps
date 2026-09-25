@@ -83,8 +83,11 @@ openkite:
   # ── Cluster read (OKT-130) ───────────────────────────────────────────
   # Read-only RBAC (get/list/watch, no writes, no exec) for the pod's own
   # ServiceAccount — the identity the console reads the cluster with. Previews
-  # never get it. `secrets` is deliberately excluded: cluster-wide Secret read
-  # is its own decision, not a side effect of this one.
+  # never get it (the chart refuses to grant a preview namespace, see
+  # app.manifests in templates/_helpers.tpl). `secrets` is deliberately
+  # excluded: cluster-wide Secret read is its own decision, not a side effect of
+  # this one, and setting `cluster_read.secrets` fails the render rather than
+  # silently doing nothing.
   cluster_read:
     enabled: true
   # GHCR, not the shared ECR registry.

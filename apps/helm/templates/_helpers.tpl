@@ -110,6 +110,14 @@ secrets:
        and cannot be granted by a Role at all. `secrets` is deliberately
        excluded — `list secrets` returns the values, not just the keys, so that
        grant is its own decision (values.yaml). */}}
+{{- /* The secrets half is held back on purpose, so the flag is made loud rather
+       than a silent no-op: `list secrets` returns the values, not the keys.
+       Adding it later is purely additive — a second ClusterRole + binding named
+       <namespace>-console-secrets-read, gated on this flag and on
+       enable_private. */}}
+{{- if ne (printf "%v" ($clusterRead.secrets | default false)) "false" }}
+{{- fail (printf "app '%s': cluster_read.secrets is not implemented in this chart — cluster-wide Secret read returns the values, not just the keys, so it is a separate security decision held back pending sign-off (OKT-130). To add it: a second ClusterRole + ClusterRoleBinding %s-console-secrets-read gated on this flag and on enable_private." $appName $namespace) }}
+{{- end }}
 {{- if $clusterReadOn }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
