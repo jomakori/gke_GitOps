@@ -60,13 +60,15 @@ Services that require authenticated access opt in via `enablePrivate: true` in t
 
 `enablePrivate` covers hosts that also have a `virtualServices` entry here. A host whose **route** lives
 elsewhere — an ApplicationSet-generated preview host per pull request, for example — is listed in
-`privateHosts` instead. Each entry renders the same `require-cf-access-<host>` DENY rule
+`privateHosts` instead. That list is **currently empty**: preview hosts are gated per host by the app
+spec (`enable_private` in the apps chart), so there is no suffix rule left to declare here. An entry,
+when one is needed, renders the same `require-cf-access-<host>` DENY rule
 (`authorization-policy-private-hosts.yaml`). Wildcards are allowed, because Istio treats
 `*.example.com` in a policy's `operation.hosts` as a suffix match:
 
 ```yaml
 privateHosts:
-  - "*.openkite.maklab.net"
+  - "*.example.com"   # shape of an entry; the committed list is empty
 ```
 
 The Cloudflare side of the gate is the matching Access application in `devops_Terraform`
@@ -154,7 +156,7 @@ Two layers of VirtualServices exist:
 | istiod.telemetry.v2.prometheus.enabled | bool | `true` |  |
 | podDisruptionBudget.enabled | bool | `true` |  |
 | podDisruptionBudget.maxUnavailable | int | `1` |  |
-| privateHosts | list | `["*.openkite.maklab.net"]` | Extra hosts that get the private DENY policy without a VirtualService here. |
+| privateHosts | list | `[]` |  |
 | virtualServices.argocd.destination.host | string | `"argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |

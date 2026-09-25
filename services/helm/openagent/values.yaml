@@ -27,7 +27,7 @@ tools:
     repository: ghcr.io/jomakori/gitopsctl
     # Published commit sha of the gitopsctl image (bare sha, no `sha-`
     # prefix). `latest` must never be used with IfNotPresent.
-    tag: dab8bebe51b7f03127f2cc7d145faa35c5bcea4f
+    tag: b1240f1dc14a505f06157217a1e7af809a5cd55b
     pullPolicy: IfNotPresent
 
 # ── LiteLLM upstream chart values ──────────────────────────────────
@@ -422,6 +422,17 @@ hermes-agent:
       # One attempt per model, then the next fallback layer — the host default
       # of 3 replays a 429/5xx against the model that just refused it.
       api_max_retries: 1
+      # Always-loaded tool schemas ride on EVERY request (~40KB, 25 tools).
+      # `tts` (text_to_speech, 1,868 B) and `vision` (vision_analyze, 845 B)
+      # were called 0 times across 9,898 recorded tool calls in 7d
+      # (state.db messages.tool_name), and image routing to a vision model
+      # already goes through auxiliary.vision (agent/image_routing.py), so
+      # neither schema earns its bytes. agent.disabled_toolsets is a global
+      # suppression list applied LAST in _get_platform_tools() — a strict
+      # subtraction of these two toolsets only, no other capability affected.
+      # USED toolsets stay: browser_exec 50 calls, browser_vault_list 1 call
+      # in the same window, so the `browser` / `browser-use` pair is left alone.
+      disabled_toolsets: [tts, vision]
       # Hermes = the sole user-facing persona (HERMES_HOME=/opt/data) — the
       # communicator that fields ALL prompts, classifies, dispatches via the
       # native `omo` tool, and synthesizes worker results. The OMO roster and
@@ -583,6 +594,16 @@ hermes-agent:
       enabled: true
       threshold: 0.35
       target_ratio: 0.20
+      # Deterministic (no-LLM) prune of OLD tool-result payloads, on its own
+      # token trigger. The 0.35 ratio above rarely fires on a 1M-token window, so
+      # bulky tool output rides along in history and is re-billed every turn:
+      # measured 183 results >20 KB = 9.43 MB over 7 days, read_file alone
+      # 5.56 MB across 80 messages. Committing a prune rewrites already-sent
+      # history and breaks the prompt-cache prefix, so it stays gated: it only
+      # commits when it reclaims >= proactive_prune_min_reclaim_tokens (default
+      # 4096), which keeps cache breaks episodic rather than per-turn. Watch the
+      # weekly uncached-input line to confirm the reclaim beats the cache loss.
+      proactive_prune_tokens: 48000
     delegation:
       # Subagent tier = minimax-m3 (live pod value; NOT flash — flash is for
       # Sisyphus/Hermes brains only, per user 09-07).
@@ -634,6 +655,21 @@ hermes-agent:
             # `categories:` below; this governs how a chain is walked when a
             # model call fails. `enabled: false` fails fast instead of falling
             # back; `retry_on_errors` is the status set that triggers a walk.
+            # ORDERING RULE (2026-09-25): Claude is the LAST PREMIUM layer of a
+            # ladder — below it must sit a route that cannot run out of credits
+            # (the DeepSeek direct API, or a bytedance subsidy route). Free
+            # routes therefore belong above Claude, not directly below it, and a
+            # free-subsidy hop placed above Claude must also actually SERVE:
+            # measured 7d success bytedance-glm-5.2 294/578 (51%) and
+            # dola-seed-2.0-pro 89/97 (92%), versus dola-seed-2.0-code 2/15 (13%)
+            # and bytedance-deepseek-v4-flash 3/11 (27%) — a hop that mostly
+            # fails buys a wasted attempt, not an offload.
+            # Deliberate exception: chains that LEAD with deepseek-v4-flash-direct
+            # (sisyphus, librarian, explore, sisyphus-junior, quick) keep their
+            # primary untouched — the credit-independent route is already the
+            # entry point. librarian, explore and sisyphus-junior now also END on
+            # a credit-independent hop (deepseek-v4-pro-direct), so those ladders
+            # are covered at both ends; sisyphus and quick are unchanged here.
             runtime_fallback:
               enabled: true
               retry_on_errors: [400, 401, 402, 403, 404, 429, 500, 502, 503, 504, 529]
@@ -648,62 +684,62 @@ hermes-agent:
               hephaestus:
                 - litellm/minimax-m3
                 - litellm/glm-5.3
+                - litellm/bytedance-glm-5.2
                 - litellm/claude-sonnet-5
-                - litellm/bytedance-dola-seed-2.0-code
                 - litellm/deepseek-v4-flash-direct
               prometheus:
                 - litellm/minimax-m3
                 - litellm/deepseek-v4-pro
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-glm-5.2
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               atlas:
                 - litellm/minimax-m3
                 - litellm/deepseek-v4-pro
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-dola-seed-2.0-pro
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               metis:
                 - litellm/minimax-m3
                 - litellm/deepseek-v4-pro
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-glm-5.2
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               momus:
                 - litellm/minimax-m3
                 - litellm/glm-5.3
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-dola-seed-2.0-pro
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               oracle:
-                - litellm/claude-opus-5
                 - litellm/glm-5.3
                 - litellm/bytedance-seed-code
+                - litellm/claude-opus-5
                 - litellm/deepseek-v4-flash-direct
               librarian:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/bytedance-deepseek-v4-flash
+                - litellm/deepseek-v4-pro-direct
               explore:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/bytedance-deepseek-v4-flash
+                - litellm/deepseek-v4-pro-direct
               multimodal-looker:
                 - litellm/gemini-3.6-flash
                 - litellm/qwen3-6-plus
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-seed-code
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/bytedance-deepseek-v4-flash
+                - litellm/deepseek-v4-pro-direct
             categories:
               quick:
                 - litellm/deepseek-v4-flash-direct
@@ -713,8 +749,8 @@ hermes-agent:
               deep:
                 - litellm/minimax-m3
                 - litellm/glm-5.3
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-dola-seed-2.0-pro
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
@@ -895,6 +931,14 @@ hermes-agent:
           GRAFANA_URL: "${MCP_GRAFANA_URL}"
           GRAFANA_SERVICE_ACCOUNT_TOKEN: "${MCP_GRAFANA_TOKEN}"
           npm_config_cache: "/opt/data/.npm-mcp/grafana"
+          # Shell-launched entry: the MCP child's filtered env carries PATH and
+          # HOME but not MISE_*, and the first PATH entries here are mise shims.
+          # Declared rather than inherited (gitopsctl rule `shell-env`).
+          HOME: /opt/data/home
+          PATH: /opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          MISE_CONFIG_FILE: /mise/mise.toml
+          MISE_DATA_DIR: /opt/data/mise
+          MISE_CACHE_DIR: /opt/data/mise-cache
         auth_probe: {tool: search_dashboards, args: {query: ""}}
         tools:
           resources: false
@@ -980,6 +1024,18 @@ hermes-agent:
         connect_timeout: 120
         idle_timeout_seconds: 1800
         max_lifetime_seconds: 21600
+        # `sh -c` resolves binary names from PATH, and the MCP child's env is
+        # FILTERED — mcp_tool.py's _SAFE_ENV_KEYS carries PATH/HOME but not
+        # MISE_*. /opt/data/bin/deno is a mise shim and happens to resolve
+        # without these today, but the identical shape killed bitwarden with
+        # "mise ERROR bw is not a valid shim", so a shell entry declares the
+        # layout instead of inheriting it (gitopsctl rule `shell-env`).
+        env:
+          HOME: /opt/data/home
+          PATH: /opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          MISE_CONFIG_FILE: /mise/mise.toml
+          MISE_DATA_DIR: /opt/data/mise
+          MISE_CACHE_DIR: /opt/data/mise-cache
         tools:
           # Exact names, not a glob: the verifier compares declared tools
           # literally against the live tools/list result, so "*" (legal for
@@ -1114,7 +1170,7 @@ hermes-agent:
         timeout: 60
         connect_timeout: 60
         tools:
-          include: [get_ports, get_disruptions, get_direct_connections_for_ports, search_trips, search_trips_v2, trip_details]
+          include: [get_ports, get_disruptions, get_direct_connections_for_ports, search_trips, search_ferry_trips, trip_details]
           resources: false
           prompts: false
 
@@ -1138,6 +1194,19 @@ hermes-agent:
           BW_CLIENTSECRET: "${BW_CLIENTSECRET}"
           BW_PASSWORD: "${BW_PASSWORD}"
           npm_config_cache: "/opt/data/.npm-mcp/bitwarden"
+          # `bw` resolves through a mise shim (/opt/data/bin/bw ->
+          # /opt/data/mise/shims/bw), and the MCP child gets a FILTERED env:
+          # mcp_tool.py's _SAFE_ENV_KEYS carries PATH/HOME but not MISE_*, so the
+          # shim cannot resolve its tool and dies with "mise ERROR bw is not a
+          # valid shim". Reproduced exactly with `env -i PATH=... HOME=... sh -c
+          # 'bw --version'`; adding the three MISE_* vars below prints 2026.8.0.
+          # Same shape the uvx entries declare, for the same reason: make the
+          # gateway child match the environment the verifier certifies.
+          HOME: /opt/data/home
+          PATH: /opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          MISE_CONFIG_FILE: /mise/mise.toml
+          MISE_DATA_DIR: /opt/data/mise
+          MISE_CACHE_DIR: /opt/data/mise-cache
         auth_probe: {tool: status}
         tools:
           resources: false
@@ -1236,7 +1305,7 @@ hermes-agent:
     # Subchart values cannot be templated, so this image is a literal copy of
     # tools.image above — bump both together.
     - name: install-gitopsctl
-      image: ghcr.io/jomakori/gitopsctl:dab8bebe51b7f03127f2cc7d145faa35c5bcea4f
+      image: ghcr.io/jomakori/gitopsctl:b1240f1dc14a505f06157217a1e7af809a5cd55b
       imagePullPolicy: IfNotPresent
       args: ["install", "/opt/tools/gitopsctl"]
       securityContext:
