@@ -36,6 +36,14 @@ func npxCache(name string) string {
 // uvEnv is the toolchain layout a uvx fixture must declare (rule 8).
 const uvEnv = `, "env": {"HOME": "/opt/data/home", "PATH": "/opt/data/bin", "UV_CACHE_DIR": "/opt/data/home/.cache/uv", "UV_TOOL_DIR": "/opt/data/home/.local/share/uv/tools", "UV_TOOL_BIN_DIR": "/opt/data/home/.local/bin"}`
 
+// shEnv is the toolchain layout plus private npm cache a shell-launched
+// fixture must declare (rules 7 and 11). npxCache alone is not enough: a
+// `sh -c` entry also resolves binary names from PATH, and the MCP child's
+// filtered env carries no MISE_*, so a mise shim on that PATH cannot resolve.
+func shEnv(name string) string {
+	return fmt.Sprintf(`, "env": {"npm_config_cache": "/opt/data/.npm-mcp/%s", "HOME": "/opt/data/home", "PATH": "/opt/data/bin:/opt/data/mise/shims", "MISE_CONFIG_FILE": "/mise/mise.toml", "MISE_DATA_DIR": "/opt/data/mise", "MISE_CACHE_DIR": "/opt/data/mise-cache"}`, name)
+}
+
 // parkedPair is the two duplicate servers (github, gistpad) that must stay in
 // the manifest as enabled: false. Fixtures that test other rules include them
 // so the duplicate rule stays quiet.
@@ -177,7 +185,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "sh-wrapped pinned package passes",
 			manifest: `{
-				"grafana": {"lazy": true, "command": "sh", "args": ["-c", "exec npx -y @leval/mcp-grafana@1.1.7 | grep --line-buffered jsonrpc"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600` + npxCache("grafana") + `, "tools": {"include": ["search_dashboards"], "resources": false, "prompts": false}}` + parkedPair + `
+				"grafana": {"lazy": true, "command": "sh", "args": ["-c", "exec npx -y @leval/mcp-grafana@1.1.7 | grep --line-buffered jsonrpc"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600` + shEnv("grafana") + `, "tools": {"include": ["search_dashboards"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 		},
 		{
@@ -194,14 +202,14 @@ func TestValidate(t *testing.T) {
 			// never start it again — while every gate stayed green.
 			name: "npx server without its own cache rejected",
 			manifest: `{
-				"bitwarden": {"lazy": true, "command": "sh", "args": ["-c", "exec npx -y @bitwarden/mcp-server@2026.7.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "env": {"BW_PASSWORD": "${BW_PASSWORD}"}, "tools": {"include": ["status"], "resources": false, "prompts": false}}` + parkedPair + `
+				"bitwarden": {"lazy": true, "command": "sh", "args": ["-c", "exec npx -y @bitwarden/mcp-server@2026.7.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "env": {"BW_PASSWORD": "${BW_PASSWORD}", "HOME": "/opt/data/home", "PATH": "/opt/data/bin:/opt/data/mise/shims", "MISE_CONFIG_FILE": "/mise/mise.toml", "MISE_DATA_DIR": "/opt/data/mise", "MISE_CACHE_DIR": "/opt/data/mise-cache"}, "tools": {"include": ["status"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{{Server: "bitwarden", Rule: "npm-cache", Message: `npm_config_cache is "", want the private per-server cache "/opt/data/.npm-mcp/bitwarden"`}},
 		},
 		{
 			name: "npx server sharing another server's cache rejected",
 			manifest: `{
-				"bitwarden": {"lazy": true, "command": "sh", "args": ["-c", "exec npx -y @bitwarden/mcp-server@2026.7.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "env": {"npm_config_cache": "/opt/data/.npm-mcp/grafana"}, "tools": {"include": ["status"], "resources": false, "prompts": false}}` + parkedPair + `
+				"bitwarden": {"lazy": true, "command": "sh", "args": ["-c", "exec npx -y @bitwarden/mcp-server@2026.7.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "env": {"npm_config_cache": "/opt/data/.npm-mcp/grafana", "HOME": "/opt/data/home", "PATH": "/opt/data/bin:/opt/data/mise/shims", "MISE_CONFIG_FILE": "/mise/mise.toml", "MISE_DATA_DIR": "/opt/data/mise", "MISE_CACHE_DIR": "/opt/data/mise-cache"}, "tools": {"include": ["status"], "resources": false, "prompts": false}}` + parkedPair + `
 			}`,
 			want: []Violation{{Server: "bitwarden", Rule: "npm-cache", Message: `npm_config_cache is "/opt/data/.npm-mcp/grafana", want the private per-server cache "/opt/data/.npm-mcp/bitwarden"`}},
 		},
@@ -221,6 +229,31 @@ func TestValidate(t *testing.T) {
 				{Server: "plane", Rule: "uv-env", Message: "uvx server does not declare UV_TOOL_DIR"},
 				{Server: "plane", Rule: "uv-env", Message: "uvx server does not declare UV_TOOL_BIN_DIR"},
 			},
+		},
+		{
+			// The bitwarden class: `command: sh` resolves binary names from
+			// PATH, the MCP child's env is filtered (no MISE_*), and the mise
+			// shim on PATH then cannot resolve its tool. Every cheap check —
+			// mise ls, the shim's existence, an interactive shell — looks fine.
+			name: "shell-launched server without a declared toolchain layout rejected",
+			manifest: `{
+				"bitwarden": {"lazy": true, "command": "sh", "args": ["-c", "bw login --apikey; exec npx -y @bitwarden/mcp-server@2026.7.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "env": {"BW_CLIENTID": "${BW_CLIENTID}"}, "tools": {"include": ["status"], "resources": false, "prompts": false}}` + parkedPair + `
+			}`,
+			want: []Violation{
+				{Server: "bitwarden", Rule: "npm-cache", Message: `npm_config_cache is "", want the private per-server cache "/opt/data/.npm-mcp/bitwarden"`},
+				{Server: "bitwarden", Rule: "shell-env", Message: "shell-launched server does not declare HOME"},
+				{Server: "bitwarden", Rule: "shell-env", Message: "shell-launched server does not declare PATH"},
+				{Server: "bitwarden", Rule: "shell-env", Message: "shell-launched server does not declare MISE_CONFIG_FILE"},
+				{Server: "bitwarden", Rule: "shell-env", Message: "shell-launched server does not declare MISE_DATA_DIR"},
+				{Server: "bitwarden", Rule: "shell-env", Message: "shell-launched server does not declare MISE_CACHE_DIR"},
+			},
+		},
+		{
+			name: "shell-launched server with the toolchain layout passes",
+			manifest: `{
+				"bitwarden": {"lazy": true, "command": "sh", "args": ["-c", "bw login --apikey; exec npx -y @bitwarden/mcp-server@2026.7.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600, "auth_probe": {"tool": "status"}, "tools": {"include": ["status"], "resources": false, "prompts": false}` + shEnv("bitwarden") + `}` + parkedPair + `
+			}`,
+			want: nil,
 		},
 		{
 			name: "auth probe naming an undeclared tool rejected",
