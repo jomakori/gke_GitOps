@@ -26,6 +26,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          # Checkout's stored Authorization header overrides credentials in the remote
+          # URL, which would send the push as github-actions[bot] and get a 403.
+          persist-credentials: false
+
+      - uses: dopplerhq/cli-action@master
 
       - name: Resolve the latest release and the current pin
         id: r
@@ -59,10 +64,29 @@ jobs:
             "https://${IMAGE%/*}/v2/${IMAGE#*/}/manifests/${{ steps.r.outputs.latest }}"
           echo "manifest present: ${{ steps.r.outputs.latest }}"
 
+      - name: Fetch the push token
+        id: pat
+        if: steps.r.outputs.current != steps.r.outputs.latest
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          set -euo pipefail
+          # main requires four checks and the automatic token never bypasses them
+          # (GH006), so the push needs the admin classic token, exactly as the
+          # existing gitopsctl pin-bump does.
+          token="$(doppler secrets get GITHUB_TOKEN --project devops --config ci --plain)"
+          if [ -z "${token}" ]; then
+            echo "GITHUB_TOKEN is missing from Doppler devops/ci" >&2
+            exit 1
+          fi
+          echo "::add-mask::${token}"
+          echo "token=${token}" >> "$GITHUB_OUTPUT"
+
       - name: Move the pin
         if: steps.r.outputs.current != steps.r.outputs.latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUSH_TOKEN: ${{ steps.pat.outputs.token }}
           TAG: ${{ steps.r.outputs.latest }}
         run: |
           set -euo pipefail
@@ -75,4 +99,4 @@ jobs:
           git config user.email "pin-bump@users.noreply.github.com"
           git add "$VALUES"
           git commit -m "chore(apps): pin openkite prod to ${TAG}"
-          git push origin HEAD:main
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main

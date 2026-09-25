@@ -49,6 +49,10 @@
 {{- $subdomain   := $env.subdomain | default $defSub }}
 {{- $tag         := $env.tag | default "latest" }}
 {{- $fullDomain  := printf "%s.%s" $subdomain $domain }}
+{{- /* The ECR pull secret belongs to the shared registry; an app naming its own
+       (public) registry gets no Secret — an empty kubernetes.io/dockercfg is rejected
+       by the API, which fails the entire sync (not just that one resource). */}}
+{{- $imagePullSecret := ternary (printf "%s-registry" $namespace) "" (empty (($app.image | default dict).repository)) }}
 
 {{- /* ── Istio routing config (app-level overrides) ────────────── */}}
 {{- $istioSpec     := $app.istio | default dict }}
@@ -83,8 +87,11 @@ metadata:
     env: {{ $envName }}
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::123456:role/ecr-readonly-access-allrepos
+{{- if $imagePullSecret }}
 secrets:
-  - name: {{ $namespace }}-registry
+  - name: {{ $imagePullSecret }}
+{{- end }}
+{{- if $imagePullSecret }}
 ---
 apiVersion: v1
 kind: Secret
@@ -97,6 +104,7 @@ metadata:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::123456:role/ecr-readonly-access-allrepos
 type: kubernetes.io/dockercfg
+{{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
 {{- /* ExternalSecret — pulls from Doppler via ClusterSecretStore    */}}
@@ -251,8 +259,10 @@ spec:
       nodeSelector:
         intent: apps
       serviceAccountName: {{ $namespace }}-sa
+{{- if $imagePullSecret }}
       imagePullSecrets:
-        - name: {{ $namespace }}-registry
+        - name: {{ $imagePullSecret }}
+{{- end }}
       containers:
         - name: {{ $appName }}
           image: {{ $imageRepo }}:{{ $tag }}
