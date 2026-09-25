@@ -190,6 +190,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.auxiliary.vision.model | string | `"claude/sonnet-5"` |  |
 | hermes-agent.config.auxiliary.vision.provider | string | `"litellm"` |  |
 | hermes-agent.config.compression.enabled | bool | `true` |  |
+| hermes-agent.config.compression.proactive_prune_tokens | int | `48000` |  |
 | hermes-agent.config.compression.target_ratio | float | `0.2` |  |
 | hermes-agent.config.compression.threshold | float | `0.35` |  |
 | hermes-agent.config.delegation.api_key | string | `"${LITELLM_MASTER_KEY}"` |  |
