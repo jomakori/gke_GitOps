@@ -39,6 +39,23 @@
 {{- $svcReplicas  := $svc.replicas | default 1 }}
 {{- $imageRepo    := ($app.image | default dict).repository | default (printf "%s/%s" $registry $kebabName) }}
 
+{{- /* Cluster access for a console host (OKT-130). The identity is a kubeconfig
+       delivered by External Secrets from Doppler, not the pod's ServiceAccount:
+       `list secrets` returns values rather than keys, so an SA read role could
+       only grant every Secret in the cluster or none.
+       Two gates, both required: the spec opts in, and the environment is not a
+       preview. `namespaceOverride` is the preview coordinate
+       (apps/argocd-appset/templates/preview.yml) and a preview cannot omit it
+       without clobbering the prod namespace, so it is the gate that cannot be
+       forgotten. A preview runs unreviewed PR code and must never hold cluster
+       credentials. */}}
+{{- $kubeconfig      := $app.kubeconfig | default dict }}
+{{- $isPreview       := ne (printf "%v" ($app.namespaceOverride | default "")) "" }}
+{{- $kubeconfigOn    := and (ne (printf "%v" ($kubeconfig.enabled | default false)) "false") (not $isPreview) }}
+{{- $kubeconfigKey   := $kubeconfig.secretName | default "TAILSCALE_KUBECONFIG" }}
+{{- $kubeconfigPath  := $kubeconfig.mountPath | default "/etc/openkite/kubeconfig" }}
+{{- $kubeconfigStore := $kubeconfig.store | default "doppler-svc-tailscale" }}
+
 {{- range $envName, $env := $app.environments }}
 {{- /* Skip staging when enable_staging is false */}}
 {{- if or (eq $envName "production") (and $enableStaging (eq $envName "staging")) }}
@@ -91,6 +108,7 @@ metadata:
 secrets:
   - name: {{ $imagePullSecret }}
 {{- end }}
+
 {{- if $imagePullSecret }}
 ---
 apiVersion: v1
@@ -129,6 +147,29 @@ spec:
     - find:
         name:
           regexp: .*
+{{- end }}
+
+{{- /* ── Console kubeconfig (OKT-130) ─────────────────────────────── */}}
+{{- if $kubeconfigOn }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $namespace }}-kubeconfig
+  namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: {{ $kubeconfigStore }}
+  refreshInterval: 24h
+  target:
+    name: {{ $namespace }}-kubeconfig
+  data:
+    - secretKey: kubeconfig
+      remoteRef:
+        key: {{ $kubeconfigKey }}
 {{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
@@ -280,16 +321,37 @@ spec:
           envFrom:
           - secretRef:
               name: {{ $namespace }}-vars
-          {{- if and $svc.storage $svc.storage.size }}
+          {{- if $kubeconfigOn }}
+          env:
+          - name: KUBECONFIG
+            value: {{ $kubeconfigPath }}
+          {{- end }}
+          {{- if or (and $svc.storage $svc.storage.size) $kubeconfigOn }}
           volumeMounts:
+          {{- if and $svc.storage $svc.storage.size }}
           - name: data
             mountPath: /data
           {{- end }}
-      {{- if and $svc.storage $svc.storage.size }}
+          {{- if $kubeconfigOn }}
+          - name: kubeconfig
+            mountPath: {{ $kubeconfigPath }}
+            subPath: kubeconfig
+            readOnly: true
+          {{- end }}
+          {{- end }}
+      {{- if or (and $svc.storage $svc.storage.size) $kubeconfigOn }}
       volumes:
+      {{- if and $svc.storage $svc.storage.size }}
       - name: data
         persistentVolumeClaim:
           claimName: {{ $namespace }}-pvc
+      {{- end }}
+      {{- if $kubeconfigOn }}
+      - name: kubeconfig
+        secret:
+          secretName: {{ $namespace }}-kubeconfig
+          defaultMode: 0400
+      {{- end }}
       {{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
