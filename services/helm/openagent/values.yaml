@@ -583,6 +583,16 @@ hermes-agent:
       enabled: true
       threshold: 0.35
       target_ratio: 0.20
+      # Deterministic (no-LLM) prune of OLD tool-result payloads, on its own
+      # token trigger. The 0.35 ratio above rarely fires on a 1M-token window, so
+      # bulky tool output rides along in history and is re-billed every turn:
+      # measured 183 results >20 KB = 9.43 MB over 7 days, read_file alone
+      # 5.56 MB across 80 messages. Committing a prune rewrites already-sent
+      # history and breaks the prompt-cache prefix, so it stays gated: it only
+      # commits when it reclaims >= proactive_prune_min_reclaim_tokens (default
+      # 4096), which keeps cache breaks episodic rather than per-turn. Watch the
+      # weekly uncached-input line to confirm the reclaim beats the cache loss.
+      proactive_prune_tokens: 48000
     delegation:
       # Subagent tier = minimax-m3 (live pod value; NOT flash — flash is for
       # Sisyphus/Hermes brains only, per user 09-07).
