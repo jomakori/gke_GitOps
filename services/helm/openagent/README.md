@@ -254,6 +254,11 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_CLIENTID | string | `"${BW_CLIENTID}"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_CLIENTSECRET | string | `"${BW_CLIENTSECRET}"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.BW_PASSWORD | string | `"${BW_PASSWORD}"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.env.HOME | string | `"/opt/data/home"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.env.MISE_CACHE_DIR | string | `"/opt/data/mise-cache"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.env.MISE_CONFIG_FILE | string | `"/mise/mise.toml"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.env.MISE_DATA_DIR | string | `"/opt/data/mise"` |  |
+| hermes-agent.config.mcp_servers.bitwarden.env.PATH | string | `"/opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.env.npm_config_cache | string | `"/opt/data/.npm-mcp/bitwarden"` |  |
 | hermes-agent.config.mcp_servers.bitwarden.idle_timeout_seconds | int | `1800` |  |
 | hermes-agent.config.mcp_servers.bitwarden.lazy | bool | `true` |  |

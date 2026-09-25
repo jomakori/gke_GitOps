@@ -1156,6 +1156,19 @@ hermes-agent:
           BW_CLIENTSECRET: "${BW_CLIENTSECRET}"
           BW_PASSWORD: "${BW_PASSWORD}"
           npm_config_cache: "/opt/data/.npm-mcp/bitwarden"
+          # `bw` resolves through a mise shim (/opt/data/bin/bw ->
+          # /opt/data/mise/shims/bw), and the MCP child gets a FILTERED env:
+          # mcp_tool.py's _SAFE_ENV_KEYS carries PATH/HOME but not MISE_*, so the
+          # shim cannot resolve its tool and dies with "mise ERROR bw is not a
+          # valid shim". Reproduced exactly with `env -i PATH=... HOME=... sh -c
+          # 'bw --version'`; adding the three MISE_* vars below prints 2026.8.0.
+          # Same shape the uvx entries declare, for the same reason: make the
+          # gateway child match the environment the verifier certifies.
+          HOME: /opt/data/home
+          PATH: /opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          MISE_CONFIG_FILE: /mise/mise.toml
+          MISE_DATA_DIR: /opt/data/mise
+          MISE_CACHE_DIR: /opt/data/mise-cache
         auth_probe: {tool: status}
         tools:
           resources: false
