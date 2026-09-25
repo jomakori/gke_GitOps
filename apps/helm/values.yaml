@@ -91,7 +91,7 @@ openkite:
   environments:
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
-      tag: v0.32.1
+      tag: v0.32.2
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080
