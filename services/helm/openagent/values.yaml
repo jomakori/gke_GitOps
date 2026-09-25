@@ -414,6 +414,36 @@ hermes-agent:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
         key_env: LITELLM_MASTER_KEY
         discover_models: true
+    # ── W6: bound what one read can put into the context ────────────────
+    # Measured over 7d (state.db messages): 123 tool results over 40 KB carried
+    # 8.72 MB of 23.85 MB — 37% of the bytes in 6% of the results, and the top
+    # decile of read_file sits at 89-92 KB, pressed against the 100,000-char
+    # guard. The tail is what matters because it is re-sent on every later hop,
+    # and the Claude routes report 0% cache hit: there the same bytes bill at
+    # full rate, while DeepSeek direct (97% hit) absorbs them. Two mechanisms,
+    # deliberately separate:
+    #   - file_read_max_chars caps a single read (tools/file_tools.py).
+    #   - tool_output.max_lines caps the `limit` a call may request.
+    # read_file is pinned above tool_budget by design, so a per-turn aggregate
+    # bound cannot express this one. The median read (9.5 KB) is untouched.
+    file_read_max_chars: 40000
+    tool_output:
+      max_lines: 500
+    # The guard the clamp cannot be: a read that asks for no bound at all on a
+    # large file is answered with the delegation directive instead of the
+    # payload (hooks/read-guard/read_guard.py, mounted by templates/hooks.yaml).
+    # matcher is honored for pre_tool_call, so nothing but read_file runs it.
+    hooks:
+      pre_tool_call:
+        - matcher: read_file
+          command: python3 /opt/data/hooks/read-guard/read_guard.py
+          timeout: 5
+    # A newly-registered shell hook prompts for consent on first run, and an
+    # unattended gateway has no TTY to answer it — without this the guard is
+    # registered and never fires. Scope: it auto-accepts commands that reached
+    # config.yaml, and config.yaml is chart-seeded, so the trust boundary is the
+    # GitOps review, not this flag.
+    hooks_auto_accept: true
     agent:
       # Chart v0.9.1 seeded max_turns: 90; v1.15.0 removed the seed (unlimited
       # default). Explicit pin preserves the capped behavior when bootstrap
@@ -1266,6 +1296,11 @@ hermes-agent:
     - name: hermes-hooks
       configMap:
         name: openagent-hermes-hooks
+    # Generated from hooks/read-guard/read_guard.py by templates/hooks.yaml — the
+    # pre_tool_call guard named in hermes-agent.config.hooks.
+    - name: hermes-read-guard
+      configMap:
+        name: openagent-hermes-read-guard
     - name: k8s-gitops-context
       configMap:
         name: openagent-k8s-gitops-context
@@ -1285,6 +1320,11 @@ hermes-agent:
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
+      readOnly: true
+    # The guard script only — the config names its path, so a rename has to
+    # happen in both places or the hook fails open (and is logged as such).
+    - name: hermes-read-guard
+      mountPath: /opt/data/hooks/read-guard
       readOnly: true
     - name: k8s-gitops-context
       mountPath: /opt/data/memories/k8s-gitops-context.md

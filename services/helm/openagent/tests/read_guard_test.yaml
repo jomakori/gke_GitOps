@@ -1,0 +1,43 @@
+suite: W6 — the read guard is wired to the config that names it
+# The guard is two halves that fail silently when they drift: a script in a
+# ConfigMap, and a command string in the seeded config.yaml. If they part ways
+# the hook finds no script, fails open, and nothing bounds a large read — so
+# both halves and the mount are asserted here. Subchart templates cannot be
+# targeted via `templates:`, hence documentSelector on the full render.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: ships the guard as a ConfigMap generated from the chart file
+    asserts:
+      - isKind:
+          of: ConfigMap
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-read-guard
+      - matchRegex:
+          path: data["read_guard.py"]
+          pattern: "(?m)^def main\\(\\) -> int:$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-read-guard
+  - it: seeds the pre_tool_call hook, the read clamp and the consent flag
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^  - command: python3 /opt/data/hooks/read-guard/read_guard.py$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^file_read_max_chars: 40000$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^hooks_auto_accept: true$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
