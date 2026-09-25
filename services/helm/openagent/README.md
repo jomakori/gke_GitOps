@@ -322,6 +322,11 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.drawio.args[1] | string | `"cd /opt/data/drawio-mcp-server && exec /opt/data/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio"` |  |
 | hermes-agent.config.mcp_servers.drawio.command | string | `"sh"` |  |
 | hermes-agent.config.mcp_servers.drawio.connect_timeout | int | `120` |  |
+| hermes-agent.config.mcp_servers.drawio.env.HOME | string | `"/opt/data/home"` |  |
+| hermes-agent.config.mcp_servers.drawio.env.MISE_CACHE_DIR | string | `"/opt/data/mise-cache"` |  |
+| hermes-agent.config.mcp_servers.drawio.env.MISE_CONFIG_FILE | string | `"/mise/mise.toml"` |  |
+| hermes-agent.config.mcp_servers.drawio.env.MISE_DATA_DIR | string | `"/opt/data/mise"` |  |
+| hermes-agent.config.mcp_servers.drawio.env.PATH | string | `"/opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"` |  |
 | hermes-agent.config.mcp_servers.drawio.idle_timeout_seconds | int | `1800` |  |
 | hermes-agent.config.mcp_servers.drawio.lazy | bool | `true` |  |
 | hermes-agent.config.mcp_servers.drawio.max_lifetime_seconds | int | `21600` |  |
@@ -452,6 +457,11 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.grafana.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_SERVICE_ACCOUNT_TOKEN | string | `"${MCP_GRAFANA_TOKEN}"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.GRAFANA_URL | string | `"${MCP_GRAFANA_URL}"` |  |
+| hermes-agent.config.mcp_servers.grafana.env.HOME | string | `"/opt/data/home"` |  |
+| hermes-agent.config.mcp_servers.grafana.env.MISE_CACHE_DIR | string | `"/opt/data/mise-cache"` |  |
+| hermes-agent.config.mcp_servers.grafana.env.MISE_CONFIG_FILE | string | `"/mise/mise.toml"` |  |
+| hermes-agent.config.mcp_servers.grafana.env.MISE_DATA_DIR | string | `"/opt/data/mise"` |  |
+| hermes-agent.config.mcp_servers.grafana.env.PATH | string | `"/opt/data/bin:/opt/data/mise/shims:/opt/data/home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"` |  |
 | hermes-agent.config.mcp_servers.grafana.env.npm_config_cache | string | `"/opt/data/.npm-mcp/grafana"` |  |
 | hermes-agent.config.mcp_servers.grafana.idle_timeout_seconds | int | `1800` |  |
 | hermes-agent.config.mcp_servers.grafana.lazy | bool | `true` |  |

@@ -180,6 +180,26 @@ func Validate(servers map[string]*Server) []Violation {
 			}
 		}
 
+		// Rule 11 — a shell-launched server pins its toolchain layout.
+		// `command: sh` (or bash) means the entry resolves binary names from
+		// PATH at runtime, and the MCP child gets a FILTERED env: mcp_tool.py's
+		// _SAFE_ENV_KEYS carries PATH/HOME/USER/LANG/... plus only what the entry
+		// declares — never MISE_*. The first PATH entries on this host are mise
+		// shims, and a shim resolves its tool through MISE_DATA_DIR; without it
+		// the child dies with `mise ERROR <bin> is not a valid shim`, while
+		// `mise ls`, the shim file itself and an interactive shell all look
+		// perfectly healthy. bitwarden failed exactly this way. npx/uvx are NOT
+		// affected (they resolve to system binaries in /usr/local/bin), which is
+		// why this rule keys on the shell rather than on every entry — and why a
+		// new shell entry must declare the layout rather than inherit it.
+		if stdio && (server.Command == "sh" || server.Command == "bash") {
+			for _, key := range []string{"HOME", "PATH", "MISE_CONFIG_FILE", "MISE_DATA_DIR", "MISE_CACHE_DIR"} {
+				if server.Env[key] == "" {
+					violations = append(violations, Violation{Server: name, Rule: "shell-env", Message: fmt.Sprintf("shell-launched server does not declare %s", key)})
+				}
+			}
+		}
+
 		// Rule 9 — an auth probe must name a tool the server actually declares.
 		// A typo here fails silently in the worst way: tools/list still matches,
 		// the probe never runs, and the gate reports green.
