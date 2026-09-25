@@ -1132,7 +1132,7 @@ hermes-agent:
         timeout: 60
         connect_timeout: 60
         tools:
-          include: [get_ports, get_disruptions, get_direct_connections_for_ports, search_trips, search_trips_v2, trip_details]
+          include: [get_ports, get_disruptions, get_direct_connections_for_ports, search_trips, search_ferry_trips, trip_details]
           resources: false
           prompts: false
 
