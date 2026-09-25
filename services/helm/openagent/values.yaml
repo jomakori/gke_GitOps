@@ -634,6 +634,14 @@ hermes-agent:
             # `categories:` below; this governs how a chain is walked when a
             # model call fails. `enabled: false` fails fast instead of falling
             # back; `retry_on_errors` is the status set that triggers a walk.
+            # ORDERING RULE (2026-09-25): Claude is the LAST PREMIUM layer of a
+            # ladder — below it must sit a route that cannot run out of credits
+            # (the DeepSeek direct API, or a bytedance subsidy route). Free
+            # routes therefore belong above Claude, not directly below it.
+            # Deliberate exception: chains that LEAD with deepseek-v4-flash-direct
+            # (sisyphus, librarian, explore, sisyphus-junior, quick) keep their
+            # primary untouched — there the credit-independent route is already
+            # the entry point, so Claude is not the last premium layer.
             runtime_fallback:
               enabled: true
               retry_on_errors: [400, 401, 402, 403, 404, 429, 500, 502, 503, 504, 529]
@@ -648,37 +656,37 @@ hermes-agent:
               hephaestus:
                 - litellm/minimax-m3
                 - litellm/glm-5.3
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-dola-seed-2.0-code
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               prometheus:
                 - litellm/minimax-m3
                 - litellm/deepseek-v4-pro
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-glm-5.2
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               atlas:
                 - litellm/minimax-m3
                 - litellm/deepseek-v4-pro
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-dola-seed-2.0-pro
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               metis:
                 - litellm/minimax-m3
                 - litellm/deepseek-v4-pro
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-glm-5.2
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               momus:
                 - litellm/minimax-m3
                 - litellm/glm-5.3
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-dola-seed-2.0-pro
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               oracle:
-                - litellm/claude-opus-5
                 - litellm/glm-5.3
                 - litellm/bytedance-seed-code
+                - litellm/claude-opus-5
                 - litellm/deepseek-v4-flash-direct
               librarian:
                 - litellm/deepseek-v4-flash-direct
@@ -695,8 +703,8 @@ hermes-agent:
               multimodal-looker:
                 - litellm/gemini-3.6-flash
                 - litellm/qwen3-6-plus
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-seed-code
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
                 - litellm/deepseek-v4-flash-direct
@@ -713,8 +721,8 @@ hermes-agent:
               deep:
                 - litellm/minimax-m3
                 - litellm/glm-5.3
-                - litellm/claude-sonnet-5
                 - litellm/bytedance-dola-seed-2.0-pro
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
