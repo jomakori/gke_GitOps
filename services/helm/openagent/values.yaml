@@ -422,6 +422,17 @@ hermes-agent:
       # One attempt per model, then the next fallback layer — the host default
       # of 3 replays a 429/5xx against the model that just refused it.
       api_max_retries: 1
+      # Always-loaded tool schemas ride on EVERY request (~40KB, 25 tools).
+      # `tts` (text_to_speech, 1,868 B) and `vision` (vision_analyze, 845 B)
+      # were called 0 times across 9,898 recorded tool calls in 7d
+      # (state.db messages.tool_name), and image routing to a vision model
+      # already goes through auxiliary.vision (agent/image_routing.py), so
+      # neither schema earns its bytes. agent.disabled_toolsets is a global
+      # suppression list applied LAST in _get_platform_tools() — a strict
+      # subtraction of these two toolsets only, no other capability affected.
+      # USED toolsets stay: browser_exec 50 calls, browser_vault_list 1 call
+      # in the same window, so the `browser` / `browser-use` pair is left alone.
+      disabled_toolsets: [tts, vision]
       # Hermes = the sole user-facing persona (HERMES_HOME=/opt/data) — the
       # communicator that fields ALL prompts, classifies, dispatches via the
       # native `omo` tool, and synthesizes worker results. The OMO roster and
@@ -647,11 +658,18 @@ hermes-agent:
             # ORDERING RULE (2026-09-25): Claude is the LAST PREMIUM layer of a
             # ladder — below it must sit a route that cannot run out of credits
             # (the DeepSeek direct API, or a bytedance subsidy route). Free
-            # routes therefore belong above Claude, not directly below it.
+            # routes therefore belong above Claude, not directly below it, and a
+            # free-subsidy hop placed above Claude must also actually SERVE:
+            # measured 7d success bytedance-glm-5.2 294/578 (51%) and
+            # dola-seed-2.0-pro 89/97 (92%), versus dola-seed-2.0-code 2/15 (13%)
+            # and bytedance-deepseek-v4-flash 3/11 (27%) — a hop that mostly
+            # fails buys a wasted attempt, not an offload.
             # Deliberate exception: chains that LEAD with deepseek-v4-flash-direct
             # (sisyphus, librarian, explore, sisyphus-junior, quick) keep their
-            # primary untouched — there the credit-independent route is already
-            # the entry point, so Claude is not the last premium layer.
+            # primary untouched — the credit-independent route is already the
+            # entry point. librarian, explore and sisyphus-junior now also END on
+            # a credit-independent hop (deepseek-v4-pro-direct), so those ladders
+            # are covered at both ends; sisyphus and quick are unchanged here.
             runtime_fallback:
               enabled: true
               retry_on_errors: [400, 401, 402, 403, 404, 429, 500, 502, 503, 504, 529]
@@ -666,7 +684,7 @@ hermes-agent:
               hephaestus:
                 - litellm/minimax-m3
                 - litellm/glm-5.3
-                - litellm/bytedance-dola-seed-2.0-code
+                - litellm/bytedance-glm-5.2
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               prometheus:
@@ -703,13 +721,13 @@ hermes-agent:
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/bytedance-deepseek-v4-flash
+                - litellm/deepseek-v4-pro-direct
               explore:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/bytedance-deepseek-v4-flash
+                - litellm/deepseek-v4-pro-direct
               multimodal-looker:
                 - litellm/gemini-3.6-flash
                 - litellm/qwen3-6-plus
@@ -721,7 +739,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash
                 - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/bytedance-deepseek-v4-flash
+                - litellm/deepseek-v4-pro-direct
             categories:
               quick:
                 - litellm/deepseek-v4-flash-direct
