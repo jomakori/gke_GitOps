@@ -344,7 +344,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.ferryhopper.tools.include[1] | string | `"get_disruptions"` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.include[2] | string | `"get_direct_connections_for_ports"` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.include[3] | string | `"search_trips"` |  |
-| hermes-agent.config.mcp_servers.ferryhopper.tools.include[4] | string | `"search_trips_v2"` |  |
+| hermes-agent.config.mcp_servers.ferryhopper.tools.include[4] | string | `"search_ferry_trips"` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.include[5] | string | `"trip_details"` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.ferryhopper.tools.resources | bool | `false` |  |
