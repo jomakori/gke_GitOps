@@ -269,3 +269,22 @@ spec:
           volumes:
             {{- include "openagent.mcpVerifyVolumes" . | nindent 12 }}
 {{- end }}
+
+{{- if .Values.hermes.enabled }}
+---
+# W6 — the pre_tool_call read guard. The script lives as a real chart file (so it
+# is lintable and runnable) and the ConfigMap is generated from it; the config
+# only names the command, so the two can never drift.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-hermes-read-guard
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  read_guard.py: |
+{{ .Files.Get "hooks/read-guard/read_guard.py" | indent 4 }}
+{{- end }}

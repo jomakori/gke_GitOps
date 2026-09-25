@@ -1,0 +1,46 @@
+suite: W6 — the read guard is mounted where the hook command looks for it
+# The command in the seeded config is a bare path (/opt/data/hooks/read-guard/
+# read_guard.py). If the volume or the mountPath moves, the command resolves to
+# nothing, the hook fails open, and no read is guarded — silently. Asserted in
+# its own suite because two rendered documents share the gateway's name (its
+# Service and its Deployment), so each assert carries a documentSelector to stay
+# unambiguous.
+templates:
+  - charts/hermes-agent/templates/deployment.yaml
+  - charts/hermes-agent/templates/configmap.yaml
+  - charts/hermes-agent/templates/secret.yaml
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: mounts the guard volume at the path the seeded config names
+    asserts:
+      - isKind:
+          of: Deployment
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: hermes-agent
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: hermes-read-guard
+            mountPath: /opt/data/hooks/read-guard
+            readOnly: true
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: hermes-read-guard
+            configMap:
+              name: openagent-hermes-read-guard
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
