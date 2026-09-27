@@ -55,10 +55,9 @@ Each app supports `staging` and `production` environments. Per-environment confi
 | Doppler config | `environments.<env>.dopplerConfig` | (none — ExternalSecret only created when set) |
 | Namespace | Auto | `<appName-kebab>-<envName>` |
 
-Staging can be disabled per-app via `enable_staging: false`, and production via
-`enable_production: false`: an Application that renders one environment turns the other
-off, so a shared environment (the appset's staging slot) has exactly one owner per
-environment. Both default to on.
+Each environment is controlled per app. `enable_staging` and `enable_production`
+default to on; an Application that renders one environment turns the other off, so a
+shared environment always has exactly one owner.
 
 ### Ingress
 
