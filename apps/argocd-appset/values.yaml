@@ -99,11 +99,6 @@ apps:
   # openkite.maklab.net, gated by Cloudflare Access because the app spec sets
   # enable_private. There is no openkite-specific chart and no per-environment
   # manifest anywhere: the workload is the `openkite:` spec in apps/helm/values.yaml.
-  # PREVIEWS — `enable_preview` opts this app into the generic
-  # templates/preview.yml generator, which emits one ApplicationSet for it. Each
-  # admitted PR re-renders the SAME spec with per-PR coordinates (image tag,
-  # subdomain, namespace) — so a preview cannot drift from what prod runs.
-  #
   #
   # `openkite-preview` (the bespoke appset + workload chart pair) is deleted:
   # everything it did is now either the spec above or the generic generator.
@@ -133,12 +128,8 @@ apps:
         kind: Secret
         jsonPointers:
           - /metadata/argocd.argoproj.io/sync-wave
-    enable_preview: true
-    preview:
-      repo: openkite
-      # Only a PR carrying this label becomes a preview (the image gate in
-      # jomakori/openkite pr-image.yml applies it after a successful push).
-      label: preview
+    # Previews are owned by Tilt, not this appset: `enable_preview`/`preview` are
+    # gone. Staging below is a shared, long-lived environment admitted by label.
     staging:
       enable: true
       label: staging
