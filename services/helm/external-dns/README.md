@@ -31,6 +31,8 @@ For each host it discovers (e.g. `argocd.maklab.net`, `grafana.maklab.net`), Ext
 
 **`upsert-only` policy** — ExternalDNS never deletes DNS records. Stale entries must be cleaned up manually in the Cloudflare dashboard. A TXT ownership registry (`external-dns-gke-maklab`) prevents conflicts between this cluster and other DNS managers.
 
+> **Why this is not flipped to `sync`** — flipping it would let any `kubectl` edit of a `VirtualService` delete the corresponding prod DNS record, which is a worse failure mode than the current "manual cleanup." The residue specifically left by closed PRs is documented in [`docs/okt131-teardown-residue.md`](../../../docs/okt131-teardown-residue.md) — read that before changing the value.
+
 ### Doppler config
 
 | Aspect | Detail |
