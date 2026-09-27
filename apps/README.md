@@ -41,6 +41,8 @@ Multi-environment (staging + production) is supported per app. A workload that n
 
 A per-PR preview system registered like any other app. It renders an `ApplicationSet` using the GitHub Pull Request generator to create one preview `Application` per open PR on `jomakori/openkite` **that carries the `preview` label** (applied by that repo's image workflow only once the `pr-<N>` image is published), at `pr<num>-<clusterDomain>`-shaped hosts, and deletes it when the PR closes or loses the label. It also owns the wildcard TLS `Certificate` and Istio `Gateway` for that host, and consumes the GitHub token ExternalSecret. See [openkite-preview/README.md](openkite-preview/README.md).
 
+> **What a closed PR leaves behind.** The cluster side (namespace, Application, workloads) prunes itself via the AppSet's finalizer. The DNS, Cloudflare-Access, and GHCR layers each have their own lifecycle, and not all of them auto-clean. The full residue inventory, with probe evidence, lives in [`docs/okt131-teardown-residue.md`](../docs/okt131-teardown-residue.md) — read that before changing `services/helm/external-dns/values.yaml:policy` from `upsert-only` to `sync`.
+
 ## Adding an app
 
 1. **Add an entry** to `argocd-appset/values.yaml` — app key, environments, `dopplerConfig`, and the chart to deploy.
