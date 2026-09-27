@@ -27,7 +27,6 @@
 {{- /* App-level defaults (enable_staging, enable_domain, enable_istio, scaling, service) */}}
 {{- $enableStaging := ne (printf "%v" $app.enable_staging) "false" }}
 {{- $enableProduction := ne (printf "%v" $app.enable_production) "false" }}
-{{- $enablePrivate   := ne (printf "%v" ($app.enable_private | default false)) "false" }}
 {{- $createNamespace := ne (printf "%v" ($app.createNamespace | default false)) "false" }}
 {{- $enableDomain  := ne (printf "%v" $app.enable_domain) "false" }}
 {{- $enableIstio   := ne (printf "%v" ($app.enable_istio | default true)) "false" }}
@@ -409,34 +408,14 @@ spec:
               number: 80
 {{- end }}
 
-{{- /* Cloudflare Access gate: same rule the istio chart renders for enablePrivate,
-       declared per exact host because a generated host has no route to hang off. */}}
-{{- if and $enableDomain $enableIstio $enablePrivate }}
----
-apiVersion: security.istio.io/v1
-kind: AuthorizationPolicy
-metadata:
-  name: require-cf-access-{{ printf "%s-%s" $subdomain (replace "." "-" $domain) }}
-  namespace: {{ index (splitList "/" $gatewayRef) 0 }}
-  labels:
-    app: {{ $appName }}
-    env: {{ $envName }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-spec:
-  selector:
-    matchLabels:
-      istio: ingressgateway
-  action: DENY
-  rules:
-    - from:
-        - source:
-            notRequestPrincipals: ["*"]
-      to:
-        - operation:
-            hosts:
-              - {{ $fullDomain | quote }}
-{{- end }}
+{{- /* enable_private is no longer rendered here. The per-host Cloudflare Access
+       DENY for openkite (and any future `enable_private: true` app in this chart)
+       is emitted by the istio umbrella chart's `privateHosts` list, which ArgoCD
+       actually applies (its Application's destination is `istio-system`). Emitting
+       from this chart placed the policy in `istio-system` while the Application's
+       destination is the app namespace, so ArgoCD reported OutOfSync on exactly
+       this resource and never created it (OKT-147). The Cloudflare Access JWT is
+       validated by the istio RequestAuthentication, which is unchanged. */}}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
 {{- /* HPA (conditional on enable_scaling)                            */}}
