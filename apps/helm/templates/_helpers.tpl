@@ -26,11 +26,6 @@
 
 {{- /* App-level defaults (enable_staging, enable_domain, enable_istio, scaling, service) */}}
 {{- $enableStaging := ne (printf "%v" $app.enable_staging) "false" }}
-{{- /* Production is on unless an entry point turns it off. Symmetric with
-       enable_staging, and needed by the same case: an Application that renders ONE
-       environment (the appset's staging admission path renders staging alone) must
-       not also render — and therefore must not also own — production, whose owner
-       is the app's own Application. */}}
 {{- $enableProduction := ne (printf "%v" $app.enable_production) "false" }}
 {{- $enablePrivate   := ne (printf "%v" ($app.enable_private | default false)) "false" }}
 {{- $createNamespace := ne (printf "%v" ($app.createNamespace | default false)) "false" }}
@@ -46,8 +41,6 @@
 {{- $imageRepo    := ($app.image | default dict).repository | default (printf "%s/%s" $registry $kebabName) }}
 
 {{- range $envName, $env := $app.environments }}
-{{- /* Skip staging when enable_staging is false, and production when the entry
-       point rendering this spec sets enable_production=false. */}}
 {{- if or (and $enableProduction (eq $envName "production")) (and $enableStaging (eq $envName "staging")) }}
 
 {{- /* ── Env-level defaults ───────────────────────────────────── */}}

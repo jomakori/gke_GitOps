@@ -17,8 +17,6 @@ demoApi:
       dopplerConfig: demo-api-prod
 
 openkite:
-  # OpenKite's runtime secrets live in the openagent service's Doppler config:
-  # staging runs the same workload, so it reads the same store.
   environment:
     staging:
       dopplerConfig: svc_openagent
@@ -96,24 +94,16 @@ apps:
       - name: notesUi.environments.production.dopplerConfig
         value: "{{ .Values.notesUi.environment.production.dopplerConfig }}"
 
-  # OpenKite: one spec, three entry points.
-  #
   # PROD — this entry renders the apps/helm umbrella (helmPath below) for the
   # app's `production` environment: Deployment, Service and VirtualService at
   # openkite.maklab.net, gated by Cloudflare Access because the app spec sets
   # enable_private. There is no openkite-specific chart and no per-environment
   # manifest anywhere: the workload is the `openkite:` spec in apps/helm/values.yaml.
-  #
   # PREVIEWS — `enable_preview` opts this app into the generic
   # templates/preview.yml generator, which emits one ApplicationSet for it. Each
   # admitted PR re-renders the SAME spec with per-PR coordinates (image tag,
   # subdomain, namespace) — so a preview cannot drift from what prod runs.
   #
-  # STAGING — `staging.enable` opts the app into the second admission path in the
-  # same file: the same PR generator under the `staging` label, rendering ONE
-  # shared Application (fixed name, never one per PR) at the spec's own staging
-  # environment with the admitted PR's tag. The slot is single-occupancy by
-  # construction: the last PR labelled holds it.
   #
   # `openkite-preview` (the bespoke appset + workload chart pair) is deleted:
   # everything it did is now either the spec above or the generic generator.
@@ -149,9 +139,6 @@ apps:
       # Only a PR carrying this label becomes a preview (the image gate in
       # jomakori/openkite pr-image.yml applies it after a successful push).
       label: preview
-    # The staging admission path: same repo and token as `preview` above, and the
-    # label is what differs — a request for the shared slot rather than for an
-    # environment of the PR's own.
     staging:
       enable: true
       label: staging
@@ -162,11 +149,5 @@ apps:
         value: "{{ .Values.openkite.environment.staging.dopplerConfig }}"
       - name: openkite.environments.production.dopplerConfig
         value: "{{ .Values.openkite.environment.production.dopplerConfig }}"
-      # The spec above enables the staging environment, because that is what the
-      # staging entry point renders. The prod and preview Applications are not its
-      # owner, so they render production alone — otherwise every preview would add
-      # a second Application for the same staging objects (and a second
-      # VirtualService for the same staging host). The staging entry point
-      # re-asserts enable_staging after these, and turns production off instead.
       - name: openkite.enable_staging
         value: "false"

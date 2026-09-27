@@ -11,8 +11,6 @@ storageClass: "local-path"
 # │                                                                  │
 # │ Conventions (can be overridden per app):                         │
 # │   enable_staging : true        (staging ON unless explicitly off)│
-# │  enable_production : true     (production ON unless the entry    │
-# │                                 point renders staging alone)     │
 # │   subdomain     : <appName>    (prod) / <appName>-staging        │
 # │   HPA.minReplicas : service.replicas  (defaults to replicas)     │
 # │   enable_db     : {...}        (spec-driven DB — see demoApi)    │
@@ -77,8 +75,6 @@ notesUi:
       size: 1Gi
 
 openkite:
-  # Prod + staging; previews re-render this spec at per-PR coordinates, and the
-  # appset's staging admission path re-renders the `staging` environment below.
   enable_staging: true
   enable_istio: true
   # Cloudflare Access: DENY anything without a valid JWT for this host.
@@ -93,12 +89,7 @@ openkite:
     retryTimeout: 5s
   environments:
     staging:
-      # The shared staging slot (one environment, one Application). Admission —
-      # the appset's `staging` label — renders this environment with the labelled
-      # PR's tag, so the declared value is the released image the slot starts
-      # from and is what a label-less render deploys.
       tag: v0.33.0
-      # Own host: the helper's staging default would be staging.openkite.<domain>.
       subdomain: staging-openkite
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
