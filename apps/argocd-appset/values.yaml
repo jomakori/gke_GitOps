@@ -128,8 +128,10 @@ apps:
         kind: Secret
         jsonPointers:
           - /metadata/argocd.argoproj.io/sync-wave
-    # Previews are owned by Tilt, not this appset: `enable_preview`/`preview` are
-    # gone. Staging below is a shared, long-lived environment admitted by label.
+    # Previews are owned by Tilt, not this appset. `preview.repo` is what the
+    # staging admission watches; `enable_preview` is what admits previews.
+    preview:
+      repo: openkite
     staging:
       enable: true
       label: staging
