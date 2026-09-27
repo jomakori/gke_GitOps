@@ -77,8 +77,12 @@ notesUi:
 openkite:
   enable_staging: true
   enable_istio: true
-  # Cloudflare Access: DENY anything without a valid JWT for this host.
-  enable_private: true
+  # Cloudflare Access gating for openkite.maklab.net and every pr<N>-openkite.maklab.net
+  # preview is declared in services/helm/istio/values.yaml `privateHosts`, where the
+  # istio Application (destination.namespace: istio-system) renders the DENY policy.
+  # OKT-147: do not add an `enable_private` here — it has no effect in this chart
+  # (the AuthorizationPolicy would render into istio-system from a non-istio
+  # Application and ArgoCD would skip it).
   # ── Cluster access (OKT-130) ─────────────────────────────────────────
   # The console reads the cluster with a kubeconfig delivered by External
   # Secrets from Doppler — not with the pod's ServiceAccount, because

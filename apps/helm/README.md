@@ -120,7 +120,6 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | notesUi.service.resourceRequests.memory | string | `"256Mi"` |  |
 | notesUi.service.storage.size | string | `"1Gi"` |  |
 | openkite.enable_istio | bool | `true` |  |
-| openkite.enable_private | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
 | openkite.environments.production.tag | string | `"v0.33.0"` |  |
 | openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |

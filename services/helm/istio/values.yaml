@@ -133,9 +133,19 @@ virtualServices:
       port: 9119
 
 # Hosts whose route is declared elsewhere and that still need the DENY policy of
-# `enablePrivate`. Empty: previews are gated per host by the app spec (see the
-# openkite enable_private in gke_GitOps apps/helm).
-privateHosts: []
+# `enablePrivate`. Each entry emits a `require-cf-access-<host>` AuthorizationPolicy
+# into `istio-system` from this chart (authorization-policy-private-hosts.yaml).
+# Wildcards are allowed and Istio treats `*.example.com` in `operation.hosts` as a
+# suffix match, so a single entry covers every preview host.
+privateHosts:
+  # openkite (apps/helm): prod host and per-PR preview hosts are routed by
+  # `apps/helm/templates/_helpers.tpl` (VirtualService + AuthorizationPolicy in the
+  # app's own namespace). The AuthorizationPolicy was emitted with
+  # `metadata.namespace: istio-system`, but the openkite Application's
+  # destination.namespace is the app namespace, so ArgoCD reports OutOfSync on the
+  # policy and never applies it. OKT-147: re-emit from here, where the Application
+  # manages `istio-system`. Wildcard covers the static prod host and every preview.
+  - "*.openkite.maklab.net"
 
 # PodDisruptionBudget for the ingress gateway. It runs 2 replicas and fronts every
 # request into the cluster, but had no PDB — a node drain could take both.
