@@ -3,9 +3,14 @@
        coordinates, so a preview cannot drift from prod. */}}
 {{- $root := . }}
 {{- range $key, $cfg := .Values.apps }}
-{{- if and $cfg.enable $cfg.enable_preview }}
-{{- $p := $cfg.preview | default dict }}
 {{- $kebabKey := include "kebab" $key }}
+{{- $p := $cfg.preview | default dict }}
+{{- $extraParams := list }}
+{{- if (($cfg.gateways | default dict).enable_public) }}
+{{-   $extraParams = append $extraParams (dict "name" (printf "%s.enable_domain" $key) "value" "true") }}
+{{- end }}
+{{- $mergedParams := concat ($cfg.parameters | default list) $extraParams }}
+{{- if and $cfg.enable $cfg.enable_preview }}
 {{- $repo := required (printf "apps.%s.preview.repo is required when enable_preview is true" $key) $p.repo }}
 {{- $owner := $p.owner | default "jomakori" }}
 {{- $envName := $p.environment | default "production" }}
@@ -17,11 +22,6 @@
 {{- $domain := $p.domain | default ($root.Values.clusterDomain | default "maklab.net") }}
 {{- $hostTemplate := printf "%s.%s" $subdomainTemplate $domain }}
 {{- $tokenSecretName := $p.tokenSecretName | default (printf "argocd-github-token-%s" $kebabKey) }}
-{{- $extraParams := list }}
-{{- if (($cfg.gateways | default dict).enable_public) }}
-{{-   $extraParams = append $extraParams (dict "name" (printf "%s.enable_domain" $key) "value" "true") }}
-{{- end }}
-{{- $mergedParams := concat ($cfg.parameters | default list) $extraParams }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
@@ -81,6 +81,82 @@ spec:
       destination:
         server: {{ $root.Values.clusterServer | default "https://kubernetes.default.svc" | quote }}
         namespace: {{ $nsTemplate | quote }}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+{{- end }}
+
+{{- $s := $cfg.staging | default dict }}
+{{- if and $cfg.enable $s.enable }}
+{{- $repo := required (printf "apps.%s.preview.repo is required when staging.enable is true" $key) $p.repo }}
+{{- $owner := $p.owner | default "jomakori" }}
+{{- $envName := $s.environment | default "staging" }}
+{{- $label := $s.label | default "staging" }}
+{{- $appName := $s.name | default (printf "%s-%s" $kebabKey $envName) }}
+{{- $tagTemplate := $s.tagTemplate | default "pr-{{ .number }}" }}
+{{- $tokenSecretName := $p.tokenSecretName | default (printf "argocd-github-token-%s" $kebabKey) }}
+{{- $namespace := $s.namespace | default (printf "%s-%s" $kebabKey $envName) }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ printf "%s-%s" $kebabKey $envName }}
+  namespace: {{ $root.Values.argoNamespace | default "argocd" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $cfg.syncWave | default "0" | quote }}
+spec:
+  goTemplate: true
+  generators:
+    - pullRequest:
+        github:
+          owner: {{ $owner | quote }}
+          repo: {{ $repo | quote }}
+          tokenRef:
+            secretName: {{ $tokenSecretName | quote }}
+            key: {{ $p.tokenSecretKey | default "token" | quote }}
+          labels:
+            - {{ $label | quote }}
+        requeueAfterSeconds: {{ $s.requeueAfterSeconds | default 60 }}
+  template:
+    metadata:
+      name: {{ $appName | quote }}
+      labels:
+        app.kubernetes.io/name: {{ $key | quote }}
+        app.kubernetes.io/part-of: {{ $kebabKey | quote }}
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: {{ $cfg.argoProject | default ($root.Values.argoProject | default "default") }}
+      source:
+        repoURL: {{ $root.Values.repoUrl | quote }}
+        targetRevision: {{ $root.Values.targetRevision | default "main" | quote }}
+        path: {{ $cfg.helmPath | quote }}
+        helm:
+          valueFiles:
+            - values.yaml
+          parameters:
+            {{- range $mergedParams }}
+            - name: {{ .name }}
+              value: {{ tpl .value $root | quote }}
+            {{- end }}
+            - name: {{ printf "%s.enable_staging" $key }}
+              value: "true"
+            - name: {{ printf "%s.enable_production" $key }}
+              value: "false"
+            - name: {{ printf "%s.environments.%s.tag" $key $envName }}
+              value: {{ $tagTemplate | quote }}
+      destination:
+        server: {{ $root.Values.clusterServer | default "https://kubernetes.default.svc" | quote }}
+        namespace: {{ $namespace | quote }}
       syncPolicy:
         automated:
           prune: true

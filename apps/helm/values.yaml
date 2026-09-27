@@ -75,8 +75,7 @@ notesUi:
       size: 1Gi
 
 openkite:
-  # Prod only; previews re-render this spec at per-PR coordinates.
-  enable_staging: false
+  enable_staging: true
   enable_istio: true
   # Cloudflare Access: DENY anything without a valid JWT for this host.
   enable_private: true
@@ -100,9 +99,12 @@ openkite:
     retryAttempts: 3
     retryTimeout: 5s
   environments:
+    staging:
+      tag: v0.33.0
+      subdomain: staging-openkite
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
-      tag: v0.33.0
+      tag: v0.34.0
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080
