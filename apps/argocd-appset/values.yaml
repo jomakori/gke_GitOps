@@ -17,8 +17,9 @@ demoApi:
       dopplerConfig: demo-api-prod
 
 openkite:
-  # OpenKite's runtime secrets live in the openagent service's Doppler config.
   environment:
+    staging:
+      dopplerConfig: svc_openagent
     production:
       dopplerConfig: svc_openagent
 
@@ -93,18 +94,16 @@ apps:
       - name: notesUi.environments.production.dopplerConfig
         value: "{{ .Values.notesUi.environment.production.dopplerConfig }}"
 
-  # OpenKite: one spec, two entry points.
-  #
   # PROD — this entry renders the apps/helm umbrella (helmPath below) for the
   # app's `production` environment: Deployment, Service and VirtualService at
   # openkite.maklab.net, gated by Cloudflare Access because the app spec sets
   # enable_private. There is no openkite-specific chart and no per-environment
   # manifest anywhere: the workload is the `openkite:` spec in apps/helm/values.yaml.
-  #
   # PREVIEWS — `enable_preview` opts this app into the generic
   # templates/preview.yml generator, which emits one ApplicationSet for it. Each
   # admitted PR re-renders the SAME spec with per-PR coordinates (image tag,
   # subdomain, namespace) — so a preview cannot drift from what prod runs.
+  #
   #
   # `openkite-preview` (the bespoke appset + workload chart pair) is deleted:
   # everything it did is now either the spec above or the generic generator.
@@ -140,8 +139,15 @@ apps:
       # Only a PR carrying this label becomes a preview (the image gate in
       # jomakori/openkite pr-image.yml applies it after a successful push).
       label: preview
+    staging:
+      enable: true
+      label: staging
     parameters:
       - name: appName
         value: "openkite"
+      - name: openkite.environments.staging.dopplerConfig
+        value: "{{ .Values.openkite.environment.staging.dopplerConfig }}"
       - name: openkite.environments.production.dopplerConfig
         value: "{{ .Values.openkite.environment.production.dopplerConfig }}"
+      - name: openkite.enable_staging
+        value: "false"

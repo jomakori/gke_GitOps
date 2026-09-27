@@ -55,7 +55,9 @@ Each app supports `staging` and `production` environments. Per-environment confi
 | Doppler config | `environments.<env>.dopplerConfig` | (none — ExternalSecret only created when set) |
 | Namespace | Auto | `<appName-kebab>-<envName>` |
 
-Staging can be disabled per-app via `enable_staging: false`.
+Each environment is controlled per app. `enable_staging` and `enable_production`
+default to on; an Application that renders one environment turns the other off, so a
+shared environment always has exactly one owner.
 
 ### Ingress
 
@@ -117,5 +119,20 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | notesUi.service.resourceRequests.cpu | string | `"100m"` |  |
 | notesUi.service.resourceRequests.memory | string | `"256Mi"` |  |
 | notesUi.service.storage.size | string | `"1Gi"` |  |
+| openkite.enable_istio | bool | `true` |  |
+| openkite.enable_private | bool | `true` |  |
+| openkite.enable_staging | bool | `true` |  |
+| openkite.environments.production.tag | string | `"v0.33.0"` |  |
+| openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |
+| openkite.environments.staging.tag | string | `"v0.33.0"` |  |
+| openkite.image.repository | string | `"ghcr.io/jomakori/openkite"` |  |
+| openkite.istio.gateway | string | `"istio-system/maklab-gateway"` |  |
+| openkite.istio.requestTimeout | string | `"30s"` |  |
+| openkite.istio.retryAttempts | int | `3` |  |
+| openkite.istio.retryTimeout | string | `"5s"` |  |
+| openkite.service.port | int | `8080` |  |
+| openkite.service.resourceLimits.memory | string | `"256Mi"` |  |
+| openkite.service.resourceRequests.cpu | string | `"100m"` |  |
+| openkite.service.resourceRequests.memory | string | `"128Mi"` |  |
 | registry | string | `"123456.dkr.ecr.us-east-2.amazonaws.com"` |  |
-| storageClass | string | `"csi-hostpath-sc"` |  |
+| storageClass | string | `"local-path"` |  |

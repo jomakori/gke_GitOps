@@ -26,6 +26,7 @@
 
 {{- /* App-level defaults (enable_staging, enable_domain, enable_istio, scaling, service) */}}
 {{- $enableStaging := ne (printf "%v" $app.enable_staging) "false" }}
+{{- $enableProduction := ne (printf "%v" $app.enable_production) "false" }}
 {{- $enablePrivate   := ne (printf "%v" ($app.enable_private | default false)) "false" }}
 {{- $createNamespace := ne (printf "%v" ($app.createNamespace | default false)) "false" }}
 {{- $enableDomain  := ne (printf "%v" $app.enable_domain) "false" }}
@@ -40,8 +41,7 @@
 {{- $imageRepo    := ($app.image | default dict).repository | default (printf "%s/%s" $registry $kebabName) }}
 
 {{- range $envName, $env := $app.environments }}
-{{- /* Skip staging when enable_staging is false */}}
-{{- if or (eq $envName "production") (and $enableStaging (eq $envName "staging")) }}
+{{- if or (and $enableProduction (eq $envName "production")) (and $enableStaging (eq $envName "staging")) }}
 
 {{- /* ── Env-level defaults ───────────────────────────────────── */}}
 {{- $namespace   := $app.namespaceOverride | default (printf "%s-%s" $kebabName $envName) }}
