@@ -1,11 +1,22 @@
 {{- /* Generic PR-preview generator: one ApplicationSet per app with enable_preview.
        Each admitted PR re-renders the app's own apps/helm spec (helmPath) at per-PR
        coordinates, so a preview cannot drift from prod. */}}
+{{- /* The same file carries the staging admission path: an app with `staging.enable`
+       gets a second ApplicationSet under the `staging` label, and that one renders a
+       SINGLE shared Application (never one per PR) at the spec's own staging
+       environment, carrying the admitted PR's tag. */}}
 {{- $root := . }}
 {{- range $key, $cfg := .Values.apps }}
-{{- if and $cfg.enable $cfg.enable_preview }}
-{{- $p := $cfg.preview | default dict }}
 {{- $kebabKey := include "kebab" $key }}
+{{- $p := $cfg.preview | default dict }}
+{{- /* Parameters both admission paths hand to the app chart: the app entry's own
+       list, plus the enable_domain injection that gateways.enable_public implies. */}}
+{{- $extraParams := list }}
+{{- if (($cfg.gateways | default dict).enable_public) }}
+{{-   $extraParams = append $extraParams (dict "name" (printf "%s.enable_domain" $key) "value" "true") }}
+{{- end }}
+{{- $mergedParams := concat ($cfg.parameters | default list) $extraParams }}
+{{- if and $cfg.enable $cfg.enable_preview }}
 {{- $repo := required (printf "apps.%s.preview.repo is required when enable_preview is true" $key) $p.repo }}
 {{- $owner := $p.owner | default "jomakori" }}
 {{- $envName := $p.environment | default "production" }}
@@ -17,11 +28,6 @@
 {{- $domain := $p.domain | default ($root.Values.clusterDomain | default "maklab.net") }}
 {{- $hostTemplate := printf "%s.%s" $subdomainTemplate $domain }}
 {{- $tokenSecretName := $p.tokenSecretName | default (printf "argocd-github-token-%s" $kebabKey) }}
-{{- $extraParams := list }}
-{{- if (($cfg.gateways | default dict).enable_public) }}
-{{-   $extraParams = append $extraParams (dict "name" (printf "%s.enable_domain" $key) "value" "true") }}
-{{- end }}
-{{- $mergedParams := concat ($cfg.parameters | default list) $extraParams }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
@@ -81,6 +87,115 @@ spec:
       destination:
         server: {{ $root.Values.clusterServer | default "https://kubernetes.default.svc" | quote }}
         namespace: {{ $nsTemplate | quote }}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+{{- end }}
+
+{{- /* Staging admission: the SAME pullRequest generator under a different label,
+       because this environment is shared rather than per-PR. Two differences from
+       the preview path above, and only two:
+         * the Application name is FIXED, so the slot holds one environment — a
+           newer labelled PR overwrites the previous occupant instead of adding a
+           second Application (the label is a request for the slot, one PR at a
+           time);
+         * the tag is the only per-PR coordinate handed to the chart. The staging
+           host and namespace are NOT templated here: they are the app spec's
+           `environments.staging` subdomain and its env-derived namespace, exactly
+           as the production Application leaves them to the spec. */}}
+{{- $s := $cfg.staging | default dict }}
+{{- if and $cfg.enable $s.enable }}
+{{- $repo := required (printf "apps.%s.preview.repo is required when staging.enable is true" $key) $p.repo }}
+{{- $owner := $p.owner | default "jomakori" }}
+{{- $envName := $s.environment | default "staging" }}
+{{- $label := $s.label | default "staging" }}
+{{- $appName := $s.name | default (printf "%s-%s" $kebabKey $envName) }}
+{{- $tagTemplate := $s.tagTemplate | default "pr-{{ .number }}" }}
+{{- /* The preview generator's token: same repo, same scope. */}}
+{{- $tokenSecretName := $p.tokenSecretName | default (printf "argocd-github-token-%s" $kebabKey) }}
+{{- /* Same derivation as templates/namespaces.yaml, which owns this Namespace: a
+       shared namespace is not a per-PR coordinate, so the Application does not
+       create it (no createNamespace parameter below). */}}
+{{- $namespace := $s.namespace | default (printf "%s-%s" $kebabKey $envName) }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ printf "%s-%s" $kebabKey $envName }}
+  namespace: {{ $root.Values.argoNamespace | default "argocd" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $cfg.syncWave | default "0" | quote }}
+spec:
+  goTemplate: true
+  generators:
+    - pullRequest:
+        github:
+          owner: {{ $owner | quote }}
+          repo: {{ $repo | quote }}
+          tokenRef:
+            secretName: {{ $tokenSecretName | quote }}
+            key: {{ $p.tokenSecretKey | default "token" | quote }}
+          # Admission gate, deliberately a different label from `preview`: this
+          # one promotes a PR's build into the shared slot. The slot is
+          # single-occupancy — the Application name below is fixed — so the label
+          # is a lease, not a queue: exactly one PR should carry it. Two labelled
+          # PRs would each generate that same name (last applied wins, and the
+          # pair can flap), which is why admission is a manual, deliberate act.
+          labels:
+            - {{ $label | quote }}
+        requeueAfterSeconds: {{ $s.requeueAfterSeconds | default 60 }}
+  template:
+    metadata:
+      # Fixed, not per-PR: this is what makes staging one shared environment.
+      name: {{ $appName | quote }}
+      labels:
+        app.kubernetes.io/name: {{ $key | quote }}
+        app.kubernetes.io/part-of: {{ $kebabKey | quote }}
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: {{ $cfg.argoProject | default ($root.Values.argoProject | default "default") }}
+      source:
+        repoURL: {{ $root.Values.repoUrl | quote }}
+        targetRevision: {{ $root.Values.targetRevision | default "main" | quote }}
+        path: {{ $cfg.helmPath | quote }}
+        helm:
+          valueFiles:
+            - values.yaml
+          parameters:
+            {{- range $mergedParams }}
+            - name: {{ .name }}
+              value: {{ tpl .value $root | quote }}
+            {{- end }}
+            # Environment selection for THIS entry point: it renders the staging
+            # environment and nothing else. The app entry's own parameters turn
+            # staging off for its prod and preview Applications, so this
+            # re-asserts the spec's enable_staging (helm applies `--set`
+            # parameters in list order — the later value wins) and switches
+            # production off for this Application, which is not its owner.
+            - name: {{ printf "%s.enable_staging" $key }}
+              value: "true"
+            - name: {{ printf "%s.enable_production" $key }}
+              value: "false"
+            # The one per-PR coordinate: while the label is present, staging
+            # runs this PR's image. With no PR labelled the generator yields no
+            # items, so the Application — and the workload it owns — goes away;
+            # the tag the app spec declares for staging is what a bare render
+            # (no admission) deploys.
+            - name: {{ printf "%s.environments.%s.tag" $key $envName }}
+              value: {{ $tagTemplate | quote }}
+      destination:
+        server: {{ $root.Values.clusterServer | default "https://kubernetes.default.svc" | quote }}
+        namespace: {{ $namespace | quote }}
       syncPolicy:
         automated:
           prune: true
