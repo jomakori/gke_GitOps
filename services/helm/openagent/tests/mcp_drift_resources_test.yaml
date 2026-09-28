@@ -1,0 +1,73 @@
+suite: openagent mcp-drift CronJob — bounded resources
+templates:
+  - hooks.yaml
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: drift container has resources with limits.memory 3Gi
+    asserts:
+      - isKind:
+          of: CronJob
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - exists:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.requests.memory
+          value: 1Gi
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.limits.memory
+          value: 3Gi
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.requests.cpu
+          value: 500m
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].resources.limits.cpu
+          value: "2"
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+
+  - it: drift initContainers are bounded with the same resources
+    asserts:
+      - isKind:
+          of: CronJob
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - exists:
+          path: spec.jobTemplate.spec.template.spec.initContainers[0].resources
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - exists:
+          path: spec.jobTemplate.spec.template.spec.initContainers[1].resources
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.initContainers[0].resources.limits.memory
+          value: 3Gi
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.initContainers[1].resources.limits.memory
+          value: 3Gi
+        documentSelector:
+          path: metadata.name
+          value: openagent-mcp-drift

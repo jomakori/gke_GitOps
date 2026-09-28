@@ -767,7 +767,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.probes.startup.periodSeconds | int | `10` |  |
 | hermes-agent.probes.startup.timeoutSeconds | int | `3` |  |
 | hermes-agent.resources.limits.cpu | string | `"2"` |  |
-| hermes-agent.resources.limits.memory | string | `"3Gi"` |  |
+| hermes-agent.resources.limits.memory | string | `"8Gi"` |  |
 | hermes-agent.resources.requests.cpu | string | `"2"` |  |
 | hermes-agent.resources.requests.memory | string | `"3Gi"` |  |
 | hermes-agent.service.enabled | bool | `false` |  |
@@ -1002,6 +1002,10 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | mcpVerification.cronjob.backoffLimit | int | `0` |  |
 | mcpVerification.cronjob.enabled | bool | `true` |  |
 | mcpVerification.cronjob.historyLimit | int | `3` |  |
+| mcpVerification.cronjob.resources.limits.cpu | string | `"2"` |  |
+| mcpVerification.cronjob.resources.limits.memory | string | `"3Gi"` |  |
+| mcpVerification.cronjob.resources.requests.cpu | string | `"500m"` |  |
+| mcpVerification.cronjob.resources.requests.memory | string | `"1Gi"` |  |
 | mcpVerification.cronjob.schedule | string | `"*/15 * * * *"` |  |
 | mcpVerification.preflight.activeDeadlineSeconds | int | `1800` |  |
 | mcpVerification.preflight.backoffLimit | int | `0` |  |

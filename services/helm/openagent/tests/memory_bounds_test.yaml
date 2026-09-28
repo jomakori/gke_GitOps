@@ -1,0 +1,48 @@
+suite: openagent memory bounding — hermes-agent resources
+templates:
+  - charts/hermes-agent/templates/deployment.yaml
+  - charts/hermes-agent/templates/configmap.yaml
+  - charts/hermes-agent/templates/secret.yaml
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: hermes-agent requests.memory is 3Gi and limits.memory is 8Gi
+    asserts:
+      - isKind:
+          of: Deployment
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 3Gi
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 8Gi
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+
+  - it: hermes-agent CPU stays requests == limits == "2"
+    asserts:
+      - isKind:
+          of: Deployment
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: "2"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: "2"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
