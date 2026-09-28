@@ -3,7 +3,8 @@
        ExternalSecret here. Value: Doppler devops/svc_argocd/ARGOCD_GITHUB_TOKEN. */}}
 {{- $root := . }}
 {{- range $key, $cfg := .Values.apps }}
-{{- if and $cfg.enable $cfg.enable_preview }}
+{{- $s := $cfg.staging | default dict }}
+{{- if and $cfg.enable (or $cfg.enable_preview $s.enable) }}
 {{- $kebabKey := include "kebab" $key }}
 {{- $p := $cfg.preview | default dict }}
 {{- $t := $p.token | default dict }}
