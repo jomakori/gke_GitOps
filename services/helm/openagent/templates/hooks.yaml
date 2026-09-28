@@ -251,6 +251,8 @@ spec:
               securityContext:
                 runAsUser: 10000
                 runAsGroup: 10000
+              resources:
+                {{- toYaml .Values.mcpVerification.cronjob.resources | nindent 16 }}
               env:
                 {{- include "openagent.mcpVerifyEnv" . | nindent 16 }}
               envFrom:

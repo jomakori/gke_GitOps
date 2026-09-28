@@ -81,6 +81,8 @@ initContainer; the hermes image + PVC provide the full toolchain for servers tha
   securityContext:
     runAsUser: 10000
     runAsGroup: 10000
+  resources:
+    {{- toYaml .Values.mcpVerification.cronjob.resources | nindent 4 }}
   volumeMounts:
     - name: tools
       mountPath: /opt/tools
@@ -92,6 +94,8 @@ initContainer; the hermes image + PVC provide the full toolchain for servers tha
   securityContext:
     runAsUser: 10000
     runAsGroup: 10000
+  resources:
+    {{- toYaml .Values.mcpVerification.cronjob.resources | nindent 4 }}
   env:
     {{- include "openagent.mcpVerifyEnv" . | nindent 4 }}
   command:

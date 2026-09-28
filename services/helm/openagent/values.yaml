@@ -1433,20 +1433,29 @@ hermes-agent:
       failureThreshold: 3
       timeoutSeconds: 3
   resources:
-    # requests == limits on purpose: VPA `Auto` only applies a recommendation to
-    # a container whose request equals its limit, and it does so silently — with
-    # the old 256Mi/6Gi split the autoscaler would have done nothing while
-    # looking enabled. The VPA owns this number from here, bounded 3Gi-8Gi (see
-    # the vpa block at the bottom of this file).
+    # `limits.memory` must be >= the VPA's `maxMemory` (8Gi) — if the VPA emits
+    # a recommendation the static limit cannot hold, the pod OOMKills instead
+    # of scheduling. `controlledValues: RequestsOnly` (vpa block below) means
+    # the VPA writes ONLY the request; the limit is static and survives pod
+    # restarts. The 8Gi is therefore a burst ceiling, not a reservation — it
+    # costs nothing unless actually used.
     #
-    # 3Gi to start, down from 6Gi: this container's measured idle/peak is
-    # ~1.7-2.2Gi. If the data disagrees, the autoscaler raises it.
+    # `requests.memory: 3Gi` was chosen when measured peak was ~1.7-2.2Gi.
+    # It is now stale: the live VPA `upperBound` recommendation is 3.78Gi,
+    # above the old 3Gi limit, and the container has been OOMKilled 750 times
+    # (cgroup `oom_kill=750`, `max_hits=34,286,670`). Keep the request at 3Gi
+    # so the VPA can raise it within its 3Gi-8Gi bounds.
+    #
+    # CPU stays `requests == limits == "2"` deliberately: a single-replica
+    # gateway must never throttle on the boot burst when 13 MCP servers start
+    # together. Under the old RequestsAndLimits default the VPA pinned CPU at
+    # 109m (80% throttled) and MCP discovery timed out at 120s.
     requests:
       cpu: "2"
       memory: 3Gi
     limits:
       cpu: "2"
-      memory: 3Gi
+      memory: 8Gi
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
@@ -1490,6 +1499,18 @@ mcpVerification:
     activeDeadlineSeconds: 900
     backoffLimit: 0
     historyLimit: 3
+    # Unbounded container repeatedly OOMKilled the shared VM (3 consecutive
+    # runs, re-leaking every 15 minutes). Loads ~13 MCP servers in-process.
+    # Requests kept modest — total pod requests across the cluster already
+    # exceed the 15.66GiB VM, so the reservation is the minimum that lets the
+    # scheduler account for it; the 3Gi limit caps the leak.
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "2"
+        memory: 3Gi
 
 # ── Hermes WebUI (gateway thin-client dashboard) ───────────────────
 hermes-webui:
