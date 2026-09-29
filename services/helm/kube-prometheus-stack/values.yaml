@@ -111,6 +111,15 @@ kube-prometheus-stack:
         memory: 256Mi
       limits:
         memory: 512Mi
+    # Grafana's sqlite DB (which holds service-account tokens, dashboard state, etc.)
+    # lives in /var/lib/grafana. With the upstream emptyDir default, every pod restart
+    # wipes it — so SA tokens issued against the live DB go stale and every Grafana MCP
+    # / drift-check consumer starts 401-ing (openagent Degraded after the last restart).
+    # Persist it alongside Prometheus' TSDB.
+    persistence:
+      enabled: true
+      storageClassName: local-path
+      size: 2Gi
     admin:
       existingSecret: "grafana-admin-credentials"
       userKey: "ADMIN_USER"

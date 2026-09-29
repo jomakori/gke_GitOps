@@ -240,6 +240,17 @@ services:
         kind: CustomResourceDefinition
         jqPathExpressions:
           - .
+      # The operator rewrites its own extensions-cache StatefulSet after the
+      # first apply: it stamps the pulled_extensions annotation, sets defaulted
+      # podManagementPolicy/updateStrategy/scheduler fields, and adjusts the
+      # nginx containers/volumes it generates — so the chart-rendered spec is
+      # only the seed object. Same whole-object ignore pattern as the CRDs.
+      - group: apps
+        kind: StatefulSet
+        name: postgres-operator-extensions-cache
+        namespace: postgres-operator
+        jqPathExpressions:
+          - .
       - group: external-secrets.io
         kind: ExternalSecret
         jqPathExpressions:
