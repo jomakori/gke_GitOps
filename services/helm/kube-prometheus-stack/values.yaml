@@ -54,10 +54,17 @@ kube-prometheus-stack:
           cpu: 250m
           memory: 1Gi
         limits:
-          memory: 3Gi
+          # 2Gi, not 3Gi. Live footprint is ~1.1-1.26Gi (253k head series,
+          # 147MB head chunks); 3Gi was headroom nobody used on a VM that is
+          # chronically at its 16Gi ceiling (Committed_AS 27.9Gi vs
+          # CommitLimit 25.7Gi). 2Gi still restarts a runaway TSDB cleanly
+          # instead of letting it starve the node.
+          memory: 2Gi
       # Bound the TSDB as well: 10d of time retention with no size cap let head and
       # compaction grow unbounded on a 30Gi volume.
-      retentionSize: 24GB
+      # 16GB, not 24GB: still ~2x the observed on-disk footprint, but stops
+      # compaction from building a larger working set than the VM can stomach.
+      retentionSize: 16GB
       # Prometheus StorageSpec for persistent data on AWS EBS
       # ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/user-guides/storage.md
       storageSpec:

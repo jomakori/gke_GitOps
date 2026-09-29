@@ -121,7 +121,7 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | notesUi.service.storage.size | string | `"1Gi"` |  |
 | openkite.enable_istio | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
-| openkite.environments.production.tag | string | `"v0.33.0"` |  |
+| openkite.environments.production.tag | string | `"v0.35.6"` |  |
 | openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |
 | openkite.environments.staging.tag | string | `"v0.33.0"` |  |
 | openkite.image.repository | string | `"ghcr.io/jomakori/openkite"` |  |
@@ -129,6 +129,10 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.istio.requestTimeout | string | `"30s"` |  |
 | openkite.istio.retryAttempts | int | `3` |  |
 | openkite.istio.retryTimeout | string | `"5s"` |  |
+| openkite.kubeconfig.enabled | bool | `true` |  |
+| openkite.kubeconfig.mountPath | string | `"/etc/openkite/kubeconfig"` |  |
+| openkite.kubeconfig.secretName | string | `"TAILSCALE_KUBECONFIG"` |  |
+| openkite.kubeconfig.store | string | `"doppler-svc-tailscale"` |  |
 | openkite.service.port | int | `8080` |  |
 | openkite.service.resourceLimits.memory | string | `"512Mi"` |  |
 | openkite.service.resourceRequests.cpu | string | `"100m"` |  |
