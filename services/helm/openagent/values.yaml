@@ -186,31 +186,8 @@ litellm:
           model: anthropic/claude-opus-4-7
           api_key: os.environ/ANTHROPIC_API_KEY
           order: 1
-      - model_name: kimi-k3
-        litellm_params:
-          model: openai/moonshotai/kimi-k3
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
-          order: 1
-        model_info:
-          input_cost_per_token: 0.000003
-          output_cost_per_token: 0.000015
-          cache_read_input_token_cost: 0.0000003
-      # DeepSeek via Kilo Gateway (primary route for the fleet).
-      - model_name: deepseek-v4-flash
-        litellm_params:
-          model: openai/deepseek/deepseek-v4-flash
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
-          order: 1
-        model_info:
-          input_cost_per_token: 0.00000014
-          output_cost_per_token: 0.00000028
-          cache_read_input_token_cost: 0.00000003
-      # Direct DeepSeek API — renamed for separation, NOT used by the
-      # fleet (kilo route above is primary). Response cache for router
+      # Direct DeepSeek API — primary fleet route (Kilo gateway dropped
+      # 2026-09: Kilo credits burned too fast). Response cache for router
       # retries. (DeepSeek native prefix caching is automatic server-side.)
       - model_name: deepseek-v4-flash-direct
         litellm_params:
@@ -219,17 +196,6 @@ litellm:
           cache: true
           order: 1
           use_chat_completions_api: true
-      - model_name: deepseek-v4-pro
-        litellm_params:
-          model: openai/deepseek/deepseek-v4-pro
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
-          order: 1
-        model_info:
-          input_cost_per_token: 0.0000016
-          output_cost_per_token: 0.0000032
-          cache_read_input_token_cost: 0.00000014
       - model_name: deepseek-v4-pro-direct
         litellm_params:
           model: deepseek/deepseek-v4-pro
@@ -237,46 +203,6 @@ litellm:
           cache: true
           order: 1
           use_chat_completions_api: true
-      - model_name: glm-5.3
-        litellm_params:
-          model: openai/z-ai/glm-5.3
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
-          order: 1
-        model_info:
-          input_cost_per_token: 0.0000014
-          output_cost_per_token: 0.0000044
-          cache_read_input_token_cost: 0.00000026
-      - model_name: minimax-m3
-        litellm_params:
-          model: openai/minimax/minimax-m3
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          order: 1
-        model_info:
-          input_cost_per_token: 0.0000003
-          output_cost_per_token: 0.0000012
-          cache_read_input_token_cost: 0.00000006
-      - model_name: gemini-3.6-flash
-        litellm_params:
-          model: openai/google/gemini-3.6-flash
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          order: 1
-        model_info:
-          input_cost_per_token: 0.00000075
-          output_cost_per_token: 0.00000375
-          cache_read_input_token_cost: 0.00000007
-      - model_name: qwen3-6-plus
-        litellm_params:
-          model: openai/qwen/qwen3.6-plus
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          order: 1
-        model_info:
-          input_cost_per_token: 0.000000325
-          output_cost_per_token: 0.00000195
       - model_name: claude/sonnet-5
         litellm_params:
           model: openai/claude-sonnet-4-6
@@ -358,54 +284,6 @@ litellm:
           output_cost_per_token: 0.000005
           cache_read_input_token_cost: 0.0000001
 
-      # ByteDance BYOK (byteplus-coding) — bills the Volcengine starter
-      # subscription, NOT Kilo credits. Independent 3rd-line fallback behind
-      # Claude. No model_info: SpendLogs logs $0.00 (same gap as claude-proxy).
-      - model_name: bytedance-seed-code
-        litellm_params:
-          model: openai/byteplus-coding/bytedance-seed-code
-          rpm: 5
-          num_retries: 0
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          order: 1
-      - model_name: bytedance-dola-seed-2.0-code
-        litellm_params:
-          model: openai/byteplus-coding/dola-seed-2.0-code
-          rpm: 5
-          num_retries: 0
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
-          order: 1
-      - model_name: bytedance-dola-seed-2.0-pro
-        litellm_params:
-          model: openai/byteplus-coding/dola-seed-2.0-pro
-          rpm: 5
-          num_retries: 0
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
-          order: 1
-      - model_name: bytedance-glm-5.2
-        litellm_params:
-          model: openai/byteplus-coding/glm-5.2
-          rpm: 5
-          num_retries: 0
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
-          order: 1
-      - model_name: bytedance-deepseek-v4-flash
-        litellm_params:
-          model: openai/byteplus-coding/deepseek-v4-flash
-          rpm: 5
-          num_retries: 0
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
-          order: 1
-
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
 # No cache instance is declared here: the standalone Valkey lives in the
 # `valkey` Application (services/helm/valkey, namespace `valkey`) and the gateway
@@ -438,20 +316,16 @@ hermes-agent:
     model:
       # DeepSeek V4 Flash (direct API) — orchestration brain. User-mandated
       # default (09-07); cheapest tier that holds orchestration. Claude
-      # escalation-only, ByteDance BYOK as credit-proof catch-all.
+      # escalation-only.
       default: deepseek-v4-flash-direct
       provider: litellm
     # Sisyphus fallback chain (bootstrap skips sisyphus — it IS the default
-    # profile). Kilo fallback first, Claude flat-fee catch-all, ByteDance BYOK
-    # last (bills Volcengine starter account — survives zero Kilo balance AND
-    # a broken Claude proxy).
+    # profile). DeepSeek direct first, Claude flat-fee catch-all.
     fallback_providers:
       - provider: litellm
-        model: deepseek-v4-pro
+        model: deepseek-v4-pro-direct
       - provider: litellm
         model: claude/sonnet-5
-      - provider: litellm
-        model: bytedance-glm-5.2
     providers:
       litellm:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
@@ -678,9 +552,9 @@ hermes-agent:
       # weekly uncached-input line to confirm the reclaim beats the cache loss.
       proactive_prune_tokens: 48000
     delegation:
-      # Subagent tier = minimax-m3 (live pod value; NOT flash — flash is for
-      # Sisyphus/Hermes brains only, per user 09-07).
-      model: minimax-m3
+      # Subagent tier = deepseek-v4-pro-direct (direct API, no Kilo credits;
+      # NOT flash — flash is for Sisyphus/Hermes brains only, per user 09-07).
+      model: deepseek-v4-pro-direct
       provider: litellm
       base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
       api_key: ${LITELLM_MASTER_KEY}
@@ -713,7 +587,7 @@ hermes-agent:
 
     auxiliary:
       vision:
-        # Vision stays Claude — GLM 5.3 / Kimi K3 are text-only.
+        # Vision stays Claude (flat-fee proxy).
         provider: litellm
         model: claude/sonnet-5
     plugins:
@@ -728,21 +602,12 @@ hermes-agent:
             # `categories:` below; this governs how a chain is walked when a
             # model call fails. `enabled: false` fails fast instead of falling
             # back; `retry_on_errors` is the status set that triggers a walk.
-            # ORDERING RULE (2026-09-25): Claude is the LAST PREMIUM layer of a
-            # ladder — below it must sit a route that cannot run out of credits
-            # (the DeepSeek direct API, or a bytedance subsidy route). Free
-            # routes therefore belong above Claude, not directly below it, and a
-            # free-subsidy hop placed above Claude must also actually SERVE:
-            # measured 7d success bytedance-glm-5.2 294/578 (51%) and
-            # dola-seed-2.0-pro 89/97 (92%), versus dola-seed-2.0-code 2/15 (13%)
-            # and bytedance-deepseek-v4-flash 3/11 (27%) — a hop that mostly
-            # fails buys a wasted attempt, not an offload.
-            # Deliberate exception: chains that LEAD with deepseek-v4-flash-direct
-            # (sisyphus, librarian, explore, sisyphus-junior, quick) keep their
-            # primary untouched — the credit-independent route is already the
-            # entry point. librarian, explore and sisyphus-junior now also END on
-            # a credit-independent hop (deepseek-v4-pro-direct), so those ladders
-            # are covered at both ends; sisyphus and quick are unchanged here.
+            # ORDERING RULE (2026-09-29): Kilo gateway and ByteDance BYOK models
+            # are removed (Kilo credits burned too fast). Every chain leads with
+            # a credit-independent route — DeepSeek direct (flash for brains,
+            # pro-direct for workers) — and escalates to Claude flat-fee; the
+            # vision and apex chains lead with Claude and fall back to a direct
+            # route. Flash stays reserved for Sisyphus/Hermes brains.
             runtime_fallback:
               enabled: true
               retry_on_errors: [400, 401, 402, 403, 404, 429, 500, 502, 503, 504, 529]
@@ -753,92 +618,53 @@ hermes-agent:
               sisyphus:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
-                - litellm/bytedance-glm-5.2
               hephaestus:
-                - litellm/minimax-m3
-                - litellm/glm-5.3
-                - litellm/bytedance-glm-5.2
+                - litellm/deepseek-v4-pro-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               prometheus:
-                - litellm/minimax-m3
-                - litellm/deepseek-v4-pro
-                - litellm/bytedance-glm-5.2
+                - litellm/deepseek-v4-pro-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               atlas:
-                - litellm/minimax-m3
-                - litellm/deepseek-v4-pro
-                - litellm/bytedance-dola-seed-2.0-pro
+                - litellm/deepseek-v4-pro-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               metis:
-                - litellm/minimax-m3
-                - litellm/deepseek-v4-pro
-                - litellm/bytedance-glm-5.2
+                - litellm/deepseek-v4-pro-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               momus:
-                - litellm/minimax-m3
-                - litellm/glm-5.3
-                - litellm/bytedance-dola-seed-2.0-pro
+                - litellm/deepseek-v4-pro-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               oracle:
-                - litellm/glm-5.3
-                - litellm/bytedance-seed-code
                 - litellm/claude-opus-5
-                - litellm/deepseek-v4-flash-direct
+                - litellm/deepseek-v4-pro-direct
               librarian:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/deepseek-v4-flash
-                - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/deepseek-v4-pro-direct
               explore:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/deepseek-v4-flash
-                - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/deepseek-v4-pro-direct
               multimodal-looker:
-                - litellm/gemini-3.6-flash
-                - litellm/qwen3-6-plus
-                - litellm/bytedance-seed-code
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/deepseek-v4-flash
-                - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
-                - litellm/deepseek-v4-pro-direct
             categories:
               quick:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/deepseek-v4-flash
-                - litellm/minimax-m3
                 - litellm/claude-haiku-4-5
               deep:
-                - litellm/minimax-m3
-                - litellm/glm-5.3
-                - litellm/bytedance-dola-seed-2.0-pro
+                - litellm/deepseek-v4-pro-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
-                - litellm/glm-5.3
-                - litellm/bytedance-seed-code
-                - litellm/deepseek-v4-flash-direct
+                - litellm/deepseek-v4-pro-direct
               visual-engineering:
-                - litellm/gemini-3.6-flash
-                - litellm/qwen3-6-plus
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               writing:
-                - litellm/minimax-m3
+                - litellm/deepseek-v4-pro-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
+
     mcp_servers:
       # ── Manifest = single source of truth ──────────────────────────────
       # Hermes reads these entries from config.yaml; the bootstrap init
