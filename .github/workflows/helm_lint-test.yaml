@@ -255,6 +255,17 @@ jobs:
         # above (go 1.24).
         run: cd .useful-scripts/gitopsctl && go build ./... && go test ./... && go vet ./...
 
+      - name: Helm template block balance (gitopsctl chart templates)
+        # Catches two defects that render-then-validate cannot see, because the
+        # failure surfaces far from the edit:
+        #   - a `{{- if }}` guard whose `{{- end }}` was left behind in a
+        #     sibling file renders as "unexpected {{end}}" in a file nobody
+        #     touched;
+        #   - a guard missing its `{{- end }}` renders nothing at all, silently.
+        # Both are one missing line in a template whose YAML is otherwise valid.
+        # Runs on every PR with no chart-path filtering, like the Go gate above.
+        run: .useful-scripts/check_template_balance.sh
+
       - name: kubeconform (validate rendered manifests against K8s OpenAPI)
         # Guard on the event explicitly: `inputs.*` is EMPTY on pull_request
         # events — only workflow_dispatch populates it. A bare

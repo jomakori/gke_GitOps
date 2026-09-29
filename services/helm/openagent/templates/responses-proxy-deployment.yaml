@@ -1,0 +1,58 @@
+{{- if index .Values "claude-proxy" "enabled" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: responses-proxy
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: responses-proxy
+  template:
+    metadata:
+      # Bun reads /proxy/proxy.ts once at start, so a ConfigMap edit must roll the pod.
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/responses-proxy-configmap.yaml") . | sha256sum }}
+      labels:
+        app: responses-proxy
+    spec:
+      containers:
+        - name: proxy
+          image: oven/bun:1-alpine
+          command: ["bun", "/proxy/proxy.ts"]
+          env:
+            - name: LITELLM_KEY
+              value: "sk-litellm-master-key-1234"
+          ports:
+            - containerPort: 4524
+          readinessProbe:
+            tcpSocket:
+              port: 4524
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 4524
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: proxy-script
+              mountPath: /proxy
+      volumes:
+        - name: proxy-script
+          configMap:
+            name: responses-proxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: responses-proxy
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: responses-proxy
+  ports:
+    - port: 4524
+      targetPort: 4524
+{{- end }}

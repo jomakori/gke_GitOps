@@ -104,3 +104,14 @@ repos:
         language: system
         files: ^services/helm/openagent/(values\.yaml|templates/hooks\.yaml)$
         pass_filenames: false
+      - id: helm-template-balance
+        name: Helm template block balance (gitopsctl chart templates)
+        description: |
+          Check every Helm chart for Go template blocks whose `end` is missing
+          or orphaned — the two failure modes that render silently or blame a
+          file nobody edited. Same binary as the CI step. Skips when the Go
+          toolchain is absent.
+        entry: .useful-scripts/check_template_balance.sh
+        language: system
+        files: ^(services|apps)/helm/.*/templates/.*\.(yaml|yml|tpl|txt)$
+        pass_filenames: false
