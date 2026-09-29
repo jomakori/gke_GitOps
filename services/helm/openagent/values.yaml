@@ -78,7 +78,12 @@ litellm:
   autoscaling:
     enabled: true
     minReplicas: 2
-    maxReplicas: 4
+    # 3, not 4. Each replica parks ~1Gi of real usage (and claims 1.5Gi) on a
+    # VM that is chronically at its 16Gi ceiling — see the OrbStack overcommit
+    # analysis (Committed_AS 27.9Gi vs CommitLimit 25.7Gi). A 4th replica is a
+    # memory spike that has repeatedly pushed the node over and OOMKilled
+    # CoreDNS. Cap at 3 until the VM is raised.
+    maxReplicas: 3
     targetCPUUtilizationPercentage: 70
     # Memory HPA (same pattern as argocd-repo-server in-cluster). Litellm is
     # memory-bound (Python + prisma + uvicorn), CPU is mostly idle even under
@@ -89,7 +94,12 @@ litellm:
     # pod", which made the trigger look comfortable when it was really 70% of a
     # 512Mi request (358Mi) against ~1Gi of real usage — hence a permanent 197%
     # and maxReplicas forever. The request above is the number that matters.
-    targetMemoryUtilizationPercentage: 70
+    #
+    # 85, not 70: at 70% of the 1.5Gi request the fleet sits right at the
+    # scale-up line during normal load (measured 64-197%), so any blip adds a
+    # replica on a VM that has no headroom. 85% (~1.28Gi per pod) only scales
+    # up when litellm is genuinely saturated.
+    targetMemoryUtilizationPercentage: 85
   # Chart-native PDB (upstream `pdb` key). This is the stack's only LLM
   # gateway and it is HPA-scaled; with no PDB a single node drain can evict
   # every replica at once. The subchart renders the selector itself.
