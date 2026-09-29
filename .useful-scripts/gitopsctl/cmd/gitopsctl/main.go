@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"gitopsctl/internal/boot"
+	"gitopsctl/internal/chart"
 	"gitopsctl/internal/mcp"
 )
 
@@ -30,6 +31,8 @@ func main() {
 		cmdDeps(os.Args[2:])
 	case "mcp":
 		cmdMCP(os.Args[2:])
+	case "chart":
+		cmdChart(os.Args[2:])
 	default:
 		usage()
 		os.Exit(2)
@@ -46,6 +49,8 @@ usage:
                                            index one repository (init or sync)
   gitopsctl deps status                    report whether the system dependency set is installed
   gitopsctl deps install                   install it on demand (apt download cache on the PVC)
+  gitopsctl chart templates [--dir PATH]   check every Helm template under PATH for unbalanced
+                                           if/range/with/define/block actions (default PATH=.)
   gitopsctl mcp prewarm [--manifest PATH] [--parallel N]
                                            materialise npx/uvx package caches
   gitopsctl mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
@@ -203,6 +208,27 @@ func cmdCodegraphIndex(manifest, path string) {
 		return
 	}
 	fmt.Printf("codegraph: indexed: %s\n", path)
+}
+
+func cmdChart(args []string) {
+	if len(args) == 0 {
+		usage()
+		os.Exit(2)
+	}
+	switch args[0] {
+	case "templates":
+		fs := flag.NewFlagSet("templates", flag.ExitOnError)
+		dir := fs.String("dir", ".", "chart directory to walk")
+		_ = fs.Parse(args[1:])
+		if fs.NArg() > 0 {
+			log.Printf("chart templates: unexpected argument %q (use --dir)", fs.Arg(0))
+			os.Exit(2)
+		}
+		os.Exit(chart.ExecuteTemplateBalance(*dir))
+	default:
+		usage()
+		os.Exit(2)
+	}
 }
 
 type multiFlag []string
