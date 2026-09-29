@@ -407,20 +407,20 @@ services:
         serviceName: kube-prometheus-stack-grafana
 
 
-  redisOperator:
-    enable: false
-    syncWave: "5"
-    finalizer: true
-    environments:
-      - production
-      - staging
+  # Official Valkey Helm chart — one standalone instance, own namespace, shared by
+  # any app needing a Redis-protocol cache. No operator: valkey-io's operator only
+  # ships ValkeyCluster/ValkeyNode CRDs, so even a 1-shard cache would run in
+  # cluster mode and force cluster-aware client config on consumers (LiteLLM's
+  # router state is host/port only).
+  #
+  # Wave 4, ahead of the workloads at 5-6, so the cache exists before the gateway
+  # that points at it.
+  valkey:
+    enable: true
+    syncWave: "4"
     syncOptions:
       - CreateNamespace=true
-      - Replace=true
       - ServerSideApply=true
-    parameters:
-      - name: redis-cluster.persistence.storageClass
-        value: "{{ .Values.storageClass }}"
 
   openagentDiscord:
     enable: false

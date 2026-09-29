@@ -27,6 +27,7 @@ The umbrella chart that runs the cluster's AI workforce: an LLM gateway, the Her
 | Component | Deployed Via | Purpose |
 |-----------|-------------|---------|
 | `openagent-litellm` | remote OCI dep (LiteLLM Helm chart) | Multi-provider LLM gateway — model access only, no fallbacks. |
+| `valkey` (separate app) | `services/helm/valkey` | Shared standalone Valkey cache in its own namespace. The gateway reaches it as `valkey-cache.valkey.svc.cluster.local` for response caching and cross-replica rate-limit/budget state. |
 | `openagent-hermes` | remote OCI dep (Hermes Agent Helm chart) | Hermes Agent gateway — Discord bot + MCP servers. |
 | `hermes-webui` | local subchart (`charts/hermes-webui`) | Web dashboard — thin-client gateway mode, CF Access private. |
 | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP `:4523`. |
@@ -788,6 +789,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.db.url | string | `"postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?pgbouncer=true"` |  |
 | litellm.db.useExisting | bool | `true` |  |
 | litellm.enabled | bool | `true` |  |
+| litellm.envVars.REDIS_HOST | string | `"valkey-cache.valkey.svc.cluster.local"` |  |
+| litellm.envVars.REDIS_PORT | string | `"6379"` |  |
 | litellm.environmentSecrets[0] | string | `"openagent-secrets"` |  |
 | litellm.fullnameOverride | string | `"openagent-litellm"` |  |
 | litellm.image.pullPolicy | string | `"IfNotPresent"` |  |
@@ -808,6 +811,10 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].path | string | `"/claude-pipe"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].target | string | `"http://claude-proxy.openagent.svc.cluster.local:4523"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].timeout | int | `300` |  |
+| litellm.proxy_config.litellm_settings.cache | bool | `true` |  |
+| litellm.proxy_config.litellm_settings.cache_params.host | string | `"os.environ/REDIS_HOST"` |  |
+| litellm.proxy_config.litellm_settings.cache_params.port | string | `"os.environ/REDIS_PORT"` |  |
+| litellm.proxy_config.litellm_settings.cache_params.type | string | `"redis"` |  |
 | litellm.proxy_config.litellm_settings.drop_params | bool | `true` |  |
 | litellm.proxy_config.model_list[0].litellm_params.api_key | string | `"os.environ/ANTHROPIC_API_KEY"` |  |
 | litellm.proxy_config.model_list[0].litellm_params.model | string | `"anthropic/claude-opus-4-7"` |  |
@@ -988,6 +995,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.model_list[9].model_name | string | `"qwen3-6-plus"` |  |
 | litellm.proxy_config.router_settings.disable_cooldowns | bool | `true` |  |
 | litellm.proxy_config.router_settings.num_retries | int | `0` |  |
+| litellm.proxy_config.router_settings.redis_host | string | `"os.environ/REDIS_HOST"` |  |
+| litellm.proxy_config.router_settings.redis_port | string | `"os.environ/REDIS_PORT"` |  |
 | litellm.proxy_config.router_settings.request_timeout | int | `180` |  |
 | litellm.proxy_config.router_settings.routing_strategy | string | `"least-busy"` |  |
 | litellm.resources.limits.cpu | string | `"2000m"` |  |

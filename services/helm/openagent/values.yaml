@@ -127,6 +127,17 @@ litellm:
   masterkeySecretKey: "masterkey"
   environmentSecrets:
     - "openagent-secrets"
+  # The cache lives in the `valkey` Application (services/helm/valkey), not here:
+  # one standalone Valkey in its own namespace, reached as
+  # valkey-cache.valkey.svc.cluster.local. Must stay in sync with that chart's
+  # fullnameOverride.
+  #
+  # These two are the only env the proxy needs; the bundled bitnami redis
+  # subchart is NOT used (its pinned images no longer exist on docker.io), so the
+  # chart's own REDIS_* injection never fires and the values below carry it.
+  envVars:
+    REDIS_HOST: "valkey-cache.valkey.svc.cluster.local"
+    REDIS_PORT: "6379"
   proxy_config:
     general_settings:
       master_key: os.environ/LITELLM_MASTER_KEY
@@ -145,6 +156,16 @@ litellm:
           timeout: 300
     litellm_settings:
       drop_params: true
+      # Redis response cache AND proxy-wide coordination (rate-limit counters,
+      # budget reservations, cache invalidation, pod lock) — one block does both.
+      # REDIS_HOST/PORT in the environment are inert without it, and upstream
+      # treats a multi-replica proxy without Redis as beta: every worker counts
+      # its own limits, so an rpm limit of N across 4 replicas admits 4N.
+      cache: true
+      cache_params:
+        type: redis
+        host: os.environ/REDIS_HOST
+        port: os.environ/REDIS_PORT
     router_settings:
       # Plain model access ONLY — OMO owns both fallback layers (per-agent
       # fallback_models chains + runtime_fallback on 429/5xx inside OMO
@@ -155,6 +176,10 @@ litellm:
       num_retries: 0
       routing_strategy: least-busy
       request_timeout: 180
+      # Router state (usage/latency counters shared across replicas). Cooldowns
+      # stay off — this is state sharing, not failover.
+      redis_host: os.environ/REDIS_HOST
+      redis_port: os.environ/REDIS_PORT
     model_list:
       - model_name: anthropic/claude-opus-4-7
         litellm_params:
@@ -380,6 +405,14 @@ litellm:
           api_key: os.environ/KILO_API_KEY
           merge_reasoning_content_in_choices: true
           order: 1
+
+# ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
+# No cache instance is declared here: the standalone Valkey lives in the
+# `valkey` Application (services/helm/valkey, namespace `valkey`) and the gateway
+# reaches it through `litellm.envVars.REDIS_HOST` above. There is deliberately no
+# `enable_cache` flag on this side — the only switch that could gate anything is
+# the valkey app's own enablement, and a flag here that rendered nothing would be
+# dead config.
 
 # ── Hermes Agent ────────────────────────────────────────────────────
 hermes:

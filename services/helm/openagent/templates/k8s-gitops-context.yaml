@@ -683,6 +683,7 @@ data:
     | `openagent-litellm` | remote OCI dep (`oci://ghcr.io/berriai/litellm-helm`, v1.92.0) | Multi-provider LLM gateway — 12 models, model access only (no fallbacks) |
     | `openagent-hermes` | remote OCI dep (`oci://ghcr.io/jyje/hermes-agent-helm`, v0.9.1) | Hermes Agent — single agent, Discord bot, MCP servers (stdio) |
     | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP :4523 |
+    | `valkey` (its own Application) | `services/helm/valkey` (official Valkey chart) | Shared standalone Valkey cache — the gateway's `REDIS_HOST` is `valkey-cache.valkey.svc.cluster.local:6379` (response cache + cross-replica rate-limit/budget state) |
     | Skills + hooks | umbrella locals (`templates/`) | Hermes config, skill ConfigMaps, hooks |
     | StackGres + istio + secrets | umbrella locals (`templates/`) | SGCluster, VirtualService, AuthorizationPolicy, ExternalSecret, VPA |
 

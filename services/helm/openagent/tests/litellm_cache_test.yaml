@@ -1,0 +1,80 @@
+suite: openagent LiteLLM cache — the gateway points at the shared Valkey
+# Subchart templates are not addressable through `templates:`, so these assert
+# against the full render via documentSelector.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: points the gateway at the valkey Application's Service
+    # The instance lives in the `valkey` Application (services/helm/valkey) —
+    # Service <fullnameOverride>.<namespace>: valkey-cache.valkey.svc
+    # .cluster.local:6379. If either side is renamed this breaks, which is the
+    # point: a stale host here means the gateway silently runs cache-less.
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_HOST
+            value: valkey-cache.valkey.svc.cluster.local
+        documentSelector:
+          path: spec.template.spec.containers[0].name
+          value: litellm
+          skipEmptyTemplates: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PORT
+            value: "6379"
+        documentSelector:
+          path: spec.template.spec.containers[0].name
+          value: litellm
+          skipEmptyTemplates: true
+
+  - it: enables the Redis cache and router state in the proxy config
+    # REDIS_HOST/REDIS_PORT in the environment are inert unless the config points
+    # at Redis: upstream treats a multi-replica proxy without Redis as beta, and
+    # the gateway runs 2-4 replicas. cache_params drives response caching AND
+    # proxy-wide coordination (rate limits, budgets, pod lock); router_settings
+    # is what shares router state across those replicas.
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "cache: true"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "type: redis"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "redis_host: os.environ/REDIS_HOST"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+
+  - it: keeps cooldowns and retries off while sharing router state
+    # Adding Redis must not quietly re-arm the gateway's own failover: OMO owns
+    # both layers (per-agent chains + runtime_fallback), and double-retry delays
+    # were the reason these are off. Redis here is state sharing, nothing more.
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "disable_cooldowns: true"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "num_retries: 0"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
