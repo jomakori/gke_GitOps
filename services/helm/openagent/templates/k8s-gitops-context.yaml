@@ -706,7 +706,7 @@ data:
 
     **Namespaces**: All application resources deploy to `openagent` namespace. The hermes-agent pod is the single agent and runs the MCP servers as stdio processes within the container.
 
-    **Secrets**: `svc_openagent` Doppler config. Must include all provider API keys (DeepSeek, MiniMax, z.ai, Anthropic, Moonshot — see LiteLLM model table below), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls).
+    **Secrets**: `svc_openagent` Doppler config. Must include all provider API keys (DeepSeek direct + Anthropic — see LiteLLM model table below), `DISCORD_BOT_TOKEN`, `DISCORD_BOT_CLIENT_ID`, and `GITHUB_TOKEN` (for GHCR image pulls).
 
     ### Native OMO Agent Orchestration
 
@@ -736,20 +736,20 @@ data:
 
     | OMO Agent | Role | Primary (LiteLLM alias) | Fallback chain |
     |-------|------|-------|----------|
-    | sisyphus | Sisyphus · Ultraworker (orchestrator) | deepseek-v4-flash-direct | claude-sonnet-5 → bytedance-glm-5.2 |
-    | hephaestus | Hephaestus · Deep Agent | minimax-m3 | glm-5.3 → claude-sonnet-5 → bytedance-dola-code |
-    | prometheus | Prometheus · Plan Builder | minimax-m3 | deepseek-v4-pro → claude-sonnet-5 → bytedance-glm-5.2 |
-    | atlas | Atlas · Plan Executor | minimax-m3 | deepseek-v4-pro → claude-sonnet-5 → bytedance-dola-pro |
-    | metis | Metis · Plan Consultant | minimax-m3 | deepseek-v4-pro → claude-sonnet-5 → bytedance-glm-5.2 |
-    | momus | Momus · Plan Critic | minimax-m3 | glm-5.3 → claude-sonnet-5 → bytedance-dola-pro |
-    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | glm-5.3 → bytedance-seed-code |
-    | librarian | Librarian · Research | deepseek-v4-flash | minimax-m3 → claude-haiku-4-5 → bytedance-dsv3-flash |
-    | explore | Explore · Repository Exploration | deepseek-v4-flash | minimax-m3 → claude-haiku-4-5 → bytedance-dsv3-flash |
-    | multimodal-looker | Multimodal-Looker · Multimodal Analysis | gemini-3.6-flash | qwen3-6-plus → claude-sonnet-5 → bytedance-seed-code |
-    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | deepseek-v4-flash | minimax-m3 → claude-haiku-4-5 → bytedance-dsv3-flash |
-    | (no scribe — writing routes via `writing` category) | writer | minimax-m3 | claude-sonnet-5 |
+    | sisyphus | Sisyphus · Ultraworker (orchestrator) | deepseek-v4-flash-direct | claude-sonnet-5 |
+    | hephaestus | Hephaestus · Deep Agent | deepseek-v4-pro-direct | claude-sonnet-5 |
+    | prometheus | Prometheus · Plan Builder | deepseek-v4-pro-direct | claude-sonnet-5 |
+    | atlas | Atlas · Plan Executor | deepseek-v4-pro-direct | claude-sonnet-5 |
+    | metis | Metis · Plan Consultant | deepseek-v4-pro-direct | claude-sonnet-5 |
+    | momus | Momus · Plan Critic | deepseek-v4-pro-direct | claude-sonnet-5 |
+    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | deepseek-v4-pro-direct |
+    | librarian | Librarian · Research | deepseek-v4-flash-direct | claude-haiku-4-5 |
+    | explore | Explore · Repository Exploration | deepseek-v4-flash-direct | claude-haiku-4-5 |
+    | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | deepseek-v4-flash-direct |
+    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | deepseek-v4-flash-direct | claude-haiku-4-5 |
+    | (no scribe — writing routes via `writing` category) | writer | deepseek-v4-pro-direct | claude-sonnet-5 |
 
-    **Pricing**: minimax-m3 $0.30/$1.20 · deepseek-v4-flash $0.14/$0.28 · gemini-3.6-flash $0.75/$3.75 · qwen3-6-plus $0.325/$1.95 — all via Kilo Gateway (`KILO_API_KEY`); DeepSeek native (`DEEPSEEK_API_KEY`); Claude escalation-only via claude-proxy (slash-free aliases `claude-opus-5`/`claude-sonnet-5`/`claude-haiku-4-5` mirror the `claude/*` entries).
+    **Pricing**: DeepSeek direct (`deepseek-v4-flash-direct` / `deepseek-v4-pro-direct`) bills the native DeepSeek API (`DEEPSEEK_API_KEY`, no model_info — SpendLogs logs $0.00, same gap as claude-proxy); Claude models bill claude-proxy flat-fee (slash-free aliases `claude-opus-5`/`claude-sonnet-5`/`claude-haiku-4-5` mirror the `claude/*` entries). Kilo Gateway + ByteDance BYOK models removed 2026-09 (Kilo credits burned too fast).
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -799,26 +799,24 @@ data:
 
     All LLM traffic flows through LiteLLM (`openagent-litellm:4000`). Headroom was planned but never deployed.
 
-    **LiteLLM models** (12 configured):
+    **LiteLLM models** (10 configured):
     | Model Name | Backend | API Key |
     |------------|---------|---------|
 
     | anthropic/claude-opus-4-7 | anthropic (native) | ANTHROPIC_API_KEY |
-    | kimi-k3 | openai (Kilo Gateway) | KILO_API_KEY |
-    | deepseek-v4-flash | deepseek (native) | DEEPSEEK_API_KEY |
-    | deepseek-v4-pro | deepseek (native) | DEEPSEEK_API_KEY |
-    | glm-5.3 | openai (Kilo Gateway) | KILO_API_KEY |
-    | minimax-m3 | openai (Kilo Gateway) | KILO_API_KEY |
-    | gemini-3.6-flash | openai (Kilo Gateway) | KILO_API_KEY |
-    | qwen3-6-plus | openai (Kilo Gateway) | KILO_API_KEY |
+    | deepseek-v4-flash-direct | deepseek (native) | DEEPSEEK_API_KEY |
+    | deepseek-v4-pro-direct | deepseek (native) | DEEPSEEK_API_KEY |
     | claude/sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude/opus-4 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude/opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude/haiku-4-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
+    | claude-opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
+    | claude-sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
+    | claude-haiku-4-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
-    **Kilo Gateway** (base `https://api.kilo.ai/api/gateway/v1`, Bearer `KILO_API_KEY`): GLM 5.3 / Kimi K3 / MiniMax M3 / Gemini 3.6 Flash / Qwen 3.6 Plus route through it (OpenRouter-style IDs). DeepSeek stays native; Claude stays claude-proxy (escalation only). `KILO_API_KEY` lives in Doppler `svc_openagent`.
+    **Kilo Gateway**: removed 2026-09 — Kilo credits (`KILO_API_KEY`) burned too fast. All LLM traffic now flows through native DeepSeek (`DEEPSEEK_API_KEY`) and claude-proxy (`CLAUDE_PROXY_API_KEY`). `KILO_API_KEY` may remain in Doppler `svc_openagent` but is no longer referenced by any model.
 
-    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — no cooldown/retry machinery at the gateway (it would fight OMO's runtime fallback). OMO owns both layers inside the plugin: per-agent model chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on 400/401/403/404/429/5xx, 3 attempts, 30s cooldown, restore-primary). The top-level Hermes agent rides Hermes `fallback_providers` (deepseek-v4-pro → claude/sonnet-5 → bytedance-glm-5.2); **delegated children declare one backup** (`delegation.fallback_providers: [deepseek-v4-flash-direct]`) — the plugin's per-agent chains own the escalation ladder for workers, and that single credit-independent hop is what keeps a plain `delegate_task` child alive when the delegation primary is out (verified live: Kilo 402 on `minimax-m3`, the backup answered 200). The 3-entry list it replaced made every engine attempt re-walk the whole delegation list from scratch, dead models included. **`agent.api_max_retries: 1`**: one attempt per model, then the next fallback layer (a 429/402 fails over eagerly; 5xx/transport reach the retries-exhausted path on the first attempt). The host default of 3 replayed a 429/5xx against the model that had just refused it — the error cycle seen on 2026-09-24, where workers burned 3 extra calls on a session-limited Claude and a BYOK-throttled ByteDance key.
+    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — no cooldown/retry machinery at the gateway (it would fight OMO's runtime fallback). OMO owns both layers inside the plugin: per-agent model chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on 400/401/403/404/429/5xx, 3 attempts, 30s cooldown, restore-primary). The top-level Hermes agent rides Hermes `fallback_providers` (deepseek-v4-pro-direct → claude/sonnet-5); **delegated children declare one backup** (`delegation.fallback_providers: [deepseek-v4-flash-direct]`) — the plugin's per-agent chains own the escalation ladder for workers, and that single credit-independent hop is what keeps a plain `delegate_task` child alive when the delegation primary is out. The 3-entry list it replaced made every engine attempt re-walk the whole delegation list from scratch, dead models included. **`agent.api_max_retries: 1`**: one attempt per model, then the next fallback layer (a 429/402 fails over eagerly; 5xx/transport reach the retries-exhausted path on the first attempt). The host default of 3 replayed a 429/5xx against the model that had just refused it — the error cycle seen on 2026-09-24, where workers burned 3 extra calls on a session-limited Claude.
 
     ### Hermes Dashboard & Workspace
 
