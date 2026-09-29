@@ -32,9 +32,11 @@ tests:
 
   - it: renders the model_list from values.yaml (the litellm values block reached the subchart)
     asserts:
+      # Kilo-Pass-only alias, so it proves the block reached the subchart.
+      # Not `deepseek-v4-flash`: that substring-matches `...-direct` too.
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "deepseek-v4-pro-direct"
+          pattern: "glm-5\\.3-flash"
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
