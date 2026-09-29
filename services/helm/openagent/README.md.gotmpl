@@ -16,6 +16,7 @@ The umbrella chart that runs the cluster's AI workforce: an LLM gateway, the Her
 | Component | Deployed Via | Purpose |
 |-----------|-------------|---------|
 | `openagent-litellm` | remote OCI dep (LiteLLM Helm chart) | Multi-provider LLM gateway — model access only, no fallbacks. |
+| `valkey` (separate app) | `services/helm/valkey` | Shared standalone Valkey cache in its own namespace. The gateway reaches it as `valkey-cache.valkey.svc.cluster.local` for response caching and cross-replica rate-limit/budget state. |
 | `openagent-hermes` | remote OCI dep (Hermes Agent Helm chart) | Hermes Agent gateway — Discord bot + MCP servers. |
 | `hermes-webui` | local subchart (`charts/hermes-webui`) | Web dashboard — thin-client gateway mode, CF Access private. |
 | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP `:4523`. |

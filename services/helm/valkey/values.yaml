@@ -1,0 +1,70 @@
+# Docs: https://github.com/valkey-io/valkey-helm
+#
+# One standalone Valkey instance for the whole cluster, in the `valkey`
+# namespace. It is the Redis-protocol cache service apps point at; nothing here
+# is per-app, and no app release owns this instance.
+#
+# Why Valkey and not Redis: LiteLLM's Redis client is the only consumer, and
+# Valkey is the Redis fork — same protocol (RESP), same commands, same
+# persistence semantics — so compatibility is by construction rather than by
+# testing. Upstream LiteLLM states it directly: "Valkey, AWS ElastiCache and GCP
+# Memorystore all speak the Redis protocol, so everything on this page applies
+# to them too."
+#
+# Why not the Valkey operator: valkey-io's operator chart ships only
+# ValkeyCluster/ValkeyNode CRDs. Even a 1-shard, 0-replica cache runs in cluster
+# mode there, which would force cluster-aware client config
+# (REDIS_CLUSTER_NODES / cache_params.redis_startup_nodes) on LiteLLM — and the
+# router's own Redis state (router_settings.redis_host) is host/port only. A
+# standalone instance keeps one plain endpoint for both.
+valkey:
+  enabled: true
+  # Service/StatefulSet/PVC name; the FQDN apps use is
+  # valkey-cache.valkey.svc.cluster.local:6379
+  fullnameOverride: valkey-cache
+  image:
+    registry: docker.io
+    repository: valkey/valkey
+    # Pinned, not `latest`: the chart's appVersion is a moving target across
+    # chart bumps, and a cache restarting into a different build is a silent
+    # behaviour change. Renovate bumps this line.
+    tag: "9.1.2"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 6379
+  # No ACL. The Service is ClusterIP-only and every consumer is in-cluster, the
+  # same posture plane-redis runs with. Turning this on means an ACL user, a
+  # Doppler key and a secret; do it when something outside the cluster needs in.
+  auth:
+    enabled: false
+  # PVC on the cluster's default class. AOF below is what makes the volume worth
+  # having: LiteLLM keeps rate-limit counters and budget reservations in Redis,
+  # not just cached replies, so losing the dataset on restart under-enforces
+  # limits until the database catches up.
+  dataStorage:
+    enabled: true
+    requestedSize: 1Gi
+    className: local-path
+  # Written into /data/conf/valkey.conf by the chart's init container and passed
+  # to valkey-server as its config file.
+  valkeyConfig: |
+    appendonly yes
+    appendfsync everysec
+    maxmemory 400mb
+    maxmemory-policy noeviction
+  # Standalone. A replica would sit on the same node in this single-node
+  # cluster, so it would cost a pod and buy no failover.
+  replica:
+    enabled: false
+  # CPU limit deliberately omitted (CFS throttling); memory is the real ceiling.
+  # maxmemory above tracks the 512Mi limit at ~80%, so valkey applies its own
+  # ceiling before the cgroup does.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+  nodeSelector:
+    intent: apps

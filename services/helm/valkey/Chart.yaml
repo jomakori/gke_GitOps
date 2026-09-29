@@ -1,0 +1,14 @@
+apiVersion: v2
+name: valkey
+description: Standalone Valkey cache (official Valkey Helm chart) — the cluster's Redis-protocol cache service. Apps consume it; the instance lives here, never in an app release.
+type: application
+
+# Tracks the upstream chart; the image tag is pinned in values.yaml, not here.
+version: 0.12.0
+appVersion: "9.1.2"
+
+dependencies:
+  - name: valkey
+    version: 0.12.0
+    repository: https://valkey-io.github.io/valkey-helm/
+    condition: valkey.enabled
