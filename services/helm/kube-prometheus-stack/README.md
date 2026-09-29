@@ -67,6 +67,9 @@ Prometheus TSDB uses a 30Gi PVC via the `local-path` storage class. Alertmanager
 | kube-prometheus-stack.grafana.adminPassword | string | `"changeme"` |  |
 | kube-prometheus-stack.grafana.adminUser | string | `"admin"` |  |
 | kube-prometheus-stack.grafana.enabled | bool | `true` |  |
+| kube-prometheus-stack.grafana.persistence.enabled | bool | `true` |  |
+| kube-prometheus-stack.grafana.persistence.size | string | `"2Gi"` |  |
+| kube-prometheus-stack.grafana.persistence.storageClassName | string | `"local-path"` |  |
 | kube-prometheus-stack.grafana.resources.limits.memory | string | `"512Mi"` |  |
 | kube-prometheus-stack.grafana.resources.requests.cpu | string | `"100m"` |  |
 | kube-prometheus-stack.grafana.resources.requests.memory | string | `"256Mi"` |  |
