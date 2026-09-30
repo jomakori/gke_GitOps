@@ -733,38 +733,37 @@ data:
     > 3-entry list it replaced made every attempt re-probe dead models.
     > Model ids are LiteLLM aliases.
     >
-    > **ORDERING**: Kilo Pass leads the execution lanes (glm-5.3-flash for
-    > edit-shaped work, deepseek-v4-flash for reasoning/search, spread across
-    > agents to avoid hammering one model); Claude leads where reasoning or
-    > vision IS the work. Every chain ends on `deepseek-v4-flash-direct`, the
-    > only hop needing neither Kilo balance nor the Claude proxy.
+    > **ORDERING**: `deepseek-v4-flash-direct` leads every execution lane
+    > (unmetered, no Kilo burn); Kilo Pass flash tiers sit mid-chain and 402
+    > together when the balance dies; Claude leads where reasoning or vision
+    > IS the work.
 
     | OMO Agent | Role | Primary | Fallback chain |
     |-------|------|-------|----------|
-    | sisyphus | Sisyphus · Ultraworker (orchestrator) | deepseek-v4-flash | glm-5.3-flash → claude-sonnet-5 → deepseek-v4-flash-direct |
-    | hephaestus | Hephaestus · Deep Agent | glm-5.3-flash | deepseek-v4-flash → claude-sonnet-5 → deepseek-v4-flash-direct |
-    | prometheus | Prometheus · Plan Builder | claude-sonnet-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct |
-    | atlas | Atlas · Plan Executor | glm-5.3-flash | deepseek-v4-flash → claude-sonnet-5 → deepseek-v4-flash-direct |
-    | metis | Metis · Plan Consultant | claude-sonnet-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct |
-    | momus | Momus · Plan Critic | claude-sonnet-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct |
+    | sisyphus | Sisyphus · Ultraworker (orchestrator) | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-sonnet-5 |
+    | hephaestus | Hephaestus · Deep Agent | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-sonnet-5 |
+    | prometheus | Prometheus · Plan Builder | deepseek-v4-flash-direct | claude-sonnet-5 → deepseek-v4-flash → glm-5.3-flash |
+    | atlas | Atlas · Plan Executor | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-sonnet-5 |
+    | metis | Metis · Plan Consultant | deepseek-v4-flash-direct | claude-sonnet-5 → deepseek-v4-flash → glm-5.3-flash |
+    | momus | Momus · Plan Critic | deepseek-v4-flash-direct | claude-sonnet-5 → deepseek-v4-flash → glm-5.3-flash |
     | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct |
-    | librarian | Librarian · Research | deepseek-v4-flash | glm-5.3-flash → claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | explore | Explore · Repository Exploration | deepseek-v4-flash | glm-5.3-flash → claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | librarian | Librarian · Research | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-haiku-4-5 |
+    | explore | Explore · Repository Exploration | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-haiku-4-5 |
     | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct |
-    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | glm-5.3-flash | deepseek-v4-flash → claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | (no scribe — writing routes via `writing` category) | writer | glm-5.3-flash | deepseek-v4-flash → claude-sonnet-5 → deepseek-v4-flash-direct |
+    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-haiku-4-5 |
+    | (no scribe — writing routes via `writing` category) | writer | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-sonnet-5 |
 
     Categories (used when no named agent fits):
 
     | Category | Primary | Fallback chain |
     |---|---|---|
-    | quick | deepseek-v4-flash | glm-5.3-flash → claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | deep | deepseek-v4-flash | glm-5.3-flash → claude-sonnet-5 → deepseek-v4-flash-direct |
+    | quick | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-haiku-4-5 |
+    | deep | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-sonnet-5 |
     | ultrabrain | claude-opus-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct |
     | visual-engineering | claude-sonnet-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct |
-    | writing | glm-5.3-flash | deepseek-v4-flash → claude-sonnet-5 → deepseek-v4-flash-direct |
+    | writing | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-sonnet-5 |
 
-    **Pricing** ($/M in/out): Kilo Pass `deepseek-v4-flash` $0.14/$0.28, `glm-5.3-flash` $0.15/$0.50 — metered, so an exhausted balance 402s and walks the chain to Claude, then to `deepseek-v4-flash-direct` (native `DEEPSEEK_API_KEY`, no `model_info` → SpendLogs logs $0.00, same gap as claude-proxy). Claude bills the subscription-backed claude-proxy; the slash-free aliases mirror the `claude/*` entries. DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost ($1.60/$3.20 and up per M); the five `byteplus-coding/*` BYOK models were the original target of that removal.
+    **Pricing** ($/M in/out): `deepseek-v4-flash-direct` (native `DEEPSEEK_API_KEY`, no `model_info` → SpendLogs logs $0.00, same gap as claude-proxy) leads every execution lane; Kilo Pass `deepseek-v4-flash` $0.14/$0.28 and `glm-5.3-flash` $0.15/$0.50 sit mid-chain — an exhausted Kilo balance 402s and walks to Claude, which bills the subscription-backed claude-proxy; the slash-free aliases mirror the `claude/*` entries. DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost ($1.60/$3.20 and up per M); the five `byteplus-coding/*` BYOK models were the original target of that removal.
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -831,7 +830,7 @@ data:
 
     **Kilo Pass**: carries the two cheap routes and is metered — when the balance runs out both aliases 402 together, which is what pushes a chain onto Claude and then the direct route. `KILO_API_KEY` is referenced again as of 2026-09.
 
-    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — gateway cooldowns would fight OMO's runtime fallback. OMO owns both layers: per-agent chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on `retry_on_errors` incl. 402, 3 attempts, 30s cooldown, restore-primary). Hermes rides `fallback_providers` (glm-5.3-flash → claude/sonnet-5 → deepseek-v4-flash-direct); **delegated children declare one backup** (`delegation.fallback_providers: [deepseek-v4-flash-direct]`) — per-agent chains own worker escalation, and since both Kilo aliases share one key that single credit-independent hop is the only genuinely independent backup. The 3-entry list it replaced made every attempt re-walk dead models. **`agent.api_max_retries: 1`**: one attempt per model then the next layer (a 429/402 fails over eagerly; 5xx/transport hit retries-exhausted immediately) — the host default of 3 replayed a refusal against the model that had just refused it, the 2026-09-24 error cycle that burned 3 extra calls per worker.
+    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — gateway cooldowns would fight OMO's runtime fallback. OMO owns both layers: per-agent chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on `retry_on_errors` incl. 402, 3 attempts, 30s cooldown, restore-primary). Hermes rides `fallback_providers` (claude/sonnet-5 → deepseek-v4-flash-direct); **delegated children declare one backup** (`delegation.fallback_providers: [deepseek-v4-flash-direct]`) — per-agent chains own worker escalation, and since both Kilo aliases share one key that single credit-independent hop is the only genuinely independent backup. The 3-entry list it replaced made every attempt re-walk dead models. **`agent.api_max_retries: 1`**: one attempt per model then the next layer (a 429/402 fails over eagerly; 5xx/transport hit retries-exhausted immediately) — the host default of 3 replayed a refusal against the model that had just refused it, the 2026-09-24 error cycle that burned 3 extra calls per worker.
 
     ### Hermes Dashboard & Workspace
 
@@ -1035,7 +1034,7 @@ data:
     - **Failed auth zeroes the credentials file**: `claude -p` on failed auth rewrites `~/.claude/.credentials.json` with empty tokens (`accessToken len=0`, `refreshToken len=0`, `expiresAt=0`). Do NOT smoke-test inference with `claude -p` while auth is suspect (check `expiresAt` first); the PVC seed init container only re-seeds when the file is absent, so after a zeroing event you must delete the PVC or remove the file to recover. This is the failure that killed the gateway for days — an expired refresh token (`refreshTokenExpiresAt` past) is unrecoverable without a fresh login, and the only visible symptom upstream was `claude -p exited with code 1:` with empty stderr.
     - **Tool calling is bridged, not native**: OCP exposes client `tools` to the CLI as an internal MCP server and returns the model's choice as `tool_calls` for the caller to execute. It is prompt-contract based, so watch `stats.toolRequestsDropped` on `/health` — a non-zero value means tools were dropped and agents are getting text again.
     - **Image tag and image content move together**: `.assets/images/ocp/Dockerfile` pins both the OCP release tag and the Claude Code CLI version, and `charts/claude-proxy/values.yaml` pins the built tag with `pullPolicy: IfNotPresent`. Changing either pin REQUIRES a tag bump, or nodes keep serving the cached image. The image is a pristine upstream release (no vendored patch since upstream #494 landed in v3.37.0) — the tag IS the OCP release tag, driven by `OCP_VERSION` in `.github/workflows/image-builds.yaml`.
-    - **Claude leads the reasoning lanes**: oracle/ultrabrain on claude-opus-5; prometheus/metis/momus/multimodal-looker/visual-engineering on claude-sonnet-5. Kilo leads the execution lanes, so Claude is reached either as a chain primary or on a Kilo 402. Pro tier ~45 Sonnet/5h.
+    - **Claude leads the reasoning lanes**: oracle/ultrabrain on claude-opus-5; prometheus/metis/momus/multimodal-looker/visual-engineering on claude-sonnet-5. DeepSeek-direct leads the execution lanes, so Claude is reached either as a chain primary or on a direct-route failure. Pro tier ~45 Sonnet/5h.
 
     - **ESO-managed secrets are overwritten on sync — never put non-Doppler keys in them**: The `openagent-litellm-secrets` ExternalSecret uses `dataFrom.find.regexp: ".*"` with `creationPolicy: Owner`. Any manually added keys (e.g., `username`, `password`, `masterkey`) are overwritten on next ESO reconcile (every 24h or on trigger). Use DEDICATED secrets for non-Doppler values. Example: `openagent-litellm-masterkey` for the LiteLLM master key, `claude-credentials` for OAuth tokens. In values.yaml, reference these via `masterkeySecretName: "openagent-litellm-masterkey"` and `db.secret.name` + `usernameKey`/`passwordKey` to match Doppler key names.
 

@@ -331,15 +331,11 @@ hermes-agent:
     # "predates version 12", and skips stamping on every boot.
     _config_version: 42
     model:
-      # Orchestration brain. Kilo Pass leads (cheapest); the chain below ends on
-      # the credit-independent direct route.
-      default: deepseek-v4-flash
+      # Orchestration brain — DeepSeek direct (unmetered, cheapest); Kilo on failure.
+      default: deepseek-v4-flash-direct
       provider: litellm
-    # Sisyphus fallback chain (bootstrap skips sisyphus — it IS the default
-    # profile). Second Kilo model, then Claude, then direct.
+    # Sisyphus fallback: Claude (flat-fee), then the direct floor.
     fallback_providers:
-      - provider: litellm
-        model: glm-5.3-flash
       - provider: litellm
         model: claude/sonnet-5
       - provider: litellm
@@ -570,9 +566,8 @@ hermes-agent:
       # weekly uncached-input line to confirm the reclaim beats the cache loss.
       proactive_prune_tokens: 48000
     delegation:
-      # Subagent tier. Highest fan-out in the fleet (8 concurrent children), so
-      # it rides the cheapest metered route rather than the rate-limited proxy.
-      model: deepseek-v4-flash
+      # Highest fan-out tier — direct route keeps 8 children off Kilo metering.
+      model: deepseek-v4-flash-direct
       provider: litellm
       base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
       api_key: ${LITELLM_MASTER_KEY}
@@ -615,15 +610,7 @@ hermes-agent:
       entries:
         omo:
           settings:
-            # Fallback-model layer. Per-agent and per-category chains live under
-            # `chains:` / `categories:` below; this governs how a chain is walked
-            # when a call fails. 402 in `retry_on_errors` is Kilo Pass running out
-            # of balance — that is what walks a chain off the Kilo tiers.
-            #
-            # ORDERING RULE: Kilo Pass leads the execution lanes — glm-5.3-flash
-            # for edit-shaped work, deepseek-v4-flash for reasoning/search. Claude
-            # leads where reasoning or vision IS the work. Every chain ends on
-            # deepseek-v4-flash-direct, the only credit-independent hop.
+            # Per-agent/category chains, walked on retry_on_errors (402 = Kilo exhausted).
             runtime_fallback:
               enabled: true
               retry_on_errors: [400, 401, 402, 403, 404, 429, 500, 502, 503, 504, 529]
@@ -632,71 +619,71 @@ hermes-agent:
               restore_primary_after_cooldown: true
             chains:
               sisyphus:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               hephaestus:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               prometheus:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
-                - litellm/deepseek-v4-flash-direct
               atlas:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               metis:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
-                - litellm/deepseek-v4-flash-direct
               momus:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
-                - litellm/deepseek-v4-flash-direct
               oracle:
                 - litellm/claude-opus-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash-direct
               librarian:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-haiku-4-5
-                - litellm/deepseek-v4-flash-direct
               explore:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-haiku-4-5
-                - litellm/deepseek-v4-flash-direct
               multimodal-looker:
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash
                 - litellm/claude-haiku-4-5
-                - litellm/deepseek-v4-flash-direct
             categories:
               quick:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-haiku-4-5
-                - litellm/deepseek-v4-flash-direct
               deep:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
                 - litellm/deepseek-v4-flash
@@ -708,10 +695,10 @@ hermes-agent:
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash-direct
               writing:
+                - litellm/deepseek-v4-flash-direct
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash-direct
 
     mcp_servers:
       # ── Manifest = single source of truth ──────────────────────────────
