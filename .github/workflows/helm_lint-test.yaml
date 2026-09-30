@@ -266,6 +266,13 @@ jobs:
         # Runs on every PR with no chart-path filtering, like the Go gate above.
         run: .useful-scripts/check_template_balance.sh
 
+      - name: LiteLLM model policy (gitopsctl validate litellm-config)
+        # A per-model `cache` inside litellm_params is a 400 on every request
+        # to that route, and nothing else in this workflow sees it: valid YAML,
+        # clean render, clean kubeconform, healthy sync, healthy neighbours.
+        working-directory: .useful-scripts/gitopsctl
+        run: go run ./cmd/gitopsctl validate litellm-config --values ../../services/helm/openagent/values.yaml
+
       - name: kubeconform (validate rendered manifests against K8s OpenAPI)
         # Guard on the event explicitly: `inputs.*` is EMPTY on pull_request
         # events — only workflow_dispatch populates it. A bare

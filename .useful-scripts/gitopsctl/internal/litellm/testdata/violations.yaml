@@ -1,0 +1,27 @@
+litellm:
+  proxy_config:
+    litellm_settings:
+      cache: true
+    model_list:
+      - model_name: healthy
+        litellm_params:
+          model: openai/healthy
+          order: 1
+      - model_name: deepseek-v4-flash-direct
+        litellm_params:
+          model: deepseek/deepseek-v4-flash
+          api_key: os.environ/DEEPSEEK_API_KEY
+          cache: true
+          order: 1
+          use_chat_completions_api: true
+      - model_name: nested
+        litellm_params:
+          model: openai/nested
+          cache_params:
+            type: redis
+      - model_name: flowstyle
+        litellm_params: {model: openai/flowstyle, cache: true}
+      - model_name: after
+        litellm_params:
+          model: openai/after
+          cache_read_input_token_cost: 0.00000003

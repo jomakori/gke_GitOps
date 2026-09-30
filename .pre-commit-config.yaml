@@ -115,3 +115,27 @@ repos:
         language: system
         files: ^(services|apps)/helm/.*/templates/.*\.(yaml|yml|tpl|txt)$
         pass_filenames: false
+      - id: litellm-model-policy
+        name: LiteLLM model policy (gitopsctl validate litellm-config)
+        description: |
+          Reject a per-model `cache`/`cache_params` inside a LiteLLM
+          litellm_params block. LiteLLM merges litellm_params into the request
+          kwargs, where the cache handler reads kwargs.get("cache",
+          {}).get("no-cache", False) — a scalar raises AttributeError: 'bool'
+          object has no attribute 'get' on every request, and the proxy reports
+          it as a 400 that reads like a provider fault.
+
+          Nothing else catches it: the key is valid YAML, so helm lint, helm
+          template, kubeconform and the ArgoCD sync all pass, the proxy keeps
+          serving every other model, and the deployment reads as healthy while
+          the one route carrying the key is down. Caching belongs in
+          litellm_settings, which lands in litellm.cache rather than the kwargs.
+          Same binary and same default as the CI step; needs the Go toolchain
+          (devbox, mise or CI all provide it).
+        # `go -C` relocates the built program too, so --values is relative to
+        # .useful-scripts/gitopsctl, not the repo root. CI runs the same command
+        # under working-directory.
+        entry: go -C .useful-scripts/gitopsctl run ./cmd/gitopsctl validate litellm-config --values ../../services/helm/openagent/values.yaml
+        language: system
+        files: ^services/helm/openagent/values\.yaml$
+        pass_filenames: false
