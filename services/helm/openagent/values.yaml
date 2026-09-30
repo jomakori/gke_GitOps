@@ -181,11 +181,6 @@ litellm:
       redis_host: os.environ/REDIS_HOST
       redis_port: os.environ/REDIS_PORT
     model_list:
-      - model_name: anthropic/claude-opus-4-7
-        litellm_params:
-          model: anthropic/claude-opus-4-7
-          api_key: os.environ/ANTHROPIC_API_KEY
-          order: 1
       # Kilo Pass — cheapest tier, leads the execution lanes. Metered: a 402 on
       # an exhausted balance is what walks the chain to Claude, then to direct.
       - model_name: deepseek-v4-flash

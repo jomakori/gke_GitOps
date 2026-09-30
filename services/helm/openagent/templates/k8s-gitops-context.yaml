@@ -813,10 +813,9 @@ data:
 
     All LLM traffic flows through LiteLLM (`openagent-litellm:4000`). Headroom was planned but never deployed.
 
-    **LiteLLM models** (11 configured):
+    **LiteLLM models** (10 configured):
     | Model Name | Backend | API Key |
     |------------|---------|---------|
-    | anthropic/claude-opus-4-7 | anthropic (native) | ANTHROPIC_API_KEY |
     | deepseek-v4-flash | Kilo Pass (openai) | KILO_API_KEY |
     | glm-5.3-flash | Kilo Pass (openai) | KILO_API_KEY |
     | deepseek-v4-flash-direct | deepseek (native) | DEEPSEEK_API_KEY |
