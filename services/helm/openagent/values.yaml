@@ -1199,6 +1199,10 @@ hermes-agent:
     - name: hermes-read-guard
       configMap:
         name: openagent-hermes-read-guard
+    # agent:start hook — probes the Claude lane's auth and warns in-channel.
+    - name: hermes-claude-health
+      configMap:
+        name: openagent-hermes-claude-health
     - name: k8s-gitops-context
       configMap:
         name: openagent-k8s-gitops-context
@@ -1223,6 +1227,10 @@ hermes-agent:
     # happen in both places or the hook fails open (and is logged as such).
     - name: hermes-read-guard
       mountPath: /opt/data/hooks/read-guard
+      readOnly: true
+    # One directory per hook; HOOK.yaml in it declares the events.
+    - name: hermes-claude-health
+      mountPath: /opt/data/hooks/claude-health
       readOnly: true
     - name: k8s-gitops-context
       mountPath: /opt/data/memories/k8s-gitops-context.md

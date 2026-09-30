@@ -290,3 +290,28 @@ data:
   read_guard.py: |
 {{ .Files.Get "hooks/read-guard/read_guard.py" | indent 4 }}
 {{- end }}
+
+{{- if .Values.hermes.enabled }}
+---
+# Claude-lane health probe — a session start is the cheapest place to notice a
+# dead OAuth session before it costs a whole session's Claude routes.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-hermes-claude-health
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  HOOK.yaml: |
+    name: claude-health
+    description: >
+      Warns in the session's channel when the Claude proxy reports a dead
+      OAuth session. Fires on agent:start, throttled to one probe per 5 min.
+    events:
+      - agent:start
+  handler.py: |
+{{ .Files.Get "hooks/claude-health/handler.py" | indent 4 }}
+{{- end }}
