@@ -1,0 +1,24 @@
+litellm:
+  proxy_config:
+    litellm_settings:
+      cache: true
+      cache_params:
+        type: redis
+        host: os.environ/REDIS_HOST
+    model_list:
+      - model_name: alpha
+        litellm_params:
+          model: deepseek/deepseek-v4-flash
+          api_key: os.environ/DEEPSEEK_API_KEY
+          order: 1
+      - model_name: beta
+        litellm_params:
+          model: openai/beta
+          api_base: https://api.example.com/v1
+          api_key: os.environ/BETA_API_KEY
+          # A mapping is the shape the cache handler expects — allowed.
+          cache:
+            no-cache: true
+          rpm: 60
+      - model_name: gamma
+        litellm_params: {model: openai/gamma, rpm: 30}

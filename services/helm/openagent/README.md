@@ -838,7 +838,6 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.model_list[2].model_info.output_cost_per_token | float | `5e-7` |  |
 | litellm.proxy_config.model_list[2].model_name | string | `"glm-5.3-flash"` |  |
 | litellm.proxy_config.model_list[3].litellm_params.api_key | string | `"os.environ/DEEPSEEK_API_KEY"` |  |
-| litellm.proxy_config.model_list[3].litellm_params.cache | bool | `true` |  |
 | litellm.proxy_config.model_list[3].litellm_params.model | string | `"deepseek/deepseek-v4-flash"` |  |
 | litellm.proxy_config.model_list[3].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[3].litellm_params.use_chat_completions_api | bool | `true` |  |

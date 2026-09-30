@@ -13,7 +13,8 @@ One binary, one command family, plus the sibling repo-side scripts staged to fol
 | `gitopsctl mcp prewarm` | in-cluster runtime (boot cache warm) | implemented |
 | `gitopsctl mcp verify --mode preflight\|drift\|validate` | in-cluster runtime (PostSync preflight + drift CronJob) | implemented |
 | `chart lint/render/unittest/schema-patch` | repo-side | staged — shell (`.useful-scripts/ct_check.sh`, `helm_render_and_kubeconform.sh`, `helm_unittest_openagent.sh`, `patch_hermes_schema.sh`) |
-| `validate litellm-config\|mcp-manifest\|selectors` | repo-side | staged — shell (`.useful-scripts/validate_litellm_config.sh`, `validate_mcp_manifest.sh`, `check_selectors.sh`) |
+| `validate litellm-config` | repo-side | implemented (Go) — per-model cache-key policy; the rendered-ConfigMap checks it absorbed are still shell in `validate_litellm_config.sh` |
+| `validate mcp-manifest\|selectors` | repo-side | staged — shell (`.useful-scripts/validate_mcp_manifest.sh`, `check_selectors.sh`) |
 | `skill render-local` | repo-side | staged — shell (`.useful-scripts/render_local_skill.sh`) |
 
 `boot` reconstructs the old `boot.sh` python flow 1:1 (mise install, system deps, MCP pre-warm, chown) and hands over to `/init hermes gateway run`. `mcp verify` mirrors the MCP client's stdio + Streamable HTTP handshake so a preflight PASS means a runtime PASS; `--mode validate` is the static policy lint (pins, timeouts, lifecycle, parked duplicates, tool surface, each npx server's own package cache, a uvx server's toolchain env, auth-probe declarations) with no network; `--mode drift` additionally calls each server's declared `auth_probe`, because a handshake certifies the protocol and never the credential.
@@ -30,7 +31,7 @@ devbox run go build ./cmd/gitopsctl
 mkdir -p .bin && go build -o .bin/gitopsctl ./cmd/gitopsctl
 ```
 
-The repo's pre-commit hooks already exercise the binary indirectly — `validate_mcp_manifest.sh` (wired to the `mcp-manifest-validate` hook) renders the manifest and runs `mcp verify --mode validate` on every `values.yaml`/`hooks.yaml` change.
+The repo's pre-commit hooks already exercise the binary indirectly — `validate_mcp_manifest.sh` (wired to the `mcp-manifest-validate` hook) renders the manifest and runs `mcp verify --mode validate` on every `values.yaml`/`hooks.yaml` change, and the `litellm-model-policy` hook runs `validate litellm-config` on every `values.yaml` change.
 
 ## Usage
 

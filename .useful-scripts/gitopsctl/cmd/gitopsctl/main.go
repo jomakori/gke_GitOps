@@ -11,6 +11,7 @@ import (
 
 	"gitopsctl/internal/boot"
 	"gitopsctl/internal/chart"
+	"gitopsctl/internal/litellm"
 	"gitopsctl/internal/mcp"
 )
 
@@ -33,6 +34,8 @@ func main() {
 		cmdMCP(os.Args[2:])
 	case "chart":
 		cmdChart(os.Args[2:])
+	case "validate":
+		cmdValidate(os.Args[2:])
 	default:
 		usage()
 		os.Exit(2)
@@ -51,6 +54,9 @@ usage:
   gitopsctl deps install                   install it on demand (apt download cache on the PVC)
   gitopsctl chart templates [--dir PATH]   check every Helm template under PATH for unbalanced
                                            if/range/with/define/block actions (default PATH=.)
+  gitopsctl validate litellm-config [--values PATH]
+                                           check the openagent LiteLLM model list for per-model
+                                           cache keys (default PATH=services/helm/openagent/values.yaml)
   gitopsctl mcp prewarm [--manifest PATH] [--parallel N]
                                            materialise npx/uvx package caches
   gitopsctl mcp verify [--manifest PATH] [--mode preflight|drift|validate] [--only NAME]...
@@ -232,6 +238,27 @@ func cmdChart(args []string) {
 }
 
 type multiFlag []string
+
+func cmdValidate(args []string) {
+	if len(args) == 0 {
+		usage()
+		os.Exit(2)
+	}
+	switch args[0] {
+	case "litellm-config":
+		fs := flag.NewFlagSet("litellm-config", flag.ExitOnError)
+		values := fs.String("values", "services/helm/openagent/values.yaml", "chart values.yaml to check")
+		_ = fs.Parse(args[1:])
+		if fs.NArg() > 0 {
+			log.Printf("validate litellm-config: unexpected argument %q (use --values)", fs.Arg(0))
+			os.Exit(2)
+		}
+		os.Exit(litellm.Execute(*values))
+	default:
+		usage()
+		os.Exit(2)
+	}
+}
 
 func (m *multiFlag) String() string { return "" }
 func (m *multiFlag) Set(v string) error {
