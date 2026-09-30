@@ -1,0 +1,33 @@
+suite: Claude health hook is mounted where the registry discovers it
+# A hook directory only registers if HOOK.yaml and handler.py land together in
+# a mounted dir. If the volume or mountPath moves, the probe silently stops
+# firing and a dead Claude session goes unnoticed — the exact failure it exists
+# to catch.
+templates:
+  - charts/hermes-agent/templates/deployment.yaml
+  - charts/hermes-agent/templates/configmap.yaml
+  - charts/hermes-agent/templates/secret.yaml
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: mounts the claude-health hook volume and directory
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: hermes-claude-health
+            mountPath: /opt/data/hooks/claude-health
+            readOnly: true
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: hermes-claude-health
+            configMap:
+              name: openagent-hermes-claude-health
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
