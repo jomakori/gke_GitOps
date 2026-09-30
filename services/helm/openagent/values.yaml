@@ -27,7 +27,7 @@ tools:
     repository: ghcr.io/jomakori/gitopsctl
     # Published commit sha of the gitopsctl image (bare sha, no `sha-`
     # prefix). `latest` must never be used with IfNotPresent.
-    tag: e9a1fe9949b570542aa010a751e8dbd9f7840082
+    tag: 45c7bafcb158585544166351dfe189f32c56cace
     pullPolicy: IfNotPresent
 
 # ── LiteLLM upstream chart values ──────────────────────────────────
@@ -1248,7 +1248,7 @@ hermes-agent:
     # Subchart values cannot be templated, so this image is a literal copy of
     # tools.image above — bump both together.
     - name: install-gitopsctl
-      image: ghcr.io/jomakori/gitopsctl:e9a1fe9949b570542aa010a751e8dbd9f7840082
+      image: ghcr.io/jomakori/gitopsctl:45c7bafcb158585544166351dfe189f32c56cace
       imagePullPolicy: IfNotPresent
       args: ["install", "/opt/tools/gitopsctl"]
       securityContext:
