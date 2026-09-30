@@ -102,6 +102,22 @@ The web UI runs in gateway mode as a pure HTTP client of the API server (`HERMES
 
 All application resources deploy to the `openagent` namespace, and the gateway pod runs MCP servers as stdio processes within the container. Secrets come from the `svc_openagent` Doppler config (provider keys, Discord, GHCR) and flow in via `envFrom: secretRef` — no Helm `--set` for secrets.
 
+### Claude credential recovery
+
+The subchart carries two credential paths, and OCP's precedence is env-beats-file: `CLAUDE_CODE_OAUTH_TOKEN` — sourced from `credentials.tokenSecretName` / `tokenSecretKey` — wins when present, and Claude Code falls back to `.credentials.json` on the `credentials.persistence` volume when it is not. The env key is `optional: true`, so an absent token is a supported configuration rather than a fault. Establish which path is actually in force before diagnosing auth.
+
+On the file path the credential is **not stable**. Claude Code rotates its own single-use refresh token and writes the rotated pair back to `~/.claude/.credentials.json`, so the credential in the pod is never the one you seeded. The `claude-credentials` Secret is a **first-boot seed and nothing more**: the `seed-credentials` init container copies it only when the file is absent, no refresh logic touches it, and no ExternalSecret owns it — so it is hand-maintained, expires silently, and drifts out of sync with the live credential by design.
+
+That leaves one failure mode unrecoverable without a human. The volume is `local-path`, which is node-affine, so a node rebuild takes the credential with it along with the node affinity pinning the pod there. A replacement pod then seeds whatever the Secret last held; if that snapshot has passed its refresh-token expiry, every Claude model fails auth and no self-refresh can rescue it, because there is nothing left to refresh. Check the seed's expiry the moment Claude starts failing, not just the pod's.
+
+Recovery is a fresh browser login, a Secret write, then a proxy restart. The refresh token is single-use, so a seed covers exactly one volume loss: once the CLI consumes it the Secret holds a spent token and the next loss repeats the flow. Keeping a current copy of the seed in Doppler mitigates that; it does not make it permanent.
+
+### The gateway volume is effectively unbounded
+
+The gateway's `persistence.size` is not enforced. `local-path` provisions a host directory with no quota, so the workload can consume the node's disk while the PVC keeps reporting its requested size and `Bound`. Size this workload against node headroom, not against the PVC request — and note it is a different volume from the `claude-proxy` credential PVC.
+
+Agent session worktrees accumulate there and their build output dominates them: Rust `target/` directories run to many times the size of the sources they were built from. Nothing prunes them, so the volume grows monotonically between cleanups and eventually re-fills the node. When disk pressure appears, look here before the monitoring stack — the TSDB is bounded by its own retention setting, and a capped component is rarely what filled the node.
+
 ## Skill Single-Source: k8s-gitops-context
 
 The `k8s-gitops-context` skill body is owned here, in `templates/k8s-gitops-context.yaml`, and rendered for two runtimes via the `runtimeMode` value.
