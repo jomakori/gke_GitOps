@@ -1140,6 +1140,24 @@ hermes-agent:
           resources: false
           prompts: false
           include: [status, sync, list, get, create_item, edit_item, delete, restore, move, generate, create_folder, edit_folder, create_attachment, create_text_send]
+
+      context7:
+        lazy: true
+        # Pulls up-to-date, version-specific library docs from context7.com
+        # and injects them into the prompt. No auth required; API key is
+        # optional (higher rate limits + private repos via context7.com/dashboard).
+        command: "npx"
+        args: ["-y", "@upstash/context7-mcp@4.1.1"]
+        connect_timeout: 180
+        idle_timeout_seconds: 1800
+        max_lifetime_seconds: 21600
+        env:
+          npm_config_cache: "/opt/data/.npm-mcp/context7"
+          npm_config_loglevel: "error"
+        tools:
+          include: [resolve-library-id, query-docs]
+          resources: false
+          prompts: false
   env: {}
   extraEnv:
     - name: DISCORD_BOT_TOKEN
