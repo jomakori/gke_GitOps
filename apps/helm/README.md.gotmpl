@@ -21,6 +21,7 @@ All manifests are produced by a single 373-line `_helpers.tpl` define (`app.mani
 |----------|-----------|
 | `ServiceAccount` + ECR `dockercfg` Secret | Always |
 | `ExternalSecret` | `environments.<env>.dopplerConfig` is set |
+| `ClusterRole` + `ClusterRoleBinding` | `clusterRead` is set (never in previews) |
 | `SGCluster` (StackGres) or `PerconaServerMongoDB` | `enable_db.type` is `postgres` or `mongodb` |
 | `Deployment` | Always (scheduled on `intent: apps` nodes) |
 | `Service` | Always (ClusterIP when Istio, NodePort otherwise) |
@@ -65,6 +66,17 @@ When `enable_domain` + `enable_istio` are true, a `VirtualService` is generated:
 - **Gateway**: `istio-system/maklab-gateway` (overridable via `istio.gateway`)
 - **Retry**: 3 attempts, 5s per-try timeout, on gateway/connect/retriable errors
 - **Timeout**: 30s
+
+### Cluster access
+
+An app that reads the cluster (a console) sets `clusterRead: true`. The chart then renders a
+`ClusterRole`/`ClusterRoleBinding` pair named `<namespace>-read`, bound to the app's own
+`<namespace>-sa` — never a wildcard subject, and never a credential from a Secret. Rules:
+cluster-wide `list`/`watch` on the kinds a console watches, `get`/`list`/`watch` on `secrets`
+(a secrets list returns values; recorded and accepted in OKT-159 as strictly smaller than the
+cluster-admin grant the removed kubeconfig reached) and `get` on `pods/log`. It is never
+rendered for a preview: previews run unreviewed PR code (see `clusterReadOn` in
+`templates/_helpers.tpl`).
 
 ### Global config
 
