@@ -83,17 +83,18 @@ openkite:
   # OKT-147: do not add an `enable_private` here — it has no effect in this chart
   # (the AuthorizationPolicy would render into istio-system from a non-istio
   # Application and ArgoCD would skip it).
-  # ── Cluster access (OKT-130) ─────────────────────────────────────────
-  # The console reads the cluster with a kubeconfig delivered by External
-  # Secrets from Doppler — not with the pod's ServiceAccount, because
-  # `list secrets` returns values rather than keys, so an SA read role could
-  # only grant every Secret or none. Previews never get it (see app.manifests
-  # in templates/_helpers.tpl).
-  kubeconfig:
-    enabled: true
-    store: doppler-svc-tailscale
-    secretName: TAILSCALE_KUBECONFIG
-    mountPath: /etc/openkite/kubeconfig
+  # ── Cluster access (OKT-159, supersedes OKT-130) ─────────────────────
+  # The console reads the cluster with its own ServiceAccount, bound to a
+  # read-only ClusterRole rendered below. The Doppler `TAILSCALE_KUBECONFIG`
+  # was removed: it was never a scoped credential. The Tailscale operator's
+  # API-server proxy runs in auth mode, ignores the file's `token: unused`
+  # and impersonates the caller's tailnet identity, which from an in-cluster
+  # pod resolves to a user bound to cluster-admin
+  # (ClusterRoleBinding/tailnet-user-k8s-admin). Mounting it would have
+  # granted the console cluster-admin. See OKT-159.
+  # `list secrets` does return values rather than keys — that exposure is
+  # accepted here and is strictly smaller than the cluster-admin it replaces.
+  clusterRead: true
   # GHCR, not the shared ECR registry.
   image:
     repository: ghcr.io/jomakori/openkite

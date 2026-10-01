@@ -23,6 +23,7 @@ All manifests are produced by a single 373-line `_helpers.tpl` define (`app.mani
 |----------|-----------|
 | `ServiceAccount` + ECR `dockercfg` Secret | Always |
 | `ExternalSecret` | `environments.<env>.dopplerConfig` is set |
+| `ClusterRole` + `ClusterRoleBinding` | `clusterRead` is set (never in previews) |
 | `SGCluster` (StackGres) or `PerconaServerMongoDB` | `enable_db.type` is `postgres` or `mongodb` |
 | `Deployment` | Always (scheduled on `intent: apps` nodes) |
 | `Service` | Always (ClusterIP when Istio, NodePort otherwise) |
@@ -67,6 +68,17 @@ When `enable_domain` + `enable_istio` are true, a `VirtualService` is generated:
 - **Gateway**: `istio-system/maklab-gateway` (overridable via `istio.gateway`)
 - **Retry**: 3 attempts, 5s per-try timeout, on gateway/connect/retriable errors
 - **Timeout**: 30s
+
+### Cluster access
+
+An app that reads the cluster (a console) sets `clusterRead: true`. The chart then renders a
+`ClusterRole`/`ClusterRoleBinding` pair named `<namespace>-read`, bound to the app's own
+`<namespace>-sa` — never a wildcard subject, and never a credential from a Secret. Rules:
+cluster-wide `list`/`watch` on the kinds a console watches, `get`/`list`/`watch` on `secrets`
+(a secrets list returns values; recorded and accepted in OKT-159 as strictly smaller than the
+cluster-admin grant the removed kubeconfig reached) and `get` on `pods/log`. It is never
+rendered for a preview: previews run unreviewed PR code (see `clusterReadOn` in
+`templates/_helpers.tpl`).
 
 ### Global config
 
@@ -119,9 +131,10 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | notesUi.service.resourceRequests.cpu | string | `"100m"` |  |
 | notesUi.service.resourceRequests.memory | string | `"256Mi"` |  |
 | notesUi.service.storage.size | string | `"1Gi"` |  |
+| openkite.clusterRead | bool | `true` |  |
 | openkite.enable_istio | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
-| openkite.environments.production.tag | string | `"v0.35.6"` |  |
+| openkite.environments.production.tag | string | `"v0.43.3"` |  |
 | openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |
 | openkite.environments.staging.tag | string | `"v0.33.0"` |  |
 | openkite.image.repository | string | `"ghcr.io/jomakori/openkite"` |  |
@@ -129,10 +142,6 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.istio.requestTimeout | string | `"30s"` |  |
 | openkite.istio.retryAttempts | int | `3` |  |
 | openkite.istio.retryTimeout | string | `"5s"` |  |
-| openkite.kubeconfig.enabled | bool | `true` |  |
-| openkite.kubeconfig.mountPath | string | `"/etc/openkite/kubeconfig"` |  |
-| openkite.kubeconfig.secretName | string | `"TAILSCALE_KUBECONFIG"` |  |
-| openkite.kubeconfig.store | string | `"doppler-svc-tailscale"` |  |
 | openkite.service.port | int | `8080` |  |
 | openkite.service.resourceLimits.memory | string | `"512Mi"` |  |
 | openkite.service.resourceRequests.cpu | string | `"100m"` |  |
