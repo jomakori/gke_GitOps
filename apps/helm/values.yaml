@@ -108,11 +108,7 @@ openkite:
       subdomain: staging-openkite
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
-      # Interim: v0.39.1-v0.42.1 were released without a published image (the
-      # container build pinned a toolchain below the workspace's edition-2024
-      # floor), so this is the newest tag GHCR can actually serve. Move it to
-      # the first release whose image exists.
-      tag: v0.39.0
+      tag: v0.43.3
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080
