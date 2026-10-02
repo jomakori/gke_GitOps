@@ -131,10 +131,10 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | notesUi.service.resourceRequests.cpu | string | `"100m"` |  |
 | notesUi.service.resourceRequests.memory | string | `"256Mi"` |  |
 | notesUi.service.storage.size | string | `"1Gi"` |  |
-| openkite.clusterRead | bool | `true` |  |
+| openkite.clusterAdmin | bool | `true` |  |
 | openkite.enable_istio | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
-| openkite.environments.production.tag | string | `"v0.43.3"` |  |
+| openkite.environments.production.tag | string | `"v0.43.4"` |  |
 | openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |
 | openkite.environments.staging.tag | string | `"v0.33.0"` |  |
 | openkite.image.repository | string | `"ghcr.io/jomakori/openkite"` |  |
