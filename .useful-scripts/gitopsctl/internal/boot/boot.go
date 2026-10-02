@@ -201,6 +201,14 @@ func directDownloads(env []string) {
 			binDir)
 	})
 	download(func() {
+		if executable(binDir + "/excalidash-mcp") {
+			return
+		}
+		_ = extractTarball(
+			"https://github.com/jomakori/excalidash-mcp/releases/download/v0.1.0/excalidash-mcp-linux-arm64.tar.gz",
+			binDir)
+	})
+	download(func() {
 		if quietOK("agent-reach", "--help") {
 			return
 		}
