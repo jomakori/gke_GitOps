@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	prewarmMarker    = ".mcp-prewarm"
-	prewarmNPMTimout = 300 * time.Second
-	prewarmUVTimeout = 600 * time.Second
+	prewarmMarker      = ".mcp-prewarm"
+	prewarmNPMTimout   = 300 * time.Second
+	prewarmUVTimeout   = 600 * time.Second
+	prewarmDenoTimeout = 300 * time.Second
 )
 
 func prewarmLog(format string, args ...any) {
@@ -48,6 +49,65 @@ func PackageSpec(server Server) (string, string) {
 }
 
 var tokenRe = regexp.MustCompile(`[\s;|&()]+`)
+
+// DenoInvocation is the replayable form of a deno-launched server's command.
+type DenoInvocation struct {
+	Bin    string
+	Dir    string
+	Config string
+	Entry  string
+}
+
+// DenoSpec derives the deno invocation for a server, reporting false when the
+// entry does not launch deno.
+func DenoSpec(server Server) (DenoInvocation, bool) {
+	parts := []string{server.Command}
+	parts = append(parts, server.Args...)
+	tokens := tokenRe.Split(strings.Join(parts, " "), -1)
+
+	denoAt := -1
+	for i, token := range tokens {
+		if filepath.Base(token) == "deno" {
+			denoAt = i
+			break
+		}
+	}
+	if denoAt < 0 {
+		return DenoInvocation{}, false
+	}
+
+	inv := DenoInvocation{Bin: tokens[denoAt]}
+	// The config and entry are relative to the directory the entry cds into.
+	for i, token := range tokens {
+		if token == "cd" && i+1 < len(tokens) {
+			inv.Dir = tokens[i+1]
+			break
+		}
+	}
+	for i := denoAt + 1; i < len(tokens); i++ {
+		token := tokens[i]
+		switch {
+		case token == "--config" || token == "-c":
+			if i+1 < len(tokens) {
+				inv.Config = tokens[i+1]
+				i++
+			}
+		case token == "--import-map" || token == "--lock" || token == "--env-file" || token == "--transport":
+			i++ // its value is a separate token, never the entry
+		case strings.HasPrefix(token, "-"), token == "run":
+			// subcommand, or a flag with no value of its own
+		default:
+			inv.Entry = token
+		}
+		if inv.Entry != "" {
+			break
+		}
+	}
+	if inv.Entry == "" {
+		return DenoInvocation{}, false
+	}
+	return inv, true
+}
 
 // runBounded runs cmd in its own session/process group and SIGKILLs the group
 // on timeout, so nothing can outlive the bound.
@@ -113,6 +173,39 @@ func materialiseUV(name, spec string, env []string) bool {
 		return true
 	}
 	prewarmLog("%s: FAILED to materialise %s (rc=%d) %s", name, spec, rc, snippet(errOut))
+	return false
+}
+
+// materialiseDeno resolves a deno server's dependency graph, retrying with
+// --reload when the cache is poisoned.
+func materialiseDeno(name string, inv DenoInvocation, env []string) bool {
+	cache := func(reload bool) (int, string) {
+		args := []string{"cache"}
+		if reload {
+			args = append(args, "--reload")
+		}
+		if inv.Config != "" {
+			args = append(args, "--config", inv.Config)
+		}
+		args = append(args, inv.Entry)
+		cmd := exec.Command(inv.Bin, args...)
+		cmd.Dir = inv.Dir
+		cmd.Env = env
+		return runBounded(cmd, prewarmDenoTimeout)
+	}
+
+	rc, errOut := cache(false)
+	if rc == 0 {
+		prewarmLog("%s: materialised deno graph (%s)", name, inv.Entry)
+		return true
+	}
+	prewarmLog("%s: deno cache failed (rc=%d), retrying with --reload: %s", name, rc, snippet(errOut))
+	rc, errOut = cache(true)
+	if rc == 0 {
+		prewarmLog("%s: materialised deno graph (%s, after --reload)", name, inv.Entry)
+		return true
+	}
+	prewarmLog("%s: FAILED to materialise deno graph (%s) (rc=%d) %s", name, inv.Entry, rc, snippet(errOut))
 	return false
 }
 
@@ -204,6 +297,28 @@ func Prewarm(manifestPath string, parallel int) int {
 		}
 	}
 
+	// deno is collected separately: a local checkout has no registry spec to
+	// derive, but it carries the same in-window-resolution trap.
+	type denoJob struct {
+		name string
+		inv  DenoInvocation
+		env  []string
+	}
+	var denoJobs []denoJob
+	for name, server := range servers {
+		if server == nil || !server.Stdio() {
+			continue
+		}
+		inv, ok := DenoSpec(*server)
+		if !ok {
+			continue
+		}
+		// The child env, not this process's: the entry declares the HOME its
+		// own child gets.
+		child, _ := ChildEnv(*server, os.Environ())
+		denoJobs = append(denoJobs, denoJob{name, inv, environSlice(child)})
+	}
+
 	// Sweep BEFORE materialising so we never touch our own children.
 	killed := sweepOrphans()
 	for _, k := range killed {
@@ -229,6 +344,11 @@ func Prewarm(manifestPath string, parallel int) int {
 	}
 	for _, job := range uvJobs {
 		if !materialiseUV(job[0], job[1], env) {
+			failures++
+		}
+	}
+	for _, job := range denoJobs {
+		if !materialiseDeno(job.name, job.inv, job.env) {
 			failures++
 		}
 	}
