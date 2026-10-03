@@ -74,11 +74,15 @@ When `enable_domain` + `enable_istio` are true, a `VirtualService` is generated:
 An app that reads the cluster (a console) sets `clusterRead: true`. The chart then renders a
 `ClusterRole`/`ClusterRoleBinding` pair named `<namespace>-read`, bound to the app's own
 `<namespace>-sa` — never a wildcard subject, and never a credential from a Secret. Rules:
-cluster-wide `list`/`watch` on the kinds a console watches, `get`/`list`/`watch` on `secrets`
-(a secrets list returns values; recorded and accepted in OKT-159 as strictly smaller than the
-cluster-admin grant the removed kubeconfig reached) and `get` on `pods/log`. It is never
-rendered for a preview: previews run unreviewed PR code (see `clusterReadOn` in
-`templates/_helpers.tpl`).
+cluster-wide `get`/`list`/`watch` on the kinds a console watches and reads (`get` covers the
+bridge's single-object `get_resource`, `list`/`watch` the reflectors), `get`/`list`/`watch` on
+`secrets` (a secrets list returns values; recorded and accepted in OKT-159 as strictly smaller
+than the cluster-admin grant the removed kubeconfig reached) and `get` on `pods/log`. The
+Deployment of a `clusterRead` host also sets `automountServiceAccountToken: true`: the identity
+is the pod's own projected ServiceAccount token (the OKT-130 kubeconfig mount was removed —
+it carried a Tailscale identity bound to cluster-admin, not a scoped credential), stated
+explicitly rather than inherited from the default. It is never rendered for a preview: previews
+run unreviewed PR code (see `clusterReadOn` in `templates/_helpers.tpl`). See OKT-178.
 
 ### Global config
 
@@ -134,7 +138,7 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.clusterRead | bool | `true` |  |
 | openkite.enable_istio | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
-| openkite.environments.production.tag | string | `"v0.43.3"` |  |
+| openkite.environments.production.tag | string | `"v0.45.1"` |  |
 | openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |
 | openkite.environments.staging.tag | string | `"v0.33.0"` |  |
 | openkite.image.repository | string | `"ghcr.io/jomakori/openkite"` |  |
