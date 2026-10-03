@@ -94,6 +94,17 @@ openkite:
   # granted the console cluster-admin. See OKT-159.
   # `list secrets` does return values rather than keys — that exposure is
   # accepted here and is strictly smaller than the cluster-admin it replaces.
+  #
+  # OKT-178 makes that identity explicit and complete:
+  #  * the Deployment now sets `automountServiceAccountToken: true` for a
+  #    clusterRead host, so "the kubeconfig mount is gone, the pod's own
+  #    projected SA token is the identity" is stated in the manifest rather
+  #    than inherited from the API-server default;
+  #  * the ClusterRole grants `get` alongside `list`/`watch` on the watched
+  #    kinds, because the console's bridge performs single-object reads
+  #    (`get_resource`) as well as reflector lists — without it every
+  #    detail/open read 403s.
+  # Previews still render none of this: they run unreviewed PR code.
   clusterRead: true
   # GHCR, not the shared ECR registry.
   image:
