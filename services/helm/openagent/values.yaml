@@ -191,6 +191,8 @@ litellm:
           merge_reasoning_content_in_choices: true
           order: 1
         model_info:
+          max_budget: 5
+          budget_duration: 30d
           input_cost_per_token: 0.00000014
           output_cost_per_token: 0.00000028
           cache_read_input_token_cost: 0.00000003
@@ -202,12 +204,26 @@ litellm:
           merge_reasoning_content_in_choices: true
           order: 1
         model_info:
+          max_budget: 5
+          budget_duration: 30d
           input_cost_per_token: 0.00000015
           output_cost_per_token: 0.0000005
           cache_read_input_token_cost: 0.00000003
       # Credit-independent last resort: the only hop that needs neither Kilo
       # balance nor the Claude proxy, so every chain ends here. (Native prefix
       # caching is automatic server-side.)
+      # Kilo Pass FREE tier — answers at a negative Kilo balance, so it is the
+      # terminal hop of every chain. Costs $0; nothing else is free.
+      - model_name: kilo-free
+        litellm_params:
+          model: openai/kilo-auto/free
+          api_base: https://api.kilo.ai/api/gateway/v1
+          api_key: os.environ/KILO_API_KEY
+          merge_reasoning_content_in_choices: true
+          order: 1
+        model_info:
+          input_cost_per_token: 0
+          output_cost_per_token: 0
       - model_name: deepseek-v4-flash-direct
         litellm_params:
           model: deepseek/deepseek-v4-flash
@@ -334,6 +350,8 @@ hermes-agent:
         model: claude/sonnet-5
       - provider: litellm
         model: deepseek-v4-flash-direct
+      - provider: litellm
+        model: kilo-free
     providers:
       litellm:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
@@ -617,82 +635,98 @@ hermes-agent:
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-sonnet-5
+                - litellm/kilo-free
               hephaestus:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash
                 - litellm/claude-sonnet-5
+                - litellm/kilo-free
               prometheus:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
+                - litellm/kilo-free
               atlas:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash
                 - litellm/claude-sonnet-5
+                - litellm/kilo-free
               metis:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
+                - litellm/kilo-free
               momus:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
+                - litellm/kilo-free
               oracle:
                 - litellm/claude-opus-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash-direct
+                - litellm/kilo-free
               librarian:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-haiku-4-5
+                - litellm/kilo-free
               explore:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-haiku-4-5
+                - litellm/kilo-free
               multimodal-looker:
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash-direct
+                - litellm/kilo-free
               sisyphus-junior:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash
                 - litellm/claude-haiku-4-5
+                - litellm/kilo-free
             categories:
               quick:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-haiku-4-5
+                - litellm/kilo-free
               deep:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/claude-sonnet-5
+                - litellm/kilo-free
               ultrabrain:
                 - litellm/claude-opus-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash-direct
+                - litellm/kilo-free
               visual-engineering:
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash-direct
+                - litellm/kilo-free
               writing:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/glm-5.3-flash
                 - litellm/deepseek-v4-flash
                 - litellm/claude-sonnet-5
+                - litellm/kilo-free
 
     mcp_servers:
       # ── Manifest = single source of truth ──────────────────────────────
