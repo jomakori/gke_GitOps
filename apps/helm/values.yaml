@@ -116,8 +116,9 @@ openkite:
     retryTimeout: 5s
   environments:
     staging:
-      tag: v0.33.0
-      subdomain: staging-openkite
+      # Inside the gated *.openkite.maklab.net wildcard (CF Access + istio privateHosts).
+      subdomain: staging.openkite
+      tag: v0.52.0
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
       tag: v0.52.0
