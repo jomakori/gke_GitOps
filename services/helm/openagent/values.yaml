@@ -258,6 +258,19 @@ litellm:
           order: 1
         model_info:
           mode: responses
+      # Canary: Codex-tuned coder, Responses-only. Head-to-head vs copilot-luna
+      # (2026-10-04): quality parity on codegen / bugfix / merge / tool tasks
+      # (11/11 each), but ~10-30x the cost ($1.75/$14 vs $0.10/$0.50 per M).
+      # Staged at hephaestus rung 2 only, so it runs solely on a luna miss;
+      # promote only if telemetry beats luna on completed-task credits.
+      - model_name: copilot-codex
+        litellm_params:
+          model: github_copilot/gpt-5.3-codex
+          order: 1
+        model_info:
+          mode: responses
+          input_cost_per_token: 0.00000175
+          output_cost_per_token: 0.000014
       # Credit-independent spillway floor: the only hop that needs neither the
       # Copilot nor the Claude subscription, so every chain ends here. (Native
       # prefix caching is automatic server-side.)
@@ -644,6 +657,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
               hephaestus:
                 - litellm/copilot-luna
+                - litellm/copilot-codex
                 - litellm/claude-sonnet-5
                 - litellm/copilot-mai-code
                 - litellm/deepseek-v4-flash-direct
