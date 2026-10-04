@@ -640,7 +640,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.plugins.entries.omo.settings.categories.quick[2] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.quick[3] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.ultrabrain[0] | string | `"litellm/claude-opus-5"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.categories.ultrabrain[1] | string | `"litellm/copilot-sol"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.categories.ultrabrain[1] | string | `"litellm/copilot-sonnet-5.5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.ultrabrain[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.visual-engineering[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.visual-engineering[1] | string | `"litellm/copilot-gemini-3.8-flash"` |  |
@@ -679,7 +679,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.plugins.entries.omo.settings.chains.multimodal-looker[2] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.multimodal-looker[3] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.oracle[0] | string | `"litellm/claude-opus-5"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.oracle[1] | string | `"litellm/copilot-sol"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.oracle[1] | string | `"litellm/copilot-sonnet-5.5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.oracle[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.prometheus[0] | string | `"litellm/copilot-luna"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.prometheus[1] | string | `"litellm/claude-sonnet-5"` |  |
@@ -877,10 +877,9 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.model_list[1].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[1].model_info.mode | string | `"responses"` |  |
 | litellm.proxy_config.model_list[1].model_name | string | `"copilot-grok"` |  |
-| litellm.proxy_config.model_list[2].litellm_params.model | string | `"github_copilot/gpt-6.1-sol"` |  |
+| litellm.proxy_config.model_list[2].litellm_params.model | string | `"github_copilot/claude-sonnet-5.5"` |  |
 | litellm.proxy_config.model_list[2].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[2].model_info.mode | string | `"responses"` |  |
-| litellm.proxy_config.model_list[2].model_name | string | `"copilot-sol"` |  |
+| litellm.proxy_config.model_list[2].model_name | string | `"copilot-sonnet-5.5"` |  |
 | litellm.proxy_config.model_list[3].litellm_params.model | string | `"github_copilot/gemini-3.8-flash"` |  |
 | litellm.proxy_config.model_list[3].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[3].model_info.input_cost_per_token | float | `7.5e-7` |  |
