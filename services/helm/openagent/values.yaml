@@ -224,17 +224,17 @@ litellm:
           mode: responses
           input_cost_per_token: 0.0000002
           output_cost_per_token: 0.0000012
-      - model_name: copilot-terra
-        litellm_params:
-          model: github_copilot/gpt-5.6-terra
-          order: 1
-        model_info:
-          mode: responses
-          input_cost_per_token: 0.000002
-          output_cost_per_token: 0.000012
       - model_name: copilot-grok
         litellm_params:
           model: github_copilot/grok-4.7
+          order: 1
+        model_info:
+          mode: responses
+      # Strong reasoning fallback for the high-thinking lanes (oracle/ultrabrain):
+      # newest-gen Sol (Responses-only) replaces the retired gpt-5.6-terra rung.
+      - model_name: copilot-sol
+        litellm_params:
+          model: github_copilot/gpt-6.1-sol
           order: 1
         model_info:
           mode: responses
@@ -245,13 +245,6 @@ litellm:
         model_info:
           input_cost_per_token: 0.00000075
           output_cost_per_token: 0.00000375
-      - model_name: copilot-gpt-5-mini
-        litellm_params:
-          model: github_copilot/gpt-5-mini
-          order: 1
-        model_info:
-          input_cost_per_token: 0.00000025
-          output_cost_per_token: 0.000002
       - model_name: copilot-mai-code
         litellm_params:
           model: github_copilot/mai-code-1.1-flash
@@ -276,7 +269,7 @@ litellm:
       # prefix caching is automatic server-side.)
       - model_name: deepseek-v4-flash-direct
         litellm_params:
-          model: deepseek/deepseek-v4-flash
+          model: deepseek/deepseek-flash
           api_key: os.environ/DEEPSEEK_API_KEY
           order: 1
           use_chat_completions_api: true
@@ -295,7 +288,7 @@ litellm:
           cache_read_input_token_cost: 0.0000005
       - model_name: claude-sonnet-5
         litellm_params:
-          model: openai/claude-sonnet-4-6
+          model: openai/claude-sonnet-5
           api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
           api_key: os.environ/CLAUDE_PROXY_API_KEY
           rpm: 120
@@ -599,11 +592,9 @@ hermes-agent:
       # under it; unset, the host default of 10 applies and the real ceiling is
       # only implied.
       max_concurrent_children: 8
-      # Backup hops: chat-native cheap Copilot, then Claude haiku (flat fee),
-      # then the credit-independent direct floor.
+      # Backup hops: Claude haiku (flat fee), then the credit-independent
+      # direct floor.
       fallback_providers:
-        - provider: litellm
-          model: copilot-gpt-5-mini
         - provider: litellm
           model: claude-haiku-4-5
         - provider: litellm
@@ -669,7 +660,6 @@ hermes-agent:
               atlas:
                 - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/copilot-gpt-5-mini
                 - litellm/deepseek-v4-flash-direct
               metis:
                 - litellm/copilot-luna
@@ -683,8 +673,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
               oracle:
                 - litellm/claude-opus-5
-                - litellm/copilot-grok
-                - litellm/copilot-terra
+                - litellm/copilot-sol
                 - litellm/deepseek-v4-flash-direct
               librarian:
                 - litellm/deepseek-v4-flash-direct
@@ -704,7 +693,6 @@ hermes-agent:
               sisyphus-junior:
                 - litellm/copilot-luna
                 - litellm/claude-haiku-4-5
-                - litellm/copilot-gpt-5-mini
                 - litellm/deepseek-v4-flash-direct
             categories:
               quick:
@@ -719,8 +707,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
-                - litellm/copilot-grok
-                - litellm/copilot-terra
+                - litellm/copilot-sol
                 - litellm/deepseek-v4-flash-direct
               visual-engineering:
                 - litellm/claude-sonnet-5
