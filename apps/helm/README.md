@@ -138,9 +138,9 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.clusterRead | bool | `true` |  |
 | openkite.enable_istio | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
-| openkite.environments.production.tag | string | `"v0.45.1"` |  |
-| openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |
-| openkite.environments.staging.tag | string | `"v0.33.0"` |  |
+| openkite.environments.production.tag | string | `"v0.52.0"` |  |
+| openkite.environments.staging.subdomain | string | `"staging.openkite"` |  |
+| openkite.environments.staging.tag | string | `"v0.52.0"` |  |
 | openkite.image.repository | string | `"ghcr.io/jomakori/openkite"` |  |
 | openkite.istio.gateway | string | `"istio-system/maklab-gateway"` |  |
 | openkite.istio.requestTimeout | string | `"30s"` |  |
