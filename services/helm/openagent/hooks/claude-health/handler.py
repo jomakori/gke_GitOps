@@ -69,7 +69,7 @@ async def handle(event_type: str, context: dict) -> None:
     payload = {
         "content": (
             f"⚠️ **Claude lane down** — {problem}.\n"
-            "claude* requests fail over to DeepSeek-direct/Kilo meanwhile. "
+            "claude* requests fail over to DeepSeek-direct/Copilot meanwhile. "
             "Fix: `k8s-eso-auth-recovery` skill § Claude OAuth session renewal."
         )
     }
