@@ -748,7 +748,7 @@ data:
     | atlas | Atlas · Plan Executor | copilot-luna | claude-sonnet-5 → deepseek-v4-flash-direct |
     | metis | Metis · Plan Consultant | copilot-luna | claude-sonnet-5 → copilot-mai-code → deepseek-v4-flash-direct |
     | momus | Momus · Plan Critic | copilot-luna | claude-sonnet-5 → copilot-gemini-3.8-flash → deepseek-v4-flash-direct |
-    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | copilot-sol → deepseek-v4-flash-direct |
+    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | copilot-sonnet-5.5 → deepseek-v4-flash-direct |
     | librarian | Librarian · Research | deepseek-v4-flash-direct | copilot-luna → claude-haiku-4-5 → deepseek-v4-flash-direct |
     | explore | Explore · Repository Exploration | deepseek-v4-flash-direct | copilot-luna → claude-haiku-4-5 → deepseek-v4-flash-direct |
     | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | copilot-gemini-3.8-flash → claude-haiku-4-5 → deepseek-v4-flash-direct |
@@ -761,11 +761,11 @@ data:
     |---|---|---|
     | quick | deepseek-v4-flash-direct | copilot-luna → claude-haiku-4-5 → deepseek-v4-flash-direct |
     | deep | copilot-luna | claude-sonnet-5 → copilot-grok → deepseek-v4-flash-direct |
-    | ultrabrain | claude-opus-5 | copilot-sol → deepseek-v4-flash-direct |
+    | ultrabrain | claude-opus-5 | copilot-sonnet-5.5 → deepseek-v4-flash-direct |
     | visual-engineering | claude-sonnet-5 | copilot-gemini-3.8-flash → claude-haiku-4-5 → deepseek-v4-flash-direct |
     | writing | copilot-luna | claude-sonnet-5 → copilot-gemini-3.8-flash → deepseek-v4-flash-direct |
 
-    **Pricing** ($/M in/out): `copilot-luna` (gpt-6-luna, responses, ~$0.10/$0.50 — cheapest entitled) leads the interactive/general lanes; `copilot-grok` (grok-4.7, 2/6) is the cheapest reasoning fallback and `copilot-sol` (gpt-6.1-sol, the strongest entitled reasoner) anchors the high-thinking lanes behind Claude; the Claude proxy (Claude Max, flat fee) leads where reasoning or vision IS the work and on low-volume quality lanes — `claude-sonnet-5` ($3.00/$15.00), `claude-opus-5` ($5.00/$25.00), `claude-haiku-4-5` ($1.00/$5.00). `deepseek-v4-flash-direct` (native `DEEPSEEK_API_KEY`, no `model_info` → SpendLogs logs $0.00, same gap as claude-proxy) is the cheap variable-cost spillway floor every chain ends on. The Copilot ids are passthrough (absent from LiteLLM's own `github_copilot` price map), so costs are pinned in the chart where known; the Responses-only ids (`gpt-6-luna`, `grok-4.7`, `gpt-6.1-sol`, `mai-code-1.1-flash`, `gpt-5.3-codex`) carry `model_info.mode: responses`. DeepSeek-direct leads the high-volume lanes (librarian/explore/quick) and all delegation fan-out — at Copilot rates those lanes alone would burn ~half the credit wallet on the fleet's lowest-value tokens. DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost ($1.60/$3.20 and up per M).
+    **Pricing** ($/M in/out): `copilot-luna` (gpt-6-luna, responses, ~$0.10/$0.50 — cheapest entitled) leads the interactive/general lanes; `copilot-grok` (grok-4.7, 2/6) is the cheapest reasoning fallback and `copilot-sonnet-5.5` (Copilot-served Claude Sonnet 5.5, the strongest entitled reasoner) anchors the high-thinking lanes behind Claude; the Claude proxy (Claude Max, flat fee) leads where reasoning or vision IS the work and on low-volume quality lanes — `claude-sonnet-5` ($3.00/$15.00), `claude-opus-5` ($5.00/$25.00), `claude-haiku-4-5` ($1.00/$5.00). `deepseek-v4-flash-direct` (native `DEEPSEEK_API_KEY`, no `model_info` → SpendLogs logs $0.00, same gap as claude-proxy) is the cheap variable-cost spillway floor every chain ends on. The Copilot ids are passthrough (absent from LiteLLM's own `github_copilot` price map), so costs are pinned in the chart where known; the Responses-only ids (`gpt-6-luna`, `grok-4.7`, `mai-code-1.1-flash`, `gpt-5.3-codex`) carry `model_info.mode: responses`. DeepSeek-direct leads the high-volume lanes (librarian/explore/quick) and all delegation fan-out — at Copilot rates those lanes alone would burn ~half the credit wallet on the fleet's lowest-value tokens. DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost ($1.60/$3.20 and up per M).
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -820,7 +820,7 @@ data:
     |------------|---------|---------|
     | copilot-luna | github_copilot (gpt-6-luna, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
     | copilot-grok | github_copilot (grok-4.7, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
-    | copilot-sol | github_copilot (gpt-6.1-sol, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
+    | copilot-sonnet-5.5 | github_copilot (claude-sonnet-5.5) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
     | copilot-gemini-3.8-flash | github_copilot (gemini-3.8-flash) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
     | copilot-mai-code | github_copilot (mai-code-1.1-flash, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
     | copilot-codex | github_copilot (gpt-5.3-codex, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
@@ -829,7 +829,7 @@ data:
     | claude-sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-haiku-4-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
-    **GitHub Copilot**: the subscription lane — OAuth device flow, no `api_key`. The long-lived access token is seeded from Doppler (`svc_openagent` → `GITHUB_COPILOT_ACCESS_TOKEN`) into `GITHUB_COPILOT_TOKEN_DIR/access-token` via a Secret volume; each replica mints its own `api-key.json` in a per-replica emptyDir. The provider resolves the credential at MODEL REGISTRATION, so the token file MUST be present or every litellm pod crash-loops on boot. The newest-generation Copilot models (`gpt-6-luna`, `grok-4.7`, `gpt-6.1-sol`, `mai-code-1.1-flash`) are Responses-API-only and carry `model_info.mode: responses`, which makes LiteLLM bridge the fleet's `/chat/completions` calls to `/responses`; `gemini-3.8-flash` is still served on `/chat/completions`.
+    **GitHub Copilot**: the subscription lane — OAuth device flow, no `api_key`. The long-lived access token is seeded from Doppler (`svc_openagent` → `GITHUB_COPILOT_ACCESS_TOKEN`) into `GITHUB_COPILOT_TOKEN_DIR/access-token` via a Secret volume; each replica mints its own `api-key.json` in a per-replica emptyDir. The provider resolves the credential at MODEL REGISTRATION, so the token file MUST be present or every litellm pod crash-loops on boot. The newest-generation Copilot models (`gpt-6-luna`, `grok-4.7`, `mai-code-1.1-flash`) are Responses-API-only and carry `model_info.mode: responses`, which makes LiteLLM bridge the fleet's `/chat/completions` calls to `/responses`; `gemini-3.8-flash` and `copilot-sonnet-5.5` are served on `/chat/completions`.
 
     **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — gateway cooldowns would fight OMO's runtime fallback. OMO owns both layers: per-agent chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on `retry_on_errors`, 3 attempts, 30s cooldown, restore-primary). Hermes rides `fallback_providers` (claude-sonnet-5 → claude-haiku-4-5 → deepseek-v4-flash-direct); **delegated children declare two backups** (`delegation.fallback_providers: [claude-haiku-4-5, deepseek-v4-flash-direct]`) — per-agent chains own worker escalation. **`agent.api_max_retries: 1`**: one attempt per model then the next layer (a 429 fails over eagerly; 5xx/transport hit retries-exhausted immediately) — the host default of 3 replayed a refusal against the model that had just refused it, the 2026-09-24 error cycle that burned 3 extra calls per worker.
 
