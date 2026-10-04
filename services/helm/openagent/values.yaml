@@ -632,6 +632,20 @@ hermes-agent:
       entries:
         omo:
           settings:
+            # Jev decision layer (hermes-omo-plugin). Shadow mode is ON: the
+            # harness runs Jev's `pick_agent` beside the engine's real decision,
+            # off the dispatch hot path, and NEVER routes on it. Authoritative
+            # routing stays OFF (jev_routing_enabled: false) until shadow
+            # evidence clears the bar. Report with the `jev_report` command;
+            # rollback is deleting these keys. Requires the plugin PRs merged to
+            # main (provisioned via OMO_PROVISION_REF).
+            jev_shadow_enabled: true
+            jev_shadow_path: "/opt/data/.omo/jev-shadow.jsonl"
+            jev_shadow_packs:
+              - pick_agent
+            jev_base_url: "https://api.typesafe.ai"
+            jev_model: "jev-latest"
+            jev_routing_enabled: false
             # Per-agent/category chains, walked on retry_on_errors (401 while a
             # Copilot OAuth token is unseeded, 429/5xx under throttling).
             runtime_fallback:

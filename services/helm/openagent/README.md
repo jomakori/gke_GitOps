@@ -692,6 +692,12 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[1] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[2] | string | `"litellm/copilot-grok"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[3] | string | `"litellm/deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.jev_base_url | string | `"https://api.typesafe.ai"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.jev_model | string | `"jev-latest"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.jev_routing_enabled | bool | `false` |  |
+| hermes-agent.config.plugins.entries.omo.settings.jev_shadow_enabled | bool | `true` |  |
+| hermes-agent.config.plugins.entries.omo.settings.jev_shadow_packs[0] | string | `"pick_agent"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.jev_shadow_path | string | `"/opt/data/.omo/jev-shadow.jsonl"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.runtime_fallback.cooldown_seconds | int | `30` |  |
 | hermes-agent.config.plugins.entries.omo.settings.runtime_fallback.enabled | bool | `true` |  |
 | hermes-agent.config.plugins.entries.omo.settings.runtime_fallback.max_fallback_attempts | int | `6` |  |
