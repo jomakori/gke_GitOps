@@ -252,7 +252,7 @@ litellm:
         model_info:
           input_cost_per_token: 0.00000025
           output_cost_per_token: 0.000002
-      - model_name: copilot-mai-code-1-flash
+      - model_name: copilot-mai-code
         litellm_params:
           model: github_copilot/mai-code-1.1-flash
           order: 1
@@ -337,12 +337,13 @@ hermes-agent:
       # DeepSeek-direct as the free spillway floor if the Copilot hop is down.
       default: copilot-luna
       provider: litellm
-    # Sisyphus fallback: Claude (flat-fee), then haiku, then the direct floor.
+    # Sisyphus fallback: Claude (flat-fee), then the cheap code-tuned Copilot
+    # rung, then the direct floor.
     fallback_providers:
       - provider: litellm
         model: claude-sonnet-5
       - provider: litellm
-        model: claude-haiku-4-5
+        model: copilot-mai-code
       - provider: litellm
         model: deepseek-v4-flash-direct
     providers:
@@ -571,9 +572,10 @@ hermes-agent:
       # weekly uncached-input line to confirm the reclaim beats the cache loss.
       proactive_prune_tokens: 48000
     delegation:
-      # Highest fan-out tier — subscription-first (Copilot flat fee) keeps 8
-      # children off variable-cost metering; the direct route is the floor.
-      model: copilot-luna
+      # Highest fan-out tier — 8 children at depth 3 can be hundreds of calls, so
+      # the rpm-uncapped cheap headroom leads. Claude's 60/120 rpm pool would 429
+      # instantly and hand back a wasted round trip.
+      model: deepseek-v4-flash-direct
       provider: litellm
       base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
       api_key: ${LITELLM_MASTER_KEY}
@@ -584,10 +586,11 @@ hermes-agent:
       # under it; unset, the host default of 10 applies and the real ceiling is
       # only implied.
       max_concurrent_children: 8
-      # Backup hops: Claude haiku (flat fee) then the credit-independent direct
-      # floor — a plain delegate_task child still needs a live route when the
-      # subscription primary is down.
+      # Backup hops: chat-native cheap Copilot, then Claude haiku (flat fee),
+      # then the credit-independent direct floor.
       fallback_providers:
+        - provider: litellm
+          model: copilot-gpt-5-mini
         - provider: litellm
           model: claude-haiku-4-5
         - provider: litellm
@@ -607,12 +610,17 @@ hermes-agent:
 
     auxiliary:
       vision:
-        # Vision stays Claude (flat-fee proxy); Copilot gemini is the backup.
+        # Vision stays Claude (flat-fee proxy); Copilot gemini absorbs natively,
+        # then Claude haiku is the last vision-capable rung before the text floor.
         provider: litellm
         model: claude-sonnet-5
         fallback_providers:
           - provider: litellm
             model: copilot-gemini-3.8-flash
+          - provider: litellm
+            model: claude-haiku-4-5
+          - provider: litellm
+            model: deepseek-v4-flash-direct
     plugins:
       enabled:
         - discord-platform
@@ -632,73 +640,83 @@ hermes-agent:
               sisyphus:
                 - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/claude-haiku-4-5
+                - litellm/copilot-grok
                 - litellm/deepseek-v4-flash-direct
               hephaestus:
                 - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/claude-haiku-4-5
+                - litellm/copilot-mai-code
                 - litellm/deepseek-v4-flash-direct
               prometheus:
                 - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/copilot-terra
+                - litellm/copilot-grok
                 - litellm/deepseek-v4-flash-direct
               atlas:
                 - litellm/copilot-luna
                 - litellm/claude-sonnet-5
+                - litellm/copilot-gpt-5-mini
                 - litellm/deepseek-v4-flash-direct
               metis:
                 - litellm/copilot-luna
                 - litellm/claude-sonnet-5
+                - litellm/copilot-mai-code
                 - litellm/deepseek-v4-flash-direct
               momus:
-                - litellm/copilot-gemini-3.8-flash
+                - litellm/copilot-luna
                 - litellm/claude-sonnet-5
+                - litellm/copilot-gemini-3.8-flash
                 - litellm/deepseek-v4-flash-direct
               oracle:
                 - litellm/claude-opus-5
                 - litellm/copilot-grok
-                - litellm/copilot-gemini-3.8-flash
+                - litellm/copilot-terra
                 - litellm/deepseek-v4-flash-direct
               librarian:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/copilot-luna
                 - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               explore:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/copilot-luna
                 - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               multimodal-looker:
                 - litellm/claude-sonnet-5
                 - litellm/copilot-gemini-3.8-flash
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
                 - litellm/copilot-luna
                 - litellm/claude-haiku-4-5
+                - litellm/copilot-gpt-5-mini
                 - litellm/deepseek-v4-flash-direct
             categories:
               quick:
                 - litellm/deepseek-v4-flash-direct
                 - litellm/copilot-luna
                 - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               deep:
                 - litellm/copilot-luna
                 - litellm/claude-sonnet-5
+                - litellm/copilot-grok
                 - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
                 - litellm/copilot-grok
-                - litellm/copilot-gemini-3.8-flash
+                - litellm/copilot-terra
                 - litellm/deepseek-v4-flash-direct
               visual-engineering:
                 - litellm/claude-sonnet-5
                 - litellm/copilot-gemini-3.8-flash
-                - litellm/copilot-terra
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               writing:
                 - litellm/copilot-luna
                 - litellm/claude-sonnet-5
+                - litellm/copilot-gemini-3.8-flash
                 - litellm/deepseek-v4-flash-direct
 
     mcp_servers:
