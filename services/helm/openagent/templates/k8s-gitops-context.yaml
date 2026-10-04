@@ -722,55 +722,49 @@ data:
     >
     > **FALLBACK = 2 layers, both OMO-managed**: per-agent chains (spawn-time)
     > + the `runtime_fallback` state machine (auto-switch on the
-    > `retry_on_errors` set — 402 is Kilo Pass out of credit — 3 attempts, 30s
-    > cooldown, restore primary). LiteLLM router_settings is PLAIN ACCESS
-    > (`disable_cooldowns: true`, `num_retries: 0`): cooldowns there would fight
-    > OMO's own fallback. Hermes rides the top-level `fallback_providers`;
-    > delegated children carry ONE backup
-    > (`delegation.fallback_providers: [deepseek-v4-flash-direct]`) because both
-    > Kilo models share `KILO_API_KEY` — a second Kilo hop 402s in the same
-    > breath, so the single credit-independent hop is the only useful one. The
-    > 3-entry list it replaced made every attempt re-probe dead models.
-    > Model ids are LiteLLM aliases.
+    > `retry_on_errors` set — 401 while a Copilot OAuth token is unseeded,
+    > 429/5xx under throttling — 3 attempts, 30s cooldown, restore primary).
+    > LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`,
+    > `num_retries: 0`): cooldowns there would fight OMO's own fallback. Hermes
+    > rides the top-level `fallback_providers`; delegated children carry two
+    > backups (`delegation.fallback_providers: [claude-haiku-4-5,
+    > deepseek-v4-flash-direct]`). Model ids are LiteLLM aliases.
     >
-    > **ORDERING**: `deepseek-v4-flash-direct` leads every execution lane
-    > (unmetered, no Kilo burn); Kilo Pass flash tiers sit mid-chain and 402
-    > together when the balance dies; Claude leads where reasoning or vision
-    > IS the work.
+    > **ORDERING**: `copilot-luna` leads every execution lane (GitHub Copilot
+    > subscription, flat fee); Claude leads where reasoning or vision IS the
+    > work; `deepseek-v4-flash-direct` is the cheap variable-cost spillway
+    > floor every chain ends on.
     >
-    > **TERMINAL INVARIANT**: every chain ENDS on `kilo-free` (Kilo Pass's free
-    > tier), the only hop that answers at a negative Kilo balance — measured 200
-    > while every paid tier 402'd. BYOK is a separate namespace, not Kilo Pass:
-    > it routes through a provider key registered on the account and cannot be
-    > reached from this chart, so nothing falls through to it. The paid Kilo
-    > tiers carry a `max_budget` burn cap.
+    > **TERMINAL INVARIANT**: every chain ENDS on `deepseek-v4-flash-direct`
+    > (native `DEEPSEEK_API_KEY`), the credit-independent floor that needs
+    > neither the Copilot nor the Claude subscription.
 
     | OMO Agent | Role | Primary | Fallback chain |
     |-------|------|-------|----------|
-    | sisyphus | Sisyphus · Ultraworker (orchestrator) | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-sonnet-5 → kilo-free |
-    | hephaestus | Hephaestus · Deep Agent | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-sonnet-5 → kilo-free |
-    | prometheus | Prometheus · Plan Builder | deepseek-v4-flash-direct | claude-sonnet-5 → deepseek-v4-flash → glm-5.3-flash → kilo-free |
-    | atlas | Atlas · Plan Executor | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-sonnet-5 → kilo-free |
-    | metis | Metis · Plan Consultant | deepseek-v4-flash-direct | claude-sonnet-5 → deepseek-v4-flash → glm-5.3-flash → kilo-free |
-    | momus | Momus · Plan Critic | deepseek-v4-flash-direct | claude-sonnet-5 → deepseek-v4-flash → glm-5.3-flash → kilo-free |
-    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct → kilo-free |
-    | librarian | Librarian · Research | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-haiku-4-5 → kilo-free |
-    | explore | Explore · Repository Exploration | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-haiku-4-5 → kilo-free |
-    | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct → kilo-free |
-    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-haiku-4-5 → kilo-free |
-    | (no scribe — writing routes via `writing` category) | writer | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-sonnet-5 → kilo-free |
+    | sisyphus | Sisyphus · Ultraworker (orchestrator) | copilot-luna | claude-sonnet-5 → claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | hephaestus | Hephaestus · Deep Agent | copilot-luna | claude-sonnet-5 → claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | prometheus | Prometheus · Plan Builder | copilot-luna | claude-sonnet-5 → copilot-terra → deepseek-v4-flash-direct |
+    | atlas | Atlas · Plan Executor | copilot-luna | claude-sonnet-5 → deepseek-v4-flash-direct |
+    | metis | Metis · Plan Consultant | copilot-luna | claude-sonnet-5 → deepseek-v4-flash-direct |
+    | momus | Momus · Plan Critic | copilot-gemini-3.8-flash | claude-sonnet-5 → deepseek-v4-flash-direct |
+    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | copilot-sol → copilot-gemini-3.8-flash → deepseek-v4-flash-direct |
+    | librarian | Librarian · Research | deepseek-v4-flash-direct | copilot-luna → claude-haiku-4-5 |
+    | explore | Explore · Repository Exploration | deepseek-v4-flash-direct | copilot-luna → claude-haiku-4-5 |
+    | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | copilot-gemini-3.8-flash → deepseek-v4-flash-direct |
+    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | copilot-luna | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | (no scribe — writing routes via `writing` category) | writer | copilot-luna | claude-sonnet-5 → deepseek-v4-flash-direct |
 
     Categories (used when no named agent fits):
 
     | Category | Primary | Fallback chain |
     |---|---|---|
-    | quick | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-haiku-4-5 → kilo-free |
-    | deep | deepseek-v4-flash-direct | deepseek-v4-flash → glm-5.3-flash → claude-sonnet-5 → kilo-free |
-    | ultrabrain | claude-opus-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct → kilo-free |
-    | visual-engineering | claude-sonnet-5 | deepseek-v4-flash → glm-5.3-flash → deepseek-v4-flash-direct → kilo-free |
-    | writing | deepseek-v4-flash-direct | glm-5.3-flash → deepseek-v4-flash → claude-sonnet-5 → kilo-free |
+    | quick | deepseek-v4-flash-direct | copilot-luna → claude-haiku-4-5 |
+    | deep | copilot-luna | claude-sonnet-5 → deepseek-v4-flash-direct |
+    | ultrabrain | claude-opus-5 | copilot-sol → copilot-gemini-3.8-flash → deepseek-v4-flash-direct |
+    | visual-engineering | claude-sonnet-5 | copilot-gemini-3.8-flash → copilot-terra → deepseek-v4-flash-direct |
+    | writing | copilot-luna | claude-sonnet-5 → deepseek-v4-flash-direct |
 
-    **Pricing** ($/M in/out): `deepseek-v4-flash-direct` (native `DEEPSEEK_API_KEY`, no `model_info` → SpendLogs logs $0.00, same gap as claude-proxy) leads every execution lane; Kilo Pass `deepseek-v4-flash` $0.14/$0.28 and `glm-5.3-flash` $0.15/$0.50 sit mid-chain — an exhausted Kilo balance 402s and walks to Claude, which bills the subscription-backed claude-proxy; the slash-free aliases mirror the `claude/*` entries. DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost ($1.60/$3.20 and up per M); the five `byteplus-coding/*` BYOK models were the original target of that removal. Those were BYOK, not Kilo Pass: BYOK routes through a provider key registered on the account, bills the provider, cannot be charged to Kilo balance, and does NOT fall back to Kilo's keys if the key fails — so with no BYOK key registered, nothing routes through it. Kilo Pass serves only its own `bytedance-seed/*` catalogue, on Kilo credits. `kilo-free` (Kilo Pass free tier, $0) terminates every chain, and the paid Kilo tiers carry a 30-day `max_budget` burn cap so a runaway lane cannot outspend it.
+    **Pricing** ($/M in/out): `copilot-luna` (gpt-5.6-luna, $0.20/$1.20) leads every execution lane on the GitHub Copilot subscription; the Claude proxy (Claude Max, flat fee) leads where reasoning or vision IS the work — `claude-sonnet-5` ($3.00/$15.00), `claude-opus-5` ($5.00/$25.00), `claude-haiku-4-5` ($1.00/$5.00). `deepseek-v4-flash-direct` (native `DEEPSEEK_API_KEY`, no `model_info` → SpendLogs logs $0.00, same gap as claude-proxy) is the cheap variable-cost spillway floor every chain ends on. The Copilot `gpt-5.6-*` / `gemini-3.8-flash` ids are passthrough ids not yet in LiteLLM's own `github_copilot` price map, so those costs are pinned in the chart and verified/pinned by a follow-up ticket; `copilot-mai-code-1-flash` carries no `model_info`. DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost ($1.60/$3.20 and up per M).
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -823,20 +817,20 @@ data:
     **LiteLLM models** (10 configured):
     | Model Name | Backend | API Key |
     |------------|---------|---------|
-    | deepseek-v4-flash | Kilo Pass (openai) | KILO_API_KEY |
-    | glm-5.3-flash | Kilo Pass (openai) | KILO_API_KEY |
+    | copilot-luna | github_copilot (gpt-5.6-luna) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
+    | copilot-terra | github_copilot (gpt-5.6-terra) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
+    | copilot-sol | github_copilot (gpt-5.6-sol) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
+    | copilot-gemini-3.8-flash | github_copilot (gemini-3.8-flash) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
+    | copilot-gpt-5-mini | github_copilot (gpt-5-mini) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
+    | copilot-mai-code-1-flash | github_copilot (mai-code-1-flash) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
     | deepseek-v4-flash-direct | deepseek (native) | DEEPSEEK_API_KEY |
-    | claude/sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
-    | claude/opus-4 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
-    | claude/opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
-    | claude/haiku-4-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-haiku-4-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
-    **Kilo Pass**: carries the two cheap routes and is metered — when the balance runs out both aliases 402 together, which is what pushes a chain onto Claude and then the direct route. `KILO_API_KEY` is referenced again as of 2026-09.
+    **GitHub Copilot**: the subscription lane — OAuth device flow, no `api_key`; the token is seeded under `GITHUB_COPILOT_TOKEN_DIR`. A Copilot hop hit before its token is seeded returns 401, which is in `retry_on_errors`, so it falls through to the Claude / DeepSeek hops — nothing breaks while Copilot is unauthenticated.
 
-    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — gateway cooldowns would fight OMO's runtime fallback. OMO owns both layers: per-agent chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on `retry_on_errors` incl. 402, 3 attempts, 30s cooldown, restore-primary). Hermes rides `fallback_providers` (claude/sonnet-5 → deepseek-v4-flash-direct); **delegated children declare one backup** (`delegation.fallback_providers: [deepseek-v4-flash-direct]`) — per-agent chains own worker escalation, and since both Kilo aliases share one key that single credit-independent hop is the only genuinely independent backup. The 3-entry list it replaced made every attempt re-walk dead models. **`agent.api_max_retries: 1`**: one attempt per model then the next layer (a 429/402 fails over eagerly; 5xx/transport hit retries-exhausted immediately) — the host default of 3 replayed a refusal against the model that had just refused it, the 2026-09-24 error cycle that burned 3 extra calls per worker.
+    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — gateway cooldowns would fight OMO's runtime fallback. OMO owns both layers: per-agent chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on `retry_on_errors`, 3 attempts, 30s cooldown, restore-primary). Hermes rides `fallback_providers` (claude-sonnet-5 → claude-haiku-4-5 → deepseek-v4-flash-direct); **delegated children declare two backups** (`delegation.fallback_providers: [claude-haiku-4-5, deepseek-v4-flash-direct]`) — per-agent chains own worker escalation. **`agent.api_max_retries: 1`**: one attempt per model then the next layer (a 429 fails over eagerly; 5xx/transport hit retries-exhausted immediately) — the host default of 3 replayed a refusal against the model that had just refused it, the 2026-09-24 error cycle that burned 3 extra calls per worker.
 
     ### Hermes Dashboard & Workspace
 
@@ -998,12 +992,12 @@ data:
 
     **LiteLLM integration** (values.yaml, via claude-proxy ClusterIP `claude-proxy:4523`):
     ```yaml
-    - model_name: claude/sonnet-5
+    - model_name: claude-sonnet-5
       litellm_params:
         model: openai/claude-sonnet-4-6
         api_key: sk-auth2api-claude-proxy-key
         api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-    - model_name: claude/opus-5
+    - model_name: claude-opus-5
       litellm_params:
         model: openai/claude-opus-5
         api_key: sk-auth2api-claude-proxy-key
