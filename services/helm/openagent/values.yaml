@@ -127,6 +127,33 @@ litellm:
   masterkeySecretKey: "masterkey"
   environmentSecrets:
     - "openagent-secrets"
+  # GitHub Copilot credential. LiteLLM's `github_copilot` provider authenticates
+  # from a FILE (`$GITHUB_COPILOT_TOKEN_DIR/access-token`) — not from env — and it
+  # resolves that credential at MODEL REGISTRATION, so with no token every litellm
+  # pod crash-loops on boot (3× device-flow timeout, then exit). Seed the
+  # long-lived GitHub OAuth access token (Doppler `svc_openagent` →
+  # `openagent-secrets`) as that file. An emptyDir per replica holds the
+  # `api-key.json` LiteLLM mints and rotates; the shared `access-token` is a
+  # read-only secret file mounted inside it. Per-replica emptyDir (not a shared
+  # PVC) avoids the api-key refresh race across the HPA replicas.
+  volumes:
+    - name: copilot-token-dir
+      emptyDir: {}
+    - name: copilot-access-token
+      secret:
+        secretName: openagent-secrets
+        items:
+          - key: GITHUB_COPILOT_ACCESS_TOKEN
+            path: access-token
+  volumeMounts:
+    - name: copilot-token-dir
+      mountPath: /root/.config/litellm/github_copilot
+    - name: copilot-access-token
+      mountPath: /root/.config/litellm/github_copilot/access-token
+      subPath: access-token
+  extraEnvVars:
+    - name: GITHUB_COPILOT_TOKEN_DIR
+      value: /root/.config/litellm/github_copilot
   # The cache lives in the `valkey` Application (services/helm/valkey), not here:
   # one standalone Valkey in its own namespace, reached as
   # valkey-cache.valkey.svc.cluster.local. Must stay in sync with that chart's
@@ -181,16 +208,20 @@ litellm:
       redis_host: os.environ/REDIS_HOST
       redis_port: os.environ/REDIS_PORT
     model_list:
-      # GitHub Copilot (subscription). The gpt-5.6-* / gemini-3.8-flash ids are
-      # passthrough model ids NOT yet present in LiteLLM's own github_copilot
-      # price map, so costs are pinned here; the ids are verified/pinned by a
-      # follow-up ticket. github_copilot authenticates by OAuth device flow (no
-      # api_key) and stores its token under GITHUB_COPILOT_TOKEN_DIR.
+      # GitHub Copilot (subscription). Ids are passthrough (absent from LiteLLM's
+      # own github_copilot price map), so costs are pinned here where known.
+      # Newest-generation Copilot models are exposed ONLY on the Responses API:
+      # those aliases set `model_info.mode: responses`, which makes LiteLLM bridge
+      # the fleet's /chat/completions calls to /responses (verified against the
+      # live API). Models still served on /chat/completions omit `mode`.
+      # github_copilot authenticates by OAuth device flow (no api_key) and reads
+      # its token from GITHUB_COPILOT_TOKEN_DIR (see the volume wiring above).
       - model_name: copilot-luna
         litellm_params:
-          model: github_copilot/gpt-5.6-luna
+          model: github_copilot/gpt-6-luna
           order: 1
         model_info:
+          mode: responses
           input_cost_per_token: 0.0000002
           output_cost_per_token: 0.0000012
       - model_name: copilot-terra
@@ -198,15 +229,15 @@ litellm:
           model: github_copilot/gpt-5.6-terra
           order: 1
         model_info:
+          mode: responses
           input_cost_per_token: 0.000002
           output_cost_per_token: 0.000012
-      - model_name: copilot-sol
+      - model_name: copilot-grok
         litellm_params:
-          model: github_copilot/gpt-5.6-sol
+          model: github_copilot/grok-4.7
           order: 1
         model_info:
-          input_cost_per_token: 0.000004
-          output_cost_per_token: 0.00002
+          mode: responses
       - model_name: copilot-gemini-3.8-flash
         litellm_params:
           model: github_copilot/gemini-3.8-flash
@@ -223,8 +254,10 @@ litellm:
           output_cost_per_token: 0.000002
       - model_name: copilot-mai-code-1-flash
         litellm_params:
-          model: github_copilot/mai-code-1-flash
+          model: github_copilot/mai-code-1.1-flash
           order: 1
+        model_info:
+          mode: responses
       # Credit-independent spillway floor: the only hop that needs neither the
       # Copilot nor the Claude subscription, so every chain ends here. (Native
       # prefix caching is automatic server-side.)
@@ -625,7 +658,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
               oracle:
                 - litellm/claude-opus-5
-                - litellm/copilot-sol
+                - litellm/copilot-grok
                 - litellm/copilot-gemini-3.8-flash
                 - litellm/deepseek-v4-flash-direct
               librarian:
@@ -655,7 +688,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
-                - litellm/copilot-sol
+                - litellm/copilot-grok
                 - litellm/copilot-gemini-3.8-flash
                 - litellm/deepseek-v4-flash-direct
               visual-engineering:
