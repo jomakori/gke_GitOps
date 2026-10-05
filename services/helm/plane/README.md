@@ -105,8 +105,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | minio.cpuLimit | string | `"1000m"` |  |
 | minio.cpuRequest | string | `"100m"` |  |
 | minio.env.minio_endpoint_ssl | bool | `false` |  |
-| minio.image | string | `"minio/minio:latest"` |  |
-| minio.image_mc | string | `"minio/mc:latest"` |  |
+| minio.image | string | `"bitnamilegacy/minio:2025.7.23-debian-12-r5"` |  |
+| minio.image_mc | string | `"bitnamilegacy/minio-client:2025.7.21-debian-12-r3"` |  |
 | minio.init_image | string | `"busybox"` |  |
 | minio.labels | object | `{}` |  |
 | minio.local_setup | bool | `true` |  |
