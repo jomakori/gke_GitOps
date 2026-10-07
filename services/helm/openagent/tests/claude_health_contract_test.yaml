@@ -1,0 +1,65 @@
+suite: Claude health hook consumes OCP's upstream-outcome vocabulary
+# The hook classifies the proxy's recorded real-request outcome. Those strings
+# come from OCP (lib/upstream-status.mjs `UPSTREAM_OUTCOMES`), not from this
+# repo, so a drift here is silent: an outcome the hook does not recognise falls
+# through to `stale` and the lane's real fault is never posted. That is the one
+# failure the hook cannot detect about itself, so it is asserted on the rendered
+# ConfigMap. No `templates:` — a subchart template is targeted by
+# documentSelector on the full render, mirroring read_guard_test.yaml.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: classifier maps every published OCP outcome, and no invented one
+    asserts:
+      - isKind:
+          of: ConfigMap
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-claude-health
+      - matchRegex:
+          path: data["handler.py"]
+          pattern: '"auth_rejected": "auth_failure"'
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-claude-health
+      - matchRegex:
+          path: data["handler.py"]
+          pattern: '"usage_limited": "usage_limit"'
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-claude-health
+      - matchRegex:
+          path: data["handler.py"]
+          pattern: '"other": "provider_error"'
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-claude-health
+      # The pre-DEV-51 names this hook once assumed must be gone — their
+      # presence would mean the classifier keys on outcomes OCP never emits.
+      - notMatchRegex:
+          path: data["handler.py"]
+          pattern: '"auth_rejection": "auth_failure"'
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-claude-health
+      - notMatchRegex:
+          path: data["handler.py"]
+          pattern: '"usage_limit": "usage_limit"'
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-claude-health
+      - notMatchRegex:
+          path: data["handler.py"]
+          pattern: '"error": "provider_error"'
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-claude-health
+  - it: hook description names the authoritative outcomes it reports
+    asserts:
+      - matchRegex:
+          path: data["HOOK.yaml"]
+          pattern: "auth_rejected / usage_limited / other"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-claude-health
