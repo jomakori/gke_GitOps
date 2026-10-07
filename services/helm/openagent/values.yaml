@@ -224,12 +224,17 @@ litellm:
           mode: responses
           input_cost_per_token: 0.0000002
           output_cost_per_token: 0.0000012
+          # max_input_tokens is pre-call checked by LiteLLM 1.92.0; max_output_tokens
+          # is metadata for discovery/budgeting, not a universal completion clamp.
+          max_input_tokens: 1048576
+          max_output_tokens: 128000
       - model_name: copilot-grok
         litellm_params:
           model: github_copilot/grok-4.7
           order: 1
         model_info:
           mode: responses
+          max_input_tokens: 500000
       # Strong reasoning fallback for the high-thinking lanes (oracle/ultrabrain):
       # Copilot-served Claude Sonnet 5.5 — a different subscription than the Claude
       # proxy, so it survives a Claude-proxy session-wall outage. Sol/Astra are not
@@ -238,6 +243,9 @@ litellm:
         litellm_params:
           model: github_copilot/claude-sonnet-5.5
           order: 1
+        model_info:
+          max_input_tokens: 1000000
+          max_output_tokens: 128000
       - model_name: copilot-gemini-3.8-flash
         litellm_params:
           model: github_copilot/gemini-3.8-flash
@@ -245,12 +253,15 @@ litellm:
         model_info:
           input_cost_per_token: 0.00000075
           output_cost_per_token: 0.00000375
+          max_input_tokens: 1048576
+          max_output_tokens: 65536
       - model_name: copilot-mai-code
         litellm_params:
           model: github_copilot/mai-code-1.1-flash
           order: 1
         model_info:
           mode: responses
+          max_input_tokens: 256000
       # Canary: Codex-tuned coder, Responses-only. Head-to-head vs copilot-luna
       # (2026-10-04): quality parity on codegen / bugfix / merge / tool tasks
       # (11/11 each), but ~10-30x the cost ($1.75/$14 vs $0.10/$0.50 per M).
@@ -264,6 +275,8 @@ litellm:
           mode: responses
           input_cost_per_token: 0.00000175
           output_cost_per_token: 0.000014
+          max_input_tokens: 400000
+          max_output_tokens: 128000
       # Credit-independent spillway floor: the only hop that needs neither the
       # Copilot nor the Claude subscription, so every chain ends here. (Native
       # prefix caching is automatic server-side.)
@@ -273,6 +286,9 @@ litellm:
           api_key: os.environ/DEEPSEEK_API_KEY
           order: 1
           use_chat_completions_api: true
+        model_info:
+          max_input_tokens: 1000000
+          max_output_tokens: 384000
       # Claude proxy (Claude Max subscription, flat fee) — the literal aliases the
       # OMO chains reference as litellm/<alias> (see the omo: block).
       - model_name: claude-opus-5
@@ -286,6 +302,8 @@ litellm:
           input_cost_per_token: 0.000005
           output_cost_per_token: 0.000025
           cache_read_input_token_cost: 0.0000005
+          max_input_tokens: 1000000
+          max_output_tokens: 128000
       - model_name: claude-sonnet-5
         litellm_params:
           model: openai/claude-sonnet-5
@@ -297,6 +315,8 @@ litellm:
           input_cost_per_token: 0.000003
           output_cost_per_token: 0.000015
           cache_read_input_token_cost: 0.0000003
+          max_input_tokens: 1000000
+          max_output_tokens: 128000
       - model_name: claude-haiku-4-5
         litellm_params:
           model: openai/claude-haiku-4-5
@@ -308,6 +328,8 @@ litellm:
           input_cost_per_token: 0.000001
           output_cost_per_token: 0.000005
           cache_read_input_token_cost: 0.0000001
+          max_input_tokens: 200000
+          max_output_tokens: 64000
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
 # No cache instance is declared here: the standalone Valkey lives in the
@@ -357,6 +379,31 @@ hermes-agent:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
         key_env: LITELLM_MASTER_KEY
         discover_models: true
+        # LiteLLM /v1/models reports max_input_tokens/max_output_tokens, and
+        # Hermes can use max_input_tokens as a discovery hint. Pin context_length
+        # explicitly per alias so the seeded Hermes config remains deterministic
+        # if its discovery parser or provider response changes.
+        models:
+          copilot-luna:
+            context_length: 1048576
+          copilot-grok:
+            context_length: 500000
+          copilot-sonnet-5.5:
+            context_length: 1000000
+          copilot-gemini-3.8-flash:
+            context_length: 1048576
+          copilot-mai-code:
+            context_length: 256000
+          copilot-codex:
+            context_length: 400000
+          deepseek-v4-flash-direct:
+            context_length: 1000000
+          claude-opus-5:
+            context_length: 1000000
+          claude-sonnet-5:
+            context_length: 1000000
+          claude-haiku-4-5:
+            context_length: 200000
     # ── W6: bound what one read can put into the context ────────────────
     # Measured over 7d (state.db messages): 123 tool results over 40 KB carried
     # 8.72 MB of 23.85 MB — 37% of the bytes in 6% of the results, and the top
