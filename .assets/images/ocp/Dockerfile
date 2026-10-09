@@ -46,7 +46,8 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
-    git clone --depth 1 --branch "${OCP_VERSION}" https://github.com/dtzp555-max/ocp.git /opt/ocp
+    git clone https://github.com/jomakori/ocp.git /opt/ocp; \
+    git -C /opt/ocp checkout --detach 40d538ac00a335c9a5749ffb3bc477aa288c27c5
 
 # Vendored-patch block deleted with the v3.37.0 bump — upstream #494 makes the
 # 5-hour session wall a 429, so `patches/` and its verify script are gone.
