@@ -122,6 +122,7 @@ services:
 
   openagent:
     enable: true
+    targetRevision: temp/dev51-fork-deploy
     syncWave: "5"
     destNamespace: openagent
     managedNamespaceMetadata:

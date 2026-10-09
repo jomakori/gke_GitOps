@@ -13,7 +13,7 @@ Claude Code CLI exposed as an OpenAI-compatible API gateway (OCP), with caller-s
 | enabled | bool | `true` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/jomakori/ocp"` |  |
-| image.tag | string | `"v3.37.0"` |  |
+| image.tag | string | `"dev51-fork-db13cdf"` |  |
 | ocp.allowedHosts | string | `""` |  |
 | ocp.noContext | string | `"true"` |  |
 | ocp.toolCalling | string | `"1"` |  |

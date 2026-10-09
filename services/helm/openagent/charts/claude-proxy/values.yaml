@@ -8,7 +8,7 @@ image:
   # MUST be bumped together with the Dockerfile's OCP_VERSION, because pullPolicy is
   # IfNotPresent — reusing a tag for different content leaves nodes serving the
   # cached image with no error anywhere. Pristine upstream image (no vendored patch).
-  tag: v3.37.0
+  tag: dev51-fork-db13cdf
   pullPolicy: IfNotPresent
 service:
   port: 4523
