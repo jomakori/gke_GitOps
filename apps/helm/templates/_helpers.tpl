@@ -154,14 +154,7 @@ metadata:
     app: {{ $appName }}
     env: {{ $envName }}
 rules:
-  # OKT-178: the console's bridge issues BOTH verbs the reflectors need
-  # (`list`/`watch` — crates/openkite-host/src/state/live.rs) and the
-  # single-object read its detail/open path performs (`get` —
-  # crates/openkite-host/src/bridge.rs:152,247 `get_resource`, reachable from
-  # the browser host's POST /openkite). Without `get` on the watched kinds
-  # every detail read 403s, which is the "no 403s" half of the OKT-159
-  # acceptance this restores. Read-only: `get` is strictly weaker than the
-  # `list` already granted.
+  # `get` serves the console's single-object reads; `list`/`watch` the reflectors.
   - apiGroups: [""]
     resources: [pods, services, nodes, configmaps, persistentvolumeclaims]
     verbs: [get, list, watch]
@@ -327,13 +320,7 @@ spec:
         intent: apps
       serviceAccountName: {{ $namespace }}-sa
 {{- if $clusterReadOn }}
-      # OKT-178: the console reads the cluster with this pod's own projected
-      # ServiceAccount token. The OKT-130 kubeconfig mount is gone for good (it
-      # carried the Tailscale API-server proxy's identity, which impersonates a
-      # human bound to cluster-admin — never a scoped credential). State the
-      # in-cluster identity explicitly instead of relying on the namespace /
-      # API-server default, so a future SA-level automount change cannot
-      # silently strip the console's credential.
+      # The pod's own projected ServiceAccount token is the console's identity.
       automountServiceAccountToken: true
 {{- end }}
 {{- if $imagePullSecret }}
