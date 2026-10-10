@@ -14,9 +14,12 @@ data:
     // first retry the primary with a delay (window may clear), then spill to
     // these. LiteLLM's own `fallbacks` don't trigger on this RateLimitError
     // when cooldowns are disabled, hence the proxy-level retry logic.
-    // Subscription-first (Copilot flat fee), then the Claude proxy, then the
-    // credit-independent direct floor.
-    const FALLBACK_MODELS = (process.env.FALLBACK_MODELS ?? "copilot-luna,claude-sonnet-5,deepseek-v4-flash-direct").split(",").filter(Boolean);
+    // Claude proxy first, then the credit-independent direct floor.
+    // copilot-luna dropped 2026-10-10: the GitHub Copilot entitlement is
+    // quota-exhausted and every copilot-* model returns HTTP 402
+    // `quota_exceeded`, so a dead alias at the head of this list just burned a
+    // round-trip on every spill (Plane OMR-13).
+    const FALLBACK_MODELS = (process.env.FALLBACK_MODELS ?? "claude-sonnet-5,claude-haiku-4-5,deepseek-v4-flash-direct").split(",").filter(Boolean);
     // Delayed retries on the primary before falling back: count + base delay in
     // ms (escalating: base * attempt). Defaults: 2 retries at 10s + 20s (~30s
     // total, inside Codex's per-attempt patience).
