@@ -361,17 +361,20 @@ hermes-agent:
     # "predates version 12", and skips stamping on every boot.
     _config_version: 42
     model:
-      # Orchestration brain — subscription-first (GitHub Copilot flat fee), with
-      # DeepSeek-direct as the free spillway floor if the Copilot hop is down.
-      default: copilot-luna
+      # Orchestration brain — Claude proxy (Claude Max, flat fee) leads, with
+      # DeepSeek-direct as the variable-cost spillway floor.
+      #
+      # NOT a copilot-* alias: the GitHub Copilot entitlement is quota-exhausted
+      # (every copilot-* model returns HTTP 402 `quota_exceeded`), so a
+      # copilot-* default meant the fleet's FIRST hop was guaranteed-dead. See
+      # OMR-13. Re-promote a copilot alias only after probing it for a 200.
+      default: claude-sonnet-5
       provider: litellm
-    # Sisyphus fallback: Claude (flat-fee), then the cheap code-tuned Copilot
-    # rung, then the direct floor.
+    # Sisyphus fallback: cheaper Claude rung, then the direct floor. Every hop
+    # must be a live provider — a dead hop is not a fallback.
     fallback_providers:
       - provider: litellm
-        model: claude-sonnet-5
-      - provider: litellm
-        model: copilot-mai-code
+        model: claude-haiku-4-5
       - provider: litellm
         model: deepseek-v4-flash-direct
     providers:
@@ -661,13 +664,12 @@ hermes-agent:
 
     auxiliary:
       vision:
-        # Vision stays Claude (flat-fee proxy); Copilot gemini absorbs natively,
-        # then Claude haiku is the last vision-capable rung before the text floor.
+        # Vision stays Claude (flat-fee proxy); Claude haiku is the last
+        # vision-capable rung before the text floor. copilot-gemini-3.8-flash
+        # removed — Copilot quota exhausted, 402 on every call (OMR-13).
         provider: litellm
         model: claude-sonnet-5
         fallback_providers:
-          - provider: litellm
-            model: copilot-gemini-3.8-flash
           - provider: litellm
             model: claude-haiku-4-5
           - provider: litellm
@@ -694,91 +696,89 @@ hermes-agent:
             jev_model: "jev-latest"
             jev_routing_enabled: false
             # Per-agent/category chains, walked on retry_on_errors (401 while a
-            # Copilot OAuth token is unseeded, 429/5xx under throttling).
+            # Copilot OAuth token is unseeded, 429/5xx under throttling, 402 when
+            # a subscription provider is quota-exhausted).
+            #
+            # 402 ADDED 2026-10-10 (Plane OMR-13): LiteLLM surfaces GitHub
+            # Copilot's `quota_exceeded` as HTTP 402, which was NOT in this list,
+            # so a quota-dead hop was a TERMINAL error instead of a retryable one
+            # and the chain never advanced to the next model.
             runtime_fallback:
               enabled: true
-              retry_on_errors: [400, 401, 403, 404, 429, 500, 502, 503, 504, 529]
+              retry_on_errors: [400, 401, 402, 403, 404, 429, 500, 502, 503, 504, 529]
               max_fallback_attempts: 6
               cooldown_seconds: 30
               restore_primary_after_cooldown: true
+            # LIVE-HOP INVARIANT: every entry below must be a model that
+            # answers 200 through the gateway. All copilot-* aliases were
+            # removed 2026-10-10 — the GitHub Copilot entitlement is
+            # quota-exhausted and returns HTTP 402 `quota_exceeded` for every
+            # model (copilot-luna/grok/codex/mai-code/sonnet-5.5/gemini-3.8-flash
+            # all probed). The aliases remain registered in litellm's model_list
+            # above, so restoring a hop is a one-line re-add once quota resets —
+            # but probe for a 200 first. Context: Plane OMR-13.
             chains:
               sisyphus:
-                - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/copilot-grok
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               hephaestus:
-                - litellm/copilot-luna
-                - litellm/copilot-codex
                 - litellm/claude-sonnet-5
-                - litellm/copilot-mai-code
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               prometheus:
-                - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/copilot-grok
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               atlas:
-                - litellm/copilot-luna
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               metis:
-                - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/copilot-mai-code
                 - litellm/deepseek-v4-flash-direct
               momus:
-                - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/copilot-gemini-3.8-flash
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               oracle:
                 - litellm/claude-opus-5
-                - litellm/copilot-sonnet-5.5
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               librarian:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/copilot-luna
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               explore:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/copilot-luna
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               multimodal-looker:
                 - litellm/claude-sonnet-5
-                - litellm/copilot-gemini-3.8-flash
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
-                - litellm/copilot-luna
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
             categories:
               quick:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/copilot-luna
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               deep:
-                - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/copilot-grok
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
-                - litellm/copilot-sonnet-5.5
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               visual-engineering:
                 - litellm/claude-sonnet-5
-                - litellm/copilot-gemini-3.8-flash
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               writing:
-                - litellm/copilot-luna
                 - litellm/claude-sonnet-5
-                - litellm/copilot-gemini-3.8-flash
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
 
     mcp_servers:

@@ -730,11 +730,23 @@ data:
     > backups (`delegation.fallback_providers: [claude-haiku-4-5,
     > deepseek-v4-flash-direct]`). Model ids are LiteLLM aliases.
     >
-    > **ORDERING**: cheapest-headroom first. `copilot-luna` (0.10/0.50, the
-    > cheapest entitled model) leads the interactive/general lanes; Claude leads
-    > where reasoning or vision IS the work and on low-volume quality lanes;
-    > DeepSeek-direct leads the high-volume lanes (librarian/explore/quick) and
-    > all delegation fan-out.
+    > **ORDERING**: cheapest-headroom first among LIVE providers. Claude leads
+    > the interactive/general and reasoning lanes; DeepSeek-direct leads the
+    > high-volume lanes (librarian/explore/quick) and all delegation fan-out.
+    >
+    > **COPILOT LANE DISABLED (2026-10-10, Plane OMR-13)**: the GitHub Copilot
+    > entitlement is quota-exhausted. Every `copilot-*` alias returns
+    > **HTTP 402 `Github_copilotException: You have exceeded your monthly quota
+    > (code: quota_exceeded)`** — probed on copilot-luna, copilot-grok,
+    > copilot-codex, copilot-mai-code, copilot-sonnet-5.5 and
+    > copilot-gemini-3.8-flash. The aliases stay registered in LiteLLM's
+    > `model_list` but are removed from every chain, from `model.default` and
+    > from `fallback_providers`. Re-add a hop only after a live 200 probe.
+    >
+    > **LIVE-HOP INVARIANT**: no chain, default or fallback may lead with (or
+    > contain) a provider that cannot return 200. A dead hop is not a fallback —
+    > it only burns a round-trip and, when every hop is dead at once, produces
+    > `rebuilt_restart_limit_exceeded` with zero artifacts.
     >
     > **TERMINAL INVARIANT**: every chain ENDS on `deepseek-v4-flash-direct`
     > (native `DEEPSEEK_API_KEY`), the credit-independent floor that needs
@@ -742,30 +754,30 @@ data:
 
     | OMO Agent | Role | Primary | Fallback chain |
     |-------|------|-------|----------|
-    | sisyphus | Sisyphus · Ultraworker (orchestrator) | copilot-luna | claude-sonnet-5 → copilot-grok → deepseek-v4-flash-direct |
-    | hephaestus | Hephaestus · Deep Agent | copilot-luna | copilot-codex (canary) → claude-sonnet-5 → copilot-mai-code → deepseek-v4-flash-direct |
-    | prometheus | Prometheus · Plan Builder | copilot-luna | claude-sonnet-5 → copilot-grok → deepseek-v4-flash-direct |
-    | atlas | Atlas · Plan Executor | copilot-luna | claude-sonnet-5 → deepseek-v4-flash-direct |
-    | metis | Metis · Plan Consultant | copilot-luna | claude-sonnet-5 → copilot-mai-code → deepseek-v4-flash-direct |
-    | momus | Momus · Plan Critic | copilot-luna | claude-sonnet-5 → copilot-gemini-3.8-flash → deepseek-v4-flash-direct |
-    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | copilot-sonnet-5.5 → deepseek-v4-flash-direct |
-    | librarian | Librarian · Research | deepseek-v4-flash-direct | copilot-luna → claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | explore | Explore · Repository Exploration | deepseek-v4-flash-direct | copilot-luna → claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | copilot-gemini-3.8-flash → claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | copilot-luna | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | (no scribe — writing routes via `writing` category) | writer | copilot-luna | claude-sonnet-5 → copilot-gemini-3.8-flash → deepseek-v4-flash-direct |
+    | sisyphus | Sisyphus · Ultraworker (orchestrator) | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | hephaestus | Hephaestus · Deep Agent | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | prometheus | Prometheus · Plan Builder | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | atlas | Atlas · Plan Executor | claude-sonnet-5 | deepseek-v4-flash-direct |
+    | metis | Metis · Plan Consultant | claude-sonnet-5 | deepseek-v4-flash-direct |
+    | momus | Momus · Plan Critic | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | claude-sonnet-5 → deepseek-v4-flash-direct |
+    | librarian | Librarian · Research | deepseek-v4-flash-direct | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | explore | Explore · Repository Exploration | deepseek-v4-flash-direct | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | claude-haiku-4-5 | deepseek-v4-flash-direct |
+    | (no scribe — writing routes via `writing` category) | writer | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
 
     Categories (used when no named agent fits):
 
     | Category | Primary | Fallback chain |
     |---|---|---|
-    | quick | deepseek-v4-flash-direct | copilot-luna → claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | deep | copilot-luna | claude-sonnet-5 → copilot-grok → deepseek-v4-flash-direct |
-    | ultrabrain | claude-opus-5 | copilot-sonnet-5.5 → deepseek-v4-flash-direct |
-    | visual-engineering | claude-sonnet-5 | copilot-gemini-3.8-flash → claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | writing | copilot-luna | claude-sonnet-5 → copilot-gemini-3.8-flash → deepseek-v4-flash-direct |
+    | quick | deepseek-v4-flash-direct | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | deep | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | ultrabrain | claude-opus-5 | claude-sonnet-5 → deepseek-v4-flash-direct |
+    | visual-engineering | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | writing | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
 
-    **Pricing** ($/M in/out): `copilot-luna` (gpt-6-luna, responses, ~$0.10/$0.50 — cheapest entitled) leads the interactive/general lanes; `copilot-grok` (grok-4.7, 2/6) is the cheapest reasoning fallback and `copilot-sonnet-5.5` (Copilot-served Claude Sonnet 5.5, the strongest entitled reasoner) anchors the high-thinking lanes behind Claude; the Claude proxy (Claude Max, flat fee) leads where reasoning or vision IS the work and on low-volume quality lanes — `claude-sonnet-5` ($3.00/$15.00), `claude-opus-5` ($5.00/$25.00), `claude-haiku-4-5` ($1.00/$5.00). `deepseek-v4-flash-direct` (native `DEEPSEEK_API_KEY`, no `model_info` → SpendLogs logs $0.00, same gap as claude-proxy) is the cheap variable-cost spillway floor every chain ends on. The Copilot ids are passthrough (absent from LiteLLM's own `github_copilot` price map), so costs are pinned in the chart where known; the Responses-only ids (`gpt-6-luna`, `grok-4.7`, `mai-code-1.1-flash`, `gpt-5.3-codex`) carry `model_info.mode: responses`. DeepSeek-direct leads the high-volume lanes (librarian/explore/quick) and all delegation fan-out — at Copilot rates those lanes alone would burn ~half the credit wallet on the fleet's lowest-value tokens. DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost ($1.60/$3.20 and up per M).
+    **Pricing** ($/M in/out): the Copilot lane (`copilot-luna` gpt-6-luna ~$0.10/$0.50, `copilot-grok` 2/6, `copilot-sonnet-5.5`) USED to lead the interactive/general and reasoning-fallback lanes on price, but is quota-dead as of 2026-10-10 (402 `quota_exceeded`) and is out of every routing path — so the Claude proxy now leads everywhere reasoning or vision matters and DeepSeek-direct carries volume. The Claude proxy (Claude Max, flat fee) leads where reasoning or vision IS the work and on low-volume quality lanes — `claude-sonnet-5` ($3.00/$15.00), `claude-opus-5` ($5.00/$25.00), `claude-haiku-4-5` ($1.00/$5.00). `deepseek-v4-flash-direct` (native `DEEPSEEK_API_KEY`, no `model_info` → SpendLogs logs $0.00, same gap as claude-proxy) is the cheap variable-cost spillway floor every chain ends on. The Copilot ids are passthrough (absent from LiteLLM's own `github_copilot` price map), so costs are pinned in the chart where known; the Responses-only ids (`gpt-6-luna`, `grok-4.7`, `mai-code-1.1-flash`, `gpt-5.3-codex`) carry `model_info.mode: responses`. DeepSeek-direct leads the high-volume lanes (librarian/explore/quick) and all delegation fan-out — at Copilot rates those lanes alone would burn ~half the credit wallet on the fleet's lowest-value tokens. DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost ($1.60/$3.20 and up per M).
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -818,6 +830,11 @@ data:
     **LiteLLM models** (10 configured):
     | Model Name | Backend | API Key |
     |------------|---------|---------|
+    > The six `copilot-*` rows below are **registered but quota-dead** as of
+    > 2026-10-10 (HTTP 402 `quota_exceeded`, Plane OMR-13). They are kept in
+    > `model_list` so a quota reset is a one-line chain re-add, but no routing
+    > path may reference them until a live 200 probe says otherwise.
+
     | copilot-luna | github_copilot (gpt-6-luna, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
     | copilot-grok | github_copilot (grok-4.7, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
     | copilot-sonnet-5.5 | github_copilot (claude-sonnet-5.5) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
