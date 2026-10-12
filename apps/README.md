@@ -27,13 +27,15 @@ One template renders an `Application` per entry in `values.yaml`. An entry names
 | Resource | Created when |
 |---|---|
 | ServiceAccount + image pull Secret | always |
-| ExternalSecret → kubeconfig mount (`KUBECONFIG`) | `kubeconfig.enabled` (and never for a preview) |
 | ExternalSecret | the environment sets `dopplerConfig` |
+| ClusterRole + ClusterRoleBinding | `clusterRead` (and never for a preview) |
 | Deployment | always |
 | Service | always (ClusterIP for the mesh; NodePort fallback) |
 | VirtualService | `enable_domain` + `enable_istio` |
 | HPA | `enable_scaling` |
 | PVC | `storage.size` is set |
+
+A console that reads the cluster sets `clusterRead: true`: the chart binds its own ServiceAccount to a read-only `ClusterRole` and takes no credential from a Secret. Verbs, subjects and the preview gate are in [`helm/README.md`](helm/README.md#cluster-access).
 
 Multi-environment (staging + production) is supported per app. A workload that needs more than this shape keeps its own chart under `apps/helm/<name>/`, named by the entry's `helmPath`.
 
