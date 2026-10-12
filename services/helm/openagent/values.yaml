@@ -27,7 +27,7 @@ tools:
     repository: ghcr.io/jomakori/gitopsctl
     # Published commit sha of the gitopsctl image (bare sha, no `sha-`
     # prefix). `latest` must never be used with IfNotPresent.
-    tag: a696a4698db58757e6d61a8044771b5b6f1b0cd0
+    tag: 089b6642ba30a2a52c70ba452ab64c9d3aa66820
     pullPolicy: IfNotPresent
 
 # ── LiteLLM upstream chart values ──────────────────────────────────
@@ -127,6 +127,33 @@ litellm:
   masterkeySecretKey: "masterkey"
   environmentSecrets:
     - "openagent-secrets"
+  # GitHub Copilot credential. LiteLLM's `github_copilot` provider authenticates
+  # from a FILE (`$GITHUB_COPILOT_TOKEN_DIR/access-token`) — not from env — and it
+  # resolves that credential at MODEL REGISTRATION, so with no token every litellm
+  # pod crash-loops on boot (3× device-flow timeout, then exit). Seed the
+  # long-lived GitHub OAuth access token (Doppler `svc_openagent` →
+  # `openagent-secrets`) as that file. An emptyDir per replica holds the
+  # `api-key.json` LiteLLM mints and rotates; the shared `access-token` is a
+  # read-only secret file mounted inside it. Per-replica emptyDir (not a shared
+  # PVC) avoids the api-key refresh race across the HPA replicas.
+  volumes:
+    - name: copilot-token-dir
+      emptyDir: {}
+    - name: copilot-access-token
+      secret:
+        secretName: openagent-secrets
+        items:
+          - key: GITHUB_COPILOT_ACCESS_TOKEN
+            path: access-token
+  volumeMounts:
+    - name: copilot-token-dir
+      mountPath: /root/.config/litellm/github_copilot
+    - name: copilot-access-token
+      mountPath: /root/.config/litellm/github_copilot/access-token
+      subPath: access-token
+  extraEnvVars:
+    - name: GITHUB_COPILOT_TOKEN_DIR
+      value: /root/.config/litellm/github_copilot
   # The cache lives in the `valkey` Application (services/helm/valkey), not here:
   # one standalone Valkey in its own namespace, reached as
   # valkey-cache.valkey.svc.cluster.local. Must stay in sync with that chart's
@@ -181,86 +208,89 @@ litellm:
       redis_host: os.environ/REDIS_HOST
       redis_port: os.environ/REDIS_PORT
     model_list:
-      # Kilo Pass — cheapest tier, leads the execution lanes. Metered: a 402 on
-      # an exhausted balance is what walks the chain to Claude, then to direct.
-      - model_name: deepseek-v4-flash
+      # GitHub Copilot (subscription). Ids are passthrough (absent from LiteLLM's
+      # own github_copilot price map), so costs are pinned here where known.
+      # Newest-generation Copilot models are exposed ONLY on the Responses API:
+      # those aliases set `model_info.mode: responses`, which makes LiteLLM bridge
+      # the fleet's /chat/completions calls to /responses (verified against the
+      # live API). Models still served on /chat/completions omit `mode`.
+      # github_copilot authenticates by OAuth device flow (no api_key) and reads
+      # its token from GITHUB_COPILOT_TOKEN_DIR (see the volume wiring above).
+      - model_name: copilot-luna
         litellm_params:
-          model: openai/deepseek/deepseek-v4-flash
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
+          model: github_copilot/gpt-6-luna
           order: 1
         model_info:
-          input_cost_per_token: 0.00000014
-          output_cost_per_token: 0.00000028
-          cache_read_input_token_cost: 0.00000003
-      - model_name: glm-5.3-flash
+          mode: responses
+          input_cost_per_token: 0.0000002
+          output_cost_per_token: 0.0000012
+          # max_input_tokens is pre-call checked by LiteLLM 1.92.0; max_output_tokens
+          # is metadata for discovery/budgeting, not a universal completion clamp.
+          max_input_tokens: 1048576
+          max_output_tokens: 128000
+      - model_name: copilot-grok
         litellm_params:
-          model: openai/z-ai/glm-5.3-flash
-          api_base: https://api.kilo.ai/api/gateway/v1
-          api_key: os.environ/KILO_API_KEY
-          merge_reasoning_content_in_choices: true
+          model: github_copilot/grok-4.7
           order: 1
         model_info:
-          input_cost_per_token: 0.00000015
-          output_cost_per_token: 0.0000005
-          cache_read_input_token_cost: 0.00000003
-      # Credit-independent last resort: the only hop that needs neither Kilo
-      # balance nor the Claude proxy, so every chain ends here. (Native prefix
-      # caching is automatic server-side.)
+          mode: responses
+          max_input_tokens: 500000
+      # Strong reasoning fallback for the high-thinking lanes (oracle/ultrabrain):
+      # Copilot-served Claude Sonnet 5.5 — a different subscription than the Claude
+      # proxy, so it survives a Claude-proxy session-wall outage. Sol/Astra are not
+      # entitled on this Copilot plan (model_not_supported), so they are not wired.
+      - model_name: copilot-sonnet-5.5
+        litellm_params:
+          model: github_copilot/claude-sonnet-5.5
+          order: 1
+        model_info:
+          max_input_tokens: 1000000
+          max_output_tokens: 128000
+      - model_name: copilot-gemini-3.8-flash
+        litellm_params:
+          model: github_copilot/gemini-3.8-flash
+          order: 1
+        model_info:
+          input_cost_per_token: 0.00000075
+          output_cost_per_token: 0.00000375
+          max_input_tokens: 1048576
+          max_output_tokens: 65536
+      - model_name: copilot-mai-code
+        litellm_params:
+          model: github_copilot/mai-code-1.1-flash
+          order: 1
+        model_info:
+          mode: responses
+          max_input_tokens: 256000
+      # Canary: Codex-tuned coder, Responses-only. Head-to-head vs copilot-luna
+      # (2026-10-04): quality parity on codegen / bugfix / merge / tool tasks
+      # (11/11 each), but ~10-30x the cost ($1.75/$14 vs $0.10/$0.50 per M).
+      # Staged at hephaestus rung 2 only, so it runs solely on a luna miss;
+      # promote only if telemetry beats luna on completed-task credits.
+      - model_name: copilot-codex
+        litellm_params:
+          model: github_copilot/gpt-5.3-codex
+          order: 1
+        model_info:
+          mode: responses
+          input_cost_per_token: 0.00000175
+          output_cost_per_token: 0.000014
+          max_input_tokens: 400000
+          max_output_tokens: 128000
+      # Credit-independent spillway floor: the only hop that needs neither the
+      # Copilot nor the Claude subscription, so every chain ends here. (Native
+      # prefix caching is automatic server-side.)
       - model_name: deepseek-v4-flash-direct
         litellm_params:
-          model: deepseek/deepseek-v4-flash
+          model: deepseek/deepseek-flash
           api_key: os.environ/DEEPSEEK_API_KEY
           order: 1
           use_chat_completions_api: true
-      - model_name: claude/sonnet-5
-        litellm_params:
-          model: openai/claude-sonnet-4-6
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-          api_key: os.environ/CLAUDE_PROXY_API_KEY
-          rpm: 120
-          order: 1
         model_info:
-          input_cost_per_token: 0.000003
-          output_cost_per_token: 0.000015
-          cache_read_input_token_cost: 0.0000003
-      - model_name: claude/opus-4
-        litellm_params:
-          model: openai/claude-opus-4-7
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-          api_key: os.environ/CLAUDE_PROXY_API_KEY
-          rpm: 30
-          order: 1
-        model_info:
-          input_cost_per_token: 0.000005
-          output_cost_per_token: 0.000025
-          cache_read_input_token_cost: 0.0000005
-      - model_name: claude/opus-5
-        litellm_params:
-          model: openai/claude-opus-5
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-          api_key: os.environ/CLAUDE_PROXY_API_KEY
-          rpm: 30
-          order: 1
-        model_info:
-          input_cost_per_token: 0.000005
-          output_cost_per_token: 0.000025
-          cache_read_input_token_cost: 0.0000005
-      - model_name: claude/haiku-4-5
-        litellm_params:
-          model: openai/claude-haiku-4-5
-          api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
-          api_key: os.environ/CLAUDE_PROXY_API_KEY
-          rpm: 60
-          order: 1
-        model_info:
-          input_cost_per_token: 0.000001
-          output_cost_per_token: 0.000005
-          cache_read_input_token_cost: 0.0000001
-      # Slash-free Claude aliases — mirror the slash variants above as literal
-      # model_names for the OMO chains (litellm/<alias>, see the omo: block),
-      # which reference claude-opus-5 / claude-sonnet-5 / claude-haiku-4-5.
+          max_input_tokens: 1000000
+          max_output_tokens: 384000
+      # Claude proxy (Claude Max subscription, flat fee) — the literal aliases the
+      # OMO chains reference as litellm/<alias> (see the omo: block).
       - model_name: claude-opus-5
         litellm_params:
           model: openai/claude-opus-5
@@ -272,9 +302,11 @@ litellm:
           input_cost_per_token: 0.000005
           output_cost_per_token: 0.000025
           cache_read_input_token_cost: 0.0000005
+          max_input_tokens: 1000000
+          max_output_tokens: 128000
       - model_name: claude-sonnet-5
         litellm_params:
-          model: openai/claude-sonnet-4-6
+          model: openai/claude-sonnet-5
           api_base: http://claude-proxy.openagent.svc.cluster.local:4523/v1
           api_key: os.environ/CLAUDE_PROXY_API_KEY
           rpm: 120
@@ -283,6 +315,8 @@ litellm:
           input_cost_per_token: 0.000003
           output_cost_per_token: 0.000015
           cache_read_input_token_cost: 0.0000003
+          max_input_tokens: 1000000
+          max_output_tokens: 128000
       - model_name: claude-haiku-4-5
         litellm_params:
           model: openai/claude-haiku-4-5
@@ -294,6 +328,8 @@ litellm:
           input_cost_per_token: 0.000001
           output_cost_per_token: 0.000005
           cache_read_input_token_cost: 0.0000001
+          max_input_tokens: 200000
+          max_output_tokens: 64000
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
 # No cache instance is declared here: the standalone Valkey lives in the
@@ -325,13 +361,20 @@ hermes-agent:
     # "predates version 12", and skips stamping on every boot.
     _config_version: 42
     model:
-      # Orchestration brain — DeepSeek direct (unmetered, cheapest); Kilo on failure.
-      default: deepseek-v4-flash-direct
+      # Orchestration brain — Claude proxy (Claude Max, flat fee) leads, with
+      # DeepSeek-direct as the variable-cost spillway floor.
+      #
+      # NOT a copilot-* alias: the GitHub Copilot entitlement is quota-exhausted
+      # (every copilot-* model returns HTTP 402 `quota_exceeded`), so a
+      # copilot-* default meant the fleet's FIRST hop was guaranteed-dead. See
+      # OMR-13. Re-promote a copilot alias only after probing it for a 200.
+      default: claude-sonnet-5
       provider: litellm
-    # Sisyphus fallback: Claude (flat-fee), then the direct floor.
+    # Sisyphus fallback: cheaper Claude rung, then the direct floor. Every hop
+    # must be a live provider — a dead hop is not a fallback.
     fallback_providers:
       - provider: litellm
-        model: claude/sonnet-5
+        model: claude-haiku-4-5
       - provider: litellm
         model: deepseek-v4-flash-direct
     providers:
@@ -339,6 +382,31 @@ hermes-agent:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
         key_env: LITELLM_MASTER_KEY
         discover_models: true
+        # LiteLLM /v1/models reports max_input_tokens/max_output_tokens, and
+        # Hermes can use max_input_tokens as a discovery hint. Pin context_length
+        # explicitly per alias so the seeded Hermes config remains deterministic
+        # if its discovery parser or provider response changes.
+        models:
+          copilot-luna:
+            context_length: 1048576
+          copilot-grok:
+            context_length: 500000
+          copilot-sonnet-5.5:
+            context_length: 1000000
+          copilot-gemini-3.8-flash:
+            context_length: 1048576
+          copilot-mai-code:
+            context_length: 256000
+          copilot-codex:
+            context_length: 400000
+          deepseek-v4-flash-direct:
+            context_length: 1000000
+          claude-opus-5:
+            context_length: 1000000
+          claude-sonnet-5:
+            context_length: 1000000
+          claude-haiku-4-5:
+            context_length: 200000
     # ── W6: bound what one read can put into the context ────────────────
     # Measured over 7d (state.db messages): 123 tool results over 40 KB carried
     # 8.72 MB of 23.85 MB — 37% of the bytes in 6% of the results, and the top
@@ -560,7 +628,9 @@ hermes-agent:
       # weekly uncached-input line to confirm the reclaim beats the cache loss.
       proactive_prune_tokens: 48000
     delegation:
-      # Highest fan-out tier — direct route keeps 8 children off Kilo metering.
+      # Highest fan-out tier — 8 children at depth 3 can be hundreds of calls, so
+      # the rpm-uncapped cheap headroom leads. Claude's 60/120 rpm pool would 429
+      # instantly and hand back a wasted round trip.
       model: deepseek-v4-flash-direct
       provider: litellm
       base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
@@ -572,11 +642,11 @@ hermes-agent:
       # under it; unset, the host default of 10 applies and the real ceiling is
       # only implied.
       max_concurrent_children: 8
-      # One backup, not a second ladder: the OMO engine's per-agent chains own
-      # the escalation for delegated work, but a plain delegate_task child still
-      # needs a live route when the delegation primary is down (Kilo 402). This
-      # is the same credit-independent last resort every per-agent chain ends on.
+      # Backup hops: Claude haiku (flat fee), then the credit-independent
+      # direct floor.
       fallback_providers:
+        - provider: litellm
+          model: claude-haiku-4-5
         - provider: litellm
           model: deepseek-v4-flash-direct
       # Workers run unattended: subagent threads carry no interactive approval
@@ -594,9 +664,16 @@ hermes-agent:
 
     auxiliary:
       vision:
-        # Vision stays Claude — neither Kilo Flash alias is a vision route.
+        # Vision stays Claude (flat-fee proxy); Claude haiku is the last
+        # vision-capable rung before the text floor. copilot-gemini-3.8-flash
+        # removed — Copilot quota exhausted, 402 on every call (OMR-13).
         provider: litellm
-        model: claude/sonnet-5
+        model: claude-sonnet-5
+        fallback_providers:
+          - provider: litellm
+            model: claude-haiku-4-5
+          - provider: litellm
+            model: deepseek-v4-flash-direct
     plugins:
       enabled:
         - discord-platform
@@ -604,95 +681,105 @@ hermes-agent:
       entries:
         omo:
           settings:
-            # Per-agent/category chains, walked on retry_on_errors (402 = Kilo exhausted).
+            # Jev decision layer (hermes-omo-plugin). Shadow mode is ON: the
+            # harness runs Jev's `pick_agent` beside the engine's real decision,
+            # off the dispatch hot path, and NEVER routes on it. Authoritative
+            # routing stays OFF (jev_routing_enabled: false) until shadow
+            # evidence clears the bar. Report with the `jev_report` command;
+            # rollback is deleting these keys. Requires the plugin PRs merged to
+            # main (provisioned via OMO_PROVISION_REF).
+            jev_shadow_enabled: true
+            jev_shadow_path: "/opt/data/.omo/jev-shadow.jsonl"
+            jev_shadow_packs:
+              - pick_agent
+            jev_base_url: "https://api.typesafe.ai"
+            jev_model: "jev-latest"
+            jev_routing_enabled: false
+            # Per-agent/category chains, walked on retry_on_errors (401 while a
+            # Copilot OAuth token is unseeded, 429/5xx under throttling, 402 when
+            # a subscription provider is quota-exhausted).
+            #
+            # 402 ADDED 2026-10-10 (Plane OMR-13): LiteLLM surfaces GitHub
+            # Copilot's `quota_exceeded` as HTTP 402, which was NOT in this list,
+            # so a quota-dead hop was a TERMINAL error instead of a retryable one
+            # and the chain never advanced to the next model.
             runtime_fallback:
               enabled: true
               retry_on_errors: [400, 401, 402, 403, 404, 429, 500, 502, 503, 504, 529]
               max_fallback_attempts: 6
               cooldown_seconds: 30
               restore_primary_after_cooldown: true
+            # LIVE-HOP INVARIANT: every entry below must be a model that
+            # answers 200 through the gateway. All copilot-* aliases were
+            # removed 2026-10-10 — the GitHub Copilot entitlement is
+            # quota-exhausted and returns HTTP 402 `quota_exceeded` for every
+            # model (copilot-luna/grok/codex/mai-code/sonnet-5.5/gemini-3.8-flash
+            # all probed). The aliases remain registered in litellm's model_list
+            # above, so restoring a hop is a one-line re-add once quota resets —
+            # but probe for a 200 first. Context: Plane OMR-13.
             chains:
               sisyphus:
-                - litellm/deepseek-v4-flash-direct
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
                 - litellm/claude-sonnet-5
+                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               hephaestus:
-                - litellm/deepseek-v4-flash-direct
-                - litellm/glm-5.3-flash
-                - litellm/deepseek-v4-flash
                 - litellm/claude-sonnet-5
+                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               prometheus:
-                - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
+                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               atlas:
-                - litellm/deepseek-v4-flash-direct
-                - litellm/glm-5.3-flash
-                - litellm/deepseek-v4-flash
                 - litellm/claude-sonnet-5
+                - litellm/deepseek-v4-flash-direct
               metis:
-                - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
+                - litellm/deepseek-v4-flash-direct
               momus:
-                - litellm/deepseek-v4-flash-direct
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
+                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               oracle:
                 - litellm/claude-opus-5
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               librarian:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
                 - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               explore:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
                 - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               multimodal-looker:
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
-                - litellm/deepseek-v4-flash-direct
-                - litellm/glm-5.3-flash
-                - litellm/deepseek-v4-flash
                 - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
             categories:
               quick:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
                 - litellm/claude-haiku-4-5
-              deep:
                 - litellm/deepseek-v4-flash-direct
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
+              deep:
                 - litellm/claude-sonnet-5
+                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
+                - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               visual-engineering:
                 - litellm/claude-sonnet-5
-                - litellm/deepseek-v4-flash
-                - litellm/glm-5.3-flash
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               writing:
-                - litellm/deepseek-v4-flash-direct
-                - litellm/glm-5.3-flash
-                - litellm/deepseek-v4-flash
                 - litellm/claude-sonnet-5
+                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-direct
 
     mcp_servers:
       # ── Manifest = single source of truth ──────────────────────────────
@@ -1286,7 +1373,7 @@ hermes-agent:
     # Subchart values cannot be templated, so this image is a literal copy of
     # tools.image above — bump both together.
     - name: install-gitopsctl
-      image: ghcr.io/jomakori/gitopsctl:a696a4698db58757e6d61a8044771b5b6f1b0cd0
+      image: ghcr.io/jomakori/gitopsctl:089b6642ba30a2a52c70ba452ab64c9d3aa66820
       imagePullPolicy: IfNotPresent
       args: ["install", "/opt/tools/gitopsctl"]
       securityContext:

@@ -294,7 +294,8 @@ data:
 {{- if .Values.hermes.enabled }}
 ---
 # Claude-lane health probe — a session start is the cheapest place to notice a
-# dead OAuth session before it costs a whole session's Claude routes.
+# dead OAuth session, or an authoritative upstream fault, before it costs a
+# whole session's Claude routes.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -308,8 +309,10 @@ data:
   HOOK.yaml: |
     name: claude-health
     description: >
-      Warns in the session's channel when the Claude proxy reports a dead
-      OAuth session. Fires on agent:start, throttled to one probe per 5 min.
+      Reports the Claude lane's authoritative upstream status on agent:start,
+      throttled to one probe per 5 min. Reads the proxy's recorded real-request
+      outcome (auth_rejected / usage_limited / other) and only posts on an
+      actionable fault — a usage/rate limit is explicitly not an OAuth problem.
     events:
       - agent:start
   handler.py: |

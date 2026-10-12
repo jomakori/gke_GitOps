@@ -80,20 +80,11 @@ openkite:
   # Cloudflare Access gating for openkite.maklab.net and every pr<N>-openkite.maklab.net
   # preview is declared in services/helm/istio/values.yaml `privateHosts`, where the
   # istio Application (destination.namespace: istio-system) renders the DENY policy.
-  # OKT-147: do not add an `enable_private` here — it has no effect in this chart
-  # (the AuthorizationPolicy would render into istio-system from a non-istio
-  # Application and ArgoCD would skip it).
-  # ── Cluster access (OKT-159, supersedes OKT-130) ─────────────────────
-  # The console reads the cluster with its own ServiceAccount, bound to a
-  # read-only ClusterRole rendered below. The Doppler `TAILSCALE_KUBECONFIG`
-  # was removed: it was never a scoped credential. The Tailscale operator's
-  # API-server proxy runs in auth mode, ignores the file's `token: unused`
-  # and impersonates the caller's tailnet identity, which from an in-cluster
-  # pod resolves to a user bound to cluster-admin
-  # (ClusterRoleBinding/tailnet-user-k8s-admin). Mounting it would have
-  # granted the console cluster-admin. See OKT-159.
-  # `list secrets` does return values rather than keys — that exposure is
-  # accepted here and is strictly smaller than the cluster-admin it replaces.
+  # No `enable_private` here: it renders into istio-system from a non-istio
+  # Application, which ArgoCD skips.
+  # ── Cluster access ────────────────────────────────────────────────────
+  # The console reads the cluster with its own ServiceAccount and a read-only
+  # ClusterRole. `list secrets` returns values rather than keys — accepted.
   clusterRead: true
   # GHCR, not the shared ECR registry.
   image:
@@ -105,11 +96,12 @@ openkite:
     retryTimeout: 5s
   environments:
     staging:
-      tag: v0.33.0
-      subdomain: staging-openkite
+      # Inside the gated *.openkite.maklab.net wildcard (CF Access + istio privateHosts).
+      subdomain: staging.openkite
+      tag: v0.52.0
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
-      tag: v0.45.0
+      tag: v0.56.1
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080

@@ -47,7 +47,7 @@ spec:
     {{- end }}
     repoURL: {{ $root.Values.repoUrl | quote }}
     path: {{ $helmPath | quote }}
-    targetRevision: {{ $root.Values.targetRevision | quote }}
+    targetRevision: {{ $cfg.targetRevision | default $root.Values.targetRevision | quote }}
     helm:
       valueFiles:
         - values.yaml
@@ -133,7 +133,7 @@ spec:
   source:
     repoURL: {{ $root.Values.repoUrl | quote }}
     path: {{ $helmPath | quote }}
-    targetRevision: {{ $root.Values.targetRevision | quote }}
+    targetRevision: {{ $cfg.targetRevision | default $root.Values.targetRevision | quote }}
     helm:
       valueFiles:
         - values.yaml

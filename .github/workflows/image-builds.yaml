@@ -36,6 +36,14 @@ on:
         description: "OCP release tag to vendor"
         required: true
         default: "v3.37.0"
+      OCP_GIT_REF:
+        description: "Optional full OCP git commit or ref to vendor from OCP_REPOSITORY"
+        required: false
+        default: ""
+      OCP_REPOSITORY:
+        description: "OCP git repository to vendor"
+        required: true
+        default: "https://github.com/dtzp555-max/ocp.git"
       CLAUDE_CODE_VERSION:
         description: "@anthropic-ai/claude-code version to install"
         required: true
@@ -108,16 +116,22 @@ jobs:
         id: build_inputs
         env:
           OCP_VERSION_INPUT: ${{ inputs.OCP_VERSION }}
+          OCP_GIT_REF_INPUT: ${{ inputs.OCP_GIT_REF }}
+          OCP_REPOSITORY_INPUT: ${{ inputs.OCP_REPOSITORY }}
           CLAUDE_CODE_VERSION_INPUT: ${{ inputs.CLAUDE_CODE_VERSION }}
         run: |
           set -euo pipefail
           OCP_VERSION="${OCP_VERSION_INPUT:-$OCP_VERSION_DEFAULT}"
           CLAUDE_CODE_VERSION="${CLAUDE_CODE_VERSION_INPUT:-$CLAUDE_CODE_VERSION_DEFAULT}"
           echo "OCP_VERSION=${OCP_VERSION}" >> "$GITHUB_OUTPUT"
+          OCP_GIT_REF="${OCP_GIT_REF_INPUT:-}"
+          OCP_REPOSITORY="${OCP_REPOSITORY_INPUT:-https://github.com/dtzp555-max/ocp.git}"
+          echo "OCP_GIT_REF=${OCP_GIT_REF}" >> "$GITHUB_OUTPUT"
+          echo "OCP_REPOSITORY=${OCP_REPOSITORY}" >> "$GITHUB_OUTPUT"
           echo "CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION}" >> "$GITHUB_OUTPUT"
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           echo "IMAGE_TAG=${OCP_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Resolved OCP_VERSION=${OCP_VERSION} CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION} IMAGE_TAG=${OCP_VERSION}"
+          echo "Resolved OCP_VERSION=${OCP_VERSION} OCP_REPOSITORY=${OCP_REPOSITORY} OCP_GIT_REF=${OCP_GIT_REF:-tag} CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION} IMAGE_TAG=${OCP_VERSION}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -143,6 +157,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           build-args: |
             OCP_VERSION=${{ steps.build_inputs.outputs.OCP_VERSION }}
+            OCP_REPOSITORY=${{ steps.build_inputs.outputs.OCP_REPOSITORY }}
+            OCP_GIT_REF=${{ steps.build_inputs.outputs.OCP_GIT_REF }}
             CLAUDE_CODE_VERSION=${{ steps.build_inputs.outputs.CLAUDE_CODE_VERSION }}
           tags: |
             ${{ env.IMAGE_NAME }}:${{ steps.build_inputs.outputs.IMAGE_TAG }}

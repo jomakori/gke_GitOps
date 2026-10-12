@@ -154,9 +154,10 @@ metadata:
     app: {{ $appName }}
     env: {{ $envName }}
 rules:
+  # `get` serves the console's single-object reads; `list`/`watch` the reflectors.
   - apiGroups: [""]
     resources: [pods, services, nodes, configmaps, persistentvolumeclaims]
-    verbs: [list, watch]
+    verbs: [get, list, watch]
   - apiGroups: [""]
     resources: [secrets]
     verbs: [get, list, watch]
@@ -165,13 +166,13 @@ rules:
     verbs: [get]
   - apiGroups: [apps]
     resources: [deployments, statefulsets, daemonsets, replicasets]
-    verbs: [list, watch]
+    verbs: [get, list, watch]
   - apiGroups: [batch]
     resources: [jobs, cronjobs]
-    verbs: [list, watch]
+    verbs: [get, list, watch]
   - apiGroups: [networking.k8s.io]
     resources: [ingresses]
-    verbs: [list, watch]
+    verbs: [get, list, watch]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -318,6 +319,10 @@ spec:
       nodeSelector:
         intent: apps
       serviceAccountName: {{ $namespace }}-sa
+{{- if $clusterReadOn }}
+      # The pod's own projected ServiceAccount token is the console's identity.
+      automountServiceAccountToken: true
+{{- end }}
 {{- if $imagePullSecret }}
       imagePullSecrets:
         - name: {{ $imagePullSecret }}

@@ -21,6 +21,8 @@ ARG NODE_IMAGE=node:22-bookworm-slim
 FROM ${NODE_IMAGE}
 
 ARG OCP_VERSION=v3.37.0
+ARG OCP_REPOSITORY=https://github.com/dtzp555-max/ocp.git
+ARG OCP_GIT_REF=
 ARG CLAUDE_CODE_VERSION=2.1.272
 
 LABEL org.opencontainers.image.title="ocp" \
@@ -46,7 +48,12 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
-    git clone --depth 1 --branch "${OCP_VERSION}" https://github.com/dtzp555-max/ocp.git /opt/ocp
+    git clone "${OCP_REPOSITORY}" /opt/ocp; \
+    if [ -n "${OCP_GIT_REF}" ]; then \
+      git -C /opt/ocp checkout --detach "${OCP_GIT_REF}"; \
+    else \
+      git -C /opt/ocp checkout --detach "${OCP_VERSION}"; \
+    fi
 
 # Vendored-patch block deleted with the v3.37.0 bump — upstream #494 makes the
 # 5-hour session wall a 429, so `patches/` and its verify script are gone.

@@ -1,0 +1,21 @@
+suite: OpenAgent provider-specific context limits
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: renders model limits and leaves unknown output caps unset
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)max_input_tokens: 1048576.*?max_output_tokens: 128000.*?mode: responses.*?model_name: copilot-luna.*?max_input_tokens: 500000.*?mode: responses.*?model_name: copilot-grok.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: copilot-sonnet-5.5.*?max_input_tokens: 1048576.*?max_output_tokens: 65536.*?model_name: copilot-gemini-3.8-flash.*?max_input_tokens: 256000.*?mode: responses.*?model_name: copilot-mai-code.*?max_input_tokens: 400000.*?max_output_tokens: 128000.*?mode: responses.*?model_name: copilot-codex.*?max_input_tokens: 1000000.*?max_output_tokens: 384000.*?model_name: deepseek-v4-flash-direct.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: claude-opus-5.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: claude-sonnet-5.*?max_input_tokens: 200000.*?max_output_tokens: 64000.*?model_name: claude-haiku-4-5"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)copilot-grok:.*?context_length: 500000.*?copilot-luna:.*?context_length: 1048576.*?copilot-mai-code:.*?context_length: 256000.*?copilot-sonnet-5.5:.*?context_length: 1000000"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+          skipEmptyTemplates: true
