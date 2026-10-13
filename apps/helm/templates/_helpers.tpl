@@ -39,17 +39,20 @@
 {{- $svcReplicas  := $svc.replicas | default 1 }}
 {{- $imageRepo    := ($app.image | default dict).repository | default (printf "%s/%s" $registry $kebabName) }}
 
-{{- /* Cluster access for a console host (OKT-159). The identity is the pod's
-       own ServiceAccount, bound to a read-only ClusterRole. Both gates are
-       required: the spec opts in, and the environment is not a preview.
-       `namespaceOverride` is the preview coordinate
+{{- /* Cluster access for a console host (OKT-159; matrix set by DEV-36). The
+       identity is the pod's own ServiceAccount. Per environment: production
+       binds it to the built-in cluster-admin ClusterRole (`clusterAdmin`),
+       staging and any other non-preview environment keep the read-only role —
+       `clusterAdmin` implies that floor — and a preview gets no credential at
+       all. `namespaceOverride` is the preview coordinate
        (apps/argocd-appset/templates/preview.yml), and a preview cannot omit it
        without clobbering the prod namespace, so it is the gate that cannot be
        forgotten. A preview runs unreviewed PR code and must never hold cluster
        credentials. */}}
 {{- $clusterRead     := ne (printf "%v" ($app.clusterRead | default false)) "false" }}
+{{- $clusterAdmin    := ne (printf "%v" ($app.clusterAdmin | default false)) "false" }}
 {{- $isPreview       := ne (printf "%v" ($app.namespaceOverride | default "")) "" }}
-{{- $clusterReadOn   := and $clusterRead (not $isPreview) }}
+{{- $clusterReadRole := or $clusterRead $clusterAdmin }}
 
 {{- range $envName, $env := $app.environments }}
 {{- if or (and $enableProduction (eq $envName "production")) (and $enableStaging (eq $envName "staging")) }}
@@ -143,8 +146,27 @@ spec:
           regexp: .*
 {{- end }}
 
-{{- /* ── Read-only cluster role for a console host (OKT-159) ─────── */}}
-{{- if $clusterReadOn }}
+{{- /* ── Cluster access for a console host (OKT-159 / DEV-36) ────── */}}
+{{- $clusterAdminOn := and $clusterAdmin (not $isPreview) (eq $envName "production") }}
+{{- $clusterReadOn  := and $clusterReadRole (not $isPreview) (not $clusterAdminOn) }}
+{{- if $clusterAdminOn }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $namespace }}-admin
+  labels:
+    app: {{ $appName }}
+    env: {{ $envName }}
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: {{ $namespace }}-sa
+    namespace: {{ $namespace }}
+{{- else if $clusterReadOn }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
