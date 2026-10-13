@@ -110,8 +110,8 @@ rabbitmq:
   affinity: {}
 
 minio:
-  image: bitnamilegacy/minio:2025.7.23-debian-12-r5
-  image_mc: bitnamilegacy/minio-client:2025.7.21-debian-12-r3
+  image: quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z
+  image_mc: quay.io/minio/mc:RELEASE.2025-07-21T05-28-08Z
   init_image: busybox
   local_setup: true
   pullPolicy: IfNotPresent
