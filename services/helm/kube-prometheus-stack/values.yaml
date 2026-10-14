@@ -24,6 +24,12 @@ kube-prometheus-stack:
   alertmanager:
     service:
       port: 15010
+    alertmanagerSpec:
+      # Routes contributed by AlertmanagerConfig CRs carry a namespace matcher by
+      # default, which would exclude node-level alerts (no namespace label) - e.g.
+      # DiskPressure. None lets a selected config route cluster-wide.
+      alertmanagerConfigMatcherStrategy:
+        type: None
   # ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
   # │   Component Scraping Configuration                                                                                  │
   # │   Disable component scraping for the kube controller manager, etcd, and kube-scheduler                              │
