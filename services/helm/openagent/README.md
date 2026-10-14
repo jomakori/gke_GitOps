@@ -805,6 +805,10 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumeMounts[6].mountPath | string | `"/opt/data/mcp-verify"` |  |
 | hermes-agent.extraVolumeMounts[6].name | string | `"mcp-verify"` |  |
 | hermes-agent.extraVolumeMounts[6].readOnly | bool | `true` |  |
+| hermes-agent.extraVolumeMounts[7].mountPath | string | `"/opt/data/scripts/storage_gc_cron.sh"` |  |
+| hermes-agent.extraVolumeMounts[7].name | string | `"storage-gc-cron"` |  |
+| hermes-agent.extraVolumeMounts[7].readOnly | bool | `true` |  |
+| hermes-agent.extraVolumeMounts[7].subPath | string | `"storage_gc_cron.sh"` |  |
 | hermes-agent.extraVolumes[0].configMap.name | string | `"openagent-hermes-hooks"` |  |
 | hermes-agent.extraVolumes[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumes[1].configMap.name | string | `"openagent-hermes-read-guard"` |  |
@@ -819,6 +823,9 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumes[5].name | string | `"tools"` |  |
 | hermes-agent.extraVolumes[6].configMap.name | string | `"openagent-mcp-manifest"` |  |
 | hermes-agent.extraVolumes[6].name | string | `"mcp-verify"` |  |
+| hermes-agent.extraVolumes[7].configMap.defaultMode | int | `365` |  |
+| hermes-agent.extraVolumes[7].configMap.name | string | `"openagent-storage-gc-cron"` |  |
+| hermes-agent.extraVolumes[7].name | string | `"storage-gc-cron"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
 | hermes-agent.image.tag | string | `"v2026.9.11"` |  |
@@ -1002,6 +1009,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | namespace | string | `"openagent"` |  |
 | runtimeMode | string | `"cluster"` |  |
 | storageClass | string | `"local-path"` |  |
+| storageGc.usedPercentMark | int | `80` |  |
 | tools.image.pullPolicy | string | `"IfNotPresent"` |  |
 | tools.image.repository | string | `"ghcr.io/jomakori/gitopsctl"` |  |
 | tools.image.tag | string | `"089b6642ba30a2a52c70ba452ab64c9d3aa66820"` |  |

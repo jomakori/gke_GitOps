@@ -1,0 +1,40 @@
+{{- if .Values.hermes.enabled }}
+# The storage GC's cron entry point, owned here instead of existing only on the
+# PVC, so a change to the trigger is reviewable. The hermes-agent Deployment
+# mounts it over /opt/data/scripts/storage_gc_cron.sh (extraVolumes in
+# values.yaml); the GC itself (/opt/data/scripts/storage_gc.py) stays on the PVC.
+#
+# Report-only by construction: the wrapper never passes --apply, so nothing this
+# chart deploys can delete anything.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-storage-gc-cron
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  storage_gc_cron.sh: |
+    #!/usr/bin/env bash
+    # Purpose: gate the storage GC on disk state instead of the clock.
+    set -euo pipefail
+
+    MARK="${STORAGE_GC_USED_PERCENT_MARK:-{{ .Values.storageGc.usedPercentMark }}}"
+    DATA_DIR="${HERMES_HOME:-/opt/data}"
+
+    # df reports optimistic free space on btrfs (the data PV), so MARK is a trip
+    # point chosen with margin, not a measurement of remaining capacity.
+    USED="$(df -P "$DATA_DIR" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+
+    echo "[storage-gc $(date -u +%FT%TZ)] used=${USED}% mark=${MARK}%"
+    if [ "$USED" -lt "$MARK" ]; then
+      echo "[storage-gc] below the mark: no action"
+      exit 0
+    fi
+
+    echo "[storage-gc] used ${USED}% >= mark ${MARK}%: running the GC, report-only"
+    export PATH=/opt/data/mise/shims:/opt/hermes/bin:$PATH
+    exec python3 /opt/data/scripts/storage_gc.py
+{{- end }}

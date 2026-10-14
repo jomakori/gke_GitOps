@@ -1360,6 +1360,14 @@ hermes-agent:
     - name: mcp-verify
       configMap:
         name: openagent-mcp-manifest
+    # The storage GC's cron entry point. This chart owns the trigger; the
+    # wrapper is mounted over the PVC copy by extraVolumeMounts below.
+    # defaultMode 0555 so it runs whether the cron entry point is exec'd
+    # directly or handed to a shell.
+    - name: storage-gc-cron
+      configMap:
+        name: openagent-storage-gc-cron
+        defaultMode: 0555
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -1385,6 +1393,13 @@ hermes-agent:
       readOnly: true
     - name: mcp-verify
       mountPath: /opt/data/mcp-verify
+      readOnly: true
+    # subPath is load-bearing: mounting the directory would shadow storage_gc.py
+    # beside it. A subPath mount does not pick up ConfigMap edits in place, so
+    # changing the wrapper restarts this pod on the next sync.
+    - name: storage-gc-cron
+      mountPath: /opt/data/scripts/storage_gc_cron.sh
+      subPath: storage_gc_cron.sh
       readOnly: true
   extraInitContainers:
     # Installs the gitopsctl binary from the prebuilt tools image into the
@@ -1514,6 +1529,18 @@ hermes-agent:
     # publish a port with nothing behind it.
     enabled: false
     port: 9119
+
+# ── Storage GC gate ─────────────────────────────────────────────────
+# The session-aware GC (/opt/data/scripts/storage_gc.py) stays the actor and
+# stays on the PVC; this chart owns only the trigger. The gate turns the cron
+# entry point into a sub-second no-op while the data filesystem is healthy,
+# instead of sweeping on the clock every six hours.
+storageGc:
+  # Used-percent trip point. Conservative by design: the data PV is btrfs, where
+  # df overstates usable space, and a large share of the volume sits outside the
+  # GC's reach (node image and container store), so this is a floor with margin
+  # rather than a capacity measurement.
+  usedPercentMark: 80
 
 # ── MCP verification (manifest certification) ──────────────────────
 # The manifest at hermes-agent.config.mcp_servers is the single source of
