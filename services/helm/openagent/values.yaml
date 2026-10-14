@@ -1209,6 +1209,22 @@ hermes-agent:
           resources: false
           prompts: false
 
+      postalform:
+        lazy: true
+        # Public remote Streamable-HTTP server (see skiplagged). Prints and mails
+        # physical documents via USPS. Only the draft/validate/status surface is
+        # declared: create_machine_order, pay_order and complete_checkout are
+        # deliberately absent, so every order stops at a hosted checkout_url a
+        # human reviews and pays — no unattended spend.
+        url: "https://postalform.com/mcp"
+        timeout: 60
+        connect_timeout: 60
+        auth_probe: {tool: postalform.ping, args: {}}
+        tools:
+          include: [postalform.ping, postalform.list_forms, postalform.get_form_schema, postalform.search_addresses, postalform.create_pdf_upload, postalform.preview_letter_order_draft, postalform.create_order_draft, postalform.create_letter_order_draft, postalform.create_form_order_draft, postalform.get_order_status]
+          resources: false
+          prompts: false
+
       bitwarden:
         lazy: true
         # Re-enabled: pinned, and the inline block below performs `bw login` /
