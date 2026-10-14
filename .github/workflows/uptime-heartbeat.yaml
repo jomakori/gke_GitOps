@@ -1,0 +1,83 @@
+name: Uptime heartbeat (external vantage point)
+
+# Deliberately runs OUTSIDE the cluster. On 2026-10-13 node disk pressure evicted
+# Postgres, LiteLLM crash-looped for ~11h, and Prometheus/kube-state-metrics went
+# down with the same event — so every in-cluster signal was blind to it. This probe
+# runs on a GitHub runner and is the only check that survives that failure mode.
+# It hits the gateway's own readiness endpoint, which redirects nowhere and needs
+# no auth (unlike the dashboard host, which sits behind Cloudflare Access and
+# returns 302 even when the cluster is gone).
+# Refs DEV-58.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime-heartbeat
+  cancel-in-progress: false
+
+env:
+  PROBE_URL: https://litellm.maklab.net/health/readiness
+  ISSUE_TITLE: "Uptime: openagent gateway unreachable from outside"
+
+jobs:
+  probe:
+    name: Probe gateway readiness from outside the cluster
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 5
+    steps:
+      - name: Probe readiness endpoint
+        id: probe
+        run: |
+          set -uo pipefail
+          code=""
+          for attempt in 1 2 3; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' -m 15 "$PROBE_URL" || echo 000)
+            echo "attempt ${attempt}: HTTP ${code}"
+            if [ "$code" = "200" ]; then
+              break
+            fi
+            sleep 10
+          done
+          echo "code=${code}" >>"$GITHUB_OUTPUT"
+          if [ "$code" != "200" ]; then
+            echo "::error::${PROBE_URL} returned ${code} after 3 attempts"
+            exit 1
+          fi
+
+      - name: Raise or update the alert issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CODE: ${{ steps.probe.outputs.code }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          body=$(printf 'External probe failed.\n\n- URL: `%s`\n- HTTP status: `%s`\n- Vantage point: GitHub-hosted runner (outside the cluster)\n- Run: %s\n\nThis check exists because an in-cluster outage takes the in-cluster monitoring\nwith it. Refs DEV-58.\n' "$PROBE_URL" "${CODE:-000}" "$RUN_URL")
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$ISSUE_TITLE" --body "$body"
+          fi
+
+      - name: Close the alert issue on recovery
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" \
+              --body "Recovered: \`$PROBE_URL\` returned HTTP 200 at $(date -u +%FT%TZ)."
+            gh issue close "$number" --repo "$GITHUB_REPOSITORY"
+          fi
