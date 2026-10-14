@@ -1,0 +1,72 @@
+suite: storage GC gate — the trigger acts on disk state, not on the clock
+# The GC's cron entry point is owned by this chart and mounted over the PVC copy
+# at /opt/data/scripts/storage_gc_cron.sh. Two ways this fails silently: the
+# mount moves (the entry point then runs whatever stale wrapper sits on the PVC,
+# i.e. the old unconditional sweep), or the wrapper regains --apply (the chart
+# would then be deleting data on a schedule). Both directions are asserted.
+templates:
+  - templates/storage-gc.yaml
+  - charts/hermes-agent/templates/deployment.yaml
+  # The Deployment's podTemplate includes these by path, so a suite that renders
+  # the Deployment has to list them or it errors before any assert runs.
+  - charts/hermes-agent/templates/configmap.yaml
+  - charts/hermes-agent/templates/secret.yaml
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: the entry point compares free space against the mark
+    asserts:
+      - isKind:
+          of: ConfigMap
+        documentSelector:
+          path: metadata.name
+          value: openagent-storage-gc-cron
+      - matchRegex:
+          path: data["storage_gc_cron.sh"]
+          pattern: 'df -P "\$DATA_DIR"'
+        documentSelector:
+          path: metadata.name
+          value: openagent-storage-gc-cron
+      - matchRegex:
+          path: data["storage_gc_cron.sh"]
+          pattern: "exit 0"
+        documentSelector:
+          path: metadata.name
+          value: openagent-storage-gc-cron
+  - it: the entry point cannot reclaim, and the mark comes from values
+    asserts:
+      - notMatchRegex:
+          path: data["storage_gc_cron.sh"]
+          pattern: "--apply"
+        documentSelector:
+          path: metadata.name
+          value: openagent-storage-gc-cron
+      - matchRegex:
+          path: data["storage_gc_cron.sh"]
+          pattern: "STORAGE_GC_USED_PERCENT_MARK:-80"
+        documentSelector:
+          path: metadata.name
+          value: openagent-storage-gc-cron
+  - it: mounts the gate where the cron entry point resolves it
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: storage-gc-cron
+            mountPath: /opt/data/scripts/storage_gc_cron.sh
+            subPath: storage_gc_cron.sh
+            readOnly: true
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: storage-gc-cron
+            configMap:
+              name: openagent-storage-gc-cron
+              defaultMode: 0555
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
