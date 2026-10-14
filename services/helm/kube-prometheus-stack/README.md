@@ -57,6 +57,7 @@ Prometheus TSDB uses a 30Gi PVC via the `local-path` storage class. Alertmanager
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | dopplerConfig | string | `"svc_grafana"` |  |
+| kube-prometheus-stack.alertmanager.alertmanagerSpec.alertmanagerConfigMatcherStrategy.type | string | `"None"` |  |
 | kube-prometheus-stack.alertmanager.service.port | int | `15010` |  |
 | kube-prometheus-stack.defaultRules.create | bool | `true` |  |
 | kube-prometheus-stack.defaultRules.rules.etcd | bool | `false` |  |
