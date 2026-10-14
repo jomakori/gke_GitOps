@@ -1,0 +1,28 @@
+suite: openagent compaction trigger is an absolute cap
+# Regression: `compression.threshold` is a fraction of the model context window, and
+# every routed model declares a 1M-token window, so the ratio trigger lands at
+# 215K-350K and no request ever reaches it (measured p50 request: 141K tokens).
+# `threshold_tokens` is the only value that binds; assert it reaches the SEEDED
+# config, not just values. Subchart templates cannot be targeted via `templates:`
+# (helm-unittest resolves chart-local paths only), so select the document.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: renders the absolute compaction cap into the seeded hermes config
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^\\s+threshold_tokens: 80000$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+
+  - it: keeps the deterministic prune strictly below the cap
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^\\s+proactive_prune_tokens: 48000$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config

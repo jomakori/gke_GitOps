@@ -617,6 +617,9 @@ hermes-agent:
       enabled: true
       threshold: 0.35
       target_ratio: 0.20
+      # Absolute cap, applied as min(ratio trigger, this) and clamped to the
+      # window: the 0.35 ratio cannot bind on a 1M-token window.
+      threshold_tokens: 80000
       # Deterministic (no-LLM) prune of OLD tool-result payloads, on its own
       # token trigger. The 0.35 ratio above rarely fires on a 1M-token window, so
       # bulky tool output rides along in history and is re-billed every turn:

@@ -216,6 +216,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.compression.proactive_prune_tokens | int | `48000` |  |
 | hermes-agent.config.compression.target_ratio | float | `0.2` |  |
 | hermes-agent.config.compression.threshold | float | `0.35` |  |
+| hermes-agent.config.compression.threshold_tokens | int | `80000` |  |
 | hermes-agent.config.delegation.api_key | string | `"${LITELLM_MASTER_KEY}"` |  |
 | hermes-agent.config.delegation.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
 | hermes-agent.config.delegation.fallback_providers[0].model | string | `"claude-haiku-4-5"` |  |
