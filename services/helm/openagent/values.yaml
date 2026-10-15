@@ -1531,15 +1531,24 @@ hermes-agent:
     port: 9119
 
 # ── Storage GC gate ─────────────────────────────────────────────────
+# Closes the last open criterion of the parent node-disk spec (DEV-61): the
+# btrfs caveat below, and the build-cache cap that lives outside this chart.
+#
 # The session-aware GC (/opt/data/scripts/storage_gc.py) stays the actor and
 # stays on the PVC; this chart owns only the trigger. The gate turns the cron
 # entry point into a sub-second no-op while the data filesystem is healthy,
 # instead of sweeping on the clock every six hours.
 storageGc:
-  # Used-percent trip point. Conservative by design: the data PV is btrfs, where
-  # df overstates usable space, and a large share of the volume sits outside the
-  # GC's reach (node image and container store), so this is a floor with margin
-  # rather than a capacity measurement.
+  # Used-percent trip point, not a capacity measurement: the data PV is btrfs,
+  # where df/driver free-space reporting overstates usable space, and a large
+  # share of the volume sits outside the GC's reach (node image, container
+  # store) - so this mark can read "fine" shortly before kubelet's
+  # DiskPressure fires. DiskPressure, not this percent, is the authoritative
+  # signal; this mark is a floor with margin chosen to trip ahead of it.
+  #
+  # Does not cap the shared build-cache PVC: local-path enforces no quota, so
+  # a PVC's requested size is not a limit. That cap is enforced in the build
+  # wrapper itself (devops/temp-k8s-build skill, host-side), not here.
   usedPercentMark: 80
 
 # ── MCP verification (manifest certification) ──────────────────────
