@@ -1,0 +1,18 @@
+suite: openagent opts the omo plugin into gateway message injection
+# Regression: the gateway refuses a plugin's inject_gateway_message call unless
+# the seeded config carries plugins.entries.omo.allow_gateway_injection, and the
+# host check is a strict `is True`. The key is consumed by the vendored
+# hermes-agent subchart, so assert on the rendered ConfigMap rather than on
+# values.yaml - a subchart can drop a key silently and leave the opt-in inert.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: seeds allow_gateway_injection true for the omo plugin entry
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^\\s+allow_gateway_injection: true$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config

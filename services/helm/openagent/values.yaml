@@ -683,6 +683,9 @@ hermes-agent:
         - omo
       entries:
         omo:
+          # Opt-in for the plugin's wake-up injection; must stay a real boolean
+          # (the host check is a strict `is True`).
+          allow_gateway_injection: true
           settings:
             # Jev decision layer (hermes-omo-plugin). Shadow mode is ON: the
             # harness runs Jev's `pick_agent` beside the engine's real decision,

@@ -646,6 +646,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.model.provider | string | `"litellm"` |  |
 | hermes-agent.config.plugins.enabled[0] | string | `"discord-platform"` |  |
 | hermes-agent.config.plugins.enabled[1] | string | `"omo"` |  |
+| hermes-agent.config.plugins.entries.omo.allow_gateway_injection | bool | `true` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[1] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
