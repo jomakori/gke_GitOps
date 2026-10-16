@@ -29,6 +29,11 @@ tests:
           value: 200
       - notExists:
           path: spec.http[0].route
+      # Browsers render the page only when the type is html, not Envoy's
+      # text/plain default.
+      - equal:
+          path: spec.http[0].headers.response.set["content-type"]
+          value: "text/html; charset=utf-8"
       - matchRegex:
           path: spec.http[0].directResponse.body.string
           pattern: "^<!doctype html>"
