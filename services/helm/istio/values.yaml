@@ -151,8 +151,9 @@ splash:
   message: "There's no PR currently staged."
   # -- Second line, as a link to the pull requests filtered by the staging label.
   linkText: "Confirm if PR has a staging label"
-  # -- URL the link text points at.
-  linkUrl: "https://github.com/jomakori/openkite/pulls?q=is%3Apr+label%3Astaging"
+  # -- URL the link text points at: the open pull requests carrying the staging
+  # label, which are the ones that can be staged.
+  linkUrl: "https://github.com/jomakori/openkite/pulls?q=is%3Apr+is%3Aopen+label%3Astaging"
 
 # Hosts whose route is declared elsewhere and that still need the DENY policy of
 # `enablePrivate`. Each entry emits a `require-cf-access-<host>` AuthorizationPolicy
