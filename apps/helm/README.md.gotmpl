@@ -49,7 +49,7 @@ Each app supports `staging` and `production` environments. Per-environment confi
 
 | Field | Source | Default |
 |-------|--------|---------|
-| Subdomain | `environments.<env>.subdomain` | `<appName>` (prod) / `staging.<appName>` (staging) |
+| Subdomain | `environments.<env>.subdomain` | `<appName>` (prod) / `staging-<appName>` (staging) |
 | Image tag | `environments.<env>.tag` | `latest` |
 | Doppler config | `environments.<env>.dopplerConfig` | (none — ExternalSecret only created when set) |
 | Namespace | Auto | `<appName-kebab>-<envName>` |

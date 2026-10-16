@@ -51,7 +51,7 @@ Each app supports `staging` and `production` environments. Per-environment confi
 
 | Field | Source | Default |
 |-------|--------|---------|
-| Subdomain | `environments.<env>.subdomain` | `<appName>` (prod) / `staging.<appName>` (staging) |
+| Subdomain | `environments.<env>.subdomain` | `<appName>` (prod) / `staging-<appName>` (staging) |
 | Image tag | `environments.<env>.tag` | `latest` |
 | Doppler config | `environments.<env>.dopplerConfig` | (none — ExternalSecret only created when set) |
 | Namespace | Auto | `<appName-kebab>-<envName>` |
@@ -138,8 +138,8 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.clusterAdmin | bool | `true` |  |
 | openkite.enable_istio | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
-| openkite.environments.production.tag | string | `"v0.58.0"` |  |
-| openkite.environments.staging.subdomain | string | `"staging.openkite"` |  |
+| openkite.environments.production.tag | string | `"v0.58.2"` |  |
+| openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |
 | openkite.environments.staging.tag | string | `"v0.52.0"` |  |
 | openkite.image.repository | string | `"ghcr.io/jomakori/openkite"` |  |
 | openkite.istio.gateway | string | `"istio-system/maklab-gateway"` |  |
