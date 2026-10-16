@@ -147,9 +147,9 @@ splash:
   status: 200
   # -- Name under the logo (the logo itself is the kite mark above it).
   brand: OpenKite
-  # -- Sentence below the logo.
+  # -- First line below the logo.
   message: "There's no PR currently staged."
-  # -- Link text, pointing at the pull requests filtered by the staging label.
+  # -- Second line, as a link to the pull requests filtered by the staging label.
   linkText: "Confirm if PR has a staging label"
   # -- URL the link text points at.
   linkUrl: "https://github.com/jomakori/openkite/pulls?q=is%3Apr+label%3Astaging"

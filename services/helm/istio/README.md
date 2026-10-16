@@ -178,9 +178,9 @@ page: the app logo, plus a line pointing at the pull requests filtered by the st
 | splash.brand | string | `"OpenKite"` | Name under the logo (the logo itself is the kite mark above it). |
 | splash.enabled | bool | `true` | Render the placeholder VirtualService. |
 | splash.host | string | `"staging-openkite.maklab.net"` | Host the placeholder answers for. Keep it exact — a wildcard here would answer every unrouted host on the domain. |
-| splash.linkText | string | `"Confirm if PR has a staging label"` | Link text, pointing at the pull requests filtered by the staging label. |
+| splash.linkText | string | `"Confirm if PR has a staging label"` | Second line, as a link to the pull requests filtered by the staging label. |
 | splash.linkUrl | string | `"https://github.com/jomakori/openkite/pulls?q=is%3Apr+label%3Astaging"` | URL the link text points at. |
-| splash.message | string | `"There's no PR currently staged."` | Sentence below the logo. |
+| splash.message | string | `"There's no PR currently staged."` | First line below the logo. |
 | splash.status | int | `200` | HTTP status of the placeholder response. 200 reads as a normal page; 503 makes uptime checks flag the missing preview. |
 | virtualServices.argocd.destination.host | string | `"argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
 | virtualServices.argocd.destination.port | int | `80` |  |

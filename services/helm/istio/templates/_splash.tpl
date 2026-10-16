@@ -42,7 +42,7 @@ stroke-linejoin="round" stroke-width="1.8"/>
 stroke-linejoin="round" stroke-width="1.8"/>
 </svg>
 <h1 class="brand">{{ .Values.splash.brand }}</h1>
-<p class="detail">{{ .Values.splash.message }} <a href="{{ .Values.splash.linkUrl }}">{{ .Values.splash.linkText }}</a>.</p>
+<p class="detail">{{ .Values.splash.message }}<br><a href="{{ .Values.splash.linkUrl }}">{{ .Values.splash.linkText }}</a>.</p>
 </main>
 </body>
 </html>
