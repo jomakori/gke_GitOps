@@ -42,7 +42,7 @@ tests:
           pattern: "There's no PR currently staged"
       - matchRegex:
           path: spec.http[0].directResponse.body.string
-          pattern: "https://github.com/jomakori/openkite/pulls\\?q=is%3Apr\\+label%3Astaging"
+          pattern: "https://github.com/jomakori/openkite/pulls\\?q=is%3Apr\\+is%3Aopen\\+label%3Astaging"
   - it: renders no manifest when disabled
     set:
       splash.enabled: false
