@@ -13,7 +13,7 @@ Istio umbrella chart — base CRDs, control plane, ingress gateway, and config (
 
 ## Under the hood
 
-This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), **istiod** (control plane), and **ingress-gateway** — plus 11 local templates for networking, TLS, and auth configuration. It is the single entry point for all cluster ingress.
+This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), **istiod** (control plane), and **ingress-gateway** — plus 10 local templates for networking, TLS, and auth configuration. It is the single entry point for all cluster ingress.
 
 ### Hybrid chart structure
 
@@ -30,7 +30,6 @@ This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), *
 | `cluster-issuer.yaml` | `letsencrypt-prod` — Let's Encrypt ACME via Cloudflare DNS-01 |
 | `certificate.yaml` | `wildcard-maklab-net` — wildcard TLS cert for `*.<clusterDomain>` |
 | `virtual-services.yaml` | One `VirtualService` per entry in `virtualServices` with `enabled: true` |
-| `splash.yaml` | Placeholder page (`directResponse` `VirtualService`) for a host with no app deployed — see `splash` |
 | `peer-authentication.yaml` | STRICT mTLS mesh-wide |
 | `request-authentication.yaml` | CF Access JWT validation (conditional on `cloudflare.access.audienceTag`) |
 | `authorization-policy-private.yaml` | DENY rules per private VS (conditional on `enablePrivate: true`) |
@@ -85,26 +84,6 @@ missing or whose audience is absent from `cloudflare.access.audienceTag`.
 Two layers of VirtualServices exist:
 1. **This chart** (istio umbrella) — spec-driven entries in `virtualServices`, primarily for infrastructure services (argocd, headlamp, opencost). Registered explicitly in the values.
 2. **App chart** (apps/helm) — per-app per-environment VS for application workloads, generated from the parameterized app chart.
-
-### Placeholder page for an undeployed host
-
-`splash` (`splash.yaml`) answers a host that currently has **no** VirtualService of its own with a static
-page: the app logo, plus a line pointing at the pull requests filtered by the staging label. It is a
-`directResponse`, so it needs no backend — no pod, no image, no maintenance deployment.
-
-- Scope is one exact host (`staging-openkite.maklab.net`), so it cannot affect another app's routing.
-- The route sets `content-type: text/html; charset=utf-8`. Without it Envoy serves the body as
-  `text/plain`, and browsers print the markup instead of rendering the page.
-- **Known limitation — it permanently owns the host.** VirtualServices that claim the same host on the
-  same gateway are merged, and for identical matches the **older** one keeps the route (measured: a
-  probe VirtualService created two minutes after this one never took over). A staging environment that
-  appears later — an `openkite` pull request labelled `staging`, which the application set deploys to
-  this same host — is therefore shadowed by the placeholder until the placeholder is gated on the same
-  state that admits the staging environment.
-- Other limits: it covers **only** "nothing deployed". A pod that is up but broken (crash loop, failing
-  probe) answers its own `503` before this route is consulted; covering that needs a fronting proxy
-  (e.g. a Cloudflare Worker that falls back when the origin 5xxs). `status` is also a monitoring
-  choice — `200` reads as a healthy page, `503` lets uptime checks flag the missing preview.
 
 ### Doppler config
 
@@ -181,13 +160,6 @@ page: the app logo, plus a line pointing at the pull requests filtered by the st
 | podDisruptionBudget.enabled | bool | `true` |  |
 | podDisruptionBudget.maxUnavailable | int | `1` |  |
 | privateHosts[0] | string | `"*.openkite.maklab.net"` |  |
-| splash.brand | string | `"OpenKite"` | Name under the logo (the logo itself is the kite mark above it). |
-| splash.enabled | bool | `true` | Render the placeholder VirtualService. |
-| splash.host | string | `"staging-openkite.maklab.net"` | Host the placeholder answers for. Keep it exact — a wildcard here would answer every unrouted host on the domain. |
-| splash.linkText | string | `"Confirm if PR has a staging label"` | Second line, as a link to the pull requests filtered by the staging label. |
-| splash.linkUrl | string | `"https://github.com/jomakori/openkite/pulls?q=is%3Apr+is%3Aopen+label%3Astaging"` | URL the link text points at: the open pull requests carrying the staging label, which are the ones that can be staged. |
-| splash.message | string | `"There's no PR currently staged."` | First line below the logo. |
-| splash.status | int | `200` | HTTP status of the placeholder response. 200 reads as a normal page; 503 makes uptime checks flag the missing preview. |
 | virtualServices.argocd.destination.host | string | `"argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |

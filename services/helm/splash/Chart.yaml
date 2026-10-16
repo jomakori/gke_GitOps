@@ -1,0 +1,5 @@
+apiVersion: v2
+name: splash
+description: Placeholder page (directResponse VirtualService) for a host with nothing deployed behind it — rendered by the staging gate only while no pull request carries the staging label
+type: application
+version: 0.1.0

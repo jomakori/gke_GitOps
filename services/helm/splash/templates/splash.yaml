@@ -1,0 +1,39 @@
+{{- if .Values.splash.enabled }}
+---
+# Placeholder answer for a host with nothing deployed behind it. A directResponse
+# route needs no backend, pod or image.
+#
+# One claimant per host: this route shares its host and gateway with the staging
+# environment's VirtualService, and VirtualServices claiming the same host on one
+# gateway are merged — for identical matches the older one keeps the route
+# (measured), so a host with both would be shadowed by whichever came first. The
+# gate that keeps them apart lives in apps/argocd-appset: this chart is rendered
+# only while the state marker CI maintains from the `staging` label exists.
+#
+# It cannot cover a deployed-but-broken app: that pod answers its own 503 before
+# this route is consulted (see the chart README).
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: splash
+  namespace: {{ .Values.gateway.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  hosts:
+    - {{ required "splash.host is required when splash.enabled is true" .Values.splash.host | quote }}
+  gateways:
+    - {{ .Values.gateway.name }}
+  http:
+    - headers:
+        # Without an explicit type Envoy labels the body `text/plain` and
+        # browsers print the markup instead of rendering the page.
+        response:
+          set:
+            content-type: "text/html; charset=utf-8"
+      directResponse:
+        status: {{ .Values.splash.status }}
+        body:
+          string: |-
+{{ include "splash.page" . | indent 12 }}
+{{- end }}

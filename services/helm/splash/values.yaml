@@ -1,0 +1,29 @@
+# -- Shared ingress Gateway this placeholder attaches to. The Gateway itself is
+# declared by the istio chart; this chart only references it.
+gateway:
+  # -- Name of the Gateway.
+  name: maklab-gateway
+  # -- Namespace of the Gateway, and the namespace the VirtualService is created in.
+  namespace: istio-system
+
+# Placeholder answered for a host with nothing deployed behind it. The appset
+# renders this chart only while the state marker the `staging` label controls
+# exists, so it and the staging environment never claim the host together.
+splash:
+  # -- Render the placeholder VirtualService.
+  enabled: true
+  # -- Host the placeholder answers for. Keep it exact — a wildcard here would
+  # answer every unrouted host on the domain.
+  host: staging-openkite.maklab.net
+  # -- HTTP status of the placeholder response. 200 reads as a normal page; 503
+  # makes uptime checks flag the missing preview.
+  status: 200
+  # -- Name under the logo (the logo itself is the kite mark above it).
+  brand: OpenKite
+  # -- First line below the logo.
+  message: "There's no PR currently staged."
+  # -- Second line, as a link to the open pull requests carrying the staging label.
+  linkText: "Confirm if PR has a staging label"
+  # -- URL the link text points at: the open pull requests carrying the staging
+  # label, which are the ones that can be staged.
+  linkUrl: "https://github.com/jomakori/openkite/pulls?q=is%3Apr+is%3Aopen+label%3Astaging"
