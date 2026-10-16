@@ -132,6 +132,28 @@ virtualServices:
       host: openagent-hermes-agent.openagent.svc.cluster.local
       port: 9119
 
+# Placeholder page for a host with no app deployed behind it: one VirtualService
+# with a `directResponse`, so it needs no backend, pod or image (splash.yaml).
+# Envoy prefers a deployed app's exact-host route over this one, so the page is
+# selected only while the host is otherwise unrouted.
+splash:
+  # -- Render the placeholder VirtualService.
+  enabled: true
+  # -- Host the placeholder answers for. Keep it exact — a wildcard here would
+  # answer every unrouted host on the domain.
+  host: staging-openkite.maklab.net
+  # -- HTTP status of the placeholder response. 200 reads as a normal page; 503
+  # makes uptime checks flag the missing preview.
+  status: 200
+  # -- Name under the logo (the logo itself is the kite mark above it).
+  brand: OpenKite
+  # -- First line below the logo.
+  message: "There's no PR currently staged."
+  # -- Second line, as a link to the pull requests filtered by the staging label.
+  linkText: "Confirm if PR has a staging label"
+  # -- URL the link text points at.
+  linkUrl: "https://github.com/jomakori/openkite/pulls?q=is%3Apr+label%3Astaging"
+
 # Hosts whose route is declared elsewhere and that still need the DENY policy of
 # `enablePrivate`. Each entry emits a `require-cf-access-<host>` AuthorizationPolicy
 # into `istio-system` from this chart (authorization-policy-private-hosts.yaml).

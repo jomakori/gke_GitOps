@@ -1,0 +1,26 @@
+{{- if .Values.splash.enabled }}
+---
+# Placeholder answer for a host with no app deployed behind it. A directResponse
+# route needs no backend, pod or image, and Envoy prefers a deployed app's
+# exact-host route over it, so this is selected only while the host is otherwise
+# unrouted. It cannot cover a deployed-but-broken app: that pod answers its own
+# 503 before this route is ever consulted.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: splash
+  namespace: {{ .Values.gateway.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  hosts:
+    - {{ required "splash.host is required when splash.enabled is true" .Values.splash.host | quote }}
+  gateways:
+    - {{ .Values.gateway.name }}
+  http:
+    - directResponse:
+        status: {{ .Values.splash.status }}
+        body:
+          string: |-
+{{ include "istio.splash.page" . | indent 12 }}
+{{- end }}
