@@ -1,0 +1,46 @@
+suite: splash placeholder VirtualService
+templates:
+  - templates/splash.yaml
+tests:
+  - it: answers the configured host with a directResponse page
+    set:
+      splash.enabled: true
+      splash.host: splash.example.com
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: VirtualService
+      - isAPIVersion:
+          of: networking.istio.io/v1
+      - equal:
+          path: metadata.namespace
+          value: istio-system
+      - equal:
+          path: spec.hosts
+          value:
+            - splash.example.com
+      - equal:
+          path: spec.gateways
+          value:
+            - maklab-gateway
+      - equal:
+          path: spec.http[0].directResponse.status
+          value: 200
+      - notExists:
+          path: spec.http[0].route
+      - matchRegex:
+          path: spec.http[0].directResponse.body.string
+          pattern: "^<!doctype html>"
+      - matchRegex:
+          path: spec.http[0].directResponse.body.string
+          pattern: "There's no PR currently staged"
+      - matchRegex:
+          path: spec.http[0].directResponse.body.string
+          pattern: "https://github.com/jomakori/openkite/pulls\\?q=is%3Apr\\+label%3Astaging"
+  - it: renders no manifest when disabled
+    set:
+      splash.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
