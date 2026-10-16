@@ -1,10 +1,11 @@
 {{- if .Values.splash.enabled }}
 ---
 # Placeholder answer for a host with no app deployed behind it. A directResponse
-# route needs no backend, pod or image, and Envoy prefers a deployed app's
-# exact-host route over it, so this is selected only while the host is otherwise
-# unrouted. It cannot cover a deployed-but-broken app: that pod answers its own
-# 503 before this route is ever consulted.
+# route needs no backend, pod or image. VirtualServices claiming the same host on
+# one gateway are merged, and for identical matches the older one keeps the route,
+# so this permanently owns the host: a staging environment deployed later is
+# shadowed (see the chart README). It also cannot cover a deployed-but-broken app:
+# that pod answers its own 503 before this route is consulted.
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
@@ -18,7 +19,13 @@ spec:
   gateways:
     - {{ .Values.gateway.name }}
   http:
-    - directResponse:
+    - headers:
+        # Without an explicit type Envoy labels the body `text/plain` and
+        # browsers print the markup instead of rendering the page.
+        response:
+          set:
+            content-type: "text/html; charset=utf-8"
+      directResponse:
         status: {{ .Values.splash.status }}
         body:
           string: |-

@@ -89,9 +89,15 @@ page: the app logo, plus a line pointing at the pull requests filtered by the st
 `directResponse`, so it needs no backend — no pod, no image, no maintenance deployment.
 
 - Scope is one exact host (`staging-openkite.maklab.net`), so it cannot affect another app's routing.
-- While a preview app *is* deployed its own exact-host VirtualService wins (Envoy prefers the exact
-  match), so this route stops being selected on its own — nothing to reconcile by hand.
-- Known limits: it covers **only** "nothing deployed". A pod that is up but broken (crash loop, failing
+- The route sets `content-type: text/html; charset=utf-8`. Without it Envoy serves the body as
+  `text/plain`, and browsers print the markup instead of rendering the page.
+- **Known limitation — it permanently owns the host.** VirtualServices that claim the same host on the
+  same gateway are merged, and for identical matches the **older** one keeps the route (measured: a
+  probe VirtualService created two minutes after this one never took over). A staging environment that
+  appears later — an `openkite` pull request labelled `staging`, which the application set deploys to
+  this same host — is therefore shadowed by the placeholder until the placeholder is gated on the same
+  state that admits the staging environment.
+- Other limits: it covers **only** "nothing deployed". A pod that is up but broken (crash loop, failing
   probe) answers its own `503` before this route is consulted; covering that needs a fronting proxy
   (e.g. a Cloudflare Worker that falls back when the origin 5xxs). `status` is also a monitoring
   choice — `200` reads as a healthy page, `503` lets uptime checks flag the missing preview.
