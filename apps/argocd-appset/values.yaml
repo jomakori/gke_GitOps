@@ -135,6 +135,16 @@ apps:
     staging:
       enable: true
       label: staging
+      # The staging host has one claimant at a time. While no open pull request
+      # carries the label, the appset renders this placeholder for the host; CI in
+      # the app repo keeps the marker directory it is generated from in sync with
+      # the label. See services/helm/splash for why they must not coexist.
+      placeholder:
+        enable: true
+        helmPath: services/helm/splash/
+        namespace: istio-system
+        stateBranch: staging-state
+        statePath: .staging/idle
     parameters:
       - name: appName
         value: "openkite"

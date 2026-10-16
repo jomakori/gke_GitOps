@@ -169,5 +169,63 @@ spec:
             maxDuration: 3m
   syncPolicy:
     preserveResourcesOnDeletion: false
+{{- $ph := $s.placeholder | default dict }}
+{{- if $ph.enable }}
+{{- $phAppName := $ph.name | default (printf "%s-%s-placeholder" $kebabKey $envName) }}
+{{- $phRepo := $ph.stateRepoURL | default (printf "https://github.com/%s/%s" $owner $repo) }}
+{{- $phBranch := required (printf "apps.%s.staging.placeholder.stateBranch is required" $key) $ph.stateBranch }}
+{{- $phPath := required (printf "apps.%s.staging.placeholder.statePath is required" $key) $ph.statePath }}
+---
+# Placeholder for the staging host. This generator yields an item only while the
+# marker directory exists on the state branch, and CI creates it exactly while no
+# open pull request carries the staging label -- so the host has one claimant at a
+# time: this placeholder and the staging environment never coexist (the older
+# VirtualService would keep the host, see services/helm/splash).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ $phAppName }}
+  namespace: {{ $root.Values.argoNamespace | default "argocd" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $cfg.syncWave | default "0" | quote }}
+spec:
+  goTemplate: true
+  generators:
+    - git:
+        repoURL: {{ $phRepo | quote }}
+        revision: {{ $phBranch | quote }}
+        directories:
+          - path: {{ $phPath | quote }}
+        requeueAfterSeconds: {{ $s.requeueAfterSeconds | default 60 }}
+  template:
+    metadata:
+      name: {{ $phAppName | quote }}
+      labels:
+        app.kubernetes.io/name: {{ $key | quote }}
+        app.kubernetes.io/part-of: {{ $kebabKey | quote }}
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: {{ $cfg.argoProject | default ($root.Values.argoProject | default "default") }}
+      source:
+        repoURL: {{ $root.Values.repoUrl | quote }}
+        targetRevision: {{ $root.Values.targetRevision | default "main" | quote }}
+        path: {{ $ph.helmPath | default "services/helm/splash/" | quote }}
+      destination:
+        server: {{ $root.Values.clusterServer | default "https://kubernetes.default.svc" | quote }}
+        namespace: {{ $ph.namespace | default "istio-system" | quote }}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+{{- end }}
 {{- end }}
 {{- end }}

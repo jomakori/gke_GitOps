@@ -4,7 +4,6 @@ templates:
 tests:
   - it: answers the configured host with a directResponse page
     set:
-      splash.enabled: true
       splash.host: splash.example.com
     asserts:
       - hasDocuments:
@@ -43,6 +42,19 @@ tests:
       - matchRegex:
           path: spec.http[0].directResponse.body.string
           pattern: "https://github.com/jomakori/openkite/pulls\\?q=is%3Apr\\+is%3Aopen\\+label%3Astaging"
+  - it: attaches to the configured gateway and namespace
+    set:
+      gateway.name: other-gateway
+      gateway.namespace: other-namespace
+      splash.host: splash.example.com
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: other-namespace
+      - equal:
+          path: spec.gateways
+          value:
+            - other-gateway
   - it: renders no manifest when disabled
     set:
       splash.enabled: false

@@ -3,7 +3,7 @@ Placeholder page served by the splash VirtualService. Authored from the repo
 banner (docs/media/banner.svg in openkite) so the page matches the app's own
 artwork; the kite mark is inlined because the response carries no assets.
 */}}
-{{- define "istio.splash.page" -}}
+{{- define "splash.page" -}}
 <!doctype html>
 <html lang="en">
 <head>
