@@ -144,7 +144,7 @@ apps:
         helmPath: services/helm/splash/
         namespace: istio-system
         stateBranch: staging-state
-        statePath: .staging/idle
+        statePath: idle
     parameters:
       - name: appName
         value: "openkite"
