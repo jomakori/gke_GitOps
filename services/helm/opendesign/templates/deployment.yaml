@@ -68,26 +68,55 @@ spec:
               printf 'openai_base_url = "%s"\n' "{{ .Values.provider.endpoint }}" >> /app/.od/codex/config.toml
               printf 'model = "%s"\n' "{{ .Values.provider.model | default "claude-sonnet-5" }}" >> /app/.od/codex/config.toml
               # Expose the app's stdio MCP server so the agent can register artifacts
-              # (create_artifact / write_file / get_artifact) — required for the
+              # (create_artifact / write_file / get_artifact) -- required for the
               # preview pane to render anything.
               printf '\n[mcp_servers.open-design]\ncommand = "%s"\nargs = %s\n' "{{ .Values.provider.mcpCommand | default "/usr/local/bin/node" }}" '{{ .Values.provider.mcpArgs | default "[\"/app/apps/daemon/dist/cli.js\", \"mcp\", \"--daemon-url\", \"http://127.0.0.1:7456\"]" }}' >> /app/.od/codex/config.toml
               echo "Seeded Codex config (LiteLLM + MCP open-design)"
 
+              # Seed Claude Code's native MCP config (~/.claude.json, HOME=/app/.od).
+              # Claude Code is the default agent but only reads MCP servers from a
+              # top-level "mcpServers" key in ITS OWN json config file -- a different
+              # file *and* format than Codex's config.toml above. Without this block
+              # the default agent has no MCP tools and create_artifact/write_file/
+              # get_artifact silently never register.
+              CLAUDE_JSON=/app/.od/.claude.json
+              MCP_JSON='{"open-design":{"command":"{{ .Values.provider.mcpCommand | default "/usr/local/bin/node" }}","args":{{ .Values.provider.mcpArgs | default "[\"/app/apps/daemon/dist/cli.js\", \"mcp\", \"--daemon-url\", \"http://127.0.0.1:7456\"]" }}}}'
+              if [ -f "$CLAUDE_JSON" ]; then
+                node -e '
+                  const fs = require("fs");
+                  const path = process.argv[1];
+                  const mcp = JSON.parse(process.argv[2]);
+                  let cfg = {};
+                  try { cfg = JSON.parse(fs.readFileSync(path, "utf8")); } catch (e) { cfg = {}; }
+                  cfg.mcpServers = Object.assign({}, cfg.mcpServers, mcp);
+                  fs.writeFileSync(path, JSON.stringify(cfg, null, 2));
+                ' "$CLAUDE_JSON" "$MCP_JSON"
+              else
+                printf '{"mcpServers":%s}\n' "$MCP_JSON" > "$CLAUDE_JSON"
+              fi
+              chown 1001:1001 "$CLAUDE_JSON"
+              echo "Seeded Claude Code MCP config (.claude.json)"
+
               # Always refresh agentCliEnv so stale endpoints/keys never break runs
               if [ -f /app/.od/app-config.json ]; then
                 sed -i "s#http://openagent-hermes-api.openagent.svc.cluster.local:8642/v1#{{ .Values.provider.endpoint }}#g; s#http://openagent-litellm.openagent.svc.cluster.local:4000/v1#{{ .Values.provider.endpoint }}#g; s#http://responses-proxy.openagent.svc.cluster.local:4524/v1#{{ .Values.provider.endpoint }}#g; s#***REMOVED***#$CODEX_API_KEY#g" /app/.od/app-config.json
+                # One-time migration: PVCs bootstrapped before the Claude cutover have
+                # agentId=codex baked in, so the bootstrap-only branch below never re-runs
+                # for them. Force-flip it here on every boot (no-op once already migrated).
+                sed -i 's#"agentId": "codex"#"agentId": "claude"#g' /app/.od/app-config.json
                 echo "Refreshed app-config.json agentCliEnv"
               else
                 printf '{\n' > /app/.od/app-config.json
                 printf '  "onboardingCompleted": true,\n' >> /app/.od/app-config.json
-                printf '  "agentId": "codex",\n' >> /app/.od/app-config.json
+                printf '  "agentId": "claude",\n' >> /app/.od/app-config.json
                 printf '  "agentCliEnv": {\n' >> /app/.od/app-config.json
                 printf '    "codex": {\n' >> /app/.od/app-config.json
                 printf '      "OPENAI_BASE_URL": "%s",\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
                 printf '      "CODEX_API_KEY": "%s"\n' "$CODEX_API_KEY" >> /app/.od/app-config.json
                 printf '    },\n' >> /app/.od/app-config.json
                 printf '    "claude": {\n' >> /app/.od/app-config.json
-                printf '      "ANTHROPIC_BASE_URL": "%s"\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
+                printf '      "ANTHROPIC_BASE_URL": "%s",\n' "{{ .Values.provider.endpoint }}" >> /app/.od/app-config.json
+                printf '      "model": "opusplan"\n' >> /app/.od/app-config.json
                 printf '    }\n' >> /app/.od/app-config.json
                 printf '  }\n' >> /app/.od/app-config.json
                 printf '}\n' >> /app/.od/app-config.json
@@ -105,7 +134,7 @@ spec:
       {{- if .Values.enable_auth_proxy }}
         - name: auth-proxy-init
           image: nginxinc/nginx-unprivileged:1.25-alpine-slim
-          command: ["sh", "-c", "printf '%s\n' 'server { listen 8080; location / { proxy_pass http://127.0.0.1:7456; proxy_set_header Authorization "Bearer ${PROXY_API_TOKEN}"; } }' > /etc/nginx/conf.d/default.conf"]
+          command: ["sh", "-c", "printf '%s\n' 'server { listen 8080; location / { proxy_pass http://127.0.0.1:7456; proxy_set_header Authorization \"Bearer ${PROXY_API_TOKEN}\"; } }' > /etc/nginx/conf.d/default.conf"]
           env:
             - name: PROXY_API_TOKEN
               valueFrom:
@@ -178,11 +207,32 @@ spec:
                   key: LITELLM_MASTER_KEY
                   optional: true
             {{- if .Values.agents.claude.ANTHROPIC_BASE_URL }}
+            # Explicit operator override -- keep routing through LiteLLM/responses-proxy/
+            # claude-proxy (or any other Anthropic-compatible endpoint) instead of
+            # talking to api.anthropic.com directly.
             - name: ANTHROPIC_BASE_URL
               value: {{ .Values.agents.claude.ANTHROPIC_BASE_URL | quote }}
-            {{- else if .Values.provider.endpoint }}
-            - name: ANTHROPIC_BASE_URL
-              value: {{ .Values.provider.endpoint | quote }}
+            {{- if .Values.agents.claude.ANTHROPIC_API_KEY }}
+            - name: ANTHROPIC_API_KEY
+              value: {{ .Values.agents.claude.ANTHROPIC_API_KEY | quote }}
+            {{- end }}
+            {{- else }}
+            # Default: Claude Code authenticates directly against api.anthropic.com
+            # using the subscription OAuth token (Doppler devops/svc_openagent -- the
+            # same config claude-proxy already reads), bypassing
+            # LiteLLM/responses-proxy/claude-proxy entirely. ANTHROPIC_BASE_URL is
+            # intentionally left unset so the Claude CLI defaults to api.anthropic.com.
+            {{- if .Values.agents.claude.ANTHROPIC_API_KEY }}
+            - name: ANTHROPIC_API_KEY
+              value: {{ .Values.agents.claude.ANTHROPIC_API_KEY | quote }}
+            {{- else }}
+            - name: CLAUDE_CODE_OAUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: opendesign-secrets
+                  key: CLAUDE_CODE_OAUTH_TOKEN
+                  optional: true
+            {{- end }}
             {{- end }}
           ports:
             - name: http
