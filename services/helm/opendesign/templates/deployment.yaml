@@ -37,6 +37,23 @@ spec:
           volumeMounts:
             - name: codex
               mountPath: /opt/codex
+        # Claude Code CLI, kept alongside codex so either harness can be selected.
+        # Debian (glibc) base on purpose: @anthropic-ai/claude-code ships a native
+        # binary per libc, so an alpine init container would stage a musl build that
+        # cannot run in the glibc app image.
+        - name: install-claude
+          image: node:24-bookworm-slim
+          command:
+            - sh
+            - -c
+            - |
+              npm install --prefix /opt/claude @anthropic-ai/claude-code@2.1.302 2>&1 | tail -5
+              ln -sf /opt/claude/node_modules/.bin/claude /usr/local/bin/claude
+              chown -R 1001:1001 /opt/claude
+              echo "Claude Code CLI installed: $(/opt/claude/node_modules/.bin/claude --version)"
+          volumeMounts:
+            - name: claude
+              mountPath: /opt/claude
         - name: seed-config
           image: busybox:1.36
           command:
@@ -100,6 +117,8 @@ spec:
       volumes:
         - name: codex
           emptyDir: {}
+        - name: claude
+          emptyDir: {}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "opendesign.fullname" . }}
@@ -138,7 +157,7 @@ spec:
             - name: CODEX_HOME
               value: /app/.od/codex
             - name: PATH
-              value: "/opt/codex/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+              value: "/opt/codex/node_modules/.bin:/opt/claude/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             - name: OD_API_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -172,6 +191,8 @@ spec:
           volumeMounts:
             - name: codex
               mountPath: /opt/codex
+            - name: claude
+              mountPath: /opt/claude
             - name: data
               mountPath: /app/.od
             - name: tmp
