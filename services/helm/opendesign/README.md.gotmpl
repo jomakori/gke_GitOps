@@ -1,0 +1,34 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+This chart deploys **Open Design** (`ghcr.io/nexu-io/od`), a self-hosted spec-driven development environment. Code generation is delegated to a configurable AI agent harness, which talks to Anthropic/OpenAI-compatible endpoints that are by default pointed at the in-cluster `provider` (LiteLLM `responses-proxy` → `claude-proxy` → Claude).
+
+### Agent harness (`values.yaml` `agents` block)
+
+| Agent | Role | Config |
+|-------|------|--------|
+| **Claude Code** | **Default agent** | `agents.claude.ANTHROPIC_BASE_URL` / `agents.claude.ANTHROPIC_API_KEY` — left empty, the template fills them from the chart's `provider` block (endpoint + model) |
+| **Codex** | Fallback / alternate agent | `agents.codex.OPENAI_BASE_URL` / `agents.codex.OPENAI_API_KEY` — same empty-value fallback to `provider`; stays available so a session can be switched to Codex instead of Claude Code |
+
+### Claude Code model behavior (`opusplan`)
+
+Claude Code's default model alias is `opusplan`. It pairs two models **by mode**, not by task complexity:
+
+- **Plan mode** → **Opus** — used while drafting/reviewing a plan.
+- **Execution mode** → **Sonnet** — used once the plan is approved and code is actually being written.
+
+This is a fixed, mode-based switch: Opus is not selected because a task is judged "complex"; it only runs during planning, and Sonnet takes over for execution regardless of how large or small the task is. There is no literal task-complexity auto-routing in this chart.
+
+### Fallback agent
+
+Codex remains available as an alternate agent in the same `agents` block (`agents.codex.*`). It can be selected for a session in place of Claude Code; both agents route through the same `provider` (LiteLLM `responses-proxy` → `claude-proxy` → Claude) whenever their own `OPENAI_BASE_URL`/`ANTHROPIC_BASE_URL` overrides are left empty.
+
+{{ template "chart.valuesSection" . }}
