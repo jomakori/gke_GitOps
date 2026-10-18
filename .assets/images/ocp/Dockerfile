@@ -8,22 +8,24 @@
 # it drives the same CLI but silently drops client tools.
 #
 # Upstream (MIT): https://github.com/dtzp555-max/ocp — publishes neither an npm
-# package nor a container image, so we vendor a pinned release tag at build time.
+# package nor a container image, so we vendor a pinned commit at build time.
 # Pinned deliberately: OCP spawns the CLI and is the only thing between our agents
 # and the subscription, so the version in the image is the version we validated.
-# Image is a pristine upstream release — no vendored patches (upstream #494,
-# released in v3.37.0, classified the 5-hour session wall as a 429; we carried
-# that fix as a patch until the release landed).
+#
+# Fork (jomakori/ocp): upstream main plus the DEV-51 health patch and a models.json
+# entry for claude-haiku-5-5, released 2026-10-07 and not yet in any upstream
+# release (upstream main has Opus/Sonnet 5.5 only). Retire the fork once upstream
+# ships Haiku 5.5: drop OCP_GIT_REF, point OCP_REPOSITORY back upstream, rebuild.
 #
 # Build target: linux/arm64 — the cluster (k3d on OrbStack, Apple Silicon) is arm64.
 
 ARG NODE_IMAGE=node:22-bookworm-slim
 FROM ${NODE_IMAGE}
 
-ARG OCP_VERSION=v3.37.0
-ARG OCP_REPOSITORY=https://github.com/dtzp555-max/ocp.git
-ARG OCP_GIT_REF=
-ARG CLAUDE_CODE_VERSION=2.1.272
+ARG OCP_VERSION=v3.36.0-dev51-haiku55
+ARG OCP_REPOSITORY=https://github.com/jomakori/ocp.git
+ARG OCP_GIT_REF=79b72e702167b1bf12db4457c5151855b8a22f65
+ARG CLAUDE_CODE_VERSION=2.1.302
 
 LABEL org.opencontainers.image.title="ocp" \
       org.opencontainers.image.description="OCP (open-claude-proxy): OpenAI-compatible gateway for the Claude Code CLI with caller-side tool calling" \

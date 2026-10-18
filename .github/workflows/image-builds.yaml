@@ -33,21 +33,21 @@ on:
   workflow_dispatch:
     inputs:
       OCP_VERSION:
-        description: "OCP release tag to vendor"
+        description: "Image tag to publish"
         required: true
-        default: "v3.37.0"
+        default: "v3.36.0-dev51-haiku55"
       OCP_GIT_REF:
-        description: "Optional full OCP git commit or ref to vendor from OCP_REPOSITORY"
+        description: "OCP git commit or ref to vendor from OCP_REPOSITORY"
         required: false
-        default: ""
+        default: "79b72e702167b1bf12db4457c5151855b8a22f65"
       OCP_REPOSITORY:
         description: "OCP git repository to vendor"
         required: true
-        default: "https://github.com/dtzp555-max/ocp.git"
+        default: "https://github.com/jomakori/ocp.git"
       CLAUDE_CODE_VERSION:
         description: "@anthropic-ai/claude-code version to install"
         required: true
-        default: "2.1.272"
+        default: "2.1.302"
   pull_request:
   push:
     branches:
@@ -68,8 +68,8 @@ permissions:
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ocp
-  OCP_VERSION_DEFAULT: v3.37.0
-  CLAUDE_CODE_VERSION_DEFAULT: 2.1.272
+  OCP_VERSION_DEFAULT: v3.36.0-dev51-haiku55
+  CLAUDE_CODE_VERSION_DEFAULT: 2.1.302
   BUILD_PLATFORMS: linux/arm64
   GITOPSCTL_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/gitopsctl
   GITOPSCTL_BUILD_PLATFORMS: linux/arm64
