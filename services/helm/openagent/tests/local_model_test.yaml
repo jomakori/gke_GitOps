@@ -1,9 +1,9 @@
-suite: openagent local fast + deep lanes
+suite: openagent local model lane
 release:
   name: openagent
   namespace: openagent
 tests:
-  - it: registers LFM fast lane and Qwen3.8 deep lane, and seeds LFM as default
+  - it: registers the LFM local model, seeds it as default, and carries no local deep lane
     asserts:
       - matchRegex:
           path: data["config.yaml"]
@@ -11,9 +11,9 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
-      - matchRegex:
+      - notMatchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)model: openai/qwen3.8:27b-mtp-q4_K_M.*?model_name: qwen3.8-27b-local"
+          pattern: "qwen3.8-27b-local"
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
@@ -25,7 +25,13 @@ tests:
           value: openagent-hermes-agent-config
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)categories:.*?deep:\n          - litellm/qwen3.8-27b-local"
+          pattern: "(?s)categories:.*?deep:\n          - litellm/claude-sonnet-5"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "qwen3.8-27b-local"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config

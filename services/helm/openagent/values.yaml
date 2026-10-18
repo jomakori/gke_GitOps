@@ -350,7 +350,7 @@ litellm:
           cache_read_input_token_cost: 0.00000001
           max_input_tokens: 1000000
           max_output_tokens: 128000
-      # Local fast lane: LFM2.5-24B-A2B (24B total / 2B active) on the Mac
+      # Local model: LFM2.5-24B-A2B (24B total / 2B active) on the Mac
       # host. 2B active keeps prefill/decode cheap where a 35B-A3B still costs
       # ~24s to ingest an 18k prompt. 131k window; ~14.5 GB Q4.
       # Licence: LFM Open License v1.0, free below $10M annual revenue.
@@ -366,20 +366,6 @@ litellm:
           order: 1
         model_info:
           max_input_tokens: 131072
-          max_output_tokens: 32768
-      # Local deep lane: Qwen3.8-27B dense (262k). Best local agentic score,
-      # but ~15-30 tok/s and thinking-heavy. Loaded on demand; with
-      # OLLAMA_MAX_LOADED_MODELS=1 it evicts the fast lane until the next turn.
-      - model_name: qwen3.8-27b-local
-        litellm_params:
-          model: openai/qwen3.8:27b-mtp-q4_K_M
-          api_base: http://host.docker.internal:11434/v1
-          api_key: os.environ/OLLAMA_KEY
-          # ~18 GB cold load plus a dense 27B prefill.
-          timeout: 600
-          order: 1
-        model_info:
-          max_input_tokens: 262144
           max_output_tokens: 32768
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
@@ -413,8 +399,9 @@ hermes-agent:
     _config_version: 42
     model:
       # Orchestration brain — local LFM2.5-24B-A2B on the Mac host leads.
-      # 2B active parameters keep prompt ingestion cheap; Qwen3.8-27B is the
-      # on-demand deep lane, not the front door.
+      # The single local model: 2B active parameters keep prompt ingestion
+      # cheap, and there is no second local lane to evict it. Deep work is
+      # routed to the cloud providers by the OMO categories below.
       # The Claude proxy drops to the fallback chain below, which still covers
       # a host that is asleep or Ollama down.
       #
@@ -463,8 +450,6 @@ hermes-agent:
             context_length: 1000000
           lfm2.5-24b-local:
             context_length: 131072
-          qwen3.8-27b-local:
-            context_length: 262144
     # ── W6: bound what one read can put into the context ────────────────
     # Measured over 7d (state.db messages): 123 tool results over 40 KB carried
     # 8.72 MB of 23.85 MB — 37% of the bytes in 6% of the results, and the top
@@ -827,7 +812,6 @@ hermes-agent:
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               deep:
-                - litellm/qwen3.8-27b-local
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               ultrabrain:
