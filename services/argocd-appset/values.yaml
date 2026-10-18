@@ -450,17 +450,20 @@ services:
     syncOptions:
       - CreateNamespace=true
     ignoreDifferences:
-      # ESO rewrites .data + stamps a fresh data-hash annotation every
-      # refreshInterval cycle, so the rendered chart (no .data at all)
-      # never matches live. Same pattern as external-secrets-webhook.
+      # ESO (creationPolicy: Merge) rewrites .data on every refreshInterval
+      # and stamps/removes its own annotations (data-hash, force-sync,
+      # last-applied-configuration) that never exist in the chart's
+      # rendered desired state. Whole-annotations ignore (same
+      # whole-object pattern used for CRDs elsewhere in this registry)
+      # instead of enumerating every ESO annotation key one at a time.
       - group: ""
         kind: Secret
         name: excalidash-secrets
         namespace: excalidash
         jqPathExpressions:
           - .data
+          - .metadata.annotations
           - .metadata.labels."reconcile.external-secrets.io/managed"
-          - .metadata.annotations."reconcile.external-secrets.io/data-hash"
 
   opendesign:
     enable: true
