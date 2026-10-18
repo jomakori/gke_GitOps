@@ -38,11 +38,14 @@ spec:
             - name: codex
               mountPath: /opt/codex
         # Claude Code CLI, kept alongside codex so either harness can be selected.
-        # Debian (glibc) base on purpose: @anthropic-ai/claude-code ships a native
-        # binary per libc, so an alpine init container would stage a musl build that
-        # cannot run in the glibc app image.
+        # Alpine (musl) base on purpose: @anthropic-ai/claude-code ships a native
+        # binary per libc, resolved by npm platform detection *inside this
+        # installer*. The main open-design app image is Alpine/musl, so the
+        # installer must match it -- a glibc (bookworm) installer stages the
+        # glibc binary, which then fails to exec when mounted into the musl
+        # main container (verified live: exec 255 / not found from ld.so).
         - name: install-claude
-          image: node:24-bookworm-slim
+          image: node:24-alpine
           command:
             - sh
             - -c
