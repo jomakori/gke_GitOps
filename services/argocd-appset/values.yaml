@@ -434,7 +434,7 @@ services:
       - CreateNamespace=true
 
   excalidash:
-    enable: false
+    enable: true
     # Stateful and already running outside ArgoCD: removal must orphan the
     # workload, never cascade-delete its namespace/PVC (`local-path` has
     # reclaimPolicy Delete). Same guard as postgresClusters.
@@ -451,7 +451,7 @@ services:
       - CreateNamespace=true
 
   opendesign:
-    enable: false
+    enable: true
     # Stateful and already running outside ArgoCD: removal must orphan the
     # workload, never cascade-delete its namespace/PVC (`local-path` has
     # reclaimPolicy Delete). Same guard as postgresClusters.
