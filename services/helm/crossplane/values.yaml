@@ -1,0 +1,35 @@
+# Crossplane core. The upstream chart installs the controller, CRDs and the
+# crossplane-system namespace.
+crossplane:
+  enabled: true
+  replicas: 1
+
+provider:
+  # Upstream publishes linux/amd64 only. v0.4.2-jomakori.4 is the fork build of
+  # the same release: native amd64 + arm64 legs, index carries both platforms
+  # and the package extensions.
+  package: ghcr.io/jomakori/provider-cloudflare-zero:v0.4.2-jomakori.4
+  packagePullPolicy: IfNotPresent
+  # Bumped by hand when the provider package changes; Argo prunes old revisions.
+  revisionActivationPolicy: Automatic
+
+functions:
+  patchAndTransform:
+    package: ghcr.io/crossplane-contrib/function-patch-and-transform:v0.11.1
+  autoReady:
+    package: ghcr.io/crossplane-contrib/function-auto-ready:v0.7.1
+
+cloudflare:
+  # API token comes from Doppler (CF_API_TOKEN) through the cluster's
+  # ClusterSecretStore; the provider expects it as {"api_token": "..."}.
+  dopplerConfig: svc_cloudflare
+  secretName: cloudflare-api
+  secretStoreName: doppler-svc-cloudflare
+  secretStoreKind: ClusterSecretStore
+  secretRefreshInterval: 24h
+
+# Default policy for every CloudflareAccessApp: allow anyone who cleared the
+# account's identity provider (Google today), which is what the Terraform
+# managed apps did with `include { everyone {} }`.
+access:
+  defaultSessionDuration: 24h

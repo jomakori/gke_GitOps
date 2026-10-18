@@ -9,6 +9,10 @@ storageClass: "local-path"
 targetRevision: ""
 accessTeamDomain: ""
 accessAudienceTag: ""
+# Cloudflare account id for Crossplane-managed Access apps (not a secret, same
+# value as CF_ACCOUNT_ID in Doppler). Only read when cloudflareAccess is enabled.
+crossplaneAccess:
+  accountId: ""
 
 # Service Configurations
 services:
@@ -377,6 +381,33 @@ services:
       destination:
         serviceName: plane-web
         servicePort: 3000
+
+  # Wave 3 — Platform APIs (Crossplane). The CRDs and the provider package
+  # arrive with the core chart; the Access XRs live in cloudflare-access at a
+  # later wave so the CloudflareAccessApp CRD already exists.
+  crossplane:
+    enable: false
+    syncWave: "3"
+    destNamespace: crossplane-system
+    retryLimit: 10
+    retryMaxDuration: 10m
+    # ProviderConfig/XRD schemas appear only once the packages are healthy.
+    skipSchemaValidation: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+
+  # Wave 7 — Cloudflare Access apps as CloudflareAccessApp XRs. Cluster-scoped,
+  # so no destination namespace. apps are injected from gateways.enable_private.
+  cloudflareAccess:
+    enable: false
+    syncWave: "7"
+    destNamespace: ""
+    retryLimit: 10
+    retryMaxDuration: 10m
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
 
   # Wave 5 — General services
   kubePrometheusStack:

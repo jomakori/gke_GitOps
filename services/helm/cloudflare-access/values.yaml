@@ -1,0 +1,16 @@
+# Cloudflare account that owns the Access applications. Not a secret; same
+# value as CF_ACCOUNT_ID in Doppler. Injected by the appset from
+# crossplaneAccess.accountId, and required once the app is enabled.
+accountId: ""
+
+sessionDuration: 24h
+
+# Pass-through Access policies. Empty means the XRD default (allow anyone who
+# cleared the account identity provider), which matches the Terraform apps.
+policies: []
+
+# apps: host map, injected by services/argocd-appset from every service with
+# gateways.enable_private: true. One CloudflareAccessApp per entry.
+#   openkite:
+#     host: openkite.maklab.net
+apps: {}
