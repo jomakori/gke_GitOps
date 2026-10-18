@@ -350,20 +350,21 @@ litellm:
           cache_read_input_token_cost: 0.00000001
           max_input_tokens: 1000000
           max_output_tokens: 128000
-      # Local model: Qwen3.5-35B-A3B (MoE, 35B total / 3B active) served by
-      # Ollama on the Mac host. No per-token cost and no external dependency.
+      # Local model: Qwen3.6-35B-A3B (MoE, 35B total / 3B active) served by
+      # Ollama on the Mac host. Same speed/memory envelope as 3.5, but the
+      # agentic generation: Terminal-Bench 40.5 -> 51.5, MCPMark 27 -> 37,
+      # SWE-bench Verified 70 -> 73.4. No per-token cost.
       # The pod reaches it through OrbStack's magic host alias, which resolves
       # to 0.250.250.254 from every k3d pod (same route Docker containers use).
       # Native 262,144 window. Ollama is started with the same window and a
-      # q8_0 KV cache (~2.7 GB at full context); Hermes still compacts at 80k,
-      # so this is headroom for long tool transcripts, not a bigger steady
-      # prompt.
-      - model_name: qwen3.5-35b-local
+      # q8_0 KV cache; Hermes still compacts at 80k, so this is headroom for
+      # long tool transcripts, not a bigger steady prompt.
+      - model_name: qwen3.6-35b-local
         litellm_params:
-          model: openai/qwen3.5:35b-a3b-q4_K_M
+          model: openai/qwen3.6:35b-a3b-q4_K_M
           api_base: http://host.docker.internal:11434/v1
           api_key: os.environ/OLLAMA_KEY
-          # Cold start loads ~22 GB from disk before the first token; the
+          # Cold start loads ~23 GB from disk before the first token; the
           # router's 180s default would cut a cold request off mid-load.
           timeout: 600
           order: 1
@@ -401,14 +402,14 @@ hermes-agent:
     # "predates version 12", and skips stamping on every boot.
     _config_version: 42
     model:
-      # Orchestration brain — local Qwen3.5-35B-A3B on the Mac host leads.
+      # Orchestration brain — local Qwen3.6-35B-A3B on the Mac host leads.
       # Zero per-token cost, no subscription quota, and ~3B active parameters
       # keeps MoE decode fast on Metal. The Claude proxy drops to the fallback
       # chain below, which still covers a host that is asleep or Ollama down.
       #
       # NOT a copilot-* alias: the GitHub Copilot entitlement is quota-exhausted
       # (every copilot-* model returns HTTP 402 `quota_exceeded`). See OMR-13.
-      default: qwen3.5-35b-local
+      default: qwen3.6-35b-local
       provider: litellm
     # Fallback: the credit-independent direct floor first, then the cheapest
     # Claude rung. Every hop must be a live provider — a dead hop is not a fallback.
@@ -449,7 +450,7 @@ hermes-agent:
             context_length: 200000
           claude-haiku-5-5:
             context_length: 1000000
-          qwen3.5-35b-local:
+          qwen3.6-35b-local:
             context_length: 262144
     # ── W6: bound what one read can put into the context ────────────────
     # Measured over 7d (state.db messages): 123 tool results over 40 KB carried
