@@ -397,6 +397,15 @@ hermes-agent:
     # with no version key the image's docker_config_migrate reads 0, warns
     # "predates version 12", and skips stamping on every boot.
     _config_version: 42
+    # Turn-1 MCP discovery bound (seconds; hermes_cli/config_defaults.py). The
+    # 1.5s default misses slow remote HTTP servers, and their tools then land via
+    # the between-turns refresh — so the deferred catalog embedded in
+    # `tool_search` changes between turns and the whole prefix re-prefills
+    # (~20s at 23k prompt tokens, measured; ~0.3s when the prefix holds).
+    # 20s lets slow servers land in turn 1, keeping the tool block byte-stable
+    # so the prompt cache is reusable. Servers that answer fast cost nothing:
+    # the bound only bites while a server is still connecting.
+    mcp_discovery_timeout: 20
     model:
       # Orchestration brain — local LFM2.5-24B-A2B on the Mac host leads.
       # The single local model: 2B active parameters keep prompt ingestion
@@ -655,6 +664,13 @@ hermes-agent:
         threshold_pct: 10
         search_default_limit: 5
         max_search_limit: 20
+        # Deferred-catalog listing budget inside the tool_search description.
+        # At the 4000 default the block renders "full" (name + description) and
+        # costs ~4.6k of a 23.6k-token prompt. 2000 makes it degrade to "names":
+        # every deferred tool is still listed by name, only the descriptions are
+        # dropped (tool_search still returns them), so ~3k tokens go with no
+        # capability hidden.
+        listing_max_tokens: 2000
     # Compact sooner — 530K-token requests came from late compaction.
     compression:
       enabled: true

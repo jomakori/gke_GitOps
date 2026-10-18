@@ -239,6 +239,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.hooks.pre_tool_call[0].matcher | string | `"read_file"` |  |
 | hermes-agent.config.hooks.pre_tool_call[0].timeout | int | `5` |  |
 | hermes-agent.config.hooks_auto_accept | bool | `true` |  |
+| hermes-agent.config.mcp_discovery_timeout | int | `20` |  |
 | hermes-agent.config.mcp_servers.arctic-shift.args[0] | string | `"-y"` |  |
 | hermes-agent.config.mcp_servers.arctic-shift.args[1] | string | `"arctic-shift-mcp@1.0.2"` |  |
 | hermes-agent.config.mcp_servers.arctic-shift.command | string | `"npx"` |  |
@@ -728,6 +729,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.providers.litellm.models.deepseek-v4-flash-direct.context_length | int | `1000000` |  |
 | hermes-agent.config.tool_output.max_lines | int | `500` |  |
 | hermes-agent.config.tools.tool_search.enabled | string | `"on"` |  |
+| hermes-agent.config.tools.tool_search.listing_max_tokens | int | `2000` |  |
 | hermes-agent.config.tools.tool_search.max_search_limit | int | `20` |  |
 | hermes-agent.config.tools.tool_search.search_default_limit | int | `5` |  |
 | hermes-agent.config.tools.tool_search.threshold_pct | int | `10` |  |
