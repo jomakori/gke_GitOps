@@ -1,0 +1,19 @@
+{{- range $name, $app := .Values.apps }}
+{{- if $app.host }}
+---
+apiVersion: platform.maklab.net/v1alpha1
+kind: CloudflareAccessApp
+metadata:
+  name: {{ $name | kebabcase }}-private
+  labels:
+    platform.maklab.net/access-managed-by: crossplane
+spec:
+  accountId: {{ required "accountId is required once the cloudflare-access app is enabled" $.Values.accountId | quote }}
+  host: {{ $app.host | quote }}
+  sessionDuration: {{ $.Values.sessionDuration | quote }}
+{{- with $.Values.policies }}
+  policies:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

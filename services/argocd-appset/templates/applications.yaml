@@ -60,6 +60,25 @@
 {{- $umbrella := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
 ---
 {{ include "argocd.application" (dict "key" $key "config" $umbrella "root" $) }}
+{{- else if eq $key "cloudflareAccess" }}
+{{- /* Crossplane-managed Access apps: one XR per private host, injected from
+       the same gateways.enable_private flag that drives the VirtualService. */}}
+{{-   $accessParams := list }}
+{{-   range $sk, $sv := $.Values.services }}
+{{-     if and $sv.enable $sv.gateways $sv.gateways.enable_private }}
+{{-       $svName := $sv.name | default (lower (regexReplaceAll "([a-z])([A-Z])" $sk "${1}-${2}" | lower)) }}
+{{-       $subdomain := $sv.gateways.subdomain | default $svName }}
+{{-       $host := printf "%s.%s" $subdomain $.Values.clusterDomain }}
+{{-       $accessParams = append $accessParams (dict "name" (printf "apps.%s.host" $sk) "value" $host) }}
+{{-     end }}
+{{-   end }}
+{{-   if $.Values.crossplaneAccess.accountId }}
+{{-     $accessParams = append $accessParams (dict "name" "accountId" "value" $.Values.crossplaneAccess.accountId) }}
+{{-   end }}
+{{-   $mergedParams := concat ($cfg.parameters | default list) $accessParams }}
+{{-   $umbrella := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
+---
+{{ include "argocd.application" (dict "key" $key "config" $umbrella "root" $) }}
 {{- else }}
 ---
 {{ include "argocd.application" (dict "key" $key "config" $cfg "root" $) }}

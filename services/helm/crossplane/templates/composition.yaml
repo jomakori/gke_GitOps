@@ -1,0 +1,50 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: cloudflareaccessapps.platform.maklab.net
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  compositeTypeRef:
+    apiVersion: platform.maklab.net/v1alpha1
+    kind: CloudflareAccessApp
+  mode: Pipeline
+  pipeline:
+    - step: access-application
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: access-application
+            base:
+              apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
+              kind: TrustAccessApplication
+              spec:
+                forProvider:
+                  type: self_hosted
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.name
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.accountId
+                toFieldPath: spec.forProvider.accountId
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.host
+                toFieldPath: spec.forProvider.domain
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.sessionDuration
+                toFieldPath: spec.forProvider.sessionDuration
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.policies
+                toFieldPath: spec.forProvider.policies
+    - step: ready
+      functionRef:
+        name: function-auto-ready

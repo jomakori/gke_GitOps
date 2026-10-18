@@ -1,0 +1,52 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: cloudflareaccessapps.platform.maklab.net
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  group: platform.maklab.net
+  names:
+    kind: CloudflareAccessApp
+    plural: cloudflareaccessapps
+  scope: Cluster
+  defaultCompositionRef:
+    name: cloudflareaccessapps.platform.maklab.net
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                accountId:
+                  type: string
+                  description: Cloudflare account that owns the Access application.
+                host:
+                  type: string
+                  description: Hostname the Access application protects.
+                sessionDuration:
+                  type: string
+                  default: {{ .Values.access.defaultSessionDuration }}
+                  description: How long a login stays valid.
+                policies:
+                  type: array
+                  description: >-
+                    Access policies, passed through to the provider unchanged.
+                    The default admits anyone who cleared the account identity
+                    provider, which is what the Terraform-managed apps did.
+                  default:
+                    - name: allow-idp
+                      decision: allow
+                      include:
+                        - everyone: {}
+                  items:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+              required:
+                - accountId
+                - host
