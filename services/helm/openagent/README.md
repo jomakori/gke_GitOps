@@ -628,7 +628,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.postalform.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.postalform.url | string | `"https://postalform.com/mcp"` |  |
 | hermes-agent.config.mcp_servers.skiplagged.connect_timeout | int | `60` |  |
-| hermes-agent.config.mcp_servers.skiplagged.lazy | bool | `true` |  |
+| hermes-agent.config.mcp_servers.skiplagged.lazy | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.timeout | int | `60` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.include[0] | string | `"sk_flights_search"` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.include[1] | string | `"sk_destinations_anywhere"` |  |

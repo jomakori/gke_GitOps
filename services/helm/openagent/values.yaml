@@ -397,14 +397,7 @@ hermes-agent:
     # with no version key the image's docker_config_migrate reads 0, warns
     # "predates version 12", and skips stamping on every boot.
     _config_version: 42
-    # Turn-1 MCP discovery bound (seconds; hermes_cli/config_defaults.py). The
-    # 1.5s default misses slow remote HTTP servers, and their tools then land via
-    # the between-turns refresh — so the deferred catalog embedded in
-    # `tool_search` changes between turns and the whole prefix re-prefills
-    # (~20s at 23k prompt tokens, measured; ~0.3s when the prefix holds).
-    # 20s lets slow servers land in turn 1, keeping the tool block byte-stable
-    # so the prompt cache is reusable. Servers that answer fast cost nothing:
-    # the bound only bites while a server is still connecting.
+    # Slow MCP servers must land in turn 1, else the tool catalog flips and every turn re-prefills (~20s).
     mcp_discovery_timeout: 20
     model:
       # Orchestration brain — local LFM2.5-24B-A2B on the Mac host leads.
@@ -664,12 +657,7 @@ hermes-agent:
         threshold_pct: 10
         search_default_limit: 5
         max_search_limit: 20
-        # Deferred-catalog listing budget inside the tool_search description.
-        # At the 4000 default the block renders "full" (name + description) and
-        # costs ~4.6k of a 23.6k-token prompt. 2000 makes it degrade to "names":
-        # every deferred tool is still listed by name, only the descriptions are
-        # dropped (tool_search still returns them), so ~3k tokens go with no
-        # capability hidden.
+        # 2000 degrades the catalog to names-only (-3k tokens); every tool stays listed by name.
         listing_max_tokens: 2000
     # Compact sooner — 530K-token requests came from late compaction.
     compression:
@@ -858,9 +846,7 @@ hermes-agent:
       #   * connect_timeout — no server rides the 60s default. Package-
       #     launched servers get 180s (a cold npx/uvx resolve + reify races
       #     60s); locally-installed binaries and HTTP endpoints keep 60s.
-      #   * lazy — every server registers its tools from the on-disk schema
-      #     cache and connects on the first call, so a slow handshake never
-      #     sits in the gateway's startup path.
+      #   * lazy — servers register tools from the on-disk schema cache and connect on first call, except rate-limited HTTP servers (see skiplagged).
       #   * lifecycle (stdio only) — idle_timeout_seconds and
       #     max_lifetime_seconds recycle a wedged server instead of leaving it
       #     dead until the pod restarts. Deliberately conservative: a recycle
@@ -1234,7 +1220,8 @@ hermes-agent:
           include: [project, workitem, member, state, label, workitem_comment, workitem_attachment, workitem_relation, page]
 
       skiplagged:
-        lazy: true
+        # Eager: its 429s drop 10 tools mid-session and break the prompt cache; one held connection stays stable.
+        lazy: false
         # Public remote Streamable-HTTP server. tools.include is the live
         # surface captured when it was pinned into the manifest; the drift
         # CronJob alerts if upstream changes it.

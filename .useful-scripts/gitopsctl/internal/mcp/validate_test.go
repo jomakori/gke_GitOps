@@ -79,6 +79,13 @@ func TestValidate(t *testing.T) {
 			want: []Violation{{Server: "argocd", Rule: "lazy", Message: "missing lazy: true (server connects eagerly at startup)"}},
 		},
 		{
+			name: "eager http server accepted",
+			manifest: `{
+				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "connect_timeout": 180, "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600` + npxCache("argocd") + `, "tools": {"include": ["list_applications"], "resources": false, "prompts": false}},
+				"skiplagged": {"url": "https://mcp.skiplagged.com/mcp", "connect_timeout": 60, "tools": {"include": ["sk_flights_search"], "resources": false, "prompts": false}}` + parkedPair + `
+			}`,
+		},
+		{
 			name: "missing connect_timeout on enabled server rejected",
 			manifest: `{
 				"argocd": {"lazy": true, "command": "npx", "args": ["-y", "argocd-mcp@0.9.0"], "idle_timeout_seconds": 1800, "max_lifetime_seconds": 21600` + npxCache("argocd") + `, "tools": {"include": ["x"], "resources": false, "prompts": false}}` + parkedPair + `
