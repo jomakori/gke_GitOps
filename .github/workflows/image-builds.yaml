@@ -69,6 +69,8 @@ permissions:
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ocp
   OCP_VERSION_DEFAULT: v3.36.0-dev51-haiku55
+  OCP_REPOSITORY_DEFAULT: https://github.com/jomakori/ocp.git
+  OCP_GIT_REF_DEFAULT: 79b72e702167b1bf12db4457c5151855b8a22f65
   CLAUDE_CODE_VERSION_DEFAULT: 2.1.302
   BUILD_PLATFORMS: linux/arm64
   GITOPSCTL_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/gitopsctl
@@ -124,8 +126,8 @@ jobs:
           OCP_VERSION="${OCP_VERSION_INPUT:-$OCP_VERSION_DEFAULT}"
           CLAUDE_CODE_VERSION="${CLAUDE_CODE_VERSION_INPUT:-$CLAUDE_CODE_VERSION_DEFAULT}"
           echo "OCP_VERSION=${OCP_VERSION}" >> "$GITHUB_OUTPUT"
-          OCP_GIT_REF="${OCP_GIT_REF_INPUT:-}"
-          OCP_REPOSITORY="${OCP_REPOSITORY_INPUT:-https://github.com/dtzp555-max/ocp.git}"
+          OCP_GIT_REF="${OCP_GIT_REF_INPUT:-$OCP_GIT_REF_DEFAULT}"
+          OCP_REPOSITORY="${OCP_REPOSITORY_INPUT:-$OCP_REPOSITORY_DEFAULT}"
           echo "OCP_GIT_REF=${OCP_GIT_REF}" >> "$GITHUB_OUTPUT"
           echo "OCP_REPOSITORY=${OCP_REPOSITORY}" >> "$GITHUB_OUTPUT"
           echo "CLAUDE_CODE_VERSION=${CLAUDE_CODE_VERSION}" >> "$GITHUB_OUTPUT"
