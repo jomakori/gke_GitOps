@@ -1,0 +1,35 @@
+suite: openagent DeepSeek → Haiku 5.5 fallback
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: registers Haiku 5.5 on the Claude proxy
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)model: openai/claude-haiku-5-5.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: claude-haiku-5-5"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+  - it: routes Hermes fallbacks DeepSeek then Haiku 5.5
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)fallback_providers:\n- model: deepseek-v4-flash-direct\n  provider: litellm\n- model: claude-haiku-5-5\n  provider: litellm"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)fallback_providers:\n  - model: deepseek-v4-flash-direct\n    provider: litellm\n  - model: claude-haiku-5-5\n    provider: litellm"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+  - it: routes the OMO Sisyphus chain DeepSeek then Haiku 5.5
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)chains:.*?          sisyphus:\n          - litellm/deepseek-v4-flash-direct\n          - litellm/claude-haiku-5-5"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
