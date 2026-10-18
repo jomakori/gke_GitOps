@@ -479,6 +479,15 @@ services:
     helmPath: services/helm/opendesign
     gateways:
       enable_private: true
+      # Must match the opendesign chart's own `domain: design.maklab.net`
+      # (services/helm/opendesign/values.yaml) and the Cloudflare tunnel's
+      # existing ingress for that host. Without this override the generator
+      # defaults subdomain to the service key ("opendesign"), producing
+      # opendesign.maklab.net -- a host nothing points at -- while the real
+      # tunnel/DNS target design.maklab.net got no matching VirtualService
+      # (404 externally, pod itself healthy). No domain is being changed
+      # here; this makes routing match the domain that was already set.
+      subdomain: design
     syncOptions:
       - CreateNamespace=true
     parameters:
