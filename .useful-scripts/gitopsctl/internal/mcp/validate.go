@@ -117,10 +117,8 @@ func Validate(servers map[string]*Server) []Violation {
 			}
 		}
 
-		// Rule 4 — every server registers lazily: its tools come from the
-		// on-disk schema cache and the process starts on first use, so no
-		// handshake sits in the gateway's startup path.
-		if !server.Lazy {
+		// Rule 4 — stdio servers register lazily, so no process handshake sits in the gateway's startup path.
+		if stdio && !server.Lazy {
 			violations = append(violations, Violation{Server: name, Rule: "lazy", Message: "missing lazy: true (server connects eagerly at startup)"})
 		}
 
