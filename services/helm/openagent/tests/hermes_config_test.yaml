@@ -21,3 +21,19 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
+  - it: gives MCP discovery a bound long enough to land slow servers in turn 1
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^mcp_discovery_timeout: 20$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+  - it: caps the deferred-catalog listing budget below the full-description form
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^    listing_max_tokens: 2000$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
