@@ -449,6 +449,18 @@ services:
       enable_private: true
     syncOptions:
       - CreateNamespace=true
+    ignoreDifferences:
+      # ESO rewrites .data + stamps a fresh data-hash annotation every
+      # refreshInterval cycle, so the rendered chart (no .data at all)
+      # never matches live. Same pattern as external-secrets-webhook.
+      - group: ""
+        kind: Secret
+        name: excalidash-secrets
+        namespace: excalidash
+        jqPathExpressions:
+          - .data
+          - .metadata.labels."reconcile.external-secrets.io/managed"
+          - .metadata.annotations."reconcile.external-secrets.io/data-hash"
 
   opendesign:
     enable: true
