@@ -642,7 +642,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.skiplagged.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.url | string | `"https://mcp.skiplagged.com/mcp"` |  |
-| hermes-agent.config.model.default | string | `"claude-sonnet-5"` |  |
+| hermes-agent.config.model.default | string | `"qwen3.5-35b-local"` |  |
 | hermes-agent.config.model.provider | string | `"litellm"` |  |
 | hermes-agent.config.plugins.enabled[0] | string | `"discord-platform"` |  |
 | hermes-agent.config.plugins.enabled[1] | string | `"omo"` |  |
@@ -718,6 +718,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.providers.litellm.key_env | string | `"LITELLM_MASTER_KEY"` |  |
 | hermes-agent.config.providers.litellm.models."copilot-gemini-3.8-flash".context_length | int | `1048576` |  |
 | hermes-agent.config.providers.litellm.models."copilot-sonnet-5.5".context_length | int | `1000000` |  |
+| hermes-agent.config.providers.litellm.models."qwen3.5-35b-local".context_length | int | `262144` |  |
 | hermes-agent.config.providers.litellm.models.claude-haiku-4-5.context_length | int | `200000` |  |
 | hermes-agent.config.providers.litellm.models.claude-opus-5.context_length | int | `1000000` |  |
 | hermes-agent.config.providers.litellm.models.claude-sonnet-5.context_length | int | `1000000` |  |
@@ -862,6 +863,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.db.url | string | `"postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?pgbouncer=true"` |  |
 | litellm.db.useExisting | bool | `true` |  |
 | litellm.enabled | bool | `true` |  |
+| litellm.envVars.OLLAMA_KEY | string | `"ollama"` |  |
 | litellm.envVars.REDIS_HOST | string | `"valkey-cache.valkey.svc.cluster.local"` |  |
 | litellm.envVars.REDIS_PORT | string | `"6379"` |  |
 | litellm.environmentSecrets[0] | string | `"openagent-secrets"` |  |
@@ -899,6 +901,14 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.model_list[0].model_info.mode | string | `"responses"` |  |
 | litellm.proxy_config.model_list[0].model_info.output_cost_per_token | float | `0.0000012` |  |
 | litellm.proxy_config.model_list[0].model_name | string | `"copilot-luna"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.api_base | string | `"http://host.docker.internal:11434/v1"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.api_key | string | `"os.environ/OLLAMA_KEY"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.model | string | `"openai/qwen3.5:35b-a3b-q4_K_M"` |  |
+| litellm.proxy_config.model_list[10].litellm_params.order | int | `1` |  |
+| litellm.proxy_config.model_list[10].litellm_params.timeout | int | `600` |  |
+| litellm.proxy_config.model_list[10].model_info.max_input_tokens | int | `262144` |  |
+| litellm.proxy_config.model_list[10].model_info.max_output_tokens | int | `32768` |  |
+| litellm.proxy_config.model_list[10].model_name | string | `"qwen3.5-35b-local"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.model | string | `"github_copilot/grok-4.7"` |  |
 | litellm.proxy_config.model_list[1].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[1].model_info.max_input_tokens | int | `500000` |  |
