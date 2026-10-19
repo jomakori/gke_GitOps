@@ -416,7 +416,7 @@ services:
   cloudflareEdge:
     enable: true
     syncWave: "6"
-    destNamespace: ""
+    destNamespace: "crossplane-system"
     retryLimit: 10
     retryMaxDuration: 10m
     syncOptions:
