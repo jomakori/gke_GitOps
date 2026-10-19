@@ -387,7 +387,7 @@ services:
   # arrive with the core chart; the Access XRs live in cloudflare-access at a
   # later wave so the CloudflareAccessApp CRD already exists.
   crossplane:
-    enable: false
+    enable: true
     syncWave: "3"
     destNamespace: crossplane-system
     retryLimit: 10
