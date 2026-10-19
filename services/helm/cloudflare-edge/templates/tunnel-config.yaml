@@ -1,0 +1,20 @@
+# Remote ingress config for the tunnel: wildcard hostname -> istio gateway, then
+# the catch-all 404 rule Cloudflare requires last.
+apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
+kind: TrustTunnelCloudflaredConfig
+metadata:
+  name: {{ .Values.tunnel.name }}
+  namespace: crossplane-system
+  annotations:
+    crossplane.io/external-name: {{ .Values.tunnel.id }}
+{{- $ingress := deepCopy .Values.tunnel.ingress }}
+{{- if .Values.clusterDomain }}
+{{-   $_ := set (index $ingress 0) "hostname" (printf "*.%s" .Values.clusterDomain) }}
+{{- end }}
+spec:
+  deletionPolicy: Orphan
+  forProvider:
+    accountId: {{ .Values.accountId | quote }}
+    tunnelId: {{ .Values.tunnel.id | quote }}
+    config:
+      ingress:{{ toYaml $ingress | nindent 8 }}

@@ -11,6 +11,10 @@ external-secrets:
 
 # ClusterSecretStores — one per Doppler config, all using the same machine token
 clusterSecretStores:
+  # Google OAuth client for the Cloudflare Access IdP (cloudflare-edge chart).
+  ci:
+    project: devops
+    config: ci
   svc_grafana:
     project: devops
     config: svc_grafana

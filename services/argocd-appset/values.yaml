@@ -409,6 +409,19 @@ services:
     syncOptions:
       - SkipDryRunOnMissingResource=true
 
+  # Wave 6 — tunnel, its remote ingress config and the account Access IdP, all
+  # adopted by id (they used to be Terraform-managed). Namespaced MRs, so they
+  # declare their own namespace (crossplane-system).
+  cloudflareEdge:
+    enable: false
+    syncWave: "6"
+    destNamespace: ""
+    retryLimit: 10
+    retryMaxDuration: 10m
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+
   # Wave 5 — General services
   kubePrometheusStack:
     enable: true
