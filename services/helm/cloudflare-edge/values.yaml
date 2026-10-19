@@ -1,0 +1,29 @@
+# Cloudflare edge resources adopted into GitOps. devops_Terraform forgot them
+# from its state (destroy = false), so every object below already exists and is
+# matched by its id through crossplane.io/external-name — nothing is recreated.
+accountId: ""
+clusterDomain: "maklab.net"
+
+tunnel:
+  name: maklab-cluster
+  # Tunnel created by Terraform; the id is what its token embeds.
+  id: 22c69db0-33cf-473a-8654-84f2208ff12f
+  ingress:
+    - hostname: "*.maklab.net"
+      service: https://istio-ingressgateway.istio-system.svc:443
+      originRequest:
+        noTlsVerify: true
+        matchSnItoHost: true
+    - service: "http_status:404"
+
+identityProvider:
+  # Account-level Google OAuth IdP. Access apps reference it implicitly, so it
+  # must keep the same id — hence adoption, not re-creation.
+  id: dd196084-adc2-43ce-a6fd-b14cad588e13
+  name: Google OAuth
+  type: google
+  # Public OAuth client id; the matching secret stays in Doppler.
+  clientId: 591553478034-eb6f9u11fgepvr6eatj5arsqtqugk3bv.apps.googleusercontent.com
+  # ClusterSecretStore doppler-<config> must exist for this config.
+  dopplerConfig: ci
+  secretName: cloudflare-google-oauth

@@ -179,6 +179,10 @@ postgres:
         retention: 4
         bucket: stackgres-pg-main
         endpoint: https://f8caac5c12d315d3690fd6df74cacdb9.r2.cloudflarestorage.com
+        # The bucket itself is created once outside every pipeline (the Cloudflare
+        # provider here carries the zero-trust groups only). This chart is the
+        # declaration of record: name, endpoint, creds source and schedule. Losing
+        # the bucket means losing the pg-main backups, so nothing may prune it.
         region: auto
         credentialsSecret: pg-secrets          # in ns data, rendered by this chart (dataFrom find-all)
         credentialsSecretManagedByOperator: false

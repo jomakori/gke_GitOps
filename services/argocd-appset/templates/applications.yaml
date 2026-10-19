@@ -79,6 +79,19 @@
 {{-   $umbrella := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
 ---
 {{ include "argocd.application" (dict "key" $key "config" $umbrella "root" $) }}
+{{- else if eq $key "cloudflareEdge" }}
+{{- /* Tunnel + remote ingress config + account Access IdP, adopted by id. */}}
+{{-   $edgeParams := list }}
+{{-   if $.Values.crossplaneAccess.accountId }}
+{{-     $edgeParams = append $edgeParams (dict "name" "accountId" "value" $.Values.crossplaneAccess.accountId) }}
+{{-   end }}
+{{-   if $.Values.clusterDomain }}
+{{-     $edgeParams = append $edgeParams (dict "name" "clusterDomain" "value" $.Values.clusterDomain) }}
+{{-   end }}
+{{-   $mergedParams := concat ($cfg.parameters | default list) $edgeParams }}
+{{-   $umbrella := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
+---
+{{ include "argocd.application" (dict "key" $key "config" $umbrella "root" $) }}
 {{- else }}
 ---
 {{ include "argocd.application" (dict "key" $key "config" $cfg "root" $) }}

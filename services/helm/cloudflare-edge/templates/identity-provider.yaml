@@ -1,0 +1,22 @@
+# Account-level Google OAuth IdP. Access apps that omit allowed_idps fall back to
+# this one, so it is adopted by id rather than re-created. The client secret is a
+# write-only field: it comes from the ExternalSecret, which is why the MR keeps a
+# secret ref instead of a literal.
+apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
+kind: TrustAccessIdentityProvider
+metadata:
+  name: google-oauth
+  namespace: crossplane-system
+  annotations:
+    crossplane.io/external-name: {{ .Values.identityProvider.id }}
+spec:
+  deletionPolicy: Orphan
+  forProvider:
+    accountId: {{ .Values.accountId | quote }}
+    name: {{ .Values.identityProvider.name | quote }}
+    type: {{ .Values.identityProvider.type | quote }}
+    config:
+      clientId: {{ .Values.identityProvider.clientId | quote }}
+      clientSecretSecretRef:
+        name: {{ .Values.identityProvider.secretName }}
+        key: clientSecret
