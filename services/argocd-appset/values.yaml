@@ -540,6 +540,11 @@ services:
       # (404 externally, pod itself healthy). No domain is being changed
       # here; this makes routing match the domain that was already set.
       subdomain: design
+      # The chart names its Service <release>-<chart>: opendesign-open-design.
+      # Without this the generator targets opendesign.opendesign.svc.cluster.local,
+      # which does not exist -- the ingress answered 503 cluster_not_found.
+      destination:
+        serviceName: opendesign-open-design
     syncOptions:
       - CreateNamespace=true
     parameters:
