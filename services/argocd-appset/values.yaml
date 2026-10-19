@@ -12,7 +12,8 @@ accessAudienceTag: ""
 # Cloudflare account id for Crossplane-managed Access apps (not a secret, same
 # value as CF_ACCOUNT_ID in Doppler). Only read when cloudflareAccess is enabled.
 crossplaneAccess:
-  accountId: ""
+  # Cloudflare account id; identifiers only, credentials live in Doppler.
+  accountId: "f8caac5c12d315d3690fd6df74cacdb9"
 
 # Service Configurations
 services:
@@ -413,7 +414,7 @@ services:
   # adopted by id (they used to be Terraform-managed). Namespaced MRs, so they
   # declare their own namespace (crossplane-system).
   cloudflareEdge:
-    enable: false
+    enable: true
     syncWave: "6"
     destNamespace: ""
     retryLimit: 10
