@@ -53,8 +53,8 @@
 {{- if $.Values.accessTeamDomain }}
 {{-   $gatewayParams = append $gatewayParams (dict "name" "cloudflare.access.teamDomain" "value" $.Values.accessTeamDomain) }}
 {{- end }}
-{{- if $.Values.accessAudienceTag }}
-{{-   $gatewayParams = append $gatewayParams (dict "name" "cloudflare.access.audienceTag" "value" $.Values.accessAudienceTag) }}
+{{- if $.Values.cloudflare.access.audienceTag }}
+{{-   $gatewayParams = append $gatewayParams (dict "name" "cloudflare.access.audienceTag" "value" $.Values.cloudflare.access.audienceTag) }}
 {{- end }}
 {{- $mergedParams := concat ($cfg.parameters | default list) $gatewayParams }}
 {{- $umbrella := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
