@@ -276,12 +276,16 @@ spec:
               port: http
             initialDelaySeconds: 20
             periodSeconds: 30
+            # The app is single-threaded; a busy event loop can miss the 1s
+            # default and get the container killed mid-request.
+            timeoutSeconds: 10
           readinessProbe:
             httpGet:
               path: /api/health
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 10
       {{- if .Values.enable_auth_proxy }}
         - name: auth-proxy
           image: nginxinc/nginx-unprivileged:1.25-alpine-slim
