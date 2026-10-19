@@ -19,5 +19,5 @@ spec:
       clientId: {{ .Values.identityProvider.clientId | quote }}
       clientSecretSecretRef:
         name: {{ .Values.identityProvider.secretName }}
-        namespace: {{ .Release.Namespace }}
+        namespace: crossplane-system
         key: clientSecret
