@@ -8,7 +8,14 @@ repoUrl: ""
 storageClass: "local-path"
 targetRevision: ""
 accessTeamDomain: ""
+# Deprecated: the AUD list is GitOps-owned now (see cloudflare.access.audienceTag
+# below). Terraform no longer creates Access apps, so it cannot know their AUDs.
 accessAudienceTag: ""
+# Cloudflare Access AUDs accepted by the istio RequestAuthentication: one tag per
+# Access app, comma separated. Add a tag here when an Access app is created.
+cloudflare:
+  access:
+    audienceTag: "10abc099b79538db672e6876cbb4f6e8cb4ba173d1a50950bd8df8b9007961ab,214f5d0afc91a4d13f7920f30e6e04bbb37914d99f61ddfa255d2a6ef36c3a3a,9580d06940e13b9817b94b07249a1538f976508e797d8ce46afd15bdebd45184,d18cec8b7b5222492dcbe553094cda0f4272b91182ad2bd47efe663bcaaa0727,dac2e7c83e44235a2e485efd6f7df37496a324dfa38f903068ae2b9f1b3362a2,f171877975deb236cd52ddedebc81725cfd5b78fa508d830300e41d1ce4382b7"
 # Cloudflare account id for Crossplane-managed Access apps (not a secret, same
 # value as CF_ACCOUNT_ID in Doppler). Only read when cloudflareAccess is enabled.
 crossplaneAccess:
