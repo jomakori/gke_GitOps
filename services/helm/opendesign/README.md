@@ -53,9 +53,9 @@ Codex remains available as an alternate agent in the same `agents` block (`agent
 | provider.model | string | `"claude-sonnet-5"` |  |
 | replicaCount | int | `1` |  |
 | resources.limits.cpu | int | `2` |  |
-| resources.limits.memory | string | `"1Gi"` |  |
+| resources.limits.memory | string | `"2Gi"` |  |
 | resources.requests.cpu | string | `"500m"` |  |
-| resources.requests.memory | string | `"512Mi"` |  |
+| resources.requests.memory | string | `"1Gi"` |  |
 | service.port | int | `80` |  |
 | service.type | string | `"ClusterIP"` |  |
 | storage.class | string | `"local-path"` |  |
