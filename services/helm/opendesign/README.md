@@ -52,10 +52,10 @@ Codex remains available as an alternate agent in the same `agents` block (`agent
 | provider.mcpCommand | string | `"/usr/local/bin/node"` |  |
 | provider.model | string | `"claude-sonnet-5"` |  |
 | replicaCount | int | `1` |  |
-| resources.limits.cpu | string | `"500m"` |  |
-| resources.limits.memory | string | `"512Mi"` |  |
-| resources.requests.cpu | string | `"200m"` |  |
-| resources.requests.memory | string | `"256Mi"` |  |
+| resources.limits.cpu | int | `2` |  |
+| resources.limits.memory | string | `"1Gi"` |  |
+| resources.requests.cpu | string | `"500m"` |  |
+| resources.requests.memory | string | `"512Mi"` |  |
 | service.port | int | `80` |  |
 | service.type | string | `"ClusterIP"` |  |
 | storage.class | string | `"local-path"` |  |

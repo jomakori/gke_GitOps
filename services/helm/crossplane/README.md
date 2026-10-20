@@ -1,5 +1,14 @@
 # crossplane
 
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.4.2](https://img.shields.io/badge/AppVersion-2.4.2-informational?style=flat-square)
+Crossplane core, the fork-built Cloudflare Zero Trust provider, and the CloudflareAccessApp XRD
+
+## Requirements
+
+| Repository | Name | Version |
+|------------|------|---------|
+| https://charts.crossplane.io/stable | crossplane | 2.4.2 |
+
 Cloudflare Access applications stop being a Terraform resource and become a
 Crossplane managed resource reconciled from this repo.
 
