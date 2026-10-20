@@ -15,13 +15,16 @@ spec:
   # inert. Until the Doppler key exists the operator cannot render this receiver
   # and leaves Alertmanager's current config in place.
   #
-  # Alertmanager's own regexes are anchored, so this matches the three OpenAgent
-  # alerts and nothing else - the stock rules keep falling through to `null`.
+  # Alertmanager's own regexes are anchored. This now matches the three
+  # OpenAgent alerts plus the six cluster-capacity alerts defined in
+  # cluster-capacity-alert-rules.yaml, and nothing else - the stock rules
+  # keep falling through to `null`. Reusing this receiver avoids a second
+  # ExternalSecret; both rule sets ride the same Discord webhook.
   route:
     receiver: discord
     matchers:
       - name: alertname
-        value: "Openagent.*"
+        value: "Openagent.*|PodsPendingTooLong|ContainerCPUHigh|ContainerMemoryPressure|ContainerOomRisk|ContainerStoragePressure|ContainerOomRiskDisk"
         matchType: "=~"
     groupBy: ["alertname"]
     groupWait: 30s

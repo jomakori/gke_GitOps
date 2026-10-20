@@ -1,0 +1,105 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cluster-capacity
+  namespace: {{ .Release.Namespace }}
+  labels:
+    # Matched by the Prometheus instance's ruleSelector (release-scoped default).
+    release: {{ .Release.Name }}
+    app.kubernetes.io/part-of: cluster-capacity
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  groups:
+    - name: cluster.capacity
+      rules:
+        # Cluster-wide, no namespace pin: catches scheduling and resource
+        # pressure in any workload, not just openagent. Every expression
+        # here was run live against prometheus-operated:9090 before merge.
+        - alert: PodsPendingTooLong
+          expr: count by (namespace, pod) (kube_pod_status_phase{phase="Pending"} == 1) > 0
+          for: 3m
+          labels:
+            severity: warning
+            component: cluster-capacity
+          annotations:
+            summary: 'Pod {{ "{{ $labels.pod }}" }} in {{ "{{ $labels.namespace }}" }} stuck Pending.'
+            description: >-
+              The pod has not been scheduled for at least 3 minutes. Check for
+              insufficient node capacity, an unschedulable taint, or a PVC that
+              cannot bind.
+            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+        - alert: ContainerCPUHigh
+          expr: >-
+            sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total[5m]))
+            /
+            sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total[5m]))
+            > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            component: cluster-capacity
+          annotations:
+            summary: 'Container {{ "{{ $labels.container }}" }} ({{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}) is CFS-throttled.'
+            description: >-
+              Over half of this container's CPU periods were throttled over the
+              last 5 minutes. Its CPU limit is too tight for its actual demand.
+            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+        - alert: ContainerMemoryPressure
+          expr: >-
+            container_memory_working_set_bytes
+            / on(namespace, pod, container)
+            kube_pod_container_resource_limits{resource="memory"}
+            > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            component: cluster-capacity
+          annotations:
+            summary: 'Container {{ "{{ $labels.container }}" }} ({{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}) near its memory limit.'
+            description: >-
+              Working set has stayed above 85% of the container's memory limit
+              for 10 minutes. The kubelet OOM-kills on breach, not on a graceful
+              warning.
+            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+        - alert: ContainerOomRisk
+          expr: >-
+            container_memory_working_set_bytes
+            / on(namespace, pod, container)
+            kube_pod_container_resource_limits{resource="memory"}
+            > 0.95
+          for: 5m
+          labels:
+            severity: critical
+            component: cluster-capacity
+          annotations:
+            summary: 'Container {{ "{{ $labels.container }}" }} ({{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}) is about to be OOM-killed.'
+            description: >-
+              Working set has stayed above 95% of the container's memory limit
+              for 5 minutes. An OOM kill is imminent absent intervention.
+            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+        - alert: ContainerStoragePressure
+          expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.20
+          for: 10m
+          labels:
+            severity: warning
+            component: cluster-capacity
+          annotations:
+            summary: 'Volume {{ "{{ $labels.persistentvolumeclaim }}" }} ({{ "{{ $labels.namespace }}" }}) is over 80% full.'
+            description: >-
+              Less than 20% of this PVC's capacity remains free, sustained for
+              10 minutes. Writes will start failing once the volume fills.
+            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+        - alert: ContainerOomRiskDisk
+          expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.05
+          for: 5m
+          labels:
+            severity: critical
+            component: cluster-capacity
+          annotations:
+            summary: 'Volume {{ "{{ $labels.persistentvolumeclaim }}" }} ({{ "{{ $labels.namespace }}" }}) is nearly full.'
+            description: >-
+              Less than 5% of this PVC's capacity remains free, sustained for
+              5 minutes. The owning pod is at imminent risk of write failures
+              or crash-looping on disk-full errors.
+            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
