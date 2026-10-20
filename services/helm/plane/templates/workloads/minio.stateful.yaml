@@ -69,6 +69,11 @@ spec:
         - mountPath: /data
           name: pvc-{{ .Release.Name }}-minio-vol
           subPath: ''
+        # The PVC was written by the old root-running MinIO image, so root owns
+        # .minio.sys. local-path does not apply fsGroup, and the Bitnami image
+        # defaults to uid 1001, which cannot write there.
+        securityContext:
+          runAsUser: 0
       {{- include "plane.podScheduling" .Values.minio }}
       serviceAccount: {{ .Release.Name }}-srv-account
       serviceAccountName: {{ .Release.Name }}-srv-account
