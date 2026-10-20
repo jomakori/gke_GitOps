@@ -390,6 +390,19 @@ services:
     retryMaxDuration: 10m
     # ProviderConfig/XRD schemas appear only once the packages are healthy.
     skipSchemaValidation: true
+    # ESO's mutating webhook fills these in at create time, and ArgoCD compares
+    # against the raw manifest, so the ExternalSecret would sit OutOfSync forever
+    # while kubectl diff reports nothing (SSA dry-run runs the webhook).
+    ignoreDifferences:
+      - group: external-secrets.io
+        kind: ExternalSecret
+        jqPathExpressions:
+          - .spec.data[].remoteRef.conversionStrategy
+          - .spec.data[].remoteRef.decodingStrategy
+          - .spec.data[].remoteRef.metadataPolicy
+          - .spec.data[].remoteRef.nullBytePolicy
+          - .spec.target.deletionPolicy
+          - .spec.target.template.mergePolicy
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
