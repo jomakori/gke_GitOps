@@ -219,10 +219,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.compression.threshold_tokens | int | `80000` |  |
 | hermes-agent.config.delegation.api_key | string | `"${LITELLM_MASTER_KEY}"` |  |
 | hermes-agent.config.delegation.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
-| hermes-agent.config.delegation.fallback_providers[0].model | string | `"deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.delegation.fallback_providers[0].model | string | `"claude-haiku-5-5"` |  |
 | hermes-agent.config.delegation.fallback_providers[0].provider | string | `"litellm"` |  |
-| hermes-agent.config.delegation.fallback_providers[1].model | string | `"claude-haiku-5-5"` |  |
-| hermes-agent.config.delegation.fallback_providers[1].provider | string | `"litellm"` |  |
 | hermes-agent.config.delegation.max_concurrent_children | int | `8` |  |
 | hermes-agent.config.delegation.max_iterations | int | `30` |  |
 | hermes-agent.config.delegation.max_spawn_depth | int | `3` |  |
@@ -230,9 +228,9 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.delegation.provider | string | `"litellm"` |  |
 | hermes-agent.config.delegation.reasoning_effort | string | `"medium"` |  |
 | hermes-agent.config.delegation.subagent_auto_approve | bool | `true` |  |
-| hermes-agent.config.fallback_providers[0].model | string | `"deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.fallback_providers[0].model | string | `"copilot-luna"` |  |
 | hermes-agent.config.fallback_providers[0].provider | string | `"litellm"` |  |
-| hermes-agent.config.fallback_providers[1].model | string | `"claude-haiku-5-5"` |  |
+| hermes-agent.config.fallback_providers[1].model | string | `"deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.fallback_providers[1].provider | string | `"litellm"` |  |
 | hermes-agent.config.file_read_max_chars | int | `40000` |  |
 | hermes-agent.config.hooks.pre_tool_call[0].command | string | `"python3 /opt/data/hooks/read-guard/read_guard.py"` |  |
@@ -643,14 +641,14 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.skiplagged.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.url | string | `"https://mcp.skiplagged.com/mcp"` |  |
-| hermes-agent.config.model.default | string | `"lfm2.5-24b-local"` |  |
+| hermes-agent.config.model.default | string | `"claude-haiku-5-5"` |  |
 | hermes-agent.config.model.provider | string | `"litellm"` |  |
 | hermes-agent.config.plugins.enabled[0] | string | `"discord-platform"` |  |
 | hermes-agent.config.plugins.enabled[1] | string | `"omo"` |  |
 | hermes-agent.config.plugins.entries.omo.allow_gateway_injection | bool | `true` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.categories.quick[0] | string | `"litellm/deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.categories.quick[0] | string | `"litellm/lfm2.5-24b-local"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.quick[1] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.quick[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.ultrabrain[0] | string | `"litellm/claude-opus-5"` |  |
@@ -670,7 +668,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.plugins.entries.omo.settings.chains.hephaestus[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.hephaestus[1] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.hephaestus[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.librarian[0] | string | `"litellm/deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.librarian[0] | string | `"litellm/lfm2.5-24b-local"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.librarian[1] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.librarian[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.metis[0] | string | `"litellm/claude-sonnet-5"` |  |
@@ -689,8 +687,9 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.plugins.entries.omo.settings.chains.prometheus[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus-junior[0] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus-junior[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[0] | string | `"litellm/deepseek-v4-flash-direct"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[1] | string | `"litellm/claude-haiku-5-5"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[0] | string | `"litellm/claude-haiku-5-5"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[1] | string | `"litellm/copilot-luna"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_base_url | string | `"https://api.typesafe.ai"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_model | string | `"jev-latest"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_routing_enabled | bool | `false` |  |
