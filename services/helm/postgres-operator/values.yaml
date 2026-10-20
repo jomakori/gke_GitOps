@@ -84,7 +84,16 @@ stackgresOperator:
     repositoryUrls:
       - https://extensions.stackgres.io/postgres/repository
     cache:
-      enabled: true
+      # Disabled. The conciliator re-serialises index.json (4.3MB) and hashes.json
+      # (9.2MB) on EVERY 10s cycle whether or not the remote changed: its
+      # is_index_cache_expired() only gates the curl, while the jq/mv rebuilding the
+      # merged index files sits outside that check — and the is_any_index_expired()
+      # helper meant to guard it is defined but never called (1.18.6 through main).
+      # Measured 1.2MB/s ≈ 116GB/day of writes plus ~0.08 cores to serve nothing: no
+      # SGCluster sets spec.postgres.extensions (pg-main: none), so the single
+      # preloaded extension was never installed. Costs ~0. Stays off until a cluster
+      # actually uses extensions; pods then fetch from the repository directly.
+      enabled: false
       # Single-escaped (one backslash per dot separator), matching the CRD default
       # and the upstream chart. Double-escaped survives JSON encoding as a literal
       # backslash, so the pattern matches nothing and the cache silently never

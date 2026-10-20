@@ -39,7 +39,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 
 - Sync wave 3, namespace `postgres-operator`
 - Certificate auto-approval enabled, self-signed certs with 730d duration
-- Operator extensions cache uses `local-path` storage class with 1Gi volume
+- Operator extensions cache disabled — its 10s conciliator rewrites 13.5MB of index JSON per cycle (~116GB/day) whether or not the repository changed, and no SGCluster installs extensions
 - Grafana auto-embed enabled (discovers Grafana instance in cluster)
 - Backup storage disabled by default
 - No admin UI exposed (service type ClusterIP, exposeHTTP: false)
@@ -100,7 +100,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | stackgresOperator.cert.regenerateWebCert | bool | `true` |  |
 | stackgresOperator.cert.regenerateWebRsa | bool | `true` |  |
 | stackgresOperator.enabled | bool | `true` |  |
-| stackgresOperator.extensions.cache.enabled | bool | `true` |  |
+| stackgresOperator.extensions.cache.enabled | bool | `false` |  |
 | stackgresOperator.extensions.cache.persistentVolume.size | string | `"1Gi"` |  |
 | stackgresOperator.extensions.cache.persistentVolume.storageClass | string | `"local-path"` |  |
 | stackgresOperator.extensions.cache.preloadedExtensions[0] | string | `"x86_64/linux/timescaledb-1\\.7\\.4-pg12"` |  |
