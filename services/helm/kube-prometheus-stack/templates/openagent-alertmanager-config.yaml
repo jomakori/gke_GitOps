@@ -6,14 +6,15 @@ metadata:
   labels:
     app.kubernetes.io/part-of: openagent
 spec:
-  # The Discord webhook URL is read from key DISCORD_WEBHOOK_URL in the secret
-  # grafana-admin-credentials, which the chart's existing ExternalSecret already
-  # fills from every key in the Doppler config it points at. Nothing in this repo
-  # holds the value, and no second ExternalSecret is created for it: one pointing
-  # at a key that does not exist yet sits not-Ready forever, and because ArgoCD
-  # waits on each sync wave, it stalls the whole app's sync instead of just being
-  # inert. Until the Doppler key exists the operator cannot render this receiver
-  # and leaves Alertmanager's current config in place.
+  # The Discord webhook URL is read from key ALERT_DISCORD_WEBHOOK_URL in the
+  # secret grafana-admin-credentials, which the chart's existing ExternalSecret
+  # already fills from every key in the Doppler config it points at. Nothing in
+  # this repo holds the value, and no second ExternalSecret is created for it:
+  # one pointing at a key that does not exist yet sits not-Ready forever, and
+  # because ArgoCD waits on each sync wave, it stalls the whole app's sync
+  # instead of just being inert. Until the Doppler key exists the operator
+  # cannot render this receiver and leaves Alertmanager's current config in
+  # place.
   #
   # Alertmanager's own regexes are anchored. This now matches the three
   # OpenAgent alerts plus the six cluster-capacity alerts defined in
@@ -35,5 +36,5 @@ spec:
       discordConfigs:
         - apiURL:
             name: grafana-admin-credentials
-            key: DISCORD_WEBHOOK_URL
+            key: ALERT_DISCORD_WEBHOOK_URL
           sendResolved: true
