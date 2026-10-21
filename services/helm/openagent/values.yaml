@@ -400,24 +400,15 @@ hermes-agent:
     # Slow MCP servers must land in turn 1, else the tool catalog flips and every turn re-prefills (~20s).
     mcp_discovery_timeout: 20
     model:
-      # Orchestration brain — local LFM2.5-24B-A2B on the Mac host leads.
-      # The single local model: 2B active parameters keep prompt ingestion
-      # cheap, and there is no second local lane to evict it. Deep work is
-      # routed to the cloud providers by the OMO categories below.
-      # The Claude proxy drops to the fallback chain below, which still covers
-      # a host that is asleep or Ollama down.
-      #
-      # NOT a copilot-* alias: the GitHub Copilot entitlement is quota-exhausted
-      # (every copilot-* model returns HTTP 402 `quota_exceeded`). See OMR-13.
-      default: lfm2.5-24b-local
+      # Primary model for Hermes gateway requests: flat-fee Claude Haiku 5.5.
+      default: claude-haiku-5-5
       provider: litellm
-    # Fallback: the credit-independent direct floor first, then the cheapest
-    # Claude rung. Every hop must be a live provider — a dead hop is not a fallback.
+    # Fallback: copilot-luna, then the credit-independent deepseek floor.
     fallback_providers:
       - provider: litellm
-        model: deepseek-v4-flash-direct
+        model: copilot-luna
       - provider: litellm
-        model: claude-haiku-5-5
+        model: deepseek-v4-flash-direct
     providers:
       litellm:
         base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
@@ -692,10 +683,8 @@ hermes-agent:
       # under it; unset, the host default of 10 applies and the real ceiling is
       # only implied.
       max_concurrent_children: 8
-      # Backup hops: the credit-independent direct floor, then Haiku 5.5.
+      # Backup hop: Haiku 5.5 only — single-rung fallback, primary unchanged.
       fallback_providers:
-        - provider: litellm
-          model: deepseek-v4-flash-direct
         - provider: litellm
           model: claude-haiku-5-5
       # Workers run unattended: subagent threads carry no interactive approval
@@ -771,8 +760,9 @@ hermes-agent:
             # but probe for a 200 first. Context: Plane OMR-13.
             chains:
               sisyphus:
-                - litellm/deepseek-v4-flash-direct
                 - litellm/claude-haiku-5-5
+                - litellm/copilot-luna
+                - litellm/deepseek-v4-flash-direct
               hephaestus:
                 - litellm/claude-sonnet-5
                 - litellm/claude-haiku-4-5
@@ -796,7 +786,7 @@ hermes-agent:
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               librarian:
-                - litellm/deepseek-v4-flash-direct
+                - litellm/lfm2.5-24b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               explore:
@@ -812,7 +802,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
             categories:
               quick:
-                - litellm/deepseek-v4-flash-direct
+                - litellm/lfm2.5-24b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               deep:

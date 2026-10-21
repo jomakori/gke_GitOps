@@ -19,7 +19,7 @@ tests:
           value: openagent-litellm-config
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)model:\n  default: lfm2.5-24b-local\n  provider: litellm"
+          pattern: "(?s)model:\n  default: claude-haiku-5-5\n  provider: litellm"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
