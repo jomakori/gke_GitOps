@@ -6,22 +6,26 @@ metadata:
   labels:
     app.kubernetes.io/part-of: openagent
 spec:
-  # The Discord webhook URL is read from key DISCORD_WEBHOOK_URL in the secret
-  # grafana-admin-credentials, which the chart's existing ExternalSecret already
-  # fills from every key in the Doppler config it points at. Nothing in this repo
-  # holds the value, and no second ExternalSecret is created for it: one pointing
-  # at a key that does not exist yet sits not-Ready forever, and because ArgoCD
-  # waits on each sync wave, it stalls the whole app's sync instead of just being
-  # inert. Until the Doppler key exists the operator cannot render this receiver
-  # and leaves Alertmanager's current config in place.
+  # The Discord webhook URL is read from key ALERT_DISCORD_WEBHOOK_URL in the
+  # secret grafana-admin-credentials, which the chart's existing ExternalSecret
+  # already fills from every key in the Doppler config it points at. Nothing in
+  # this repo holds the value, and no second ExternalSecret is created for it:
+  # one pointing at a key that does not exist yet sits not-Ready forever, and
+  # because ArgoCD waits on each sync wave, it stalls the whole app's sync
+  # instead of just being inert. Until the Doppler key exists the operator
+  # cannot render this receiver and leaves Alertmanager's current config in
+  # place.
   #
-  # Alertmanager's own regexes are anchored, so this matches the three OpenAgent
-  # alerts and nothing else - the stock rules keep falling through to `null`.
+  # Alertmanager's own regexes are anchored. This now matches the three
+  # OpenAgent alerts plus the six cluster-capacity alerts defined in
+  # cluster-capacity-alert-rules.yaml, and nothing else - the stock rules
+  # keep falling through to `null`. Reusing this receiver avoids a second
+  # ExternalSecret; both rule sets ride the same Discord webhook.
   route:
     receiver: discord
     matchers:
       - name: alertname
-        value: "Openagent.*"
+        value: "Openagent.*|PodsPendingTooLong|ContainerCPUHigh|ContainerMemoryPressure|ContainerOomRisk|ContainerStoragePressure|ContainerOomRiskDisk"
         matchType: "=~"
     groupBy: ["alertname"]
     groupWait: 30s
@@ -32,5 +36,5 @@ spec:
       discordConfigs:
         - apiURL:
             name: grafana-admin-credentials
-            key: DISCORD_WEBHOOK_URL
+            key: ALERT_DISCORD_WEBHOOK_URL
           sendResolved: true
