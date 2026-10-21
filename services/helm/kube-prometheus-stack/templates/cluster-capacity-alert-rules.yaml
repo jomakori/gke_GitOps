@@ -23,7 +23,7 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22kube_pod_status_phase%7Bphase%3D%5C%22Pending%5C%22%7D%20%3D%3D%201%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            grafana_url: 'https://tinyurl.com/2xhwlhnt'
             summary: 'Pod {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} has been Pending for over 3 minutes.'
             description: >-
               The pod is not scheduled. Check node capacity, taints, and whether
@@ -40,7 +40,7 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22sum%20by%20%28namespace%2C%20pod%2C%20container%29%20%28rate%28container_cpu_cfs_throttled_periods_total%5B5m%5D%29%29%20%2F%20sum%20by%20%28namespace%2C%20pod%2C%20container%29%20%28rate%28container_cpu_cfs_periods_total%5B5m%5D%29%29%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            grafana_url: 'https://tinyurl.com/23w5f4jt'
             summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is CPU-throttled.'
             description: >-
               Over half of CPU periods were throttled for 5 minutes. The CPU limit
@@ -57,7 +57,7 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22container_memory_working_set_bytes%20%2F%20on%28namespace%2C%20pod%2C%20container%29%20kube_pod_container_resource_limits%7Bresource%3D%5C%22memory%5C%22%7D%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            grafana_url: 'https://tinyurl.com/22zx9zaz'
             summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is above 85% of its memory limit.'
             description: >-
               Memory has stayed above 85% of the limit for 10 minutes. At the
@@ -74,7 +74,7 @@ spec:
             severity: critical
             component: cluster-capacity
           annotations:
-            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22container_memory_working_set_bytes%20%2F%20on%28namespace%2C%20pod%2C%20container%29%20kube_pod_container_resource_limits%7Bresource%3D%5C%22memory%5C%22%7D%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            grafana_url: 'https://tinyurl.com/22zx9zaz'
             summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is above 95% of its memory limit.'
             description: >-
               Memory has stayed above 95% of the limit for 5 minutes. An OOM kill
@@ -87,7 +87,7 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22kubelet_volume_stats_available_bytes%20%2F%20kubelet_volume_stats_capacity_bytes%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            grafana_url: 'https://tinyurl.com/2xosx4ul'
             summary: 'PVC {{ "{{ $labels.persistentvolumeclaim }}" }} in {{ "{{ $labels.namespace }}" }} has less than 20% free.'
             description: >-
               Free space has stayed under 20% for 10 minutes. Writes fail once the
@@ -100,7 +100,7 @@ spec:
             severity: critical
             component: cluster-capacity
           annotations:
-            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22kubelet_volume_stats_available_bytes%20%2F%20kubelet_volume_stats_capacity_bytes%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            grafana_url: 'https://tinyurl.com/2xosx4ul'
             summary: 'PVC {{ "{{ $labels.persistentvolumeclaim }}" }} in {{ "{{ $labels.namespace }}" }} has less than 5% free.'
             description: >-
               Free space has stayed under 5% for 5 minutes. The owning pod is at

@@ -21,7 +21,7 @@ spec:
             severity: critical
             component: openagent
           annotations:
-            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22kube_deployment_status_replicas_available%7Bnamespace%3D%5C%22openagent%5C%22%2Cdeployment%3D%5C%22openagent-litellm%5C%22%7D%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            grafana_url: 'https://tinyurl.com/28ouz7aa'
             summary: LiteLLM gateway has no available replicas.
             description: >-
               Every agent turn routed through the gateway is failing. Check the
@@ -34,7 +34,7 @@ spec:
             severity: warning
             component: openagent
           annotations:
-            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22kube_node_status_condition%7Bcondition%3D%5C%22DiskPressure%5C%22%2Cstatus%3D%5C%22true%5C%22%7D%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            grafana_url: 'https://tinyurl.com/2dfwytnq'
             summary: 'Node {{ "{{ $labels.node }}" }} reports DiskPressure.'
             description: >-
               The kubelet is evicting pods on this node. Postgres (local-path PVC)
@@ -48,7 +48,7 @@ spec:
             severity: warning
             component: openagent
           annotations:
-            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22increase%28kube_pod_container_status_restarts_total%7Bnamespace%3D%5C%22openagent%5C%22%7D%5B15m%5D%29%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            grafana_url: 'https://tinyurl.com/23zeou6c'
             summary: 'Pod {{ "{{ $labels.pod }}" }} in openagent is crash-looping.'
             description: >-
               More than 20 restarts in 15 minutes: a sustained restart loop, not a
