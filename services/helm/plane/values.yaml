@@ -213,10 +213,10 @@ api:
 
 worker:
   replicas: 1
-  memoryLimit: 1000Mi
+  memoryLimit: 1536Mi
   cpuLimit: 500m
   cpuRequest: 50m
-  memoryRequest: 50Mi
+  memoryRequest: 1Gi
   image: artifacts.plane.so/makeplane/plane-backend
   pullPolicy: Always
   labels: {}
