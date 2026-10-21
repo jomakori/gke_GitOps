@@ -204,8 +204,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | worker.cpuRequest | string | `"50m"` |  |
 | worker.image | string | `"artifacts.plane.so/makeplane/plane-backend"` |  |
 | worker.labels | object | `{}` |  |
-| worker.memoryLimit | string | `"1000Mi"` |  |
-| worker.memoryRequest | string | `"50Mi"` |  |
+| worker.memoryLimit | string | `"1536Mi"` |  |
+| worker.memoryRequest | string | `"1Gi"` |  |
 | worker.nodeSelector | object | `{}` |  |
 | worker.pullPolicy | string | `"Always"` |  |
 | worker.replicas | int | `1` |  |
