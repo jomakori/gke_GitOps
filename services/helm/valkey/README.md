@@ -61,4 +61,4 @@ Disabled: the Service is `ClusterIP`-only and every consumer is in-cluster (the 
 | valkey.resources.requests.memory | string | `"64Mi"` |  |
 | valkey.service.port | int | `6379` |  |
 | valkey.service.type | string | `"ClusterIP"` |  |
-| valkey.valkeyConfig | string | `"appendonly yes\nappendfsync everysec\n# 192mb, lowered with the container limit (below). Verified 7d max working\n# set is 22.7MiB (23,818,240 B), so 400mb was ~17x the live dataset; 192mb\n# still leaves ~8x headroom for LiteLLM's rate-limit counters and budget\n# reservations to grow into before noeviction starts refusing writes.\nmaxmemory 192mb\nmaxmemory-policy noeviction\n"` |  |
+| valkey.valkeyConfig | string | `"appendonly yes\nappendfsync everysec\nmaxmemory 192mb\nmaxmemory-policy noeviction\n"` |  |

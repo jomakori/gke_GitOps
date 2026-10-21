@@ -19,10 +19,6 @@ istiod:
           - ".*upstream_cx_.*"
     enablePrometheusMerge: true
   pilot:
-    # Verified 7d max working set for the `discovery` container: 143MiB
-    # (149,454,848 B). 384Mi keeps 2.7x headroom for the config-push burst when
-    # proxies reconnect, and the request drops to 192Mi (1.3x the verified
-    # peak) — that is the number that actually frees reservation.
     resources:
       requests:
         cpu: 100m

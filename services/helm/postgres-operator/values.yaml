@@ -31,11 +31,6 @@ renderClusters: true
 # Deployments are created at runtime by the operator from the SGConfig CR, so
 # their resources are not settable here (tracked separately).
 # CPU limits deliberately omitted (CFS throttling); the memory limit is the real ceiling.
-# Memory re-sized from measurement: 7d max working set is 317Mi (not the 266Mi
-# the rightsizing survey carried), so 1Gi was 3.2x the real peak. 512Mi is 1.6x
-# the verified max and the 384Mi request sits just above it, so the operator
-# keeps its scheduling reservation without parking a GiB for a controller that
-# only reconciles.
 stackgresOperator:
   enabled: true
   operator:
@@ -158,15 +153,6 @@ postgres:
       # Resource discipline: profile values are the pod total; without explicit
       # per-container resources StackGres leaves every container unset (BestEffort).
       # pgbouncer is listed because pooling is now enabled.
-      #
-      # StackGres sets request == limit from these single values, so each pod
-      # stays Guaranteed (no eviction under node pressure) after resizing.
-      # Verified 7d max working set (2026-10-14..10-21):
-      #   patroni 413Mi, cluster-controller 151Mi, postgres-util 11.9Mi,
-      #   pgbouncer 5.9Mi. patroni keeps a 1Gi floor: it is the primary's
-      # postgres process, and shared_buffers + per-connection work_mem live in
-      # it, so the 2.4x headroom over the verified peak is deliberate rather
-      # than leftover slack — do not take it below 1Gi.
       resources:
         cluster-controller:
           cpu: "200m"

@@ -42,17 +42,9 @@ storage:
 resources:
   limits:
     cpu: 2
-    # Observed peak working set is ~1007MiB (re-verified 7d max: 1007MiB /
-    # 1,055,911,936 B); at a 1Gi limit the container was OOMKilled (exit 137) on
-    # agent runs. 2Gi is 1.95x the verified max and leaves room for a cold
-    # Codex/MCP start, so the limit stays.
     memory: 2Gi
   requests:
     cpu: 500m
-    # 768Mi, down from 1Gi. A request is a scheduling reservation, not a ceiling:
-    # the verified p50 is 460Mi and the max 1007Mi, so 1Gi reserved for the peak
-    # of a bursty agent. 768Mi still sits 1.7x above the median and only the
-    # cold-start spike exceeds it — which the 2Gi limit absorbs.
     memory: 768Mi
 
 # Service

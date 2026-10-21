@@ -74,7 +74,4 @@ resources:
     memory: 256Mi
   limits:
     cpu: 1000m
-    # 512Mi, not 1Gi: verified 7d max working set is 267MiB (279,633,920 B) and
-    # the series is flat — no cold-start or traffic peak above it. 512Mi is
-    # 1.9x the verified max (1.5x floor) and still 2x the 256Mi request.
     memory: 512Mi

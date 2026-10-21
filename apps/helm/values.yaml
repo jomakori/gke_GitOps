@@ -116,11 +116,6 @@ openkite:
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080
-    # Verified 7d working set: p50 262MiB, p95 275MiB, max 305MiB. The 128Mi
-    # request was below the median, so the pod was permanently over-committed
-    # against its own reservation (first eviction candidate, and the kubelet
-    # saw a pod "using" 2x its request). 320Mi covers the verified max with a
-    # little room; 640Mi is 2.1x the max (1.5x floor).
     resourceRequests:
       cpu: 100m
       memory: 320Mi
