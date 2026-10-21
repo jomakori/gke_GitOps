@@ -23,11 +23,11 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            summary: 'Pod {{ "{{ $labels.pod }}" }} in {{ "{{ $labels.namespace }}" }} stuck Pending.'
+            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22kube_pod_status_phase%7Bphase%3D%5C%22Pending%5C%22%7D%20%3D%3D%201%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            summary: 'Pod {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} has been Pending for over 3 minutes.'
             description: >-
-              The pod has not been scheduled for at least 3 minutes. Check for
-              insufficient node capacity, an unschedulable taint, or a PVC that
-              cannot bind.
+              The pod is not scheduled. Check node capacity, taints, and whether
+              its PVC is bound.
             runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerCPUHigh
           expr: >-
@@ -40,10 +40,11 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            summary: 'Container {{ "{{ $labels.container }}" }} ({{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}) is CFS-throttled.'
+            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22sum%20by%20%28namespace%2C%20pod%2C%20container%29%20%28rate%28container_cpu_cfs_throttled_periods_total%5B5m%5D%29%29%20%2F%20sum%20by%20%28namespace%2C%20pod%2C%20container%29%20%28rate%28container_cpu_cfs_periods_total%5B5m%5D%29%29%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is CPU-throttled.'
             description: >-
-              Over half of this container's CPU periods were throttled over the
-              last 5 minutes. Its CPU limit is too tight for its actual demand.
+              Over half of CPU periods were throttled for 5 minutes. The CPU limit
+              is likely below real demand.
             runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerMemoryPressure
           expr: >-
@@ -56,11 +57,11 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            summary: 'Container {{ "{{ $labels.container }}" }} ({{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}) near its memory limit.'
+            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22container_memory_working_set_bytes%20%2F%20on%28namespace%2C%20pod%2C%20container%29%20kube_pod_container_resource_limits%7Bresource%3D%5C%22memory%5C%22%7D%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is above 85% of its memory limit.'
             description: >-
-              Working set has stayed above 85% of the container's memory limit
-              for 10 minutes. The kubelet OOM-kills on breach, not on a graceful
-              warning.
+              Memory has stayed above 85% of the limit for 10 minutes. At the
+              limit the kubelet OOM-kills the container without warning.
             runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerOomRisk
           expr: >-
@@ -73,10 +74,11 @@ spec:
             severity: critical
             component: cluster-capacity
           annotations:
-            summary: 'Container {{ "{{ $labels.container }}" }} ({{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}) is about to be OOM-killed.'
+            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22container_memory_working_set_bytes%20%2F%20on%28namespace%2C%20pod%2C%20container%29%20kube_pod_container_resource_limits%7Bresource%3D%5C%22memory%5C%22%7D%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is above 95% of its memory limit.'
             description: >-
-              Working set has stayed above 95% of the container's memory limit
-              for 5 minutes. An OOM kill is imminent absent intervention.
+              Memory has stayed above 95% of the limit for 5 minutes. An OOM kill
+              is likely unless usage drops or the limit is raised.
             runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerStoragePressure
           expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.20
@@ -85,10 +87,11 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            summary: 'Volume {{ "{{ $labels.persistentvolumeclaim }}" }} ({{ "{{ $labels.namespace }}" }}) is over 80% full.'
+            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22kubelet_volume_stats_available_bytes%20%2F%20kubelet_volume_stats_capacity_bytes%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            summary: 'PVC {{ "{{ $labels.persistentvolumeclaim }}" }} in {{ "{{ $labels.namespace }}" }} has less than 20% free.'
             description: >-
-              Less than 20% of this PVC's capacity remains free, sustained for
-              10 minutes. Writes will start failing once the volume fills.
+              Free space has stayed under 20% for 10 minutes. Writes fail once the
+              volume fills. Check what is growing and whether cleanup applies.
             runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerOomRiskDisk
           expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.05
@@ -97,9 +100,10 @@ spec:
             severity: critical
             component: cluster-capacity
           annotations:
-            summary: 'Volume {{ "{{ $labels.persistentvolumeclaim }}" }} ({{ "{{ $labels.namespace }}" }}) is nearly full.'
+            grafana_url: 'https://grafana.maklab.net/explore?orgId=1&left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22datasource%22%3A%7B%22type%22%3A%22prometheus%22%2C%22uid%22%3A%22prometheus%22%7D%2C%22expr%22%3A%22kubelet_volume_stats_available_bytes%20%2F%20kubelet_volume_stats_capacity_bytes%22%2C%22range%22%3Atrue%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-1h%22%2C%22to%22%3A%22now%22%7D%7D'
+            summary: 'PVC {{ "{{ $labels.persistentvolumeclaim }}" }} in {{ "{{ $labels.namespace }}" }} has less than 5% free.'
             description: >-
-              Less than 5% of this PVC's capacity remains free, sustained for
-              5 minutes. The owning pod is at imminent risk of write failures
-              or crash-looping on disk-full errors.
+              Free space has stayed under 5% for 5 minutes. The owning pod is at
+              imminent risk of write failures or disk-full crash loops. Free space
+              or expand the volume now.
             runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting

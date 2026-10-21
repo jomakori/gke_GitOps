@@ -16,18 +16,21 @@ spec:
   # cannot render this receiver and leaves Alertmanager's current config in
   # place.
   #
-  # Alertmanager's own regexes are anchored. This now matches the three
-  # OpenAgent alerts plus the six cluster-capacity alerts defined in
-  # cluster-capacity-alert-rules.yaml, and nothing else - the stock rules
-  # keep falling through to `null`. Reusing this receiver avoids a second
-  # ExternalSecret; both rule sets ride the same Discord webhook.
+  # Alertmanager's own regexes are anchored. This matches the three OpenAgent
+  # alerts plus the six cluster-capacity alerts, and nothing else.
+  #
+  # Grouping by resource labels yields one Discord message per pod, PVC, or
+  # node, rather than one bundled message per alert name.
+  #
+  # Message templates are escaped with {{ "..." }} so Helm emits them literally
+  # for Alertmanager to render.
   route:
     receiver: discord
     matchers:
       - name: alertname
         value: "Openagent.*|PodsPendingTooLong|ContainerCPUHigh|ContainerMemoryPressure|ContainerOomRisk|ContainerStoragePressure|ContainerOomRiskDisk"
         matchType: "=~"
-    groupBy: ["alertname"]
+    groupBy: ["alertname", "namespace", "pod", "container", "persistentvolumeclaim", "node"]
     groupWait: 30s
     groupInterval: 5m
     repeatInterval: 6h
@@ -38,3 +41,15 @@ spec:
             name: grafana-admin-credentials
             key: ALERT_DISCORD_WEBHOOK_URL
           sendResolved: true
+          title: '{{ "{{ .Status | toUpper }}: {{ .GroupLabels.alertname }}" }}'
+          message: |
+            {{ "{{ range .Alerts }}" }}🚨 {{ "{{ .Annotations.summary }}" }}
+
+            {{ "{{ .Annotations.description }}" }}
+
+            Resource: `{{ "{{ or .Labels.persistentvolumeclaim .Labels.pod .Labels.node }}" }}`
+            {{ "{{ with .Labels.namespace }}" }}Namespace: `{{ "{{ . }}" }}`
+            {{ "{{ end }}" }}Severity: `{{ "{{ .Labels.severity }}" }}`
+
+            [More details]({{ "{{ .Annotations.grafana_url }}" }})
+            {{ "{{ end }}" }}
