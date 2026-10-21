@@ -23,12 +23,11 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            summary: 'Pod {{ "{{ $labels.pod }}" }} in {{ "{{ $labels.namespace }}" }} stuck Pending.'
+            grafana_url: 'https://tinyurl.com/2xhwlhnt'
+            summary: 'Pod {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} has been Pending for over 3 minutes.'
             description: >-
-              The pod has not been scheduled for at least 3 minutes. Check for
-              insufficient node capacity, an unschedulable taint, or a PVC that
-              cannot bind.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+              The pod is not scheduled. Check node capacity, taints, and whether
+              its PVC is bound.
         - alert: ContainerCPUHigh
           expr: >-
             sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total[5m]))
@@ -40,11 +39,11 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            summary: 'Container {{ "{{ $labels.container }}" }} ({{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}) is CFS-throttled.'
+            grafana_url: 'https://tinyurl.com/23w5f4jt'
+            summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is CPU-throttled.'
             description: >-
-              Over half of this container's CPU periods were throttled over the
-              last 5 minutes. Its CPU limit is too tight for its actual demand.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+              Over half of CPU periods were throttled for 5 minutes. The CPU limit
+              is likely below real demand.
         - alert: ContainerMemoryPressure
           expr: >-
             container_memory_working_set_bytes
@@ -56,12 +55,11 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            summary: 'Container {{ "{{ $labels.container }}" }} ({{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}) near its memory limit.'
+            grafana_url: 'https://tinyurl.com/22zx9zaz'
+            summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is above 85% of its memory limit.'
             description: >-
-              Working set has stayed above 85% of the container's memory limit
-              for 10 minutes. The kubelet OOM-kills on breach, not on a graceful
-              warning.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+              Memory has stayed above 85% of the limit for 10 minutes. At the
+              limit the kubelet OOM-kills the container without warning.
         - alert: ContainerOomRisk
           expr: >-
             container_memory_working_set_bytes
@@ -73,11 +71,11 @@ spec:
             severity: critical
             component: cluster-capacity
           annotations:
-            summary: 'Container {{ "{{ $labels.container }}" }} ({{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}) is about to be OOM-killed.'
+            grafana_url: 'https://tinyurl.com/22zx9zaz'
+            summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is above 95% of its memory limit.'
             description: >-
-              Working set has stayed above 95% of the container's memory limit
-              for 5 minutes. An OOM kill is imminent absent intervention.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+              Memory has stayed above 95% of the limit for 5 minutes. An OOM kill
+              is likely unless usage drops or the limit is raised.
         - alert: ContainerStoragePressure
           expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.20
           for: 10m
@@ -85,11 +83,11 @@ spec:
             severity: warning
             component: cluster-capacity
           annotations:
-            summary: 'Volume {{ "{{ $labels.persistentvolumeclaim }}" }} ({{ "{{ $labels.namespace }}" }}) is over 80% full.'
+            grafana_url: 'https://tinyurl.com/2xosx4ul'
+            summary: 'PVC {{ "{{ $labels.persistentvolumeclaim }}" }} in {{ "{{ $labels.namespace }}" }} has less than 20% free.'
             description: >-
-              Less than 20% of this PVC's capacity remains free, sustained for
-              10 minutes. Writes will start failing once the volume fills.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+              Free space has stayed under 20% for 10 minutes. Writes fail once the
+              volume fills. Check what is growing and whether cleanup applies.
         - alert: ContainerOomRiskDisk
           expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.05
           for: 5m
@@ -97,9 +95,9 @@ spec:
             severity: critical
             component: cluster-capacity
           annotations:
-            summary: 'Volume {{ "{{ $labels.persistentvolumeclaim }}" }} ({{ "{{ $labels.namespace }}" }}) is nearly full.'
+            grafana_url: 'https://tinyurl.com/2xosx4ul'
+            summary: 'PVC {{ "{{ $labels.persistentvolumeclaim }}" }} in {{ "{{ $labels.namespace }}" }} has less than 5% free.'
             description: >-
-              Less than 5% of this PVC's capacity remains free, sustained for
-              5 minutes. The owning pod is at imminent risk of write failures
-              or crash-looping on disk-full errors.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
+              Free space has stayed under 5% for 5 minutes. The owning pod is at
+              imminent risk of write failures or disk-full crash loops. Free space
+              or expand the volume now.

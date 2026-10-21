@@ -21,11 +21,12 @@ spec:
             severity: critical
             component: openagent
           annotations:
-            summary: LiteLLM has no available replicas.
+            grafana_url: 'https://tinyurl.com/28ouz7aa'
+            summary: LiteLLM gateway has no available replicas.
             description: >-
-              Every agent turn that routes through the gateway is failing. Check the
-              pod's startup logs for a Postgres connection failure: on 2026-10-13 the
-              gateway exited 145 times this way and the outage ran ~11h undetected.
+              Every agent turn routed through the gateway is failing. Check the
+              openagent-litellm pod's startup logs for Postgres connection failures.
+              On 2026-10-13 it exited 145 times and the outage ran ~11h undetected.
         - alert: OpenagentNodeDiskPressure
           expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
           for: 5m
@@ -33,12 +34,13 @@ spec:
             severity: warning
             component: openagent
           annotations:
+            grafana_url: 'https://tinyurl.com/2dfwytnq'
             summary: 'Node {{ "{{ $labels.node }}" }} reports DiskPressure.'
             description: >-
-              The kubelet evicts pods in this state. Postgres runs on a local-path PVC
-              and was evicted this way on 2026-10-13, taking the gateway with it. Note
-              the root filesystem is btrfs, where df free percentage overstates usable
-              space, so the condition itself is the trustworthy signal.
+              The kubelet is evicting pods on this node. Postgres (local-path PVC)
+              was evicted this way on 2026-10-13, taking the gateway down. The root
+              filesystem is btrfs, so df free space overstates usable space; trust
+              this condition over df.
         - alert: OpenagentPodRestartSpike
           expr: increase(kube_pod_container_status_restarts_total{namespace="openagent"}[15m]) > 20
           for: 5m
@@ -46,7 +48,8 @@ spec:
             severity: warning
             component: openagent
           annotations:
-            summary: 'Pod {{ "{{ $labels.pod }}" }} is restarting repeatedly.'
+            grafana_url: 'https://tinyurl.com/23zeou6c'
+            summary: 'Pod {{ "{{ $labels.pod }}" }} in openagent is crash-looping.'
             description: >-
-              A sustained restart loop rather than a single blip. The 2026-10-13
-              gateway outage showed as 145 restarts over ~11h.
+              More than 20 restarts in 15 minutes: a sustained restart loop, not a
+              single blip. The 2026-10-13 gateway outage showed 145 restarts over ~11h.
