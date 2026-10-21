@@ -5,7 +5,7 @@ release:
   name: openagent
   namespace: openagent
 tests:
-  - it: drift container has resources with limits.memory 3Gi
+  - it: drift container has resources with limits.memory 1280Mi
     asserts:
       - isKind:
           of: CronJob
@@ -19,13 +19,13 @@ tests:
           value: openagent-mcp-drift
       - equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].resources.requests.memory
-          value: 1Gi
+          value: 128Mi
         documentSelector:
           path: metadata.name
           value: openagent-mcp-drift
       - equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].resources.limits.memory
-          value: 3Gi
+          value: 1280Mi
         documentSelector:
           path: metadata.name
           value: openagent-mcp-drift
@@ -61,13 +61,13 @@ tests:
           value: openagent-mcp-drift
       - equal:
           path: spec.jobTemplate.spec.template.spec.initContainers[0].resources.limits.memory
-          value: 3Gi
+          value: 1280Mi
         documentSelector:
           path: metadata.name
           value: openagent-mcp-drift
       - equal:
           path: spec.jobTemplate.spec.template.spec.initContainers[1].resources.limits.memory
-          value: 3Gi
+          value: 1280Mi
         documentSelector:
           path: metadata.name
           value: openagent-mcp-drift

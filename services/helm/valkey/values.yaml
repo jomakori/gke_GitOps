@@ -51,20 +51,26 @@ valkey:
   valkeyConfig: |
     appendonly yes
     appendfsync everysec
-    maxmemory 400mb
+    # 192mb, lowered with the container limit (below). Verified 7d max working
+    # set is 22.7MiB (23,818,240 B), so 400mb was ~17x the live dataset; 192mb
+    # still leaves ~8x headroom for LiteLLM's rate-limit counters and budget
+    # reservations to grow into before noeviction starts refusing writes.
+    maxmemory 192mb
     maxmemory-policy noeviction
   # Standalone. A replica would sit on the same node in this single-node
   # cluster, so it would cost a pod and buy no failover.
   replica:
     enabled: false
   # CPU limit deliberately omitted (CFS throttling); memory is the real ceiling.
-  # maxmemory above tracks the 512Mi limit at ~80%, so valkey applies its own
-  # ceiling before the cgroup does.
+  # maxmemory above tracks the 256Mi limit at ~75%, so valkey applies its own
+  # ceiling before the cgroup does. The two MUST move together: leaving
+  # maxmemory at 400mb under a 256Mi cgroup cap would let valkey fill the
+  # container and get OOMKilled instead of returning its own write error.
   resources:
     requests:
       cpu: 50m
-      memory: 128Mi
+      memory: 64Mi
     limits:
-      memory: 512Mi
+      memory: 256Mi
   nodeSelector:
     intent: apps

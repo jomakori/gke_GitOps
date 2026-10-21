@@ -2,12 +2,17 @@ metrics-server:
   replicas: 3
   # default port - prevents: https://github.com/kubernetes-sigs/metrics-server/issues/1064
   containerPort: 10250
+  # Verified 7d max working set: 89.6MiB (93,958,144 B) — the 500Mi limit was
+  # 5.6x the real peak and the 300Mi request 3.3x it. 256Mi keeps 2.9x headroom
+  # for a metrics-server whose footprint tracks the pod count as the cluster
+  # grows; the request stays just above the verified peak so the pod is not
+  # eviction bait on a contended node.
   resources:
     requests:
       cpu: 200m
-      memory: 300Mi
+      memory: 128Mi
     limits:
-      memory: 500Mi
+      memory: 256Mi
   podDisruptionBudget:
     enabled: true
     maxUnavailable: 1

@@ -54,7 +54,12 @@ litellm:
       memory: 1.5Gi
     limits:
       cpu: 2000m
-      memory: 4Gi
+      # 2Gi, not 4Gi. Verified 7d max working set is 1.16Gi (Prometheus,
+      # container_memory_working_set_bytes, 2026-10-14..10-21), so 4Gi was a
+      # ceiling 3.4x the real peak. 2Gi keeps the 1.5x rule (1.72x the verified
+      # max) while staying comfortably above the 1.5Gi request the memory HPA
+      # is keyed on — lowering the request would move the HPA's 70% target.
+      memory: 2Gi
   db:
     deployStandalone: false
     useExisting: true
@@ -1544,6 +1549,14 @@ hermes-agent:
     # (cgroup `oom_kill=750`, `max_hits=34,286,670`). Keep the request at 3Gi
     # so the VPA can raise it within its 3Gi-8Gi bounds.
     #
+    # Rightsizing check (2026-10-14..10-21, Prometheus working set): 7d max is
+    # 3.06Gi on the busiest pod and 2.62Gi on the next, so the live 3.08Gi
+    # request the survey flagged as over-provisioned is in fact ~0.02Gi above
+    # the real peak — there is no reservation to reclaim here. It is also not
+    # ours to lower: `controlledValues: RequestsOnly` means the VPA rewrites the
+    # request on every pod, so editing this value would only change the
+    # pre-VPA placeholder and be overwritten back to ~3.08Gi.
+    #
     # CPU stays `requests == limits == "2"` deliberately: a single-replica
     # gateway must never throttle on the boot burst when 13 MCP servers start
     # together. Under the old RequestsAndLimits default the VPA pinned CPU at
@@ -1622,14 +1635,24 @@ mcpVerification:
     # runs, re-leaking every 15 minutes). Loads ~13 MCP servers in-process.
     # Requests kept modest — total pod requests across the cluster already
     # exceed the 15.66GiB VM, so the reservation is the minimum that lets the
-    # scheduler account for it; the 3Gi limit caps the leak.
+    # scheduler account for it; the limit caps the leak.
+    #
+    # Sizing re-measured, not assumed. The rightsizing survey reported "no
+    # working-set samples" for this container; that is wrong — the CronJob's
+    # pods do report, and over 7d (2026-10-14..10-21) the drift container peaks
+    # at 774MiB (811,675,648 B) with a per-pod p95 of 754MiB. A 512Mi limit
+    # would therefore OOMKill every run, so the limit is 1280Mi (1.65x the
+    # verified max, above the 1.5x floor). The 128Mi request IS a judgment
+    # call: it reserves for a 15-minute batch job rather than for its peak, and
+    # a Burstable job evicted under node pressure only loses one check (it runs
+    # again in 15 min) instead of parking ~750Mi of reservation permanently.
     resources:
       requests:
         cpu: 500m
-        memory: 1Gi
+        memory: 128Mi
       limits:
         cpu: "2"
-        memory: 3Gi
+        memory: 1280Mi
 
 # ── Hermes WebUI (gateway thin-client dashboard) ───────────────────
 hermes-webui:

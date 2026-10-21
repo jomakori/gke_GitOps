@@ -58,14 +58,19 @@ kube-prometheus-stack:
       resources:
         requests:
           cpu: 250m
-          memory: 1Gi
-        limits:
-          # 2Gi, not 3Gi. Live footprint is ~1.1-1.26Gi (253k head series,
-          # 147MB head chunks); 3Gi was headroom nobody used on a VM that is
-          # chronically at its 16Gi ceiling (Committed_AS 27.9Gi vs
-          # CommitLimit 25.7Gi). 2Gi still restarts a runaway TSDB cleanly
-          # instead of letting it starve the node.
           memory: 2Gi
+        limits:
+          # 4Gi, raised from 2Gi. The old 2Gi was sized against a ~1.1-1.26Gi
+          # footprint, but that is stale: verified 7d max working set is
+          # 1.98GiB (2,122,940,416 B) against a 2GiB limit — 98.8% of the cap,
+          # ~24MiB of headroom. Prometheus sits there because head series grew
+          # past the 253k the old comment assumed. No ContainerOomRisk alert is
+          # firing only because the 5m-smoothed ratio peaks at 84.5%: the spike
+          # is shorter than the `for:` window, so the rule never trips and the
+          # pod would have been OOMKilled with no warning. 4Gi is ~2x the
+          # verified max (1.5x floor) and turns a runaway TSDB into one
+          # restarted pod instead of a dead node.
+          memory: 4Gi
       # Bound the TSDB as well: 10d of time retention with no size cap let head and
       # compaction grow unbounded on a 30Gi volume.
       # 16GB, not 24GB: still ~2x the observed on-disk footprint, but stops

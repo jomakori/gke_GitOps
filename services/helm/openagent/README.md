@@ -997,7 +997,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.router_settings.request_timeout | int | `180` |  |
 | litellm.proxy_config.router_settings.routing_strategy | string | `"least-busy"` |  |
 | litellm.resources.limits.cpu | string | `"2000m"` |  |
-| litellm.resources.limits.memory | string | `"4Gi"` |  |
+| litellm.resources.limits.memory | string | `"2Gi"` |  |
 | litellm.resources.requests.cpu | string | `"100m"` |  |
 | litellm.resources.requests.memory | string | `"1.5Gi"` |  |
 | litellm.service.port | int | `4000` |  |
@@ -1020,9 +1020,9 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | mcpVerification.cronjob.enabled | bool | `true` |  |
 | mcpVerification.cronjob.historyLimit | int | `3` |  |
 | mcpVerification.cronjob.resources.limits.cpu | string | `"2"` |  |
-| mcpVerification.cronjob.resources.limits.memory | string | `"3Gi"` |  |
+| mcpVerification.cronjob.resources.limits.memory | string | `"1280Mi"` |  |
 | mcpVerification.cronjob.resources.requests.cpu | string | `"500m"` |  |
-| mcpVerification.cronjob.resources.requests.memory | string | `"1Gi"` |  |
+| mcpVerification.cronjob.resources.requests.memory | string | `"128Mi"` |  |
 | mcpVerification.cronjob.schedule | string | `"*/15 * * * *"` |  |
 | mcpVerification.preflight.activeDeadlineSeconds | int | `1800` |  |
 | mcpVerification.preflight.backoffLimit | int | `0` |  |

@@ -38,6 +38,6 @@ Metrics Server has no ExternalSecret — it does not need any secrets or externa
 | metrics-server.podDisruptionBudget.enabled | bool | `true` |  |
 | metrics-server.podDisruptionBudget.maxUnavailable | int | `1` |  |
 | metrics-server.replicas | int | `3` |  |
-| metrics-server.resources.limits.memory | string | `"500Mi"` |  |
+| metrics-server.resources.limits.memory | string | `"256Mi"` |  |
 | metrics-server.resources.requests.cpu | string | `"200m"` |  |
-| metrics-server.resources.requests.memory | string | `"300Mi"` |  |
+| metrics-server.resources.requests.memory | string | `"128Mi"` |  |

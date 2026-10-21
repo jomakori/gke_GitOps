@@ -151,9 +151,9 @@ Two layers of VirtualServices exist:
 | istiod.meshConfig.enablePrometheusMerge | bool | `true` |  |
 | istiod.meshConfig.trustDomain | string | `"cluster.local"` |  |
 | istiod.pilot.nodeSelector.intent | string | `"apps"` |  |
-| istiod.pilot.resources.limits.memory | string | `"512Mi"` |  |
+| istiod.pilot.resources.limits.memory | string | `"384Mi"` |  |
 | istiod.pilot.resources.requests.cpu | string | `"100m"` |  |
-| istiod.pilot.resources.requests.memory | string | `"256Mi"` |  |
+| istiod.pilot.resources.requests.memory | string | `"192Mi"` |  |
 | istiod.profile | string | `"ambient"` |  |
 | istiod.telemetry.enabled | bool | `true` |  |
 | istiod.telemetry.v2.prometheus.enabled | bool | `true` |  |
