@@ -28,7 +28,6 @@ spec:
             description: >-
               The pod is not scheduled. Check node capacity, taints, and whether
               its PVC is bound.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerCPUHigh
           expr: >-
             sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total[5m]))
@@ -45,7 +44,6 @@ spec:
             description: >-
               Over half of CPU periods were throttled for 5 minutes. The CPU limit
               is likely below real demand.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerMemoryPressure
           expr: >-
             container_memory_working_set_bytes
@@ -62,7 +60,6 @@ spec:
             description: >-
               Memory has stayed above 85% of the limit for 10 minutes. At the
               limit the kubelet OOM-kills the container without warning.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerOomRisk
           expr: >-
             container_memory_working_set_bytes
@@ -79,7 +76,6 @@ spec:
             description: >-
               Memory has stayed above 95% of the limit for 5 minutes. An OOM kill
               is likely unless usage drops or the limit is raised.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerStoragePressure
           expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.20
           for: 10m
@@ -92,7 +88,6 @@ spec:
             description: >-
               Free space has stayed under 20% for 10 minutes. Writes fail once the
               volume fills. Check what is growing and whether cleanup applies.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
         - alert: ContainerOomRiskDisk
           expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.05
           for: 5m
@@ -106,4 +101,3 @@ spec:
               Free space has stayed under 5% for 5 minutes. The owning pod is at
               imminent risk of write failures or disk-full crash loops. Free space
               or expand the volume now.
-            runbook_url: https://github.com/jomakori/gke_GitOps/blob/main/README.md#troubleshooting
