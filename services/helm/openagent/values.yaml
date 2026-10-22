@@ -1544,7 +1544,6 @@ hermes-agent:
     # (cgroup `oom_kill=750`, `max_hits=34,286,670`). Keep the request at 3Gi
     # so the VPA can raise it within its 3Gi-8Gi bounds.
     #
-    #
     # CPU stays `requests == limits == "2"` deliberately: a single-replica
     # gateway must never throttle on the boot burst when 13 MCP servers start
     # together. Under the old RequestsAndLimits default the VPA pinned CPU at
@@ -1623,7 +1622,6 @@ mcpVerification:
     # runs, re-leaking every 15 minutes). Loads ~13 MCP servers in-process.
     # Requests kept modest — total pod requests across the cluster already
     # exceed the 15.66GiB VM, so the reservation is the minimum that lets the
-    #
     resources:
       requests:
         cpu: 500m
