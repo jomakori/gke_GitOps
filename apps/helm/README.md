@@ -138,7 +138,7 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.clusterAdmin | bool | `true` |  |
 | openkite.enable_istio | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
-| openkite.environments.production.tag | string | `"v0.58.2"` |  |
+| openkite.environments.production.tag | string | `"v0.58.3"` |  |
 | openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |
 | openkite.environments.staging.tag | string | `"v0.52.0"` |  |
 | openkite.image.repository | string | `"ghcr.io/jomakori/openkite"` |  |
@@ -147,8 +147,8 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.istio.retryAttempts | int | `3` |  |
 | openkite.istio.retryTimeout | string | `"5s"` |  |
 | openkite.service.port | int | `8080` |  |
-| openkite.service.resourceLimits.memory | string | `"512Mi"` |  |
+| openkite.service.resourceLimits.memory | string | `"1Gi"` |  |
 | openkite.service.resourceRequests.cpu | string | `"100m"` |  |
-| openkite.service.resourceRequests.memory | string | `"128Mi"` |  |
+| openkite.service.resourceRequests.memory | string | `"256Mi"` |  |
 | registry | string | `"123456.dkr.ecr.us-east-2.amazonaws.com"` |  |
 | storageClass | string | `"local-path"` |  |

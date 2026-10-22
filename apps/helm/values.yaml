@@ -118,6 +118,8 @@ openkite:
     port: 8080
     resourceRequests:
       cpu: 100m
-      memory: 128Mi
+      memory: 256Mi
+    # Steady-state working set is ~300MiB, but openkite-web spikes past 512Mi
+    # and was OOMKilled 60+ times at that limit. 1Gi leaves headroom.
     resourceLimits:
-      memory: 512Mi
+      memory: 1Gi
