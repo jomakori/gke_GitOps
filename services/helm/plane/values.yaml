@@ -67,6 +67,8 @@ redis:
   volumeSize: 100Mi
   pullPolicy: IfNotPresent
   assign_cluster_ip: false
+  memoryRequest: 64Mi
+  memoryLimit: 256Mi
   labels: {}
   annotations: {}
   nodeSelector: {}

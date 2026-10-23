@@ -50,6 +50,11 @@ spec:
         - mountPath: /data
           name: pvc-{{ .Release.Name }}-redis-vol
           subPath: ''
+        resources:
+          requests:
+            memory: {{ .Values.redis.memoryRequest | quote }}
+          limits:
+            memory: {{ .Values.redis.memoryLimit | quote }}
       {{- include "plane.podScheduling" .Values.redis }}
       serviceAccount: {{ .Release.Name }}-srv-account
       serviceAccountName: {{ .Release.Name }}-srv-account
