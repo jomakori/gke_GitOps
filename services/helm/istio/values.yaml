@@ -22,9 +22,9 @@ istiod:
     resources:
       requests:
         cpu: 100m
-        memory: 256Mi
+        memory: 192Mi
       limits:
-        memory: 512Mi
+        memory: 384Mi
     nodeSelector:
       intent: apps
   # HPA disabled: metrics-server unavailable on this cluster → HPAs can't compute and

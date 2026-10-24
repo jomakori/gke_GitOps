@@ -56,9 +56,9 @@ Disabled: the Service is `ClusterIP`-only and every consumer is in-cluster (the 
 | valkey.image.tag | string | `"9.1.2"` |  |
 | valkey.nodeSelector.intent | string | `"apps"` |  |
 | valkey.replica.enabled | bool | `false` |  |
-| valkey.resources.limits.memory | string | `"512Mi"` |  |
+| valkey.resources.limits.memory | string | `"256Mi"` |  |
 | valkey.resources.requests.cpu | string | `"50m"` |  |
-| valkey.resources.requests.memory | string | `"128Mi"` |  |
+| valkey.resources.requests.memory | string | `"64Mi"` |  |
 | valkey.service.port | int | `6379` |  |
 | valkey.service.type | string | `"ClusterIP"` |  |
-| valkey.valkeyConfig | string | `"appendonly yes\nappendfsync everysec\nmaxmemory 400mb\nmaxmemory-policy noeviction\n"` |  |
+| valkey.valkeyConfig | string | `"appendonly yes\nappendfsync everysec\nmaxmemory 192mb\nmaxmemory-policy noeviction\n"` |  |

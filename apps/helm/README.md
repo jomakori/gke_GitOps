@@ -147,8 +147,8 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.istio.retryAttempts | int | `3` |  |
 | openkite.istio.retryTimeout | string | `"5s"` |  |
 | openkite.service.port | int | `8080` |  |
-| openkite.service.resourceLimits.memory | string | `"1Gi"` |  |
+| openkite.service.resourceLimits.memory | string | `"640Mi"` |  |
 | openkite.service.resourceRequests.cpu | string | `"100m"` |  |
-| openkite.service.resourceRequests.memory | string | `"256Mi"` |  |
+| openkite.service.resourceRequests.memory | string | `"320Mi"` |  |
 | registry | string | `"123456.dkr.ecr.us-east-2.amazonaws.com"` |  |
 | storageClass | string | `"local-path"` |  |

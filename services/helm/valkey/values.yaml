@@ -51,20 +51,18 @@ valkey:
   valkeyConfig: |
     appendonly yes
     appendfsync everysec
-    maxmemory 400mb
+    maxmemory 192mb
     maxmemory-policy noeviction
   # Standalone. A replica would sit on the same node in this single-node
   # cluster, so it would cost a pod and buy no failover.
   replica:
     enabled: false
   # CPU limit deliberately omitted (CFS throttling); memory is the real ceiling.
-  # maxmemory above tracks the 512Mi limit at ~80%, so valkey applies its own
-  # ceiling before the cgroup does.
   resources:
     requests:
       cpu: 50m
-      memory: 128Mi
+      memory: 64Mi
     limits:
-      memory: 512Mi
+      memory: 256Mi
   nodeSelector:
     intent: apps

@@ -55,7 +55,7 @@ Codex remains available as an alternate agent in the same `agents` block (`agent
 | resources.limits.cpu | int | `2` |  |
 | resources.limits.memory | string | `"2Gi"` |  |
 | resources.requests.cpu | string | `"500m"` |  |
-| resources.requests.memory | string | `"1Gi"` |  |
+| resources.requests.memory | string | `"768Mi"` |  |
 | service.port | int | `80` |  |
 | service.type | string | `"ClusterIP"` |  |
 | storage.class | string | `"local-path"` |  |

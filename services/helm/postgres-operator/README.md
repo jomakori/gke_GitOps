@@ -67,13 +67,13 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.poolingConfigName | string | `"pg-main-pooling"` |  |
 | postgres.clusters.pg-main.profile | string | `"production"` |  |
 | postgres.clusters.pg-main.resources.cluster-controller.cpu | string | `"200m"` |  |
-| postgres.clusters.pg-main.resources.cluster-controller.memory | string | `"384Mi"` |  |
+| postgres.clusters.pg-main.resources.cluster-controller.memory | string | `"256Mi"` |  |
 | postgres.clusters.pg-main.resources.patroni.cpu | string | `"1000m"` |  |
-| postgres.clusters.pg-main.resources.patroni.memory | string | `"2Gi"` |  |
+| postgres.clusters.pg-main.resources.patroni.memory | string | `"1Gi"` |  |
 | postgres.clusters.pg-main.resources.pgbouncer.cpu | string | `"250m"` |  |
-| postgres.clusters.pg-main.resources.pgbouncer.memory | string | `"128Mi"` |  |
+| postgres.clusters.pg-main.resources.pgbouncer.memory | string | `"64Mi"` |  |
 | postgres.clusters.pg-main.resources.postgres-util.cpu | string | `"100m"` |  |
-| postgres.clusters.pg-main.resources.postgres-util.memory | string | `"128Mi"` |  |
+| postgres.clusters.pg-main.resources.postgres-util.memory | string | `"64Mi"` |  |
 | postgres.clusters.pg-main.storage | string | `"15Gi"` |  |
 | postgres.clusters.pg-main.storageClass | string | `"local-path"` |  |
 | postgres.clusters.pg-main.users[0].databases[0].name | string | `"plane"` |  |
@@ -109,7 +109,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | stackgresOperator.grafana.password | string | `nil` |  |
 | stackgresOperator.grafana.schema | string | `"http"` |  |
 | stackgresOperator.grafana.user | string | `nil` |  |
-| stackgresOperator.operator.resources.limits.memory | string | `"1Gi"` |  |
+| stackgresOperator.operator.resources.limits.memory | string | `"512Mi"` |  |
 | stackgresOperator.operator.resources.requests.cpu | string | `"100m"` |  |
-| stackgresOperator.operator.resources.requests.memory | string | `"256Mi"` |  |
+| stackgresOperator.operator.resources.requests.memory | string | `"384Mi"` |  |
 | stackgresOperator.rbac.create | bool | `true` |  |

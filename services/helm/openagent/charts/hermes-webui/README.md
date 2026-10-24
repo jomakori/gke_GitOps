@@ -25,7 +25,7 @@ nesquena/hermes-webui — web dashboard for Hermes Agent (gateway chat backend)
 | publicUrl | string | `"https://openagent.maklab.net"` |  |
 | replicaCount | int | `1` |  |
 | resources.limits.cpu | string | `"1000m"` |  |
-| resources.limits.memory | string | `"1Gi"` |  |
+| resources.limits.memory | string | `"512Mi"` |  |
 | resources.requests.cpu | string | `"100m"` |  |
 | resources.requests.memory | string | `"256Mi"` |  |
 | service.name | string | `"openagent-hermes-workspace"` |  |

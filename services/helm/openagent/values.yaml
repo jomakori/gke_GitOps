@@ -54,7 +54,7 @@ litellm:
       memory: 1.5Gi
     limits:
       cpu: 2000m
-      memory: 4Gi
+      memory: 2Gi
   db:
     deployStandalone: false
     useExisting: true
@@ -1622,14 +1622,13 @@ mcpVerification:
     # runs, re-leaking every 15 minutes). Loads ~13 MCP servers in-process.
     # Requests kept modest — total pod requests across the cluster already
     # exceed the 15.66GiB VM, so the reservation is the minimum that lets the
-    # scheduler account for it; the 3Gi limit caps the leak.
     resources:
       requests:
         cpu: 500m
-        memory: 1Gi
+        memory: 128Mi
       limits:
         cpu: "2"
-        memory: 3Gi
+        memory: 1280Mi
 
 # ── Hermes WebUI (gateway thin-client dashboard) ───────────────────
 hermes-webui:

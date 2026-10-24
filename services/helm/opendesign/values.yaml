@@ -42,12 +42,10 @@ storage:
 resources:
   limits:
     cpu: 2
-    # Observed peak working set is ~1007MiB; at 1Gi the container was OOMKilled
-    # (exit 137) on agent runs. 2Gi leaves room for a cold Codex/MCP start.
     memory: 2Gi
   requests:
     cpu: 500m
-    memory: 1Gi
+    memory: 768Mi
 
 # Service
 service:
