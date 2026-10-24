@@ -1271,7 +1271,19 @@ hermes-agent:
           - "-c"
           - |-
             BW_CLIENTID=$BW_CLIENTID BW_CLIENTSECRET=$BW_CLIENTSECRET bw login --apikey 2>/dev/null
-            export BW_SESSION=$(BW_PASSWORD=$BW_PASSWORD bw unlock --passwordenv BW_PASSWORD 2>/dev/null | grep "BW_SESSION=" | sed "s/.*BW_SESSION=\"//;s/\".*//")
+            # `bw unlock` (undecorated) prints BOTH a bash "export BW_SESSION=..."
+            # hint line AND a PowerShell "$env:BW_SESSION=..." hint line for the
+            # SAME token. grep "BW_SESSION=" matches both, so the old pipeline
+            # captured a two-line value (token duplicated, newline-joined) into
+            # BW_SESSION — malformed input for the MCP server's own `bw`
+            # invocations, which reports status=locked regardless of whether
+            # the master password was even correct. `--raw` is the CLI's own
+            # scripting mode: exactly one line, just the token.
+            export BW_SESSION=$(BW_PASSWORD=$BW_PASSWORD bw unlock --passwordenv BW_PASSWORD --raw 2>/dev/null)
+            # Master password and client secret are only needed for the two
+            # lines above; drop them before exec so the long-lived MCP server
+            # child never carries them in its environment.
+            unset BW_PASSWORD BW_CLIENTSECRET
             exec npx -y @bitwarden/mcp-server@2026.7.0
         connect_timeout: 180
         idle_timeout_seconds: 1800
