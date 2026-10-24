@@ -47,7 +47,7 @@ spec:
 
             {{ "{{ .Annotations.description }}" }}
 
-            Resource: `{{ "{{ or .Labels.persistentvolumeclaim .Labels.pod .Labels.node }}" }}`
+            Resource: `{{ "{{ or .Labels.persistentvolumeclaim .Labels.pod .Labels.node .Labels.instance }}" }}`
             {{ "{{ with .Labels.namespace }}" }}Namespace: `{{ "{{ . }}" }}`
             {{ "{{ end }}" }}Severity: `{{ "{{ .Labels.severity }}" }}`
 
