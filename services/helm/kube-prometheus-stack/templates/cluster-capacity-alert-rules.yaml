@@ -76,6 +76,55 @@ spec:
             description: >-
               Memory has stayed above 95% of the limit for 5 minutes. An OOM kill
               is likely unless usage drops or the limit is raised.
+        # Node-level free space. The PVC rules below cannot see this failure:
+        # local-path PVs are hostPath, so kubelet reports the WHOLE filesystem
+        # for kubelet_volume_stats_*, and a 5Gi claim holding 132G still shows
+        # ~40% free. On 2026-10-23 the node fs went 34% -> 6% free in 50 minutes,
+        # the kubelet evicted every namespace at 5%, and the only warnings were
+        # node-exporter's predictive rule 14m ahead and DiskPressure itself —
+        # i.e. after eviction had already started. These two fire earlier.
+        # min by (instance, device) collapses the ~8 mounts of one filesystem
+        # (/, /var/lib/kubelet, /etc/hosts, /var/log, /k3d/images, ...) into one
+        # series per device, so a full node raises one alert, not eight.
+        - alert: NodeFilesystemFreeLow
+          expr: >-
+            min by (instance, device) (
+              node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.*|overlay|squashfs|ramfs|autofs"}
+              /
+              node_filesystem_size_bytes{fstype!~"tmpfs|fuse.*|overlay|squashfs|ramfs|autofs"}
+            ) < 0.25
+          for: 10m
+          labels:
+            severity: warning
+            component: cluster-capacity
+          annotations:
+            grafana_url: 'https://tinyurl.com/24w26ng8'
+            summary: 'Node filesystem {{ "{{ $labels.instance }}" }} ({{ "{{ $labels.device }}" }}) has under 25% free.'
+            description: >-
+              Free space has stayed under 25% for 10 minutes. The kubelet starts
+              evicting pods at 5%, and this filesystem crossed that in 50 minutes
+              on 2026-10-23. Find the growth before eviction starts: du the largest
+              PVC on the node, and check for regenerable build trees (Rust target/,
+              caches) rather than assuming the claim's requested size caps it.
+        - alert: NodeFilesystemFreeCritical
+          expr: >-
+            min by (instance, device) (
+              node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.*|overlay|squashfs|ramfs|autofs"}
+              /
+              node_filesystem_size_bytes{fstype!~"tmpfs|fuse.*|overlay|squashfs|ramfs|autofs"}
+            ) < 0.12
+          for: 5m
+          labels:
+            severity: critical
+            component: cluster-capacity
+          annotations:
+            grafana_url: 'https://tinyurl.com/24w26ng8'
+            summary: 'Node filesystem {{ "{{ $labels.instance }}" }} ({{ "{{ $labels.device }}" }}) has under 12% free.'
+            description: >-
+              Under 12% free and falling. Eviction begins at 5%; the kubelet will
+              taint the node with disk-pressure and evict pods across every
+              namespace, not just the one consuming the space. Free space or move
+              the workload now — eviction is not selective.
         - alert: ContainerStoragePressure
           expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.20
           for: 10m

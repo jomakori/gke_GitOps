@@ -8,7 +8,7 @@ data:
   proxy.ts: |
     const PORT = parseInt(process.env.PORT ?? "4524");
     const LITELLM = process.env.LITELLM ?? "http://openagent-litellm.{{ .Release.Namespace }}.svc.cluster.local:4000";
-    const LITELLM_KEY = process.env.LITELLM_KEY ?? "sk-litellm-master-key-1234";
+    const LITELLM_KEY = process.env.LITELLM_KEY ?? "";
     // Models to retry with when the primary upstream rate-limits (429) or 5xxs.
     // The Claude Code account via auth2api caps requests per window, so bursts
     // first retry the primary with a delay (window may clear), then spill to

@@ -158,6 +158,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | redis.image | string | `"valkey/valkey:7.2.11-alpine"` |  |
 | redis.labels | object | `{}` |  |
 | redis.local_setup | bool | `true` |  |
+| redis.memoryLimit | string | `"256Mi"` |  |
+| redis.memoryRequest | string | `"64Mi"` |  |
 | redis.nodeSelector | object | `{}` |  |
 | redis.pullPolicy | string | `"IfNotPresent"` |  |
 | redis.servicePort | int | `6379` |  |

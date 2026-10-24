@@ -23,7 +23,10 @@ spec:
           command: ["bun", "/proxy/proxy.ts"]
           env:
             - name: LITELLM_KEY
-              value: "sk-litellm-master-key-1234"
+              valueFrom:
+                secretKeyRef:
+                  name: openagent-litellm-masterkey
+                  key: masterkey
           ports:
             - containerPort: 4524
           readinessProbe:
