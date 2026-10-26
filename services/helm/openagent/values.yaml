@@ -127,33 +127,7 @@ litellm:
   masterkeySecretKey: "masterkey"
   environmentSecrets:
     - "openagent-secrets"
-  # GitHub Copilot credential. LiteLLM's `github_copilot` provider authenticates
-  # from a FILE (`$GITHUB_COPILOT_TOKEN_DIR/access-token`) — not from env — and it
-  # resolves that credential at MODEL REGISTRATION, so with no token every litellm
-  # pod crash-loops on boot (3× device-flow timeout, then exit). Seed the
-  # long-lived GitHub OAuth access token (Doppler `svc_openagent` →
-  # `openagent-secrets`) as that file. An emptyDir per replica holds the
-  # `api-key.json` LiteLLM mints and rotates; the shared `access-token` is a
-  # read-only secret file mounted inside it. Per-replica emptyDir (not a shared
-  # PVC) avoids the api-key refresh race across the HPA replicas.
-  volumes:
-    - name: copilot-token-dir
-      emptyDir: {}
-    - name: copilot-access-token
-      secret:
-        secretName: openagent-secrets
-        items:
-          - key: GITHUB_COPILOT_ACCESS_TOKEN
-            path: access-token
-  volumeMounts:
-    - name: copilot-token-dir
-      mountPath: /root/.config/litellm/github_copilot
-    - name: copilot-access-token
-      mountPath: /root/.config/litellm/github_copilot/access-token
-      subPath: access-token
-  extraEnvVars:
-    - name: GITHUB_COPILOT_TOKEN_DIR
-      value: /root/.config/litellm/github_copilot
+  # Copilot lane retired: no github_copilot model, no token volume, no env seed.
   # The cache lives in the `valkey` Application (services/helm/valkey), not here:
   # one standalone Valkey in its own namespace, reached as
   # valkey-cache.valkey.svc.cluster.local. Must stay in sync with that chart's
@@ -212,78 +186,7 @@ litellm:
       redis_host: os.environ/REDIS_HOST
       redis_port: os.environ/REDIS_PORT
     model_list:
-      # GitHub Copilot (subscription). Ids are passthrough (absent from LiteLLM's
-      # own github_copilot price map), so costs are pinned here where known.
-      # Newest-generation Copilot models are exposed ONLY on the Responses API:
-      # those aliases set `model_info.mode: responses`, which makes LiteLLM bridge
-      # the fleet's /chat/completions calls to /responses (verified against the
-      # live API). Models still served on /chat/completions omit `mode`.
-      # github_copilot authenticates by OAuth device flow (no api_key) and reads
-      # its token from GITHUB_COPILOT_TOKEN_DIR (see the volume wiring above).
-      - model_name: copilot-luna
-        litellm_params:
-          model: github_copilot/gpt-6-luna
-          order: 1
-        model_info:
-          mode: responses
-          input_cost_per_token: 0.0000002
-          output_cost_per_token: 0.0000012
-          # max_input_tokens is pre-call checked by LiteLLM 1.92.0; max_output_tokens
-          # is metadata for discovery/budgeting, not a universal completion clamp.
-          max_input_tokens: 1048576
-          max_output_tokens: 128000
-      - model_name: copilot-grok
-        litellm_params:
-          model: github_copilot/grok-4.7
-          order: 1
-        model_info:
-          mode: responses
-          max_input_tokens: 500000
-      # Strong reasoning fallback for the high-thinking lanes (oracle/ultrabrain):
-      # Copilot-served Claude Sonnet 5.5 — a different subscription than the Claude
-      # proxy, so it survives a Claude-proxy session-wall outage. Sol/Astra are not
-      # entitled on this Copilot plan (model_not_supported), so they are not wired.
-      - model_name: copilot-sonnet-5.5
-        litellm_params:
-          model: github_copilot/claude-sonnet-5.5
-          order: 1
-        model_info:
-          max_input_tokens: 1000000
-          max_output_tokens: 128000
-      - model_name: copilot-gemini-3.8-flash
-        litellm_params:
-          model: github_copilot/gemini-3.8-flash
-          order: 1
-        model_info:
-          input_cost_per_token: 0.00000075
-          output_cost_per_token: 0.00000375
-          max_input_tokens: 1048576
-          max_output_tokens: 65536
-      - model_name: copilot-mai-code
-        litellm_params:
-          model: github_copilot/mai-code-1.1-flash
-          order: 1
-        model_info:
-          mode: responses
-          max_input_tokens: 256000
-      # Canary: Codex-tuned coder, Responses-only. Head-to-head vs copilot-luna
-      # (2026-10-04): quality parity on codegen / bugfix / merge / tool tasks
-      # (11/11 each), but ~10-30x the cost ($1.75/$14 vs $0.10/$0.50 per M).
-      # Staged at hephaestus rung 2 only, so it runs solely on a luna miss;
-      # promote only if telemetry beats luna on completed-task credits.
-      - model_name: copilot-codex
-        litellm_params:
-          model: github_copilot/gpt-5.3-codex
-          order: 1
-        model_info:
-          mode: responses
-          input_cost_per_token: 0.00000175
-          output_cost_per_token: 0.000014
-          max_input_tokens: 400000
-          max_output_tokens: 128000
-      # Credit-independent spillway floor: the only hop that needs neither the
-      # Copilot nor the Claude subscription, so every chain ends here. (Native
-      # prefix caching is automatic server-side.)
+      # Terminal hop: needs neither Claude nor a local Ollama host, so every chain ends here.
       - model_name: deepseek-v4-flash-direct
         litellm_params:
           model: deepseek/deepseek-flash
@@ -350,22 +253,21 @@ litellm:
           cache_read_input_token_cost: 0.00000001
           max_input_tokens: 1000000
           max_output_tokens: 128000
-      # Local model: LFM2.5-24B-A2B (24B total / 2B active) on the Mac
-      # host. 2B active keeps prefill/decode cheap where a 35B-A3B still costs
-      # ~24s to ingest an 18k prompt. 131k window; ~14.5 GB Q4.
-      # Licence: LFM Open License v1.0, free below $10M annual revenue.
-      # The pod reaches it through OrbStack's magic host alias
-      # (0.250.250.254 from every k3d pod).
-      - model_name: lfm2.5-24b-local
+      # Local lane: Qwen3.6-35B-A3B on the Mac host (Ollama MLX); beat LFM2.5 on replay 7/12 vs 6/12 and prefill 660 vs 341 tok/s.
+      # Thinking MUST be off via nested extra_body.reasoning_effort — top-level is stripped by drop_params and ollama#16383 500s return.
+      # Tag is derived (`FROM qwen3.6:35b` + `PARAMETER num_ctx 32768`) so the window matches max_input_tokens, not the daemon's 262144.
+      - model_name: qwen3.6-35b-local
         litellm_params:
-          model: openai/lfm2.5:24b-a2b-q4_K_M
+          model: openai/qwen3.6:35b-32k
           api_base: http://host.docker.internal:11434/v1
           api_key: os.environ/OLLAMA_KEY
-          # Cold start loads ~15 GB from disk before the first token.
+          extra_body:
+            reasoning_effort: none
+          # Cold start loads ~23 GB before the first token.
           timeout: 600
           order: 1
         model_info:
-          max_input_tokens: 131072
+          max_input_tokens: 32768
           max_output_tokens: 32768
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
@@ -403,10 +305,8 @@ hermes-agent:
       # Primary model for Hermes gateway requests: flat-fee Claude Haiku 5.5.
       default: claude-haiku-5-5
       provider: litellm
-    # Fallback: copilot-luna, then the credit-independent deepseek floor.
+    # Fallback: the credit-independent DeepSeek floor (Copilot lane retired 2026-10-10).
     fallback_providers:
-      - provider: litellm
-        model: copilot-luna
       - provider: litellm
         model: deepseek-v4-flash-direct
     providers:
@@ -419,18 +319,6 @@ hermes-agent:
         # explicitly per alias so the seeded Hermes config remains deterministic
         # if its discovery parser or provider response changes.
         models:
-          copilot-luna:
-            context_length: 1048576
-          copilot-grok:
-            context_length: 500000
-          copilot-sonnet-5.5:
-            context_length: 1000000
-          copilot-gemini-3.8-flash:
-            context_length: 1048576
-          copilot-mai-code:
-            context_length: 256000
-          copilot-codex:
-            context_length: 400000
           deepseek-v4-flash-direct:
             context_length: 1000000
           claude-opus-5:
@@ -441,8 +329,8 @@ hermes-agent:
             context_length: 200000
           claude-haiku-5-5:
             context_length: 1000000
-          lfm2.5-24b-local:
-            context_length: 131072
+          qwen3.6-35b-local:
+            context_length: 32768
     # ── W6: bound what one read can put into the context ────────────────
     # Measured over 7d (state.db messages): 123 tool results over 40 KB carried
     # 8.72 MB of 23.85 MB — 37% of the bytes in 6% of the results, and the top
@@ -750,18 +638,10 @@ hermes-agent:
               max_fallback_attempts: 6
               cooldown_seconds: 30
               restore_primary_after_cooldown: true
-            # LIVE-HOP INVARIANT: every entry below must be a model that
-            # answers 200 through the gateway. All copilot-* aliases were
-            # removed 2026-10-10 — the GitHub Copilot entitlement is
-            # quota-exhausted and returns HTTP 402 `quota_exceeded` for every
-            # model (copilot-luna/grok/codex/mai-code/sonnet-5.5/gemini-3.8-flash
-            # all probed). The aliases remain registered in litellm's model_list
-            # above, so restoring a hop is a one-line re-add once quota resets —
-            # but probe for a 200 first. Context: Plane OMR-13.
+            # LIVE-HOP INVARIANT: every entry must answer 200; Copilot is gone (402 quota_exceeded 2026-10-10, OMR-13) — probe before re-adding.
             chains:
               sisyphus:
                 - litellm/claude-haiku-5-5
-                - litellm/copilot-luna
                 - litellm/deepseek-v4-flash-direct
               hephaestus:
                 - litellm/claude-sonnet-5
@@ -786,11 +666,11 @@ hermes-agent:
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-direct
               librarian:
-                - litellm/lfm2.5-24b-local
+                - litellm/qwen3.6-35b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               explore:
-                - litellm/deepseek-v4-flash-direct
+                - litellm/qwen3.6-35b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               multimodal-looker:
@@ -802,7 +682,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
             categories:
               quick:
-                - litellm/lfm2.5-24b-local
+                - litellm/qwen3.6-35b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               deep:

@@ -730,39 +730,28 @@ data:
     > backups (`delegation.fallback_providers: [deepseek-v4-flash-direct,
     > claude-haiku-5-5]`). Model ids are LiteLLM aliases.
     >
-    > **ORDERING**: cheapest-headroom first among LIVE providers. Claude leads
-    > the interactive/general and reasoning lanes; DeepSeek-direct leads the
-    > high-volume lanes (librarian/explore/quick) and all delegation fan-out.
+    > **ORDERING**: cheapest live headroom first — local Qwen3.6 leads the read-only volume lanes (explore/librarian/quick), Claude leads reasoning and vision, DeepSeek-direct carries the rest and all delegation fan-out.
     >
-    > **COPILOT LANE DISABLED (2026-10-10, Plane OMR-13)**: the GitHub Copilot
-    > entitlement is quota-exhausted. Every `copilot-*` alias returns
-    > **HTTP 402 `Github_copilotException: You have exceeded your monthly quota
-    > (code: quota_exceeded)`** — probed on copilot-luna, copilot-grok,
-    > copilot-codex, copilot-mai-code, copilot-sonnet-5.5 and
-    > copilot-gemini-3.8-flash. The aliases stay registered in LiteLLM's
-    > `model_list` but are removed from every chain, from `model.default` and
-    > from `fallback_providers`. Re-add a hop only after a live 200 probe.
+    > **COPILOT LANE REMOVED (2026-10-10, Plane OMR-13)**: every `copilot-*` alias returned **HTTP 402 `quota_exceeded`**, so the aliases, their chain/fallback refs and the OAuth token volume + `GITHUB_COPILOT_TOKEN_DIR` env are deleted — restore from git history and probe a 200 first.
     >
     > **LIVE-HOP INVARIANT**: no chain, default or fallback may lead with (or
     > contain) a provider that cannot return 200. A dead hop is not a fallback —
     > it only burns a round-trip and, when every hop is dead at once, produces
     > `rebuilt_restart_limit_exceeded` with zero artifacts.
     >
-    > **TERMINAL INVARIANT**: every chain ENDS on `deepseek-v4-flash-direct`
-    > (native `DEEPSEEK_API_KEY`), the credit-independent floor that needs
-    > neither the Copilot nor the Claude subscription.
+    > **TERMINAL INVARIANT**: every chain ENDS on `deepseek-v4-flash-direct` — the credit-independent floor, so a sleeping Mac degrades to cloud instead of failing.
 
     | OMO Agent | Role | Primary | Fallback chain |
     |-------|------|-------|----------|
-    | sisyphus | Sisyphus · Ultraworker (orchestrator) | deepseek-v4-flash-direct | claude-haiku-5-5 |
+    | sisyphus | Sisyphus · Ultraworker (orchestrator) | claude-haiku-5-5 | deepseek-v4-flash-direct |
     | hephaestus | Hephaestus · Deep Agent | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | prometheus | Prometheus · Plan Builder | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | atlas | Atlas · Plan Executor | claude-sonnet-5 | deepseek-v4-flash-direct |
     | metis | Metis · Plan Consultant | claude-sonnet-5 | deepseek-v4-flash-direct |
     | momus | Momus · Plan Critic | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | claude-sonnet-5 → deepseek-v4-flash-direct |
-    | librarian | Librarian · Research | deepseek-v4-flash-direct | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | explore | Explore · Repository Exploration | deepseek-v4-flash-direct | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | librarian | Librarian · Research | qwen3.6-35b-local | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | explore | Explore · Repository Exploration | qwen3.6-35b-local | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | claude-haiku-4-5 | deepseek-v4-flash-direct |
     | (no scribe — writing routes via `writing` category) | writer | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
@@ -771,13 +760,13 @@ data:
 
     | Category | Primary | Fallback chain |
     |---|---|---|
-    | quick | deepseek-v4-flash-direct | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | quick | qwen3.6-35b-local | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | deep | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | ultrabrain | claude-opus-5 | claude-sonnet-5 → deepseek-v4-flash-direct |
     | visual-engineering | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | writing | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
 
-    **Pricing** ($/M in/out): the Copilot lane (`copilot-luna` gpt-6-luna ~$0.10/$0.50, `copilot-grok` 2/6, `copilot-sonnet-5.5`) USED to lead the interactive/general and reasoning-fallback lanes on price, but is quota-dead as of 2026-10-10 (402 `quota_exceeded`) and is out of every routing path — so the Claude proxy now leads everywhere reasoning or vision matters and DeepSeek-direct carries volume. The Claude proxy (Claude Max, flat fee) leads where reasoning or vision IS the work and on low-volume quality lanes — `claude-sonnet-5` ($3.00/$15.00), `claude-opus-5` ($5.00/$25.00), `claude-haiku-4-5` ($1.00/$5.00), `claude-haiku-5-5` ($0.10/$0.50). `deepseek-v4-flash-direct` (native `DEEPSEEK_API_KEY`, no `model_info` → SpendLogs logs $0.00, same gap as claude-proxy) is the cheap variable-cost spillway floor every chain ends on. The Copilot ids are passthrough (absent from LiteLLM's own `github_copilot` price map), so costs are pinned in the chart where known; the Responses-only ids (`gpt-6-luna`, `grok-4.7`, `mai-code-1.1-flash`, `gpt-5.3-codex`) carry `model_info.mode: responses`. DeepSeek-direct leads the high-volume lanes (librarian/explore/quick) and all delegation fan-out — at Copilot rates those lanes alone would burn ~half the credit wallet on the fleet's lowest-value tokens. DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost ($1.60/$3.20 and up per M).
+    **Pricing** ($/M in/out): `qwen3.6-35b-local` is **$0.00** (0.5s/hop warm, ~23 GB after idle, 32k ceiling); the Claude proxy (flat Max fee) leads reasoning/vision — `claude-opus-5` $5.00/$25.00, `claude-sonnet-5` $3.00/$15.00, `claude-haiku-4-5` $1.00/$5.00, `claude-haiku-5-5` $0.10/$0.50; `deepseek-v4-flash-direct` is the floor every chain ends on (no `model_info` → SpendLogs logs $0.00). DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost.
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -827,29 +816,28 @@ data:
 
     All LLM traffic flows through LiteLLM (`openagent-litellm:4000`). Headroom was planned but never deployed.
 
-    **LiteLLM models** (10 configured):
+    **LiteLLM models** (6 configured):
     | Model Name | Backend | API Key |
     |------------|---------|---------|
-    > The six `copilot-*` rows below are **registered but quota-dead** as of
-    > 2026-10-10 (HTTP 402 `quota_exceeded`, Plane OMR-13). They are kept in
-    > `model_list` so a quota reset is a one-line chain re-add, but no routing
-    > path may reference them until a live 200 probe says otherwise.
-
-    | copilot-luna | github_copilot (gpt-6-luna, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
-    | copilot-grok | github_copilot (grok-4.7, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
-    | copilot-sonnet-5.5 | github_copilot (claude-sonnet-5.5) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
-    | copilot-gemini-3.8-flash | github_copilot (gemini-3.8-flash) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
-    | copilot-mai-code | github_copilot (mai-code-1.1-flash, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
-    | copilot-codex | github_copilot (gpt-5.3-codex, responses) | OAuth (GITHUB_COPILOT_TOKEN_DIR) |
+    | qwen3.6-35b-local | openai-compat → Ollama `qwen3.6:35b` on the Mac host (MLX) | OLLAMA_KEY |
     | deepseek-v4-flash-direct | deepseek (native) | DEEPSEEK_API_KEY |
     | claude-opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-haiku-4-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-haiku-5-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
-    **GitHub Copilot**: the subscription lane — OAuth device flow, no `api_key`. The long-lived access token is seeded from Doppler (`svc_openagent` → `GITHUB_COPILOT_ACCESS_TOKEN`) into `GITHUB_COPILOT_TOKEN_DIR/access-token` via a Secret volume; each replica mints its own `api-key.json` in a per-replica emptyDir. The provider resolves the credential at MODEL REGISTRATION, so the token file MUST be present or every litellm pod crash-loops on boot. The newest-generation Copilot models (`gpt-6-luna`, `grok-4.7`, `mai-code-1.1-flash`) are Responses-API-only and carry `model_info.mode: responses`, which makes LiteLLM bridge the fleet's `/chat/completions` calls to `/responses`; `gemini-3.8-flash` and `copilot-sonnet-5.5` are served on `/chat/completions`.
+    **Local lane (Qwen3.6-35B-A3B)**: Ollama/MLX on the Mac host at `host.docker.internal:11434` — 32k window, ~23 GB resident, $0/token.
 
-    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — gateway cooldowns would fight OMO's runtime fallback. OMO owns both layers: per-agent chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on `retry_on_errors`, 3 attempts, 30s cooldown, restore-primary). Hermes rides `fallback_providers` (deepseek-v4-flash-direct → claude-haiku-5-5); **delegated children declare the same two backups** (`delegation.fallback_providers: [deepseek-v4-flash-direct, claude-haiku-5-5]`) — per-agent chains own worker escalation. **`agent.api_max_retries: 1`**: one attempt per model then the next layer (a 429 fails over eagerly; 5xx/transport hit retries-exhausted immediately) — the host default of 3 replayed a refusal against the model that had just refused it, the 2026-09-24 error cycle that burned 3 extra calls per worker.
+    - **`extra_body.reasoning_effort: none`, nested** — thinking on makes Ollama 500 on ~1 in 3 tool turns (ollama#16383); top-level is stripped by `drop_params`, and `think: false` is ignored on `/v1`.
+    - **Alias targets the derived `qwen3.6:35b-32k` tag** — the daemon's `OLLAMA_CONTEXT_LENGTH=262144` would otherwise allocate 262k while the chart declares 32k:
+      ```sh
+      printf 'FROM qwen3.6:35b\nPARAMETER num_ctx 32768\n' > Modelfile.qwen32k
+      ollama create qwen3.6:35b-32k -f Modelfile.qwen32k   # layers shared
+      ```
+      `ollama ps` must show CONTEXT `32768`.
+    - Measured: 577 tok/s prefill at 33.7k tokens (~58s cold), ~0.5s per cached hop; keep `OLLAMA_KEEP_ALIVE` generous.
+
+    **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — gateway cooldowns would fight OMO's runtime fallback. OMO owns both layers: per-agent chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on `retry_on_errors`, 3 attempts, 30s cooldown, restore-primary). Hermes rides `fallback_providers` (deepseek-v4-flash-direct); **delegated children declare the same two backups** (`delegation.fallback_providers: [deepseek-v4-flash-direct, claude-haiku-5-5]`) — per-agent chains own worker escalation. **`agent.api_max_retries: 1`**: one attempt per model then the next layer (a 429 fails over eagerly; 5xx/transport hit retries-exhausted immediately) — the host default of 3 replayed a refusal against the model that had just refused it, the 2026-09-24 error cycle that burned 3 extra calls per worker.
 
     ### Hermes Dashboard & Workspace
 

@@ -1,22 +1,61 @@
 suite: openagent local model lane
+# Local lane is a zero-cost read sink: it leads explore/librarian/quick, two cloud hops behind.
 release:
   name: openagent
   namespace: openagent
 tests:
-  - it: registers the LFM local model, seeds it as default, and carries no local deep lane
+  - it: registers Qwen3.6-35B-A3B as the local model with thinking disabled
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)model: openai/lfm2.5:24b-a2b-q4_K_M.*?model_name: lfm2.5-24b-local"
+          pattern: "(?s)model: openai/qwen3.6:35b-32k.*?model_name: qwen3.6-35b-local"
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
+      # Thinking off is load-bearing: on, Ollama 500s on ~1 in 3 tool turns (ollama#16383).
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)api_base: http://host.docker.internal:11434/v1.*?extra_body:\n      reasoning_effort: none.*?model: openai/qwen3.6:35b-32k"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+      # Declared window must match the runner's, or Hermes builds prompts Ollama truncates.
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)max_input_tokens: 32768.*?max_output_tokens: 32768.*?model_name: qwen3.6-35b-local"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+
+  - it: leads explore, librarian and quick with the local model
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)          explore:\n          - litellm/qwen3.6-35b-local\n          - litellm/claude-haiku-4-5\n          - litellm/deepseek-v4-flash-direct"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)          librarian:\n          - litellm/qwen3.6-35b-local"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)          quick:\n          - litellm/qwen3.6-35b-local\n          - litellm/claude-haiku-4-5"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+
+  - it: keeps the orchestrator and write lanes on cloud models
+    asserts:
       - notMatchRegex:
           path: data["config.yaml"]
-          pattern: "qwen3.8-27b-local"
+          pattern: "(?s)sisyphus-junior:\n          - litellm/qwen3.6-35b-local"
         documentSelector:
           path: metadata.name
-          value: openagent-litellm-config
+          value: openagent-hermes-agent-config
       - matchRegex:
           path: data["config.yaml"]
           pattern: "(?s)model:\n  default: claude-haiku-5-5\n  provider: litellm"
@@ -29,9 +68,41 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
+
+  - it: retires the LFM lane entirely
+    asserts:
       - notMatchRegex:
           path: data["config.yaml"]
-          pattern: "qwen3.8-27b-local"
+          pattern: "lfm2.5"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "lfm2.5"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
+
+  - it: retires the whole Copilot lane, including its OAuth token wiring
+    asserts:
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "copilot-"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "copilot-"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GITHUB_COPILOT_TOKEN_DIR
+        documentSelector:
+          path: spec.template.spec.containers[0].name
+          value: litellm
+          skipEmptyTemplates: true
