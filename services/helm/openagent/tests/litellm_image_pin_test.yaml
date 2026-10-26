@@ -32,11 +32,10 @@ tests:
 
   - it: renders the model_list from values.yaml (the litellm values block reached the subchart)
     asserts:
-      # Copilot-only alias, so it proves the block reached the subchart.
-      # Not `deepseek-v4-flash`: that substring-matches `...-direct` too.
+      # Local alias: unique to our values block, so it proves the block reached the subchart.
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "copilot-luna"
+          pattern: "qwen3.6-35b-local"
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
