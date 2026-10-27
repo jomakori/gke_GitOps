@@ -108,7 +108,12 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | stackgresOperator.grafana.autoEmbed | bool | `true` |  |
 | stackgresOperator.grafana.password | string | `nil` |  |
 | stackgresOperator.grafana.schema | string | `"http"` |  |
+| stackgresOperator.grafana.secretName | string | `"grafana-admin-credentials"` |  |
+| stackgresOperator.grafana.secretNamespace | string | `"kube-prometheus-stack"` |  |
+| stackgresOperator.grafana.secretPasswordKey | string | `"ADMIN_PASSWORD"` |  |
+| stackgresOperator.grafana.secretUserKey | string | `"ADMIN_USER"` |  |
 | stackgresOperator.grafana.user | string | `nil` |  |
+| stackgresOperator.grafana.webHost | string | `"kube-prometheus-stack-grafana.kube-prometheus-stack"` |  |
 | stackgresOperator.operator.resources.limits.memory | string | `"512Mi"` |  |
 | stackgresOperator.operator.resources.requests.cpu | string | `"100m"` |  |
 | stackgresOperator.operator.resources.requests.memory | string | `"384Mi"` |  |
