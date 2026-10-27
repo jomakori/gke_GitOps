@@ -23,6 +23,37 @@ The metrics server runs with `--kubelet-insecure-tls` to skip kubelet certificat
 
 Three replicas with a PodDisruptionBudget allowing at most 1 unavailable — ensures the Metrics API remains available during node maintenance or rolling updates. Resource requests are 200m CPU / 300Mi memory per replica.
 
+### Ownership — k3s packaged addon must stay disabled
+
+This chart is the **sole owner** of Metrics Server. k3s ships its own packaged
+metrics-server addon in `kube-system` under the same Deployment name and
+registering the same `v1beta1.metrics.k8s.io` APIService. When both run they
+overwrite each other and the APIService flaps between the two backends, so HPA
+and `kubectl top` fail intermittently.
+
+The addon is disabled with a k3s flag at cluster creation — the cluster is
+bootstrapped out-of-band on the Mac, not from CI:
+
+```sh
+k3d cluster create maklab-cluster ... --k3s-arg "--disable=metrics-server@server:*"
+```
+
+k3s persists that as `/etc/rancher/k3s/config.yaml`, which lives in the node
+container's writable layer: **a node recreated without the flag brings the addon
+back**. Put the flag in the bootstrap config, not in an ad-hoc `docker exec`.
+
+Do not "disable" the addon by renaming its directory either — k3s applies
+`/var/lib/rancher/k3s/server/manifests/` recursively, so
+`manifests/metrics-server.disabled/` is still applied. Remove the directory.
+
+Verify the chart is the owner:
+
+```sh
+kubectl -n kube-system get deploy metrics-server \
+  -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}'  # ArgoCD tracking id
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes
+```
+
 ### No Doppler config
 
 Metrics Server has no ExternalSecret — it does not need any secrets or external configuration.
