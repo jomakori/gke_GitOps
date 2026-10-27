@@ -1466,6 +1466,12 @@ hermes-agent:
 # stays on the PVC; this chart owns only the trigger. The gate turns the cron
 # entry point into a sub-second no-op while the data filesystem is healthy,
 # instead of sweeping on the clock every six hours.
+#
+# There are two triggers. `cron` below is a Kubernetes CronJob that fires the
+# GC only once the node-disk alerts would already be firing - it exists because
+# the Hermes-internal schedule (cron job b022a9f95c82) sits paused on the PVC
+# and does not survive a PVC/agent rebuild. `usedPercentMark` gates the
+# Hermes-internal entry point for the same filesystem.
 storageGc:
   # Used-percent trip point, not a capacity measurement: the data PV is btrfs,
   # where df/driver free-space reporting overstates usable space, and a large
@@ -1478,6 +1484,31 @@ storageGc:
   # a PVC's requested size is not a limit. That cap is enforced in the build
   # wrapper itself (devops/temp-k8s-build skill, host-side), not here.
   usedPercentMark: 80
+  # K8s CronJob that responds to the disk alerts (templates/storage-gc-cronjob.yaml).
+  # It runs every 15 minutes but exits immediately while the volume is below
+  # `warnPercent`, so a healthy filesystem pays nothing for the schedule.
+  #
+  # warnPercent / critPercent match NodeFilesystemFreeLow (<25% free) and
+  # NodeFilesystemFreeCritical (<12% free) in the kube-prometheus-stack chart.
+  # Alert thresholds are a *warning* there and the trip point here: between
+  # warn and crit the GC prunes build output idle for more than 2 days, at crit
+  # for more than 1 day. Nothing else changes with the tier - the GC's own
+  # safety model still decides what may be removed.
+  cron:
+    enabled: true
+    schedule: "*/15 * * * *"
+    warnPercent: 75
+    critPercent: 88
+    # The gateway's data claim; both pods read the same filesystem, and the PV's
+    # nodeAffinity keeps the second mount on the node that owns the volume.
+    claimName: openagent-hermes-agent
+    activeDeadlineSeconds: 1800
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
 
 # ── MCP verification (manifest certification) ──────────────────────
 # The manifest at hermes-agent.config.mcp_servers is the single source of

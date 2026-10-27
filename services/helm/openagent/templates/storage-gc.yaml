@@ -4,8 +4,12 @@
 # mounts it over /opt/data/scripts/storage_gc_cron.sh (extraVolumes in
 # values.yaml); the GC itself (/opt/data/scripts/storage_gc.py) stays on the PVC.
 #
-# Report-only by construction: the wrapper never passes --apply, so nothing this
-# chart deploys can delete anything.
+# Two entry points, two callers:
+#   * storage_gc_cron.sh — the Hermes-internal schedule's entry point. Report-only
+#     by construction: it never passes --apply.
+#   * storage_gc_tiered.sh — the Kubernetes CronJob's entry point, and the one
+#     that acts. It gates on the same used-percent trip points as the node-disk
+#     alerts, so the GC only deletes once the alerts would be firing.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -37,4 +41,37 @@ data:
     echo "[storage-gc] used ${USED}% >= mark ${MARK}%: running the GC, report-only"
     export PATH=/opt/data/mise/shims:/opt/hermes/bin:$PATH
     exec python3 /opt/data/scripts/storage_gc.py
+  # Kubernetes CronJob entry point (templates/storage-gc-cronjob.yaml). Same
+  # gate expression as the node-disk alerts, but the tiers tighten the build
+  # output horizon: 2 days at the warning trip point, 1 at critical. Even 2 is
+  # a deliberate cut — the volume gains ~25 GB/day of build output, so a 3-day
+  # horizon settles within a few GB of the trip point. Everything else is the
+  # GC's own safety model (clean tree, pushed commits, no open PR, older than
+  # the active-session window).
+  storage_gc_tiered.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    DATA_DIR="${HERMES_HOME:-/opt/data}"
+    WARN="{{ .Values.storageGc.cron.warnPercent }}"
+    CRIT="{{ .Values.storageGc.cron.critPercent }}"
+
+    USED="$(df -P "$DATA_DIR" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+    echo "[storage-gc $(date -u +%FT%TZ)] used=${USED}% warn=${WARN}% crit=${CRIT}%"
+
+    if [ "$USED" -lt "$WARN" ]; then
+      echo "[storage-gc] below the alert trip point: nothing to do"
+      exit 0
+    fi
+
+    KEEP_D=2
+    if [ "$USED" -ge "$CRIT" ]; then
+      KEEP_D=1
+    fi
+    echo "[storage-gc] alert condition reached: pruning build output idle >${KEEP_D}d"
+
+    export PATH=/opt/data/mise/shims:/opt/hermes/bin:$PATH
+    export BUILD_OUT_KEEP_D="$KEEP_D"
+    export BUILD_CACHE_KEEP_D="$KEEP_D"
+    exec python3 /opt/data/scripts/storage_gc.py --apply
 {{- end }}
