@@ -1488,17 +1488,22 @@ storageGc:
   # It runs every 15 minutes but exits immediately while the volume is below
   # `warnPercent`, so a healthy filesystem pays nothing for the schedule.
   #
-  # warnPercent / critPercent match NodeFilesystemFreeLow (<25% free) and
-  # NodeFilesystemFreeCritical (<12% free) in the kube-prometheus-stack chart.
-  # Alert thresholds are a *warning* there and the trip point here: between
-  # warn and crit the GC prunes build output idle for more than 2 days, at crit
-  # for more than 1 day. Nothing else changes with the tier - the GC's own
-  # safety model still decides what may be removed.
+  # warnPercent / critPercent sit just inside NodeFilesystemFreeLow (<25% free,
+  # i.e. 75% used) and NodeFilesystemFreeCritical (<12% free, 88% used) in the
+  # kube-prometheus-stack chart: tripping a little early buys the sweep a
+  # fifteen-minute head start before the warning fires.
+  #
+  # The horizons are hours, not days, because the volume has no room for days:
+  # everything that is not build output already occupies ~160 GiB of 238 GiB, so
+  # less than 20 GiB separates the warning line from steady state while agent
+  # builds add ~25 GiB/day. Below warn: nothing. At warn: prune build output
+  # idle >12h (build caches >3d). At crit: >6h (build caches >1d). Everything
+  # else is still the GC's own safety model.
   cron:
     enabled: true
     schedule: "*/15 * * * *"
-    warnPercent: 75
-    critPercent: 88
+    warnPercent: 72
+    critPercent: 85
     # The gateway's data claim; both pods read the same filesystem, and the PV's
     # nodeAffinity keeps the second mount on the node that owns the volume.
     claimName: openagent-hermes-agent
