@@ -972,6 +972,15 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | namespace | string | `"openagent"` |  |
 | runtimeMode | string | `"cluster"` |  |
 | storageClass | string | `"local-path"` |  |
+| storageGc.cron.activeDeadlineSeconds | int | `1800` |  |
+| storageGc.cron.claimName | string | `"openagent-hermes-agent"` |  |
+| storageGc.cron.critPercent | int | `88` |  |
+| storageGc.cron.enabled | bool | `true` |  |
+| storageGc.cron.resources.limits.memory | string | `"1Gi"` |  |
+| storageGc.cron.resources.requests.cpu | string | `"100m"` |  |
+| storageGc.cron.resources.requests.memory | string | `"256Mi"` |  |
+| storageGc.cron.schedule | string | `"*/15 * * * *"` |  |
+| storageGc.cron.warnPercent | int | `75` |  |
 | storageGc.usedPercentMark | int | `80` |  |
 | tools.image.pullPolicy | string | `"IfNotPresent"` |  |
 | tools.image.repository | string | `"ghcr.io/jomakori/gitopsctl"` |  |

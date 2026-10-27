@@ -1,0 +1,69 @@
+{{- if and .Values.hermes.enabled .Values.storageGc.cron.enabled }}
+# The disk-pressure response, owned here rather than on the PVC. The node that
+# hosts this volume evicted the whole openagent namespace twice (Oct 23 and
+# Oct 26) because agent build output — a cargo `target/` runs 0.6-17 GB per
+# checkout — refilled the filesystem between manual cleanups.
+#
+# It runs on a schedule but acts on a condition: the entry point reads the same
+# filesystem the NodeFilesystemFree{Low,Critical} alerts watch and exits
+# immediately while it is below the warning trip point. So the schedule costs a
+# pod start every 15 minutes, and a sweep happens only in the window where the
+# alerts are (or are about to be) firing.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: openagent-storage-gc
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-gc
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  schedule: {{ .Values.storageGc.cron.schedule | quote }}
+  # A sweep walks the volume; overlapping runs would fight over the GC's lock
+  # file and both scan the same trees.
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: {{ .Values.storageGc.cron.activeDeadlineSeconds }}
+      template:
+        spec:
+          restartPolicy: Never
+          # Nothing here talks to the API server (the GC's kubectl phase is
+          # skipped when the binary is absent), so do not hand out a token.
+          automountServiceAccountToken: false
+          containers:
+            - name: storage-gc
+              image: "{{ include "openagent.hermesImage" . }}"
+              imagePullPolicy: {{ (index .Values "hermes-agent" "image").pullPolicy }}
+              command:
+                - bash
+                - /opt/data/scripts/storage_gc_tiered.sh
+              env:
+                - name: HERMES_HOME
+                  value: /opt/data
+              resources:
+                {{- toYaml .Values.storageGc.cron.resources | nindent 16 }}
+              volumeMounts:
+                - name: data
+                  mountPath: /opt/data
+                # subPath, like the gateway's mount: the wrapper sits beside
+                # storage_gc.py on the volume and must not shadow it.
+                - name: storage-gc-cron
+                  mountPath: /opt/data/scripts/storage_gc_tiered.sh
+                  subPath: storage_gc_tiered.sh
+                  readOnly: true
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ .Values.storageGc.cron.claimName }}
+            - name: storage-gc-cron
+              configMap:
+                name: openagent-storage-gc-cron
+                defaultMode: 0555
+{{- end }}
