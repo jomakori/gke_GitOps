@@ -766,7 +766,7 @@ data:
     | visual-engineering | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | writing | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
 
-    **Pricing** ($/M in/out): `qwen3.6-35b-local` is **$0.00** (0.5s/hop warm, ~23 GB after idle, 32k ceiling); the Claude proxy (flat Max fee) leads reasoning/vision — `claude-opus-5` $5.00/$25.00, `claude-sonnet-5` $3.00/$15.00, `claude-haiku-4-5` $1.00/$5.00, `claude-haiku-5-5` $0.10/$0.50; `deepseek-v4-flash-direct` is the floor every chain ends on (no `model_info` → SpendLogs logs $0.00). DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost.
+    **Pricing** ($/M in/out): `qwen3.6-35b-local` is **$0.00** (0.5s/hop warm, ~23 GB after idle, 131k ceiling); the Claude proxy (flat Max fee) leads reasoning/vision — `claude-opus-5` $5.00/$25.00, `claude-sonnet-5` $3.00/$15.00, `claude-haiku-4-5` $1.00/$5.00, `claude-haiku-5-5` $0.10/$0.50; `deepseek-v4-flash-direct` is the floor every chain ends on (no `model_info` → SpendLogs logs $0.00). DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost.
 
     ### Intent Classification & Routing Gates (Inline, by Sisyphus)
 
@@ -819,23 +819,23 @@ data:
     **LiteLLM models** (6 configured):
     | Model Name | Backend | API Key |
     |------------|---------|---------|
-    | qwen3.6-35b-local | openai-compat → Ollama `qwen3.6:35b` on the Mac host (MLX) | OLLAMA_KEY |
+    | qwen3.6-35b-local | openai-compat → Ollama `qwen3.6:35b-131k` on the Mac host (MLX) | OLLAMA_KEY |
     | deepseek-v4-flash-direct | deepseek (native) | DEEPSEEK_API_KEY |
     | claude-opus-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-sonnet-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-haiku-4-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
     | claude-haiku-5-5 | openai (claude-proxy) | CLAUDE_PROXY_API_KEY |
 
-    **Local lane (Qwen3.6-35B-A3B)**: Ollama/MLX on the Mac host at `host.docker.internal:11434` — 32k window, ~23 GB resident, $0/token.
+    **Local lane (Qwen3.6-35B-A3B)**: Ollama/MLX on the Mac host at `host.docker.internal:11434` — 131k window, ~23 GB resident, $0/token.
 
     - **`extra_body.reasoning_effort: none`, nested** — thinking on makes Ollama 500 on ~1 in 3 tool turns (ollama#16383); top-level is stripped by `drop_params`, and `think: false` is ignored on `/v1`.
-    - **Alias targets the derived `qwen3.6:35b-32k` tag** — the daemon's `OLLAMA_CONTEXT_LENGTH=262144` would otherwise allocate 262k while the chart declares 32k:
+    - **Alias targets the derived `qwen3.6:35b-131k` tag.** The model advertises 262144 natively, but the MLX runner on this host cannot prefill that far: a ~150k-token prompt aborts with `[METAL] Command buffer execution failed: Impacting Interactivity` after ~7 min and ~9 GiB of swap. A 120k-token prompt completes, so 131072 is the largest reachable window. Derive it from whatever local tag exists (the pulled base tag is no longer on the host; layers are shared, so a new tag costs no extra disk):
       ```sh
-      printf 'FROM qwen3.6:35b\nPARAMETER num_ctx 32768\n' > Modelfile.qwen32k
-      ollama create qwen3.6:35b-32k -f Modelfile.qwen32k   # layers shared
+      printf 'FROM qwen3.6:35b-32k\nPARAMETER num_ctx 131072\n' > Modelfile.qwen131k
+      ollama create qwen3.6:35b-131k -f Modelfile.qwen131k   # layers shared
       ```
-      `ollama ps` must show CONTEXT `32768`.
-    - Measured: 577 tok/s prefill at 33.7k tokens (~58s cold), ~0.5s per cached hop; keep `OLLAMA_KEEP_ALIVE` generous.
+      `ollama ps` must show CONTEXT `131072`, and `model_info.max_input_tokens` / the provider `context_length` in this chart must match it — a declared window larger than the runner's makes Hermes build prompts Ollama silently truncates.
+    - Measured: ~600 tok/s prefill at 30k tokens, ~310 tok/s at 120k (swap pressure), ~0.5s per cached hop; keep `OLLAMA_KEEP_ALIVE` generous.
 
     **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — gateway cooldowns would fight OMO's runtime fallback. OMO owns both layers: per-agent chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on `retry_on_errors`, 3 attempts, 30s cooldown, restore-primary). Hermes rides `fallback_providers` (deepseek-v4-flash-direct); **delegated children declare the same two backups** (`delegation.fallback_providers: [deepseek-v4-flash-direct, claude-haiku-5-5]`) — per-agent chains own worker escalation. **`agent.api_max_retries: 1`**: one attempt per model then the next layer (a 429 fails over eagerly; 5xx/transport hit retries-exhausted immediately) — the host default of 3 replayed a refusal against the model that had just refused it, the 2026-09-24 error cycle that burned 3 extra calls per worker.
 

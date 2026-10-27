@@ -255,10 +255,13 @@ litellm:
           max_output_tokens: 128000
       # Local lane: Qwen3.6-35B-A3B on the Mac host (Ollama MLX); beat LFM2.5 on replay 7/12 vs 6/12 and prefill 660 vs 341 tok/s.
       # Thinking MUST be off via nested extra_body.reasoning_effort — top-level is stripped by drop_params and ollama#16383 500s return.
-      # Tag is derived (`FROM qwen3.6:35b` + `PARAMETER num_ctx 32768`) so the window matches max_input_tokens, not the daemon's 262144.
+      # The tag pins the window (`PARAMETER num_ctx 131072`) so the declared context matches what the runner allocates.
+      # 131072, not the model's native 262144: a ~150k-token prefill panics the MLX runner on this host
+      # (Metal "Impacting Interactivity" command-buffer abort after ~7 min of prefill, 9 GiB of swap). 120k-token
+      # prompts complete, so 131072 is the largest window that is actually reachable here.
       - model_name: qwen3.6-35b-local
         litellm_params:
-          model: openai/qwen3.6:35b-32k
+          model: openai/qwen3.6:35b-131k
           api_base: http://host.docker.internal:11434/v1
           api_key: os.environ/OLLAMA_KEY
           extra_body:
@@ -267,7 +270,7 @@ litellm:
           timeout: 600
           order: 1
         model_info:
-          max_input_tokens: 32768
+          max_input_tokens: 131072
           max_output_tokens: 32768
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
@@ -330,7 +333,7 @@ hermes-agent:
           claude-haiku-5-5:
             context_length: 1000000
           qwen3.6-35b-local:
-            context_length: 32768
+            context_length: 131072
     # ── W6: bound what one read can put into the context ────────────────
     # Measured over 7d (state.db messages): 123 tool results over 40 KB carried
     # 8.72 MB of 23.85 MB — 37% of the bytes in 6% of the results, and the top
