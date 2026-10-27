@@ -75,6 +75,21 @@ stackgresOperator:
   grafana:
     autoEmbed: true
     schema: http
+    # `svc.namespace` per the SGConfig schema. Required: the operator's
+    # integrate-grafana Job builds `$schema://$webHost` and, when this is empty,
+    # calls `http:///api/dashboards/db` ("Could not resolve host: api") and
+    # exits 1 — every reconcile, which is the KubeJobFailed alert. Port 80 is
+    # implied; the Grafana service listens there.
+    webHost: kube-prometheus-stack-grafana.kube-prometheus-stack
+    # Grafana's admin password is not the chart default (`prom-operator`): it is
+    # synced by ExternalSecret grafana-admin-credentials from Doppler, so the
+    # literal `user`/`password` fields below would fail with 401. Reference the
+    # Secret instead — these four fields are the SGConfig alternative to
+    # user/password and keep the credential out of Git.
+    secretNamespace: kube-prometheus-stack
+    secretName: grafana-admin-credentials
+    secretUserKey: ADMIN_USER
+    secretPasswordKey: ADMIN_PASSWORD
     user:
     password:
   # ┌─────────────────────────────────────────────────────────────────────────────┐
