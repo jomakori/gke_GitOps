@@ -255,14 +255,16 @@ litellm:
           max_output_tokens: 128000
       # Local lane: Qwen3.6-35B-A3B on the Mac host (Ollama MLX); beat LFM2.5 on replay 7/12 vs 6/12 and prefill 660 vs 341 tok/s.
       # Thinking MUST be off via nested extra_body.reasoning_effort — top-level is stripped by drop_params and ollama#16383 500s return.
-      # The tag pins the window (`PARAMETER num_ctx 153600`) so the declared context matches what the runner allocates.
-      # 153600, not the model's native 262144: the MLX runner panics past ~150k tokens of prefill on this host
-      # (Metal "Impacting Interactivity" command-buffer abort, ~9 GiB of swap). 150,205 tokens complete; 200k does not.
-      # The host daemon must run OLLAMA_NUM_PARALLEL=1 — at 2, the second KV slot halves the reachable prefill and even
-      # 150k aborts. Consequence: concurrent local-lane requests queue instead of running in parallel.
+      # The tag pins the window (`PARAMETER num_ctx 131072`) so the declared context matches what the runner allocates.
+      # 131072 is the window that pairs with two KV slots: the daemon runs OLLAMA_NUM_PARALLEL=2, KV is allocated per
+      # slot, so 2 x 131072 fills the model's native 262144 — and a 120k-token prefill completes under it. Two slots are
+      # what keeps parallel explore/librarian subagents in flight (prefills batch) instead of queued.
+      # Raising the window to 150k forces NUM_PARALLEL=1 and serialises the lane, for capacity real traffic never uses
+      # (p95 75k, max 87k prompt tokens over 155 calls). Past ~150k the MLX runner aborts with a Metal
+      # "Impacting Interactivity" command-buffer panic anyway.
       - model_name: qwen3.6-35b-local
         litellm_params:
-          model: openai/qwen3.6:35b-150k
+          model: openai/qwen3.6:35b-131k
           api_base: http://host.docker.internal:11434/v1
           api_key: os.environ/OLLAMA_KEY
           extra_body:
@@ -271,7 +273,7 @@ litellm:
           timeout: 600
           order: 1
         model_info:
-          max_input_tokens: 153600
+          max_input_tokens: 131072
           max_output_tokens: 32768
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
@@ -334,7 +336,7 @@ hermes-agent:
           claude-haiku-5-5:
             context_length: 1000000
           qwen3.6-35b-local:
-            context_length: 153600
+            context_length: 131072
     # ── W6: bound what one read can put into the context ────────────────
     # Measured over 7d (state.db messages): 123 tool results over 40 KB carried
     # 8.72 MB of 23.85 MB — 37% of the bytes in 6% of the results, and the top

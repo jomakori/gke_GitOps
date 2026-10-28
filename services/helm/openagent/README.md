@@ -711,7 +711,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.providers.litellm.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
 | hermes-agent.config.providers.litellm.discover_models | bool | `true` |  |
 | hermes-agent.config.providers.litellm.key_env | string | `"LITELLM_MASTER_KEY"` |  |
-| hermes-agent.config.providers.litellm.models."qwen3.6-35b-local".context_length | int | `153600` |  |
+| hermes-agent.config.providers.litellm.models."qwen3.6-35b-local".context_length | int | `131072` |  |
 | hermes-agent.config.providers.litellm.models.claude-haiku-4-5.context_length | int | `200000` |  |
 | hermes-agent.config.providers.litellm.models.claude-haiku-5-5.context_length | int | `1000000` |  |
 | hermes-agent.config.providers.litellm.models.claude-opus-5.context_length | int | `1000000` |  |
@@ -936,10 +936,10 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.model_list[5].litellm_params.api_base | string | `"http://host.docker.internal:11434/v1"` |  |
 | litellm.proxy_config.model_list[5].litellm_params.api_key | string | `"os.environ/OLLAMA_KEY"` |  |
 | litellm.proxy_config.model_list[5].litellm_params.extra_body.reasoning_effort | string | `"none"` |  |
-| litellm.proxy_config.model_list[5].litellm_params.model | string | `"openai/qwen3.6:35b-150k"` |  |
+| litellm.proxy_config.model_list[5].litellm_params.model | string | `"openai/qwen3.6:35b-131k"` |  |
 | litellm.proxy_config.model_list[5].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[5].litellm_params.timeout | int | `600` |  |
-| litellm.proxy_config.model_list[5].model_info.max_input_tokens | int | `153600` |  |
+| litellm.proxy_config.model_list[5].model_info.max_input_tokens | int | `131072` |  |
 | litellm.proxy_config.model_list[5].model_info.max_output_tokens | int | `32768` |  |
 | litellm.proxy_config.model_list[5].model_name | string | `"qwen3.6-35b-local"` |  |
 | litellm.proxy_config.router_settings.disable_cooldowns | bool | `true` |  |
