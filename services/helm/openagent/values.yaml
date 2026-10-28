@@ -296,6 +296,13 @@ hermes-agent:
     repository: nousresearch/hermes-agent
     tag: "v2026.9.11"
     pullPolicy: IfNotPresent
+  # The agent runs kubectl inside the pod and needs admin access to the
+  # cluster. The chart default (automount=false) left it with no identity, so
+  # kubectl got 401 from the apiserver. The token is bound to cluster-admin in
+  # templates/hermes-rbac.yaml.
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: true
   config:
     # Config schema version emitted by the pinned gateway image: v2026.9.11
     # carries schema 42 (hermes_cli/config_defaults.py). Keep in lockstep with
