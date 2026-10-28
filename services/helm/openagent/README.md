@@ -358,7 +358,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.doppler.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.doppler.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.drawio.args[0] | string | `"-c"` |  |
-| hermes-agent.config.mcp_servers.drawio.args[1] | string | `"cd /opt/data/drawio-mcp-server && exec /opt/data/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio"` |  |
+| hermes-agent.config.mcp_servers.drawio.args[1] | string | `"cd /opt/data/drawio-mcp-server && /opt/data/bin/deno cache --config /opt/data/drawio-mcp-server/deno.json src/index.ts && exec /opt/data/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio"` |  |
 | hermes-agent.config.mcp_servers.drawio.command | string | `"sh"` |  |
 | hermes-agent.config.mcp_servers.drawio.connect_timeout | int | `120` |  |
 | hermes-agent.config.mcp_servers.drawio.env.HOME | string | `"/opt/data/home"` |  |

@@ -29,6 +29,9 @@ type Stdio struct {
 	cmd      *exec.Cmd
 	stdin    io.WriteCloser
 	messages chan json.RawMessage
+	// eof closes when the child's stdout ends, i.e. the process exited.
+	eof       chan struct{}
+	stderrEOF chan struct{}
 
 	diagMu sync.Mutex
 	diag   []string
@@ -63,10 +66,12 @@ func NewStdio(server Server, environ []string) (*Stdio, error) {
 		return nil, err
 	}
 	c := &Stdio{
-		cmd:      cmd,
-		proc:     cmd.Process,
-		stdin:    stdin,
-		messages: make(chan json.RawMessage, 64),
+		cmd:       cmd,
+		proc:      cmd.Process,
+		stdin:     stdin,
+		messages:  make(chan json.RawMessage, 64),
+		eof:       make(chan struct{}),
+		stderrEOF: make(chan struct{}),
 	}
 	go c.drainStderr(stderr)
 	go c.scanStdout(stdout)
@@ -80,6 +85,7 @@ func (c *Stdio) Diag() []string {
 }
 
 func (c *Stdio) drainStderr(r io.Reader) {
+	defer close(c.stderrEOF)
 	reader := bufio.NewReader(r)
 	for {
 		line, err := reader.ReadString('\n')
@@ -100,6 +106,7 @@ func (c *Stdio) drainStderr(r io.Reader) {
 // scanStdout classifies stdout lines: JSON-RPC messages are forwarded, banner
 // / log lines (see the grafana server) are kept as diagnostics.
 func (c *Stdio) scanStdout(r io.Reader) {
+	defer close(c.eof)
 	reader := bufio.NewReader(r)
 	for {
 		line, err := reader.ReadBytes('\n')
@@ -159,8 +166,35 @@ func (c *Stdio) Read(wantID any, deadline time.Time) (map[string]any, error) {
 			if wantID == nil || fmt.Sprint(msg["id"]) == fmt.Sprint(wantID) {
 				return msg, nil
 			}
+		case <-c.eof:
+			// The child closed stdout, so no further reply can arrive. A reply
+			// that was already buffered still counts.
+			if msg, ok := c.drainBuffered(wantID); ok {
+				return msg, nil
+			}
+			// Give stderr a moment to flush so the caller sees the crash reason.
+			select {
+			case <-c.stderrEOF:
+			case <-time.After(time.Second):
+			}
+			return nil, &VerifyError{Msg: "server process exited before responding"}
 		case <-time.After(remaining):
 			return nil, &VerifyError{Msg: "timed out waiting for response"}
+		}
+	}
+}
+
+// drainBuffered returns an already-queued message matching wantID without blocking.
+func (c *Stdio) drainBuffered(wantID any) (map[string]any, bool) {
+	for {
+		select {
+		case raw := <-c.messages:
+			var msg map[string]any
+			if json.Unmarshal(raw, &msg) == nil && (wantID == nil || fmt.Sprint(msg["id"]) == fmt.Sprint(wantID)) {
+				return msg, true
+			}
+		default:
+			return nil, false
 		}
 	}
 }
