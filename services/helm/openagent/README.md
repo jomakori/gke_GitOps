@@ -965,7 +965,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | mcpVerification.cronjob.resources.requests.cpu | string | `"500m"` |  |
 | mcpVerification.cronjob.resources.requests.memory | string | `"128Mi"` |  |
 | mcpVerification.cronjob.schedule | string | `"*/15 * * * *"` |  |
-| mcpVerification.preflight.activeDeadlineSeconds | int | `1800` |  |
+| mcpVerification.preflight.activeDeadlineSeconds | int | `900` |  |
 | mcpVerification.preflight.backoffLimit | int | `0` |  |
 | mcpVerification.preflight.enabled | bool | `true` |  |
 | mcpVerification.preflight.toolchainWaitSeconds | int | `300` |  |

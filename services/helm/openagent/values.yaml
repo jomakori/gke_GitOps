@@ -1544,7 +1544,7 @@ mcpVerification:
     # PostSync can run before the gateway's first boot has installed the
     # toolchain (mise node/uv on the PVC); the Job waits up to this long.
     toolchainWaitSeconds: 300
-    activeDeadlineSeconds: 1800
+    activeDeadlineSeconds: 900
     backoffLimit: 0
   cronjob:
     enabled: true
