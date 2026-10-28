@@ -2,11 +2,11 @@ package mcp
 
 import "testing"
 
-var drawioCommand = Server{
+var shellDenoCommand = Server{
 	Command: "sh",
 	Args: []string{
 		"-c",
-		"cd /opt/data/drawio-mcp-server && exec /opt/data/bin/deno run --config /opt/data/drawio-mcp-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio",
+		"cd /opt/data/deno-server && exec /opt/data/bin/deno run --config /opt/data/deno-server/deno.json -P --allow-read --allow-env --allow-net src/index.ts --transport stdio",
 	},
 }
 
@@ -22,11 +22,11 @@ func TestDenoSpec(t *testing.T) {
 	}{
 		{
 			name:     "shell-wrapped local checkout",
-			server:   drawioCommand,
+			server:   shellDenoCommand,
 			wantOK:   true,
 			wantBin:  "/opt/data/bin/deno",
-			wantDir:  "/opt/data/drawio-mcp-server",
-			wantCfg:  "/opt/data/drawio-mcp-server/deno.json",
+			wantDir:  "/opt/data/deno-server",
+			wantCfg:  "/opt/data/deno-server/deno.json",
 			wantEntr: "src/index.ts",
 		},
 		{
@@ -87,7 +87,7 @@ func TestDenoSpec(t *testing.T) {
 
 func TestPackageSpecIgnoresDeno(t *testing.T) {
 	for name, server := range map[string]Server{
-		"drawio": drawioCommand,
+		"shell": shellDenoCommand,
 		"bare":   {Command: "deno", Args: []string{"run", "main.ts"}},
 	} {
 		kind, spec := PackageSpec(server)
