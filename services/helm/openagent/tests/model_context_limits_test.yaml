@@ -7,14 +7,14 @@ tests:
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)max_input_tokens: 1000000.*?max_output_tokens: 384000.*?model_name: deepseek-v4-flash-direct.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: claude-opus-5.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: claude-sonnet-5.*?max_input_tokens: 200000.*?max_output_tokens: 64000.*?model_name: claude-haiku-4-5.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: claude-haiku-5-5.*?max_input_tokens: 131072.*?max_output_tokens: 32768.*?model_name: qwen3.6-35b-local"
+          pattern: "(?s)max_input_tokens: 1000000.*?max_output_tokens: 384000.*?model_name: deepseek-v4-flash-direct.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: claude-opus-5.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: claude-sonnet-5.*?max_input_tokens: 200000.*?max_output_tokens: 64000.*?model_name: claude-haiku-4-5.*?max_input_tokens: 1000000.*?max_output_tokens: 128000.*?model_name: claude-haiku-5-5.*?max_input_tokens: 153600.*?max_output_tokens: 32768.*?model_name: qwen3.6-35b-local"
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
           skipEmptyTemplates: true
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)claude-haiku-4-5:\n        context_length: 200000.*?claude-haiku-5-5:\n        context_length: 1000000.*?claude-opus-5:\n        context_length: 1000000.*?claude-sonnet-5:\n        context_length: 1000000.*?deepseek-v4-flash-direct:\n        context_length: 1000000.*?qwen3.6-35b-local:\n        context_length: 131072"
+          pattern: "(?s)claude-haiku-4-5:\n        context_length: 200000.*?claude-haiku-5-5:\n        context_length: 1000000.*?claude-opus-5:\n        context_length: 1000000.*?claude-sonnet-5:\n        context_length: 1000000.*?deepseek-v4-flash-direct:\n        context_length: 1000000.*?qwen3.6-35b-local:\n        context_length: 153600"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config

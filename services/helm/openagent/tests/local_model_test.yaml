@@ -8,21 +8,21 @@ tests:
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)model: openai/qwen3.6:35b-131k.*?model_name: qwen3.6-35b-local"
+          pattern: "(?s)model: openai/qwen3.6:35b-150k.*?model_name: qwen3.6-35b-local"
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
       # Thinking off is load-bearing: on, Ollama 500s on ~1 in 3 tool turns (ollama#16383).
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)api_base: http://host.docker.internal:11434/v1.*?extra_body:\n      reasoning_effort: none.*?model: openai/qwen3.6:35b-131k"
+          pattern: "(?s)api_base: http://host.docker.internal:11434/v1.*?extra_body:\n      reasoning_effort: none.*?model: openai/qwen3.6:35b-150k"
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
       # Declared window must match the runner's, or Hermes builds prompts Ollama truncates.
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)max_input_tokens: 131072.*?max_output_tokens: 32768.*?model_name: qwen3.6-35b-local"
+          pattern: "(?s)max_input_tokens: 153600.*?max_output_tokens: 32768.*?model_name: qwen3.6-35b-local"
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
