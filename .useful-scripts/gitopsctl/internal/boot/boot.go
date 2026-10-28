@@ -165,7 +165,7 @@ func contains(list []string, s string) bool {
 }
 
 // directDownloads covers tools absent from the mise registry, keeping the
-// exact pinned releases (deno v2.9.5 matches drawio's deno.lock v5).
+// exact pinned releases (deno v2.9.5).
 func directDownloads(env []string) {
 	os.MkdirAll(home+"/.config/yt-dlp", 0o755)
 	cfg := home + "/.config/yt-dlp/config"
@@ -245,15 +245,6 @@ func directDownloads(env []string) {
 		if executable(home + "/.deno/bin/deno") {
 			_ = os.Remove(binDir + "/deno")
 			_ = os.Symlink(home+"/.deno/bin/deno", binDir+"/deno")
-		}
-	})
-	// drawio MCP needs a local checkout (remote-URL run never discovers
-	// deno.json).
-	download(func() {
-		if !exists("/opt/data/drawio-mcp-server/.git") {
-			_ = runEnv(env, "git", "clone", "--depth", "1",
-				"https://github.com/simonkurtz-MSFT/drawio-mcp-server",
-				"/opt/data/drawio-mcp-server")
 		}
 	})
 	// Doppler CLI; gpgv verify skipped (no gnupg as uid 10000).
