@@ -1,0 +1,21 @@
+# In-cluster admin identity for the hermes-agent pod.
+# The pod's ServiceAccount (openagent-hermes-agent) gets a mounted token
+# (see hermes-agent.serviceAccount.automountServiceAccountToken in values.yaml),
+# so in-pod kubectl authenticates without a Tailscale kubeconfig. Any process
+# in the pod holds cluster-admin: revoke by deleting this binding.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openagent-hermes-agent-cluster-admin
+  labels:
+    {{ include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: openagent-hermes-agent
+    namespace: {{ .Values.namespace }}

@@ -809,6 +809,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.resources.requests.memory | string | `"3Gi"` |  |
 | hermes-agent.service.enabled | bool | `false` |  |
 | hermes-agent.service.port | int | `9119` |  |
+| hermes-agent.serviceAccount.automountServiceAccountToken | bool | `true` |  |
+| hermes-agent.serviceAccount.create | bool | `true` |  |
 | hermes-webui.enabled | bool | `true` |  |
 | hermes.enabled | bool | `true` |  |
 | litellm.autoscaling.enabled | bool | `true` |  |
