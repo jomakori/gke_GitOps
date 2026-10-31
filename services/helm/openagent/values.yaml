@@ -275,6 +275,37 @@ litellm:
         model_info:
           max_input_tokens: 131072
           max_output_tokens: 32768
+      # OpenCode gateway lane: OpenAI-compatible endpoint fronting third-party
+      # models (DeepSeek v4.1 flash, GLM 5.2/5.3-flash). extra_headers pins a
+      # stable per-model session id (static UUID, not request-generated) plus
+      # a UA string so the opencode gateway can attribute LiteLLM traffic.
+      - model_name: deepseek-v4.1-flash
+        litellm_params:
+          model: openai/deepseek-v4.1-flash
+          api_base: os.environ/OPENCODE_API_BASE
+          api_key: os.environ/OPENCODE_API_KEY
+          extra_headers:
+            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a11"
+            User-Agent: "hermes-litellm/1.0"
+          order: 1
+      - model_name: glm-5.2
+        litellm_params:
+          model: openai/glm-5.2
+          api_base: os.environ/OPENCODE_API_BASE
+          api_key: os.environ/OPENCODE_API_KEY
+          extra_headers:
+            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a12"
+            User-Agent: "hermes-litellm/1.0"
+          order: 1
+      - model_name: glm-5.3-flash
+        litellm_params:
+          model: openai/glm-5.3-flash
+          api_base: os.environ/OPENCODE_API_BASE
+          api_key: os.environ/OPENCODE_API_KEY
+          extra_headers:
+            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a13"
+            User-Agent: "hermes-litellm/1.0"
+          order: 1
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
 # No cache instance is declared here: the standalone Valkey lives in the
