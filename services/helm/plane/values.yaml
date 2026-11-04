@@ -69,6 +69,8 @@ redis:
   assign_cluster_ip: false
   memoryRequest: 64Mi
   memoryLimit: 256Mi
+  cpuRequest: 50m
+  cpuLimit: 500m
   labels: {}
   annotations: {}
   nodeSelector: {}

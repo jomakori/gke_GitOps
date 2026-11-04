@@ -53,8 +53,10 @@ spec:
         resources:
           requests:
             memory: {{ .Values.redis.memoryRequest | quote }}
+            cpu: {{ .Values.redis.cpuRequest | default "50m" | quote }}
           limits:
             memory: {{ .Values.redis.memoryLimit | quote }}
+            cpu: {{ .Values.redis.cpuLimit | default "500m" | quote }}
       {{- include "plane.podScheduling" .Values.redis }}
       serviceAccount: {{ .Release.Name }}-srv-account
       serviceAccountName: {{ .Release.Name }}-srv-account
