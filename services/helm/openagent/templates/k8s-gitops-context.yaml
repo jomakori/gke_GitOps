@@ -743,15 +743,15 @@ data:
 
     | OMO Agent | Role | Primary | Fallback chain |
     |-------|------|-------|----------|
-    | sisyphus | Sisyphus · Ultraworker (orchestrator) | claude-haiku-5-5 | deepseek-v4-flash-direct |
+    | sisyphus | Sisyphus · Ultraworker (orchestrator) | claude-sonnet-5 | gpt-6-luna → deepseek-v4-flash-direct |
     | hephaestus | Hephaestus · Deep Agent | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | prometheus | Prometheus · Plan Builder | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | atlas | Atlas · Plan Executor | claude-sonnet-5 | deepseek-v4-flash-direct |
     | metis | Metis · Plan Consultant | claude-sonnet-5 | deepseek-v4-flash-direct |
     | momus | Momus · Plan Critic | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | claude-sonnet-5 → deepseek-v4-flash-direct |
-    | librarian | Librarian · Research | qwen3.6-35b-local | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | explore | Explore · Repository Exploration | qwen3.6-35b-local | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | kimi-k3.1-pro → deepseek-v4-flash-direct |
+    | librarian | Librarian · Research | claude-haiku-4-5 | deepseek-v4-flash-direct |
+    | explore | Explore · Repository Exploration | qwen3.6-35b-local | gpt-6-luna → claude-haiku-4-5 → deepseek-v4-flash-direct |
     | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
     | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | claude-haiku-4-5 | deepseek-v4-flash-direct |
     | (no scribe — writing routes via `writing` category) | writer | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
