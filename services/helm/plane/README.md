@@ -155,6 +155,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | redis.affinity | object | `{}` |  |
 | redis.annotations | object | `{}` |  |
 | redis.assign_cluster_ip | bool | `false` |  |
+| redis.cpuLimit | string | `"500m"` |  |
+| redis.cpuRequest | string | `"50m"` |  |
 | redis.image | string | `"valkey/valkey:7.2.11-alpine"` |  |
 | redis.labels | object | `{}` |  |
 | redis.local_setup | bool | `true` |  |
