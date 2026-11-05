@@ -32,6 +32,8 @@ data:
     yq = "4.53.6"
     jq = "latest"     # the k8s_* operator scripts parse kubectl JSON with it
     tirith = "0.3.3"
+    # ── code intelligence ──
+    "npm:@colbymchenry/codegraph" = "1.6.2"
     # ── media / misc ──
     yt-dlp = "latest"
     gallery-dl = "latest"
