@@ -11,11 +11,11 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
-  - it: routes Hermes fallbacks straight to the DeepSeek floor (Copilot lane retired)
+  - it: routes Hermes fallbacks to Luna, then the DeepSeek floor
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)fallback_providers:\n- model: deepseek-v4-flash-direct\n  provider: litellm"
+          pattern: "(?s)fallback_providers:\\s*-\\s*model: gpt-6-luna\\s*provider: litellm\\s*-\\s*model: deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
@@ -25,17 +25,11 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
-      - matchRegex:
-          path: data["config.yaml"]
-          pattern: "(?s)fallback_providers:\n  - model: claude-haiku-5-5\n    provider: litellm"
-        documentSelector:
-          path: metadata.name
-          value: openagent-hermes-agent-config
-  - it: routes the OMO Sisyphus chain Haiku 5.5 then DeepSeek
+  - it: routes the OMO Sisyphus chain Sonnet 5, Luna then DeepSeek
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)chains:.*?          sisyphus:\n          - litellm/claude-haiku-5-5\n          - litellm/deepseek-v4-flash-direct"
+          pattern: "(?s)chains:.*?          sisyphus:\n          - litellm/claude-sonnet-5\n          - litellm/gpt-6-luna\n          - litellm/deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
