@@ -30,10 +30,13 @@ spec:
               its PVC is bound.
         - alert: ContainerCPUHigh
           expr: >-
-            sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total[5m]))
-            /
-            sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total[5m]))
-            > 0.5
+            (
+              sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total[5m]))
+              /
+              sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total[5m]))
+              > 0.5
+            )
+            and on (namespace, pod) (time() - kube_pod_start_time > 900)
           for: 5m
           labels:
             severity: warning
@@ -42,8 +45,8 @@ spec:
             grafana_url: 'https://tinyurl.com/23w5f4jt'
             summary: 'Container {{ "{{ $labels.container }}" }} in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} is CPU-throttled.'
             description: >-
-              Over half of CPU periods were throttled for 5 minutes. The CPU limit
-              is likely below real demand.
+              Over half of CPU periods were throttled for 5 minutes, excluding pods
+              started in the last 15 minutes. The CPU limit is likely below real demand.
         - alert: ContainerMemoryPressure
           expr: >-
             container_memory_working_set_bytes
