@@ -69,7 +69,7 @@ The gateway is **build-free in-cluster**: the agent tooling and the MCP verifier
 
 The AI workforce is an OMO (Oh My OpenAgent) fleet implemented as the `hermes-omo-plugin`, which launches named subagents natively through Hermes' subagent lifecycle — no OpenCode server, no `opencode` tool, no `omo.jsonc`. The roster (agent → model → fallback chains, and category routing) is defined under `hermes-agent.config.plugins.entries.omo.settings` — the path the plugin reads through Hermes' `ctx.get_config`. Model IDs live only in `litellm.proxy_config.model_list`; a model appears exactly once. Chains are the `settings.chains` array (primary-first); runtime fallback on 429/5xx is owned by the plugin, not the gateway.
 
-Agent roles: sisyphus (Sisyphus · Ultraworker, orchestrator), hephaestus (Hephaestus · Deep Agent), prometheus (Prometheus · Plan Builder), atlas (Atlas · Plan Executor), metis (Metis · Plan Consultant), momus (Momus · Plan Critic), oracle (Oracle · Architecture/Reasoning), librarian (Librarian · Research), explore (Explore · Repository Exploration), multimodal-looker (Multimodal-Looker · Multimodal Analysis), sisyphus-junior (Sisyphus-Junior · Specialized Execution Worker). Writing work routes via the `writing` category / sisyphus. Each agent and category carries a primary model plus a fallback chain: the GitHub Copilot subscription (flat fee) leads the execution lanes, the Claude proxy leads where reasoning or vision is the work, and every chain ends on the DeepSeek-direct spillway floor.
+Agent roles: sisyphus (Sisyphus · Ultraworker, orchestrator), hephaestus (Hephaestus · Deep Agent), prometheus (Prometheus · Plan Builder), atlas (Atlas · Plan Executor), metis (Metis · Plan Consultant), momus (Momus · Plan Critic), oracle (Oracle · Architecture/Reasoning), librarian (Librarian · Research), explore (Explore · Repository Exploration), multimodal-looker (Multimodal-Looker · Multimodal Analysis), sisyphus-junior (Sisyphus-Junior · Specialized Execution Worker). Writing work routes via the `writing` category / sisyphus. Each agent and category carries a primary model plus a fallback chain: Claude leads orchestration and reasoning, OpenCode Go (gpt-6-luna, kimi-k3.1-pro) takes the second rung, the local Qwen model serves explore only, and every chain ends on the DeepSeek-direct floor.
 
 ### Skills
 
@@ -228,8 +228,10 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.delegation.provider | string | `"litellm"` |  |
 | hermes-agent.config.delegation.reasoning_effort | string | `"medium"` |  |
 | hermes-agent.config.delegation.subagent_auto_approve | bool | `true` |  |
-| hermes-agent.config.fallback_providers[0].model | string | `"deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.fallback_providers[0].model | string | `"gpt-6-luna"` |  |
 | hermes-agent.config.fallback_providers[0].provider | string | `"litellm"` |  |
+| hermes-agent.config.fallback_providers[1].model | string | `"deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.fallback_providers[1].provider | string | `"litellm"` |  |
 | hermes-agent.config.file_read_max_chars | int | `40000` |  |
 | hermes-agent.config.hooks.pre_tool_call[0].command | string | `"python3 /opt/data/hooks/read-guard/read_guard.py"` |  |
 | hermes-agent.config.hooks.pre_tool_call[0].matcher | string | `"read_file"` |  |
@@ -610,16 +612,15 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.skiplagged.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.url | string | `"https://mcp.skiplagged.com/mcp"` |  |
-| hermes-agent.config.model.default | string | `"claude-haiku-5-5"` |  |
+| hermes-agent.config.model.default | string | `"claude-sonnet-5"` |  |
 | hermes-agent.config.model.provider | string | `"litellm"` |  |
 | hermes-agent.config.plugins.enabled[0] | string | `"discord-platform"` |  |
 | hermes-agent.config.plugins.enabled[1] | string | `"omo"` |  |
 | hermes-agent.config.plugins.entries.omo.allow_gateway_injection | bool | `true` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.categories.quick[0] | string | `"litellm/qwen3.6-35b-local"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.categories.quick[1] | string | `"litellm/claude-haiku-4-5"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.categories.quick[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.categories.quick[0] | string | `"litellm/claude-haiku-4-5"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.categories.quick[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.ultrabrain[0] | string | `"litellm/claude-opus-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.ultrabrain[1] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.ultrabrain[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
@@ -632,14 +633,14 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.plugins.entries.omo.settings.chains.atlas[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.atlas[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.explore[0] | string | `"litellm/qwen3.6-35b-local"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.explore[1] | string | `"litellm/claude-haiku-4-5"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.explore[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.explore[1] | string | `"litellm/gpt-6-luna"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.explore[2] | string | `"litellm/claude-haiku-4-5"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.explore[3] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.hephaestus[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.hephaestus[1] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.hephaestus[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.librarian[0] | string | `"litellm/qwen3.6-35b-local"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.librarian[1] | string | `"litellm/claude-haiku-4-5"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.librarian[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.librarian[0] | string | `"litellm/claude-haiku-4-5"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.librarian[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.metis[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.metis[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.momus[0] | string | `"litellm/claude-sonnet-5"` |  |
@@ -649,15 +650,16 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.plugins.entries.omo.settings.chains.multimodal-looker[1] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.multimodal-looker[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.oracle[0] | string | `"litellm/claude-opus-5"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.oracle[1] | string | `"litellm/claude-sonnet-5"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.oracle[1] | string | `"litellm/kimi-k3.1-pro"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.oracle[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.prometheus[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.prometheus[1] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.prometheus[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus-junior[0] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus-junior[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[0] | string | `"litellm/claude-haiku-5-5"` |  |
-| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[0] | string | `"litellm/claude-sonnet-5"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[1] | string | `"litellm/gpt-6-luna"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_base_url | string | `"https://api.typesafe.ai"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_model | string | `"jev-latest"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_routing_enabled | bool | `false` |  |
@@ -909,6 +911,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.model_list[5].litellm_params.api_base | string | `"http://host.docker.internal:11434/v1"` |  |
 | litellm.proxy_config.model_list[5].litellm_params.api_key | string | `"os.environ/OLLAMA_KEY"` |  |
 | litellm.proxy_config.model_list[5].litellm_params.extra_body.reasoning_effort | string | `"none"` |  |
+| litellm.proxy_config.model_list[5].litellm_params.max_parallel_requests | int | `1` |  |
 | litellm.proxy_config.model_list[5].litellm_params.model | string | `"openai/qwen3.6:35b-131k"` |  |
 | litellm.proxy_config.model_list[5].litellm_params.order | int | `1` |  |
 | litellm.proxy_config.model_list[5].litellm_params.timeout | int | `600` |  |
@@ -918,24 +921,17 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.model_list[6].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
 | litellm.proxy_config.model_list[6].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
 | litellm.proxy_config.model_list[6].litellm_params.extra_headers.User-Agent | string | `"hermes-litellm/1.0"` |  |
-| litellm.proxy_config.model_list[6].litellm_params.extra_headers.x-opencode-session | string | `"5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a11"` |  |
-| litellm.proxy_config.model_list[6].litellm_params.model | string | `"openai/deepseek-v4.1-flash"` |  |
+| litellm.proxy_config.model_list[6].litellm_params.extra_headers.x-opencode-session | string | `"5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a14"` |  |
+| litellm.proxy_config.model_list[6].litellm_params.model | string | `"openai/gpt-6-luna"` |  |
 | litellm.proxy_config.model_list[6].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[6].model_name | string | `"deepseek-v4.1-flash"` |  |
+| litellm.proxy_config.model_list[6].model_name | string | `"gpt-6-luna"` |  |
 | litellm.proxy_config.model_list[7].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
 | litellm.proxy_config.model_list[7].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
 | litellm.proxy_config.model_list[7].litellm_params.extra_headers.User-Agent | string | `"hermes-litellm/1.0"` |  |
-| litellm.proxy_config.model_list[7].litellm_params.extra_headers.x-opencode-session | string | `"5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a12"` |  |
-| litellm.proxy_config.model_list[7].litellm_params.model | string | `"openai/glm-5.2"` |  |
+| litellm.proxy_config.model_list[7].litellm_params.extra_headers.x-opencode-session | string | `"5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a15"` |  |
+| litellm.proxy_config.model_list[7].litellm_params.model | string | `"openai/kimi-k3.1-pro"` |  |
 | litellm.proxy_config.model_list[7].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[7].model_name | string | `"glm-5.2"` |  |
-| litellm.proxy_config.model_list[8].litellm_params.api_base | string | `"os.environ/OPENCODE_API_BASE"` |  |
-| litellm.proxy_config.model_list[8].litellm_params.api_key | string | `"os.environ/OPENCODE_API_KEY"` |  |
-| litellm.proxy_config.model_list[8].litellm_params.extra_headers.User-Agent | string | `"hermes-litellm/1.0"` |  |
-| litellm.proxy_config.model_list[8].litellm_params.extra_headers.x-opencode-session | string | `"5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a13"` |  |
-| litellm.proxy_config.model_list[8].litellm_params.model | string | `"openai/glm-5.3-flash"` |  |
-| litellm.proxy_config.model_list[8].litellm_params.order | int | `1` |  |
-| litellm.proxy_config.model_list[8].model_name | string | `"glm-5.3-flash"` |  |
+| litellm.proxy_config.model_list[7].model_name | string | `"kimi-k3.1-pro"` |  |
 | litellm.proxy_config.router_settings.disable_cooldowns | bool | `true` |  |
 | litellm.proxy_config.router_settings.num_retries | int | `0` |  |
 | litellm.proxy_config.router_settings.redis_host | string | `"os.environ/REDIS_HOST"` |  |

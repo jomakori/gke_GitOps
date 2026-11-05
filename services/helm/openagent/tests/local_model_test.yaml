@@ -27,21 +27,21 @@ tests:
           path: metadata.name
           value: openagent-litellm-config
 
-  - it: leads explore, librarian and quick with the local model
+  - it: leads explore with the local model; librarian and quick stay off it
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)          explore:\n          - litellm/qwen3.6-35b-local\n          - litellm/claude-haiku-4-5\n          - litellm/deepseek-v4-flash-direct"
+          pattern: "(?s)          explore:\n          - litellm/qwen3.6-35b-local\n          - litellm/gpt-6-luna\n          - litellm/claude-haiku-4-5\n          - litellm/deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
-      - matchRegex:
+      - notMatchRegex:
           path: data["config.yaml"]
           pattern: "(?s)          librarian:\n          - litellm/qwen3.6-35b-local"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
-      - matchRegex:
+      - notMatchRegex:
           path: data["config.yaml"]
           pattern: "(?s)          quick:\n          - litellm/qwen3.6-35b-local\n          - litellm/claude-haiku-4-5"
         documentSelector:
@@ -58,7 +58,7 @@ tests:
           value: openagent-hermes-agent-config
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)model:\n  default: claude-haiku-5-5\n  provider: litellm"
+          pattern: "(?s)model:\n  default: claude-sonnet-5\n  provider: litellm"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
