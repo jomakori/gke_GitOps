@@ -17,7 +17,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 | file://charts/headroom | headroom | 0.1.0 |
 | file://charts/hermes-webui | hermes-webui | 0.1.1 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |
-| oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.15.0 |
+| oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.23.0 |
 
 ## OpenAgent stack
 
@@ -221,7 +221,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.args | list | `[]` |  |
 | hermes-agent.command[0] | string | `"/opt/tools/gitopsctl"` |  |
 | hermes-agent.command[1] | string | `"boot"` |  |
-| hermes-agent.config._config_version | int | `42` |  |
+| hermes-agent.config._config_version | int | `52` |  |
 | hermes-agent.config.agent.api_max_retries | int | `1` |  |
 | hermes-agent.config.agent.disabled_toolsets[0] | string | `"tts"` |  |
 | hermes-agent.config.agent.disabled_toolsets[1] | string | `"vision"` |  |
@@ -821,7 +821,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumes[7].name | string | `"storage-gc-cron"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
-| hermes-agent.image.tag | string | `"v2026.9.11"` |  |
+| hermes-agent.image.tag | string | `"v0.23.0"` |  |
 | hermes-agent.probes.readiness.failureThreshold | int | `3` |  |
 | hermes-agent.probes.readiness.httpGet.path | string | `"/health"` |  |
 | hermes-agent.probes.readiness.httpGet.port | int | `8642` |  |
