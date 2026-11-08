@@ -21,6 +21,8 @@ vpa:
     enabled: true
     extraArgs:
       v: "2"
+      # Allow VPA to update single-replica workloads; updater otherwise skips them.
+      min-replicas: "1"
 
   admissionController:
     enabled: true
