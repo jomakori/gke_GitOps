@@ -68,6 +68,15 @@ jobs:
 
       - name: Setup Chart-Testing
         uses: helm/chart-testing-action@v2
+        with:
+          # The bundled sigstore/cosign-installer cannot validate its pinned
+          # cosign release (v3.0.2) from the runner: `Unable to validate cosign
+          # version` then `Fetched public key does not match expected digest` →
+          # exit 22, which failed every run regardless of the diff. ct only
+          # downloads its own release tarball here — nothing is verified against
+          # a signed blob — so the step is skipped. Same unverified-download
+          # posture as kubeconform/yq/helm-unittest below.
+          verify_blob: false
 
       - name: Setup chart validation tools (kubeconform, yq, helm-unittest)
         run: |
