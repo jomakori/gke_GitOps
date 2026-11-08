@@ -71,4 +71,5 @@ spec:
 | vpa.resources.requests.cpu | string | `"50m"` |  |
 | vpa.resources.requests.memory | string | `"128Mi"` |  |
 | vpa.updater.enabled | bool | `true` |  |
+| vpa.updater.extraArgs.min-replicas | string | `"1"` |  |
 | vpa.updater.extraArgs.v | string | `"2"` |  |
