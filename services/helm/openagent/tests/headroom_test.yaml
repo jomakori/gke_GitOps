@@ -56,3 +56,24 @@ tests:
           path: metadata.name
           value: openagent-litellm-config
           skipEmptyTemplates: true
+
+  - it: exposes Headroom only as a pre_call guardrail, never as an MCP server
+    asserts:
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "(?i)headroom[-_a-z0-9]*mcp|mcp[-_a-z0-9]*headroom"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+
+  - it: ships the NetworkPolicy that keeps Headroom unreachable from every other pod
+    # Several objects are named `headroom` (Service, Deployment, NetworkPolicy),
+    # so scope by template instead of by metadata.name.
+    template: charts/headroom/templates/networkpolicy.yaml
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: spec.podSelector.matchLabels["app.kubernetes.io/name"]
+          value: headroom

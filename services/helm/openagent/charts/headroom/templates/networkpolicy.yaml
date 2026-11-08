@@ -1,0 +1,91 @@
+{{- if .Values.enabled }}
+{{- $np := .Values.networkPolicy }}
+{{- if $np.enabled }}
+{{- $litellmInstance := default .Release.Name $np.litellm.instance }}
+# Ingress for the Headroom Service: the LiteLLM proxy pod is the ONLY intended
+# caller, so that is what this policy allows (plus one node-CIDR peer for the
+# kubelet probes -- see the comment on that rule).
+#
+# WHY A POLICY AND NOT JUST "ClusterIP IS PRIVATE" (audited live 2026-11-08):
+#   - Any pod in any namespace can reach any ClusterIP in this cluster today;
+#     ClusterIP is not isolation.
+#   - Istio ambient/mTLS is NOT a boundary for this traffic: there is no
+#     ztunnel/waypoint data plane in the mesh, Headroom has no sidecar, and
+#     LiteLLM dials the plain-HTTP api_base in litellm.proxy_config. The bytes
+#     are unauthenticated HTTP on the pod network.
+#   - NetworkPolicy IS enforced here. Proven with a live allow/deny probe from
+#     a pod in `openagent`:
+#       * argo-cd-argocd-redis:6379  -> ECONNREFUSED (policy REJECT)
+#       * argo-cd-argocd-server:8080 -> connected (that policy is
+#         `ingress: [{}]`, i.e. allow-all)
+#       * istiod:15012               -> connected (no policy selects istiod)
+#     Same client, same namespace pair; only the selecting NetworkPolicy
+#     differed. The deny probe was repeated CROSS-NODE (a pod on
+#     k3d-maklab-cluster-agent-1 against redis on k3d-maklab-cluster-server-0)
+#     and still gave ECONNREFUSED, so flannel's vxlan path does not bypass the
+#     policy -- which is the case that matters here, since the three LiteLLM
+#     replicas sit on three different nodes.
+#     The CNI is k3s's bundled flannel + kube-router policy controller (k3s was
+#     not started with --disable-network-policy).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: headroom
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "headroom.labels" . | nindent 4 }}
+    app.kubernetes.io/component: headroom
+  annotations:
+    # Applied with the Service (wave 0), i.e. before the Deployment (wave 1),
+    # so the pod is never briefly reachable without the policy.
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  podSelector:
+    # Same selector as the Service: exactly the Headroom pods.
+    matchLabels:
+      {{- include "headroom.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: headroom
+  policyTypes:
+    # Ingress only. No egress rules are added, so Headroom keeps unrestricted
+    # egress -- notably cluster DNS (kube-dns in kube-system), which an Egress
+    # policy here would silently break.
+    - Ingress
+  ingress:
+    # The one application caller: the LiteLLM proxy pod in this namespace.
+    # Labels verified on the live Deployment `openagent-litellm` (litellm-helm
+    # 1.92.0): app.kubernetes.io/name=litellm, app.kubernetes.io/instance=openagent
+    # -- note there is NO app.kubernetes.io/part-of label on those pods, so the
+    # selector must not use it.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ $np.litellm.podLabelName }}
+              app.kubernetes.io/instance: {{ $litellmInstance }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    {{- with $np.nodeCIDRs }}
+    # kubelet probes (/readyz, /livez) originate from the NODE, not from a pod,
+    # so they cannot be expressed as a podSelector and are dropped by the rule
+    # above. kube-router (v2.6.3-k3s1, the version vendored by this cluster's
+    # k3s v1.35.1) appends a terminal -j REJECT to the chain of every pod a
+    # policy selects, and emits no "traffic from the hosting node is always
+    # allowed" rule (pkg/controllers/netpol/pod.go), so without this peer the
+    # startupProbe never succeeds and the pod never leaves startup.
+    #
+    # Scope: the node subnet, not 0.0.0.0/0. It admits initiators that source
+    # from a node address -- kubelet probes, and hostNetwork pods on those
+    # nodes. No ordinary pod can use it. Set nodeCIDRs: [] if the probes are
+    # moved to an exec probe, which runs inside the pod netns and is unaffected
+    # by ingress policy.
+    - from:
+        {{- range . }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ $.Values.service.port }}
+    {{- end }}
+{{- end }}
+{{- end }}

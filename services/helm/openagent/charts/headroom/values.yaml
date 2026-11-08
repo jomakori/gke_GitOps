@@ -50,14 +50,29 @@ proxy:
   # Headroom is loopback-only by default (a non-loopback caller gets 404, not 403 — the
   # route stays invisible to scanners). LiteLLM calls this service from a DIFFERENT pod,
   # so the sidecar pattern this guardrail depends on requires allowing remote callers.
-  # The boundary is network, not this flag: ClusterIP + no Ingress + (optionally) the
-  # token below.
+  # The boundary is the NetworkPolicy at the bottom of this file (ingress from the
+  # LiteLLM pod only); the shared token in `auth` is an opt-in second layer.
   allowRemote: true
-  # Optional shared-secret header (sent by LiteLLM as `api_key` -> X-Headroom-Proxy-Token
-  # / Authorization: Bearer). Empty by default: this Service has no Ingress and is
-  # ClusterIP-only, so NetworkPolicy/namespace isolation is the primary boundary. Set a
-  # non-empty value (from a Secret, not plaintext values) if that is not sufficient.
-  token: ""
+  # Inbound authentication. OFF by default because the credential must exist in
+  # Doppler first — this chart cannot create it. Enable both sides together:
+  #   1. add HEADROOM_API_KEY to the openagent Doppler config,
+  #   2. set proxy.auth.enabled=true.
+  # Wiring, verified against both implementations:
+  #   - LiteLLM reads the shared secret from its own env as HEADROOM_API_KEY (fallback
+  #     in litellm guardrail_hooks/headroom/headroom.py when `api_key` is unset) and
+  #     sends the token in an `Authorization` header to POST {api_base}/v1/compress.
+  #   - This chart injects the SAME Secret key into the pod as HEADROOM_PROXY_TOKEN,
+  #     which makes the proxy require that bearer token. /livez and /readyz stay
+  #     unauthenticated by design, so enabling this does not break probes.
+  #   - The Secret is `openagent-secrets` (ESO <- Doppler, already envFrom'd into the
+  #     LiteLLM pods by the umbrella chart), so one Doppler key serves both sides and
+  #     there is no second copy to drift.
+  # The token is never a values field: the old plaintext `token:` key was removed.
+  auth:
+    enabled: false
+    existingSecret:
+      name: openagent-secrets
+      key: HEADROOM_API_KEY
   # Telemetry/beacon — both OFF. HEADROOM_TELEMETRY=off is documented upstream (LiteLLM's
   # "Deploy Headroom" Dockerfile example sets it). HEADROOM_BEACON=off is set here per the
   # approved spec as a defensive belt-and-suspenders control; this exact env var name was
@@ -66,3 +81,27 @@ proxy:
   # var, it is simply unused. Flag as unverified if a stricter guarantee is required.
   telemetry: "off"
   beacon: "off"
+
+# Ingress restriction for the Headroom Service. ON by default and load-bearing:
+# ClusterIP is not isolation — any pod in any namespace can dial a ClusterIP — and
+# neither Istio ambient (no ztunnel data plane in this mesh) nor Headroom's own auth
+# (off above) protects these calls. Verified live 2026-11-08 that this cluster
+# ENFORCES NetworkPolicy (k3s flannel + kube-router policy controller): a probe pod in
+# `openagent` was refused (ECONNREFUSED) on a policy-selected target and connected
+# normally on two unselected ones. Disabling this without also enabling `proxy.auth`
+# makes the chart fail to render (templates/_validate.tpl).
+networkPolicy:
+  enabled: true
+  # The only application caller. `podLabelName`/`instance` are the labels LiteLLM's
+  # pods actually carry (verified live on Deployment openagent-litellm: chart
+  # litellm-helm 1.92.0 sets app.kubernetes.io/name=litellm plus instance=<release>).
+  # `instance` defaults to the release name, which is the same release this chart is a
+  # subchart of; override it only if Headroom is ever installed separately.
+  litellm:
+    podLabelName: litellm
+    instance: ""
+  # kubelet probes arrive from the node address, which cannot be expressed as a
+  # podSelector. This is the k3d node subnet (nodes are 192.168.97.2/.3/.4/.6); it also
+  # admits hostNetwork pods on those nodes. Empty list = probes must be exec probes.
+  nodeCIDRs:
+    - 192.168.97.0/24

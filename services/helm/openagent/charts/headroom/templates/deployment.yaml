@@ -1,4 +1,5 @@
 {{- if .Values.enabled }}
+{{- include "headroom.validate" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,7 +29,8 @@ spec:
           env:
             # Bind 0.0.0.0 inside the container — required for the k8s Service to
             # reach it at all (same reasoning as Docker port forwarding upstream).
-            # The ClusterIP-only Service + no Ingress is the actual network boundary.
+            # The actual network boundary is the NetworkPolicy in networkpolicy.yaml
+            # (ingress from the LiteLLM pod only); ClusterIP alone is not isolation.
             - name: HEADROOM_HOST
               value: "0.0.0.0"
             - name: HEADROOM_PORT
@@ -46,14 +48,23 @@ spec:
             # not a real missing route).
             - name: HEADROOM_COMPRESS_ALLOW_REMOTE
               value: {{ .Values.proxy.allowRemote | ternary "1" "0" | quote }}
-            {{- if .Values.proxy.token }}
+            {{- if .Values.proxy.auth.enabled }}
+            # Shared secret, injected from a Secret (never from values). Headroom
+            # then requires the shared token in the Authorization header on
+            # every route except /livez and /readyz, which stay open for the probes below.
+            # LiteLLM sends the SAME value: its headroom guardrail falls back to
+            # HEADROOM_API_KEY from its own environment, which the umbrella chart
+            # already populates from this Secret via envFrom.
             - name: HEADROOM_PROXY_TOKEN
-              value: {{ .Values.proxy.token | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "headroom.proxy.auth.existingSecret.name is required when proxy.auth.enabled" .Values.proxy.auth.existingSecret.name }}
+                  key: {{ required "headroom.proxy.auth.existingSecret.key is required when proxy.auth.enabled" .Values.proxy.auth.existingSecret.key }}
             {{- else }}
             # Binding 0.0.0.0 with no HEADROOM_PROXY_TOKEN makes the proxy refuse to
-            # start unless this is set, acknowledging that the runtime already
-            # confines reachability (ClusterIP, no Ingress, namespace-scoped
-            # NetworkPolicy boundary) rather than a token.
+            # start unless this is set. Safe here only because networkpolicy.yaml
+            # restricts ingress to the LiteLLM pod (templates/_validate.tpl fails the
+            # render if that policy is disabled without auth).
             - name: HEADROOM_ALLOW_UNAUTHENTICATED_BIND
               value: "1"
             {{- end }}

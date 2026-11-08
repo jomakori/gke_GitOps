@@ -18,10 +18,16 @@ Headroom prompt-compression sidecar, called by LiteLLM's pre_call guardrail. Ena
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/headroomlabs-ai/headroom"` |  |
 | image.tag | string | `"0.43.1@sha256:c4486ccc8096ce44dd825361f1defb67e66710da1b2191f03b283992b8aaf01c"` |  |
+| networkPolicy.enabled | bool | `true` |  |
+| networkPolicy.litellm.instance | string | `""` |  |
+| networkPolicy.litellm.podLabelName | string | `"litellm"` |  |
+| networkPolicy.nodeCIDRs[0] | string | `"192.168.97.0/24"` |  |
 | proxy.allowRemote | bool | `true` |  |
+| proxy.auth.enabled | bool | `false` |  |
+| proxy.auth.existingSecret.key | string | `"HEADROOM_API_KEY"` |  |
+| proxy.auth.existingSecret.name | string | `"openagent-secrets"` |  |
 | proxy.beacon | string | `"off"` |  |
 | proxy.telemetry | string | `"off"` |  |
-| proxy.token | string | `""` |  |
 | resources.limits.cpu | string | `"1"` |  |
 | resources.limits.memory | string | `"1Gi"` |  |
 | resources.requests.cpu | string | `"250m"` |  |
