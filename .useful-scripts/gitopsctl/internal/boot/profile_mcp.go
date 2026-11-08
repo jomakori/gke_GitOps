@@ -9,60 +9,19 @@ import (
 	"strings"
 )
 
-// Where Hermes looks for administrator-managed config. The managed `.env` layer
-// is merged into every profile's secret scope with override, which is the only
-// supported way to give a profile-scoped session a credential the launch
-// process holds in its own environment (see hermes_cli/managed_scope.py).
+// Administrator-managed secret layer, merged into every profile scope.
 const (
 	managedScopeDir  = "/etc/hermes"
 	managedScopeEnv  = managedScopeDir + "/.env"
 	managedScopePerm = 0o640
 )
 
-// dataRoot is the launch process's HERMES_HOME — the PVC mount. Every profile
-// home is a directory under it, and it is the one value a profile scope
-// resolves differently from the launch scope.
+// dataRoot is the launch HERMES_HOME (the PVC mount).
 const dataRoot = "/opt/data"
 
-// The launch scope is the single source of truth for the MCP manifest:
-// values.yaml renders it into config.yaml, and gitopsctl mcp prewarm/verify
-// certify exactly those entries. Per-profile configs, however, are runtime
-// state on the PVC — Hermes copies the launch config when a profile is created
-// and never refreshes it, so a profile keeps whatever mcp_servers existed on
-// the day it was made.
-//
-// A multiplexed gateway (dashboard/webapp mode) runs one MCP discovery per
-// profile home at startup, in series. A stale block is dialled from scratch
-// every boot: entries that no longer exist fail, entries whose launch twin
-// gained an env mapping fail differently, and entries that are lazy in the
-// manifest are still eager here because the old block predates the flag. Each
-// profile that cannot settle inside its connect timeout blocks the next one,
-// which turned a ~15s boot into minutes of Argo CD `Progressing`.
-//
-// SyncProfileMCP makes every profile home a mirror of the launch scope:
-//
-//  1. config.yaml's top-level mcp_servers block becomes the launch block, so
-//     profiles name the same servers with the same command, args, env keys and
-//     timeouts, plus one addition: every stdio entry's env pins HERMES_HOME to
-//     the launch home. Hermes resolves that key per scope (`_build_safe_env`
-//     sets it to the ACTIVE home, so a profile would compute its own path), and
-//     an explicit value in the entry's own env wins. Pinning it on the profile
-//     side is what makes the connection identity — the digest adoption
-//     compares — equal to the launch scope's; the launch block itself stays
-//     exactly what the chart rendered.
-//  2. /etc/hermes/.env receives every `${VAR}` the block references that exists
-//     in the boot environment. Profile scopes never read os.environ on a miss
-//     (fail-closed multiplexing), so without this layer a mirrored block renders
-//     empty credentials in profile scope, the child dies with `Connection
-//     closed`, and the block is worse than the stale one it replaced.
-//
-// With both in place `register_connected_into_current_scope` adopts the launch
-// scope's live connections before any candidate is selected, so a profile pass
-// registers the already-connected servers and their tools instead of spawning
-// a private copy of every MCP server in the manifest.
-//
-// It is idempotent: unchanged profiles are not rewritten, and the pre-sync
-// config is kept once as config.yaml.bak-mcp-sync.
+// SyncProfileMCP mirrors the launch mcp_servers block into every profile config
+// (pinning HERMES_HOME in stdio entries) and writes its ${VAR} values to the
+// managed env, so profiles adopt the launch connections instead of re-dialing.
 func SyncProfileMCP() {
 	launchConfig := filepath.Join(dataRoot, "config.yaml")
 	profiles := filepath.Join(dataRoot, "profiles")
@@ -136,13 +95,8 @@ func syncProfileMCP(launchConfigPath, profilesRoot string) ([]string, error) {
 	return changed, nil
 }
 
-// pinLaunchHome returns block with HERMES_HOME pinned into every stdio entry's
-// env. Hermes' stdio launch resolves the child env as "safe baseline, then
-// HERMES_HOME = the ACTIVE home, then the entry's own env", so a profile scope
-// otherwise resolves a different value from the launch scope and the two
-// connections fail the identity comparison that adoption depends on. An entry
-// that already declares the key is left alone: it resolves the same value in
-// both scopes anyway.
+// pinLaunchHome pins HERMES_HOME into every stdio entry's env, so the connection
+// identity matches across scopes. Entries that declare it are left alone.
 func pinLaunchHome(block string) string {
 	lines := strings.SplitAfter(block, "\n")
 	pin := "      HERMES_HOME: \"" + dataRoot + "\"\n"
@@ -176,7 +130,7 @@ func pinLaunchHome(block string) string {
 			case envLine >= 0:
 				insert[envLine] = pin
 			case inlineEnv >= 0:
-				// `env: {}` or `env: {A: b}` — add the key to the flow mapping.
+				// flow-style env: add the key to the mapping
 				replace[inlineEnv] = inlineEnvWithHome(lines[inlineEnv])
 			case commandLine >= 0:
 				insert[commandLine] = "    env:\n" + pin
@@ -200,8 +154,7 @@ func pinLaunchHome(block string) string {
 	return b.String()
 }
 
-// inlineEnvWithHome rewrites a flow-style `env:` mapping so it declares
-// HERMES_HOME. Only a manifest that hand-rolls `env: {KEY: value}` reaches this.
+// inlineEnvWithHome adds HERMES_HOME to a flow-style `env: {...}` mapping.
 func inlineEnvWithHome(line string) string {
 	trimmed := strings.TrimSuffix(line, "\n")
 	open := strings.Index(trimmed, "{")
@@ -217,8 +170,7 @@ func inlineEnvWithHome(line string) string {
 	return trimmed[:open] + "{" + entry + "}" + strings.TrimSuffix(trimmed[close+1:], "\n") + "\n"
 }
 
-// isServerEntry reports whether line opens an mcp_servers entry: a mapping key
-// at exactly two spaces of indent.
+// isServerEntry reports whether line is a server key (two-space indent).
 func isServerEntry(line string) bool {
 	if !strings.HasPrefix(line, "  ") || strings.HasPrefix(line, "   ") {
 		return false
@@ -251,11 +203,8 @@ func entryDeclaresHome(entry []string) bool {
 
 var placeholderPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)\}`)
 
-// syncProfileSecrets writes the launch block's `${VAR}` references that the boot
-// environment can resolve into the managed `.env` layer. Variables the pod does
-// not have are skipped: a profile then fails that one server exactly as the
-// launch scope would, and the log names the count so a missing secret is
-// visible instead of silent.
+// syncProfileSecrets writes the block's resolvable ${VAR} values to the managed
+// env; variables missing from environ are skipped.
 func syncProfileSecrets(launchConfigPath, envPath string, environ []string) (written bool, mirrored, referenced int, err error) {
 	launchConfig, err := os.ReadFile(launchConfigPath)
 	if err != nil {
@@ -305,8 +254,7 @@ func syncProfileSecrets(launchConfigPath, envPath string, environ []string) (wri
 	if err := os.WriteFile(tmp, next, managedScopePerm); err != nil {
 		return false, mirrored, referenced, fmt.Errorf("write managed scope: %w", err)
 	}
-	// The gateway runs as the runtime user, not as root: the file has to be
-	// group-readable or the managed scope silently parses as empty.
+	// group-readable: the gateway runs as the runtime user
 	_ = os.Chown(tmp, 0, runtimeUID)
 	if err := os.Rename(tmp, envPath); err != nil {
 		return false, mirrored, referenced, fmt.Errorf("replace managed scope: %w", err)
@@ -330,17 +278,14 @@ func placeholders(block string) []string {
 	return names
 }
 
-// quoteEnvValue emits a dotenv double-quoted value. Hermes' tokenizer reverses
-// `\"` and `\\` inside double quotes and strips a trailing `# ...` only when the
-// value is unquoted, so quoting is what keeps a value with spaces or a `#` intact.
+// quoteEnvValue emits a double-quoted dotenv value.
 func quoteEnvValue(value string) string {
 	value = strings.ReplaceAll(value, `\`, `\\`)
 	value = strings.ReplaceAll(value, `"`, `\"`)
 	return `"` + value + `"`
 }
 
-// blockServerNames lists the server names (the two-space-indented keys) of an
-// mcp_servers block.
+// blockServerNames lists the server keys of an mcp_servers block.
 func blockServerNames(block string) map[string]bool {
 	names := map[string]bool{}
 	for _, line := range strings.Split(block, "\n") {
@@ -352,8 +297,7 @@ func blockServerNames(block string) map[string]bool {
 	return names
 }
 
-// topLevelBlock returns the block that starts at a top-level `key:` line and
-// ends before the next top-level key (or EOF), including the trailing newline.
+// topLevelBlock returns the block from a top-level `key:` to the next top-level key.
 func topLevelBlock(text, key string) (string, bool) {
 	start, end := blockBounds(text, key)
 	if start < 0 {
@@ -362,9 +306,7 @@ func topLevelBlock(text, key string) (string, bool) {
 	return strings.Join(strings.SplitAfter(text, "\n")[start:end], ""), true
 }
 
-// replaceTopLevelBlock swaps the block for key with block. A file without the
-// key is returned unchanged: profiles that never carried the manifest are left
-// alone rather than having a block transplanted into an unknown position.
+// replaceTopLevelBlock swaps key's block; text without the key is unchanged.
 func replaceTopLevelBlock(text, key, block string) (string, bool) {
 	start, end := blockBounds(text, key)
 	if start < 0 {
@@ -378,8 +320,7 @@ func replaceTopLevelBlock(text, key, block string) (string, bool) {
 	return b.String(), true
 }
 
-// blockBounds locates the line index where key's block starts and where the next
-// top-level key begins (or the line count at EOF).
+// blockBounds returns the start and end line indexes of key's block.
 func blockBounds(text, key string) (int, int) {
 	lines := strings.SplitAfter(text, "\n")
 	start := -1
@@ -400,9 +341,7 @@ func blockBounds(text, key string) (int, int) {
 	return start, len(lines)
 }
 
-// isTopLevelKey reports whether line is a mapping key at column zero. YAML
-// block scalars are indented, so a column-zero `word:` cannot be a value
-// continuation of the block being replaced.
+// isTopLevelKey reports whether line is a column-zero mapping key.
 func isTopLevelKey(line string) bool {
 	line = strings.TrimSuffix(line, "\n")
 	colon := strings.IndexByte(line, ':')
