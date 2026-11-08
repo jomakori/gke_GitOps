@@ -1,0 +1,22 @@
+suite: hermes-doctor hook can finish its Playwright check
+# The subchart's own default is a 512Mi limit, which OOMKills the doctor job
+# mid-run and swallows the verdict. Assert the override stays above the ~1.5Gi
+# the tool set actually needs.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: gives the doctor hook room to load its browser tools
+    asserts:
+      - matchRegex:
+          path: metadata.name
+          pattern: hermes-agent-test$
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 2Gi
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 512Mi
+    documentSelector:
+      path: metadata.name
+      value: openagent-hermes-agent-test

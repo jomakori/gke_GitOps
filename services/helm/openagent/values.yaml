@@ -1533,6 +1533,20 @@ hermes-agent:
     enabled: false
     port: 9119
 
+  # PostSync `hermes doctor` hook. The subchart default caps this Job at 512Mi,
+  # and the doctor OOMKills partway through its Playwright check — the hook has
+  # been dying with OOMKilled on every sync, so its verdict never printed. The
+  # doctor peaks near 1.5Gi, the same figure the VPA section notes for the
+  # gateway pod (both load the same tool set).
+  tests:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+
 # ── Storage GC gate ─────────────────────────────────────────────────
 # Closes the last open criterion of the parent node-disk spec (DEV-61): the
 # btrfs caveat below, and the build-cache cap that lives outside this chart.
