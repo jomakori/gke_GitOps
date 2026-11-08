@@ -499,6 +499,28 @@ services:
     syncOptions:
       - CreateNamespace=true
 
+  # Dex: the cluster OIDC identity provider. Public on purpose — it is the login
+  # page apps redirect to, so it cannot itself sit behind Cloudflare Access.
+  # Clients (Hermes today, plus future apps that cannot use Access OAuth) are
+  # declared in services/helm/dex/values.yaml.
+  dex:
+    enable: true
+    argocdNamespace: argocd
+    argoProject: default
+    destNamespace: dex
+    helmPath: services/helm/dex
+    dopplerConfig: "ci"
+    # After istio (routing) and before openagent (wave 5), whose sign-in
+    # provider points at this issuer.
+    syncWave: '4'
+    gateways:
+      enable_public: true
+      subdomain: dex
+      destination:
+        servicePort: 5556
+    syncOptions:
+      - CreateNamespace=true
+
   excalidash:
     enable: true
     # Stateful and already running outside ArgoCD: removal must orphan the

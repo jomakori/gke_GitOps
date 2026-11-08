@@ -860,9 +860,10 @@ data:
       (every process loads the whole MCP fleet — 1596MiB / 107 processes with it on vs
       604MiB / 61 off), while the Webapp runs in-process.
     - **Sign-in**: a non-loopback bind is refused unless a Hermes sign-in provider is
-      configured. Basic auth comes from env `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` /
-      `_PASSWORD` / `_SECRET`, all in `openagent-secrets` (Doppler `svc_openagent`), so
-      no credential appears in `values.yaml`. Cloudflare Access remains the outer gate.
+      configured. It is OIDC (`dashboard.oauth.self_hosted`) against the in-cluster
+      Dex at `https://dex.maklab.net`, which relays Google: Dex holds the client as a
+      `public: true` PKCE client, so Hermes stores no credential at all — no basic-auth
+      env, no Doppler key, no secret to rotate. Cloudflare Access remains the outer gate.
 
     **Verify** (post-sync): `kubectl get --raw
     "/api/v1/namespaces/openagent/services/openagent-hermes-agent:9120/proxy/"` returns
