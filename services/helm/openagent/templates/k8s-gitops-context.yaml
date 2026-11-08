@@ -840,38 +840,35 @@ data:
 
     **Fallback/retry behavior**: LiteLLM router_settings is PLAIN ACCESS (`disable_cooldowns: true`, `num_retries: 0`) — gateway cooldowns would fight OMO's runtime fallback. OMO owns both layers: per-agent chains (spawn-time) + the `runtime_fallback` state machine (auto-switch on `retry_on_errors`, 3 attempts, 30s cooldown, restore-primary). Hermes rides `fallback_providers` (deepseek-v4-flash-go → mimo-v2.6-flash → deepseek-v4-flash-direct); **delegated children declare the same two backups** (`delegation.fallback_providers: [deepseek-v4-flash-direct, claude-haiku-5-5]`) — per-agent chains own worker escalation. **`agent.api_max_retries: 1`**: one attempt per model then the next layer (a 429 fails over eagerly; 5xx/transport hit retries-exhausted immediately) — the host default of 3 replayed a refusal against the model that had just refused it, the 2026-09-24 error cycle that burned 3 extra calls per worker.
 
-    ### Hermes Dashboard & Workspace
+    ### Hermes Webapp (native UI)
 
-    The public dashboard (`https://openagent.maklab.net`) is **hermes-webui** (`charts/hermes-webui`) — a `nesquena/hermes-webui` dark-themed web UI. It runs in **gateway chat-backend mode**: it is a pure HTTP thin-client that POSTs `/v1/chat/completions` to the existing jyje agent's API server (`:8642`). It does NOT run a second in-process agent — all inference/memory/tools/sessions stay on the jyje agent. It is a **drop-in replacement**: its Service reuses the dashboard name `openagent-hermes-workspace` at port `3000`, so the istio `openagent` VirtualService / ApplicationSet destination are **unchanged** (CF Access private).
+    The public UI (`https://openagent.maklab.net`) is Hermes's **own Webapp**, served by
+    the single agent process: `hermes-agent.config.webapp` (`enabled: true`,
+    `host: 0.0.0.0`, `port: 9120`, `public_url`). The third-party `hermes-webui`
+    subchart — its Deployment, PVC, gateway/onboarding shims and the
+    `openagent-hermes-workspace:3000` Service — is **deleted**. There is no second web
+    tier: sessions, memory and tools are the agent's own store, shared with Discord and
+    the CLI.
 
-    Config flow (`charts/hermes-webui/values.yaml` → deployment env):
-    - `HERMES_WEBUI_CHAT_BACKEND=gateway` — thin-client mode (not in-process agent)
-    - `HERMES_WEBUI_GATEWAY_BASE_URL` → `openagent-hermes-api:8642`
-    - `HERMES_WEBUI_GATEWAY_API_KEY` → agent's `API_SERVER_KEY` (`***REMOVED***`)
-    - `HERMES_WEBUI_STATE_DIR=/data` — the webui's OWN PVC (`openagent-hermes-webui-state`), **NOT** the agent's `/opt/data` (shared RWO PVC + concurrent SQLite WAL writes = corruption)
-    - `HERMES_WEBUI_ALLOWED_ORIGINS` + `HERMES_WEBUI_TRUST_FORWARDED_*` — reverse-proxy/Istio support. Auth is **CF Access OAuth only** (`enable_private: true` on the istio VS); no webui password is set.
+    Wiring:
+    - **Ingress**: the istio `openagent` VirtualService. The ApplicationSet destination is
+      `openagent-hermes-agent:9120`, `gateways.enable_private: true`, so Cloudflare Access
+      still fronts (and JWT-validates) every request.
+    - **Service**: `hermes-agent.service.enabled: true` with a single port — `webapp`
+      9120. The chart's default 9119 dashboard port is not published, and
+      `HERMES_DASHBOARD=0` stays: the built-in *dashboard* is a second Hermes process
+      (every process loads the whole MCP fleet — 1596MiB / 107 processes with it on vs
+      604MiB / 61 off), while the Webapp runs in-process.
+    - **Sign-in**: a non-loopback bind is refused unless a Hermes sign-in provider is
+      configured. Basic auth comes from env `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` /
+      `_PASSWORD` / `_SECRET`, all in `openagent-secrets` (Doppler `svc_openagent`), so
+      no credential appears in `values.yaml`. Cloudflare Access remains the outer gate.
 
-    **Naming / drop-in**: the webui **Deployment** is `openagent-hermes-webui` but its **Service** is hardcoded `openagent-hermes-workspace:3000` (`service.name` + `service.port` in `charts/hermes-webui/values.yaml`). This is a deliberate drop-in: the old dashboard was `openagent-hermes-workspace:3000`, and reusing that Service name keeps the istio VirtualService / ApplicationSet / DNS unchanged. The former `hermes-workspace` subchart has been **fully removed**, so the Service name is unambiguous.
-
-    **Image / CMD override**: the stock image ships code in `/apptoo` (not `/app`) with no pre-built venv, and its default entrypoint (`docker_init.bash`) unconditionally tries to install the full agent-source deps. The subchart bypasses this: an initContainer builds a venv with only `/apptoo/requirements.txt`, and the main container runs `/app/venv/bin/python /apptoo/server.py`. The image `:v0.52.113` is multi-arch (linux/arm64 confirmed).
-
-    **Onboarding wizard GOTCHA (PR #116)**: in gateway mode the webui's first-run wizard ALWAYS fails its system check — it probes `/root/.hermes/config.yaml` + agent imports (`run_agent`) INSIDE the webui container, which intentionally doesn't exist (agent lives in the separate hermes-agent pod). Wizard visibility gate is `settings.json → onboarding_completed` (api/onboarding.py, read via `/api/settings`); missing settings.json = wizard on every load. Fix shipped in the chart: (1) `seed-onboarding` initContainer writes `/data/settings.json` with `{"onboarding_completed": true, "default_workspace": "/data/workspace"}` if absent, (2) `HERMES_WEBUI_SKIP_ONBOARDING=1` env hard-guards the apply endpoint from writing config. Diagnostic: `kubectl get --raw "/api/v1/namespaces/openagent/services/openagent-hermes-workspace:3000/proxy/api/health/agent"` → `gateway_chat` block must show `enabled/backend=gateway/base_url_configured/api_key_configured` + gateway `status_code: 200`. `kubectl get --raw .../proxy/api/settings` → `onboarding_completed: true`.
-
-    **hermes-workspace is REMOVED** — the `hermes-workspace` subchart (deployment, CLIs, tmux, and the `openagent-swarm` + `openagent-swarm-hermes-config` ConfigMaps it alone consumed) was deleted. The hermes-agent pod is the single agent. Its skills (`environment_hint`: ponytail, caveman, pre-commit, k8s-gitops-context) were re-wired into `values.yaml → hermes-agent.config.agent.environment_hint` so the agent keeps them. The `openagent-hermes-workspace:3000` Service now points at the webui pods only.
-
-    **Discord session-link hook**: fires on `agent:start` and posts a dashboard link to the Discord channel. It links to the dashboard **root** (not a `/chat/{sid}` deep link) because hermes-webui in gateway mode owns its OWN session_id space and does not import agent sessions — an agent-side session_id would not resolve in the webui.
-
-    The webui reaches the agent through a single backend (it gates chat via the API server):
-
-    | Service | Port | DNS | Purpose |
-    |---------|------|-----|---------|
-    | `openagent-hermes-api` | 8642 | API | Chat completions, sessions, models, runs, capabilities |
-
-    **One Service, not two**: the hermes-agent OCI subchart's Service template maps only port 9119, which served the built-in dashboard. That dashboard is disabled (`HERMES_DASHBOARD=0`) and the subchart Service is disabled with it (`hermes-agent.service.enabled: false`), so nothing publishes a port with nothing behind it. `templates/apps.yaml` defines `openagent-hermes-api` for the API port (8642), which is what the webui uses.
-
-    **The Hermes built-in dashboard is removed** (`values.yaml` → `hermes-agent.extraEnv`): `HERMES_DASHBOARD=0`, and its `HERMES_DASHBOARD_HOST/PORT/BASIC_AUTH_*` vars, `DASHBOARD_BASE_URL`, the `openagent-dashboard-auth` ConfigMap and its venv mounts are all gone. Reason: it runs as a *second* Hermes process, and each Hermes process loads every configured MCP server — measured 1596MiB / 107 processes with it on vs 604MiB / 61 off. Re-enabling means restoring all of it, including the basic-auth creds in Doppler `svc_openagent`.
-
-    **Post-deploy parity check** (hermes-webui gateway mode): verify the webui lists sessions from the gateway (`/sessions` + `/runs` on `:8642`) and not only its local store; verify SSE streaming; verify tool-approval flow (gateway approvals are a draft feature — #4203). If sessions don't bridge, Discord/CLI history won't appear in the webui.
+    **Verify** (post-sync): `kubectl get --raw
+    "/api/v1/namespaces/openagent/services/openagent-hermes-agent:9120/proxy/"` returns
+    the Webapp login page (not a 404 from an unpublished port), and an external
+    `curl -sI https://openagent.maklab.net` returns a Cloudflare Access redirect before
+    anything reaches the agent.
 
     ### Skills
 

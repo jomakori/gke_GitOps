@@ -393,6 +393,16 @@ hermes-agent:
     # with no version key the image's docker_config_migrate reads 0, warns
     # "predates version 12", and skips stamping on every boot.
     _config_version: 52
+    # Serve the first-party Webapp on the ingress Service. Non-loopback binds
+    # require a Hermes sign-in provider: the basic-auth provider is configured
+    # from env (HERMES_DASHBOARD_BASIC_AUTH_USERNAME/_PASSWORD/_SECRET, all in
+    # openagent-secrets), so no credentials belong in this file. Cloudflare
+    # Access stays the outer gate.
+    webapp:
+      enabled: true
+      host: 0.0.0.0
+      port: 9120
+      public_url: https://openagent.maklab.net
     # Slow MCP servers must land in turn 1, else the tool catalog flips and every turn re-prefills (~20s).
     mcp_discovery_timeout: 20
     model:
@@ -1301,12 +1311,11 @@ hermes-agent:
     # the MCP fleet (13 extra stdio children; the pod measured 1596MiB / 107
     # processes with it on, 604MiB / 61 off) on a node already short of memory.
     #
-    # Nothing user-facing depends on it: the WebUI reaches the agent through the
-    # API server on 8642 (`HERMES_WEBUI_GATEWAY_BASE_URL`), and the external
-    # `dashboard:` route serves the WebUI on 3000 — so :9119 was only ever an
-    # in-cluster admin UI. The HERMES_DASHBOARD_HOST/_PORT/_BASIC_AUTH_* vars,
-    # DASHBOARD_BASE_URL, the dashboard-auth patch and the agent Service that
-    # exposed :9119 are removed with it; re-enabling means restoring those too.
+    # The user-facing UI is the in-process Webapp (`config.webapp`, :9120) on
+    # the same Service, so :9119 was only ever an in-cluster admin page. Its
+    # HERMES_DASHBOARD_HOST/_PORT vars, DASHBOARD_BASE_URL, the dashboard-auth
+    # patch and the extra Service port are removed with it; re-enabling means
+    # restoring those too.
     - name: HERMES_DASHBOARD
       value: "0"
     - name: DISCORD_ALLOW_ALL_USERS
@@ -1525,13 +1534,11 @@ hermes-agent:
     - secretRef:
         name: openagent-secrets
   service:
-    # No Service: the only port the OCI subchart maps is 9119, which served the
-    # dashboard only, and the dashboard is off (HERMES_DASHBOARD above). The
-    # WebUI and everything else reach the agent through `openagent-hermes-api`
-    # (8642), which this chart defines separately. Leaving this enabled would
-    # publish a port with nothing behind it.
-    enabled: false
-    port: 9119
+    enabled: true
+    ports:
+      - name: webapp
+        port: 9120
+        targetPort: 9120
 
   # PostSync `hermes doctor` hook. The subchart default caps this Job at 512Mi,
   # and the doctor OOMKills partway through its Playwright check — the hook has
@@ -1648,9 +1655,6 @@ mcpVerification:
         memory: 1280Mi
 
 # ── Hermes WebUI (gateway thin-client dashboard) ───────────────────
-hermes-webui:
-  enabled: true
-
 claude-proxy:
   enabled: true
 
@@ -1659,13 +1663,6 @@ claude-proxy:
 # cluster (ns data). Its role (`openagent`) and bootstrap SQL are declared in
 # services/helm/postgres-operator, as a `users:` shorthand entry that renders into the
 # SGScript the cluster now references — that chart owns DB provisioning, this one does not.
-
-# ── Dashboard (VirtualService) ─────────────────────────────────────
-dashboard:
-  subdomain: "openagent"
-  destination:
-    host: "openagent-hermes-workspace.openagent.svc.cluster.local"
-    port: 3000
 
 # ── LiteLLM Admin UI (VirtualService) ─────────────────────────────
 litellmVirtualService:

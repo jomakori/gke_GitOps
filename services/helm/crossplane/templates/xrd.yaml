@@ -29,6 +29,12 @@ spec:
                 host:
                   type: string
                   description: Hostname the Access application protects.
+                appId:
+                  type: string
+                  description: >-
+                    Id of the existing Cloudflare Access application for this
+                    host. The composition adopts it read-only; it never creates
+                    a second app for a hostname that already has one.
                 sessionDuration:
                   type: string
                   default: {{ .Values.access.defaultSessionDuration }}
@@ -50,6 +56,7 @@ spec:
               required:
                 - accountId
                 - host
+                - appId
             status:
               type: object
               properties:

@@ -10,6 +10,9 @@ metadata:
 spec:
   accountId: {{ required "accountId is required once the cloudflare-access app is enabled" $.Values.accountId | quote }}
   host: {{ $app.host | quote }}
+  # Existing Cloudflare Access app id: the XR adopts it (observe-only) rather
+  # than creating a duplicate for the same hostname.
+  appId: {{ required (printf "apps.%s.appId is required (existing Cloudflare Access app id)" $name) $app.appId | quote }}
   sessionDuration: {{ $.Values.sessionDuration | quote }}
 {{- with $.Values.policies }}
   policies:

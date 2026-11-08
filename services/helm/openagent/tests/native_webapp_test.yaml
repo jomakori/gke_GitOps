@@ -1,0 +1,33 @@
+suite: Hermes native Webapp is enabled behind the existing ingress
+release:
+  name: openagent
+  namespace: openagent
+
+tests:
+  - it: enables the first-party Webapp listener
+    template: charts/hermes-agent/templates/configmap.yaml
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)webapp:\\n  enabled: true\\n  host: 0.0.0.0\\n  port: 9120\\n  public_url: https://openagent\\.maklab\\.net"
+      # Sign-in creds come from HERMES_DASHBOARD_BASIC_AUTH_* env, not config.
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "basic_auth"
+
+  - it: publishes the native Webapp listener on the agent Service only
+    template: charts/hermes-agent/templates/service.yaml
+    asserts:
+      - equal:
+          path: spec.ports[0].name
+          value: webapp
+      - equal:
+          path: spec.ports[0].port
+          value: 9120
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 9120
+      - notContains:
+          path: spec.ports
+          content:
+            port: 9119

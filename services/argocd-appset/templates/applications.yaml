@@ -68,11 +68,12 @@
        the same gateways.enable_private flag that drives the VirtualService. */}}
 {{-   $accessParams := list }}
 {{-   range $sk, $sv := $.Values.services }}
-{{-     if and $sv.enable $sv.gateways $sv.gateways.enable_private }}
+{{-     if and $sv.enable $sv.gateways $sv.gateways.enable_private $sv.gateways.accessAppId }}
 {{-       $svName := $sv.name | default (lower (regexReplaceAll "([a-z])([A-Z])" $sk "${1}-${2}" | lower)) }}
 {{-       $subdomain := $sv.gateways.subdomain | default $svName }}
 {{-       $host := printf "%s.%s" $subdomain $.Values.clusterDomain }}
 {{-       $accessParams = append $accessParams (dict "name" (printf "apps.%s.host" $sk) "value" $host) }}
+{{-       $accessParams = append $accessParams (dict "name" (printf "apps.%s.appId" $sk) "value" $sv.gateways.accessAppId) }}
 {{-     end }}
 {{-   end }}
 {{-   if $.Values.crossplaneAccess.accountId }}

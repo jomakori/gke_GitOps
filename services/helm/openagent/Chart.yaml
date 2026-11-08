@@ -18,11 +18,6 @@ dependencies:
     repository: oci://ghcr.io/jyje/hermes-agent-helm
     condition: hermes.enabled
 
-  - name: hermes-webui
-    version: 0.1.1
-    repository: file://charts/hermes-webui
-    condition: hermes-webui.enabled
-
   - name: claude-proxy
     version: 0.2.0
     repository: file://charts/claude-proxy
