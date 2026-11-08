@@ -319,6 +319,43 @@ litellm:
             x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a15"
             User-Agent: "hermes-litellm/1.0"
           order: 1
+      # OpenCode Go lane (subscription plan, NOT pay-as-you-go). Same gateway
+      # host as the two aliases above; OPENCODE_API_BASE already points at the
+      # Go path. Its own weekly usage cap is the reason each one carries a full
+      # fallback chain below — an exhausted Go plan answers 429
+      # `GoUsageLimitError` on EVERY model at once, so a Go hop can never be
+      # terminal. `x-opencode-session` is mandatory here: without it the gateway
+      # rejects the request with 400 `MissingSessionID` before routing.
+      - model_name: deepseek-v4-flash-go
+        litellm_params:
+          model: openai/deepseek-v4.1-flash
+          api_base: os.environ/OPENCODE_API_BASE
+          api_key: os.environ/OPENCODE_API_KEY
+          extra_headers:
+            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a16"
+            User-Agent: "hermes-litellm/1.0"
+          order: 1
+        model_info:
+          input_cost_per_token: 0.00000015
+          output_cost_per_token: 0.0000006
+          cache_read_input_token_cost: 0.000000003
+          max_input_tokens: 1000000
+          max_output_tokens: 384000
+      - model_name: mimo-v2.6-flash
+        litellm_params:
+          model: openai/mimo-v2.6-flash
+          api_base: os.environ/OPENCODE_API_BASE
+          api_key: os.environ/OPENCODE_API_KEY
+          extra_headers:
+            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a17"
+            User-Agent: "hermes-litellm/1.0"
+          order: 1
+        model_info:
+          input_cost_per_token: 0.00000014
+          output_cost_per_token: 0.00000028
+          cache_read_input_token_cost: 0.0000000028
+          max_input_tokens: 1048576
+          max_output_tokens: 131072
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
 # No cache instance is declared here: the standalone Valkey lives in the
@@ -359,13 +396,16 @@ hermes-agent:
     # Slow MCP servers must land in turn 1, else the tool catalog flips and every turn re-prefills (~20s).
     mcp_discovery_timeout: 20
     model:
-      # Primary model for Hermes gateway requests: flat-fee Claude Sonnet 5.
-      default: claude-sonnet-5
+      # Primary model for Hermes gateway requests: DeepSeek V4.1 Flash on the
+      # OpenCode Go plan (1M context, agentic-coding tuned). Go is metered
+      # against a weekly cap, so the two fallbacks below are load-bearing, not
+      # decorative: an exhausted plan 429s every Go model simultaneously.
+      default: deepseek-v4-flash-go
       provider: litellm
-    # Fallback: OpenCode Go (Luna), then the credit-independent DeepSeek floor.
+    # Fallback: a second Go model, then the credit-independent DeepSeek floor.
     fallback_providers:
       - provider: litellm
-        model: gpt-6-luna
+        model: mimo-v2.6-flash
       - provider: litellm
         model: deepseek-v4-flash-direct
     providers:
@@ -380,6 +420,10 @@ hermes-agent:
         models:
           deepseek-v4-flash-direct:
             context_length: 1000000
+          deepseek-v4-flash-go:
+            context_length: 1000000
+          mimo-v2.6-flash:
+            context_length: 1048576
           claude-opus-5:
             context_length: 1000000
           claude-sonnet-5:
@@ -701,10 +745,13 @@ hermes-agent:
               cooldown_seconds: 30
               restore_primary_after_cooldown: true
             # LIVE-HOP INVARIANT: every entry must answer 200; Copilot is gone (402 quota_exceeded 2026-10-10, OMR-13) — probe before re-adding.
+            # Known-transient exception: the Go plan's weekly cap (429
+            # GoUsageLimitError, applies to every Go model at once) is expected
+            # and absorbed — hop 1 is always paired with a non-Go hop below.
             chains:
               sisyphus:
-                - litellm/claude-sonnet-5
-                - litellm/gpt-6-luna
+                - litellm/deepseek-v4-flash-go
+                - litellm/mimo-v2.6-flash
                 - litellm/deepseek-v4-flash-direct
               hephaestus:
                 - litellm/claude-sonnet-5
@@ -741,7 +788,8 @@ hermes-agent:
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
-                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
+                - litellm/mimo-v2.6-flash
                 - litellm/deepseek-v4-flash-direct
             categories:
               quick:

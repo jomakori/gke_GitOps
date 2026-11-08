@@ -11,25 +11,31 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
-  - it: routes Hermes fallbacks to Luna, then the DeepSeek floor
+  - it: routes Hermes fallbacks to MiMo, then the DeepSeek floor
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)fallback_providers:\\s*-\\s*model: gpt-6-luna\\s*provider: litellm\\s*-\\s*model: deepseek-v4-flash-direct"
+          pattern: "(?s)fallback_providers:\\s*-\\s*model: mimo-v2.6-flash\\s*provider: litellm\\s*-\\s*model: deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
       - notMatchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)fallback_providers:\n- model: copilot-luna"
+          pattern: "(?s)fallback_providers:\\n- model: copilot-luna"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
-  - it: routes the OMO Sisyphus chain Sonnet 5, Luna then DeepSeek
+  - it: routes the OMO Sisyphus chain Go Flash, MiMo then DeepSeek
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)chains:.*?          sisyphus:\n          - litellm/claude-sonnet-5\n          - litellm/gpt-6-luna\n          - litellm/deepseek-v4-flash-direct"
+          pattern: "(?s)chains:.*?          sisyphus:\\n          - litellm/deepseek-v4-flash-go\\n          - litellm/mimo-v2.6-flash\\n          - litellm/deepseek-v4-flash-direct"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)          sisyphus-junior:\\n          - litellm/deepseek-v4-flash-go\\n          - litellm/mimo-v2.6-flash\\n          - litellm/deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
