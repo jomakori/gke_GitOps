@@ -71,11 +71,10 @@ data:
                   flush=True)
             return
 
-        # The UI is the gateway's own Webapp (config.webapp, :9120), which
-        # shares this agent's session store — but its SPA route for a single
-        # conversation is not a documented permalink, so link the workspace
-        # root rather than hand out a path that may 404.
-        url = f"{_WEBUI_BASE}/"
+        # The Webapp's chat route resumes a conversation from the `resume`
+        # query param (ChatPage sets it on every session switch), so one
+        # session gets one link instead of the workspace root.
+        url = f"{_WEBUI_BASE}/chat?resume={session_id}"
         # For Discord threads, chat_id is already the thread channel ID.
         api_url = f"{_DISCORD_API}/channels/{chat_id}/messages"
         headers = {
