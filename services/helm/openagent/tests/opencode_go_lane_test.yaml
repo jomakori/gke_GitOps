@@ -1,0 +1,52 @@
+suite: openagent OpenCode Go lane
+# Go is a subscription plan behind the same gateway host as pay-as-you-go, but
+# it rejects any request without `x-opencode-session` (400 MissingSessionID),
+# so every Go alias must pin one header. Its weekly cap 429s all models at
+# once — that is why each Go alias is only ever hop 1 of a chain (asserted in
+# haiku55_fallback_test.yaml).
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: registers DeepSeek V4.1 Flash on the Go lane with a session header
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)api_base: os.environ/OPENCODE_API_BASE.*?x-opencode-session: 5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a16.*?model: openai/deepseek-v4.1-flash.*?model_name: deepseek-v4-flash-go"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)max_input_tokens: 1000000.*?max_output_tokens: 384000.*?model_name: deepseek-v4-flash-go"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+  - it: registers MiMo 2.6 Flash on the Go lane with a distinct session header
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)api_base: os.environ/OPENCODE_API_BASE.*?x-opencode-session: 5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a17.*?model: openai/mimo-v2.6-flash.*?model_name: mimo-v2.6-flash"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)max_input_tokens: 1048576.*?max_output_tokens: 131072.*?model_name: mimo-v2.6-flash"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+  - it: pins both Go aliases in the Hermes context map so prompts are sized to 1M
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)deepseek-v4-flash-go:\n        context_length: 1000000"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)mimo-v2.6-flash:\n        context_length: 1048576"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config

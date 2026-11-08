@@ -58,7 +58,7 @@ tests:
           value: openagent-hermes-agent-config
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)model:\n  default: claude-sonnet-5\n  provider: litellm"
+          pattern: "(?s)model:\n  default: deepseek-v4-flash-go\n  provider: litellm"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
