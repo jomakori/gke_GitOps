@@ -1,7 +1,4 @@
-# CI render inputs. The Cloudflare ids normally arrive as Helm parameters from
-# services/argocd-appset (`crossplaneAccess`), so a bare `helm template` has none
-# and the templates' `required` would fail. These placeholders are render-only:
-# they never reach the cluster, ArgoCD always passes the real values.
+# Render-only placeholders; ArgoCD passes the real ids from argocd-appset.
 accountId: "00000000000000000000000000000000"
 tunnel:
   id: "00000000-0000-0000-0000-000000000000"

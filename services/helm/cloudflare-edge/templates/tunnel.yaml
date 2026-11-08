@@ -1,7 +1,6 @@
 # Existing tunnel (remotely managed config). deletionPolicy Orphan keeps a chart
 # disable or a mistaken prune from destroying the tunnel every hostname depends on.
-# tunnel.id is injected by services/argocd-appset; an empty one would make
-# Crossplane create a NEW tunnel instead of adopting the real one.
+# tunnel.id comes from argocd-appset; empty would create a new tunnel.
 apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
 kind: TrustTunnelCloudflared
 metadata:

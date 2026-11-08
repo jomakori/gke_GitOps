@@ -80,8 +80,7 @@
 ---
 {{ include "argocd.application" (dict "key" $key "config" $umbrella "root" $) }}
 {{- else if eq $key "cloudflareEdge" }}
-{{- /* Tunnel + remote ingress config + account Access IdP, adopted by id. Every id
-       comes from crossplaneAccess so the chart itself holds none of them. */}}
+{{- /* Tunnel + remote ingress config + account Access IdP, adopted by id. */}}
 {{-   $edgeParams := list }}
 {{-   if $.Values.crossplaneAccess.accountId }}
 {{-     $edgeParams = append $edgeParams (dict "name" "accountId" "value" $.Values.crossplaneAccess.accountId) }}

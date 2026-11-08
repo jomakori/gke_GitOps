@@ -2,8 +2,7 @@
 # this one, so it is adopted by id rather than re-created. The client secret is a
 # write-only field: it comes from the ExternalSecret, which is why the MR keeps a
 # secret ref instead of a literal.
-# identityProvider.id/clientId are injected by services/argocd-appset; an empty id
-# would create a second IdP and Access apps would stop matching this one.
+# id/clientId come from argocd-appset; empty id would create a second IdP.
 apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
 kind: TrustAccessIdentityProvider
 metadata:

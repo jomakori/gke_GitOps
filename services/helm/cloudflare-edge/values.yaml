@@ -2,18 +2,14 @@
 # from its state (destroy = false), so every object below already exists and is
 # matched by its id through crossplane.io/external-name — nothing is recreated.
 #
-# None of the Cloudflare ids live here. They are written once in
-# services/argocd-appset/values.yaml (`crossplaneAccess`) and reach this chart as
-# Helm parameters, because an id is needed at render time and a Secret cannot
-# supply that. The templates `required` them, so a broken injection fails the
-# render instead of adopting/creating a resource with an empty external-name.
+# None of the Cloudflare ids live here; they arrive as Helm parameters from
+# services/argocd-appset crossplaneAccess and the templates `required` them.
 accountId: ""
 clusterDomain: "maklab.net"
 
 tunnel:
   name: maklab-cluster
-  # Injected from crossplaneAccess.tunnelId. Tunnel created by Terraform; the id
-  # is what its token embeds.
+  # Injected from crossplaneAccess.tunnelId.
   id: ""
   ingress:
     - hostname: "*.maklab.net"
@@ -24,14 +20,11 @@ tunnel:
     - service: "http_status:404"
 
 identityProvider:
-  # Injected from crossplaneAccess.identityProviderId. Account-level Google OAuth
-  # IdP. Access apps reference it implicitly, so it must keep the same id — hence
-  # adoption, not re-creation.
+  # Injected from crossplaneAccess.identityProviderId; adopted, so the id must not change.
   id: ""
   name: Google OAuth
   type: google
-  # Injected from crossplaneAccess.identityProviderClientId. Public OAuth client
-  # id; the matching secret stays in Doppler.
+  # Injected from crossplaneAccess.identityProviderClientId; secret stays in Doppler.
   clientId: ""
   # ClusterSecretStore doppler-<config> must exist for this config.
   dopplerConfig: ci

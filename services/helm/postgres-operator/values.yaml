@@ -6,11 +6,7 @@ dopplerConfig: "svc_postgres_operator"
 renderOperator: true
 renderClusters: true
 
-# Cloudflare account id used to build the R2 backup endpoint
-# (https://<id>.r2.cloudflarestorage.com). Written once, in
-# services/argocd-appset/values.yaml crossplaneAccess.accountId; ArgoCD passes it
-# as a helm parameter to the clusters app. Required whenever a cluster enables
-# backups.
+# R2 endpoint account id; injected from argocd-appset crossplaneAccess.accountId.
 r2AccountId: ""
 
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
@@ -209,9 +205,7 @@ postgres:
         cronSchedule: "0 2 */2 * *"           # EVERY 2 DAYS @02:00 (centralized cluster — user requirement)
         retention: 4
         bucket: stackgres-pg-main
-        # Endpoint host is built from r2AccountId below — the Cloudflare account id
-        # lives once, in services/argocd-appset/values.yaml crossplaneAccess.accountId,
-        # and arrives here as a Helm parameter.
+        # Endpoint host built from r2AccountId (injected from argocd-appset).
         # The bucket itself is created once outside every pipeline (the Cloudflare
         # provider here carries the zero-trust groups only). This chart is the
         # declaration of record: name, endpoint, creds source and schedule. Losing
