@@ -1,0 +1,33 @@
+suite: dex identity provider
+templates:
+  - charts/dex/templates/secret.yaml
+  - charts/dex/templates/deployment.yaml
+  - charts/dex/templates/service.yaml
+tests:
+  - it: renders the Google connector and the hermes public client
+    template: charts/dex/templates/secret.yaml
+    asserts:
+      - equal:
+          path: data["config.yaml"]
+          value: "Y29ubmVjdG9yczoKLSBjb25maWc6CiAgICBjbGllbnRJRDogJEdPT0dMRV9PQVVUSF9DTElFTlRfSUQKICAgIGNsaWVudFNlY3JldDogJEdPT0dMRV9PQVVUSF9DTElFTlRfU0VDUkVUCiAgICBpc3N1ZXI6IGh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbQogICAgcmVkaXJlY3RVUkk6IGh0dHBzOi8vZGV4Lm1ha2xhYi5uZXQvY2FsbGJhY2sKICBpZDogZ29vZ2xlCiAgbmFtZTogR29vZ2xlCiAgdHlwZTogZ29vZ2xlCmlzc3VlcjogaHR0cHM6Ly9kZXgubWFrbGFiLm5ldApvYXV0aDI6CiAgc2tpcEFwcHJvdmFsU2NyZWVuOiB0cnVlCnN0YXRpY0NsaWVudHM6Ci0gaWQ6IGhlcm1lcwogIG5hbWU6IEhlcm1lcwogIHB1YmxpYzogdHJ1ZQogIHJlZGlyZWN0VVJJczoKICAtIGh0dHBzOi8vb3BlbmFnZW50Lm1ha2xhYi5uZXQvYXV0aC9jYWxsYmFjawpzdG9yYWdlOgogIHR5cGU6IG1lbW9yeQp3ZWI6CiAgaHR0cDogMC4wLjAuMDo1NTU2"
+
+  - it: reads the Google credentials from the ESO-rendered secret
+    template: charts/dex/templates/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: dex-secrets
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEX_EXPAND_ENV
+            value: "true"
+
+  - it: serves the OIDC endpoints on 5556
+    template: charts/dex/templates/service.yaml
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 5556
