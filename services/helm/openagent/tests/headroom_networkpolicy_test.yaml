@@ -1,0 +1,144 @@
+suite: Headroom - NetworkPolicy restricts ingress to the LiteLLM proxy (enforcement proven live)
+# Cluster audit behind these assertions (2026-11-08, live k3d cluster):
+#   1. k3s NetworkPolicy is ENFORCED, not decorative. From a pod in `openagent`
+#      the same TCP connect that succeeded to argo-cd-argocd-server:8080
+#      (NetworkPolicy ingress: [{}], allow-all) and istiod:15012 (no policy)
+#      was refused with ECONNREFUSED against argo-cd-argocd-redis:6379, whose
+#      NetworkPolicy only admits the argo-cd pods. The NetworkPolicy selecting
+#      the target was the only difference.
+#   2. Istio ambient gives no protection here: no ztunnel/istiod proxy runs in
+#      the data path for these pods, so guardrail traffic is plain pod-to-pod
+#      HTTP. The policy below is the boundary.
+#   3. LiteLLM pod labels verified on the rendered and live Deployment
+#      `openagent-litellm` (litellm-helm 1.92.0): app.kubernetes.io/name=litellm,
+#      app.kubernetes.io/instance=openagent, and NO part-of label.
+templates:
+  - charts/headroom/templates/networkpolicy.yaml
+  - charts/headroom/templates/deployment.yaml
+release:
+  name: openagent
+  namespace: openagent
+
+tests:
+  - it: renders one ingress-only NetworkPolicy selecting exactly the headroom pods
+    template: charts/headroom/templates/networkpolicy.yaml
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: metadata.name
+          value: headroom
+      - equal:
+          path: spec.policyTypes
+          value:
+            - Ingress
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: headroom
+            app.kubernetes.io/instance: openagent
+            app.kubernetes.io/component: headroom
+      # No egress rules: an Egress policyType here would cut cluster DNS.
+      - notExists:
+          path: spec.egress
+      # Two peers only. A future edit that widens the policy must update this.
+      - lengthEqual:
+          path: spec.ingress
+          count: 2
+
+  - it: admits the LiteLLM proxy pods on the service port and nothing else
+    template: charts/headroom/templates/networkpolicy.yaml
+    asserts:
+      - lengthEqual:
+          path: spec.ingress[0].from
+          count: 1
+      - equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: litellm
+            app.kubernetes.io/instance: openagent
+      - equal:
+          path: spec.ingress[0].ports
+          value:
+            - protocol: TCP
+              port: 8787
+
+  - it: keeps the node-CIDR peer so kubelet probes are not dropped
+    template: charts/headroom/templates/networkpolicy.yaml
+    asserts:
+      - lengthEqual:
+          path: spec.ingress[1].from
+          count: 1
+      - equal:
+          path: spec.ingress[1].from[0].ipBlock.cidr
+          value: 192.168.97.0/24
+      - equal:
+          path: spec.ingress[1].ports
+          value:
+            - protocol: TCP
+              port: 8787
+
+  - it: honours a LiteLLM instance-label override for a separate install
+    template: charts/headroom/templates/networkpolicy.yaml
+    set:
+      headroom.networkPolicy.litellm.instance: other-release
+    asserts:
+      - equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels["app.kubernetes.io/instance"]
+          value: other-release
+
+  - it: defaults to the unauthenticated bind only because the policy is on
+    template: charts/headroom/templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[5].name
+          value: HEADROOM_ALLOW_UNAUTHENTICATED_BIND
+
+  - it: takes the shared secret from a Secret when auth is enabled, not from values
+    template: charts/headroom/templates/deployment.yaml
+    set:
+      headroom.proxy.auth.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[5].name
+          value: HEADROOM_PROXY_TOKEN
+      - equal:
+          path: spec.template.spec.containers[0].env[5].valueFrom.secretKeyRef.name
+          value: openagent-secrets
+      - equal:
+          path: spec.template.spec.containers[0].env[5].valueFrom.secretKeyRef.key
+          value: HEADROOM_API_KEY
+      - notExists:
+          path: spec.template.spec.containers[0].env[5].value
+
+  - it: refuses to render remote-but-unauthenticated Headroom with no NetworkPolicy
+    template: charts/headroom/templates/deployment.yaml
+    set:
+      headroom.networkPolicy.enabled: false
+    asserts:
+      - failedTemplate:
+          errorMessage: "refusing to render Headroom unauthenticated with no
+            NetworkPolicy: set headroom.networkPolicy.enabled=true (restricts ingress
+            to the LiteLLM pod), or enable headroom.proxy.auth with an existing Secret"
+
+  - it: refuses to render auth enabled without a secret reference
+    template: charts/headroom/templates/deployment.yaml
+    set:
+      headroom.proxy.auth.enabled: true
+      headroom.proxy.auth.existingSecret.name: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "headroom.proxy.auth.enabled=true requires headroom.proxy.auth.existingSecret.name (Secret holding the shared proxy token)"
+
+  - it: selects the pods it is meant to protect (label drift would disable enforcement)
+    template: charts/headroom/templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: headroom
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: openagent
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: headroom

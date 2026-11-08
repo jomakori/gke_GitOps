@@ -159,6 +159,27 @@ litellm:
           include_subpath: true
           forward_headers: true
           timeout: 300
+    # Headroom prompt-compression guardrail (services/helm/openagent/charts/headroom).
+    # Enabled by default (flipped from opt-in 2026-11-07, user-directed): the sidecar
+    # deploys by default (headroom.enabled=true — see charts/headroom/values.yaml) and
+    # every request through this proxy is compressed by default (`default_on: true`
+    # below) unless a caller explicitly opts out per-request/per-key, or the sidecar is
+    # removed entirely with `--set headroom.enabled=false`.
+    # https://docs.litellm.ai/docs/proxy/headroom
+    guardrails:
+      - guardrail_name: headroom-compression
+        litellm_params:
+          guardrail: headroom
+          mode: pre_call
+          # DNS name is the headroom Service's bare metadata.name (not
+          # release-prefixed) — same convention as claude-proxy above.
+          api_base: http://headroom.openagent.svc.cluster.local:8787
+          default_on: true
+          # No `api_key` here on purpose. When the shared token is enabled
+          # (headroom.proxy.auth.enabled=true) the guardrail picks up
+          # HEADROOM_API_KEY from this pod's env — the documented fallback — and
+          # the Secret is already inherited via environmentSecrets, so the
+          # credential lives in Doppler only, never in values.
     litellm_settings:
       drop_params: true
       # Redis response cache AND proxy-wide coordination (rate-limit counters,
@@ -609,10 +630,13 @@ hermes-agent:
       # under it; unset, the host default of 10 applies and the real ceiling is
       # only implied.
       max_concurrent_children: 8
-      # Backup hop: Haiku 5.5 only — single-rung fallback, primary unchanged.
+      # Keep delegation's fallback chain aligned with OMO role chains so a
+      # session-limited Haiku 5.5 route cannot become a dead-end for workers.
       fallback_providers:
         - provider: litellm
-          model: claude-haiku-5-5
+          model: claude-haiku-4-5
+        - provider: litellm
+          model: deepseek-v4-flash-direct
       # Workers run unattended: subagent threads carry no interactive approval
       # channel (the delegate path installs a non-interactive callback), so
       # without this Hermes auto-DENIES every dangerous command a subagent runs.

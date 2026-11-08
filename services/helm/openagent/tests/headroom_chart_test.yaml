@@ -1,0 +1,27 @@
+suite: Headroom prompt-compression sidecar — Deployment + Service (enabled by default)
+# Scoped to the headroom subchart's own templates (same pattern as
+# claude_health_mount_test.yaml): Deployment and Service both render with
+# metadata.name: headroom, so a documentSelector against the full umbrella
+# render matches both and helm-unittest errors with "multiple indexes found".
+templates:
+  - charts/headroom/templates/deployment.yaml
+  - charts/headroom/templates/service.yaml
+release:
+  name: openagent
+  namespace: openagent
+
+tests:
+  - it: renders the Headroom Deployment and Service by default (headroom.enabled defaults true)
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+        template: charts/headroom/templates/deployment.yaml
+      - isKind:
+          of: Service
+        template: charts/headroom/templates/service.yaml
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        template: charts/headroom/templates/service.yaml

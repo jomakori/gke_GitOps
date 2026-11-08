@@ -1,0 +1,9 @@
+apiVersion: v2
+name: headroom
+description: "Headroom prompt-compression sidecar, called by LiteLLM's pre_call guardrail. Enabled by default (headroom.enabled=true): the Deployment/Service render with the umbrella chart, and the guardrail's default_on is true so requests are compressed unless a caller opts out per-key/per-request or the sidecar is dropped with --set headroom.enabled=false."
+type: application
+version: 0.1.0
+# Tracks the pinned upstream image tag below (ghcr.io/headroomlabs-ai/headroom).
+appVersion: "0.43.1"
+maintainers:
+  - name: local

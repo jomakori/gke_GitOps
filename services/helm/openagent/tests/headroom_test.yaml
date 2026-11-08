@@ -1,0 +1,79 @@
+suite: Headroom prompt-compression — LiteLLM guardrail registration (enabled by default)
+# Guardrail definition is static proxy config, independent of whether the
+# Headroom sidecar subchart is deployed, so these assertions run against the
+# full umbrella render (no `templates:` scoping) — same pattern as
+# litellm_cache_test.yaml / litellm_image_pin_test.yaml.
+release:
+  name: openagent
+  namespace: openagent
+
+tests:
+  - it: drops all Headroom resources when explicitly disabled (opt-out path)
+    set:
+      headroom.enabled: false
+    asserts:
+      - notExists:
+          path: metadata.name
+        documentSelector:
+          path: metadata.name
+          value: headroom
+          skipEmptyTemplates: true
+
+  - it: registers the headroom-compression guardrail, defaulted on
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "guardrail_name: headroom-compression"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)guardrail_name: headroom-compression.*?guardrail: headroom"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)guardrail_name: headroom-compression.*?mode: pre_call"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?s)guardrail_name: headroom-compression.*?default_on: true"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "api_base: http://headroom\\.openagent\\.svc\\.cluster\\.local:8787"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+
+  - it: exposes Headroom only as a pre_call guardrail, never as an MCP server
+    asserts:
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "(?i)headroom[-_a-z0-9]*mcp|mcp[-_a-z0-9]*headroom"
+        documentSelector:
+          path: metadata.name
+          value: openagent-litellm-config
+          skipEmptyTemplates: true
+
+  - it: ships the NetworkPolicy that keeps Headroom unreachable from every other pod
+    # Several objects are named `headroom` (Service, Deployment, NetworkPolicy),
+    # so scope by template instead of by metadata.name.
+    template: charts/headroom/templates/networkpolicy.yaml
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: spec.podSelector.matchLabels["app.kubernetes.io/name"]
+          value: headroom

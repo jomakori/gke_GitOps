@@ -14,6 +14,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 | Repository | Name | Version |
 |------------|------|---------|
 | file://charts/claude-proxy | claude-proxy | 0.2.0 |
+| file://charts/headroom | headroom | 0.1.0 |
 | file://charts/hermes-webui | hermes-webui | 0.1.1 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |
 | oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.15.0 |
@@ -31,9 +32,29 @@ The umbrella chart that runs the cluster's AI workforce: an LLM gateway, the Her
 | `openagent-hermes` | remote OCI dep (Hermes Agent Helm chart) | Hermes Agent gateway — Discord bot + MCP servers. |
 | `hermes-webui` | local subchart (`charts/hermes-webui`) | Web dashboard — thin-client gateway mode, CF Access private. |
 | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP `:4523`. |
+| `headroom` | local subchart (`charts/headroom`) | Prompt compression for the gateway. Called **only** by LiteLLM through the `headroom` `pre_call` guardrail — never registered as an MCP server. |
 | umbrella templates | local (`templates/`) | OMO agent fleet, skills, StackGres, istio gateway, ExternalSecrets. |
 
 > Chart and image versions are pinned in `Chart.yaml` / `values.yaml` and bumped by Renovate — deliberately not restated here, so this README cannot go stale on a version bump.
+
+### Prompt compression (Headroom)
+
+`headroom` compresses request bodies before they reach a provider. It is wired the documented way — a LiteLLM `pre_call` guardrail (`guardrail: headroom`, `mode: pre_call`, `api_base: http://headroom.openagent.svc.cluster.local:8787`) — and **not** as an MCP server: there is no `headroom` entry in `mcp_servers`, and the guardrail is its only client.
+
+Because that hook is `default_on`, Headroom sits on the critical path of every request, so it must be reachable by LiteLLM and by nothing else. A NetworkPolicy in the subchart enforces that:
+
+| Caller | Allowed | Why |
+|---|---|---|
+| `openagent-litellm` pods (`app.kubernetes.io/name=litellm`, `app.kubernetes.io/instance=<release>`) | yes, TCP 8787 | the guardrail client |
+| node addresses (`headroom.networkPolicy.nodeCIDRs`, default the k3d node subnet) | yes, TCP 8787 | kubelet `/livez`+`/readyz` probes come from the node and cannot be written as a pod selector |
+| anything else | no | denied once the policy selects the pod |
+
+Two things to know before changing it:
+
+- **The policy is load-bearing, not decorative.** k3s runs kube-router's NetworkPolicy controller and it really drops: from a pod in `openagent`, `argo-cd-argocd-redis:6379` (policy admits only argo-cd pods) answers `ECONNREFUSED` while `argocd-server:8080` (policy `ingress: [{}]`) and `istiod:15012` (no policy) connect normally. Istio ambient adds nothing for this pod — no ztunnel sits in its data path.
+- **Adding an ingress peer is a security change.** The peer count is asserted in `tests/headroom_networkpolicy_test.yaml`; a widened policy fails the suite instead of passing review silently.
+
+A shared token is the optional second layer. Create the Doppler key `HEADROOM_API_KEY`, then set `headroom.proxy.auth.enabled=true`: the same value reaches Headroom as `HEADROOM_PROXY_TOKEN` (Secret key ref) and LiteLLM as `HEADROOM_API_KEY` (its documented env fallback, already inherited from `openagent-secrets` through `environmentSecrets`), so the credential exists once. With auth off the chart renders only because the NetworkPolicy is on — disabling both is a render error rather than a silent exposure.
 
 ### Chart structure
 
@@ -41,7 +62,8 @@ The umbrella chart that runs the cluster's AI workforce: an LLM gateway, the Her
 openagent/                       ← umbrella
 ├── charts/
 │   ├── hermes-webui/            ← local subchart (web dashboard)
-│   └── claude-proxy/            ← local subchart (Claude Pro proxy)
+│   ├── claude-proxy/            ← local subchart (Claude Pro proxy)
+│   └── headroom/                ← local subchart (prompt compression)
 ├── templates/                   ← flat manifests (condensed; no subdirs)
 │   ├── apps.yaml                ← dashboard-auth, hermes API svc, litellm VS, responses-proxy
 │   ├── db.yaml                  ← StackGres SGScript (cluster owned by postgres-operator chart)
@@ -219,8 +241,10 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.compression.threshold_tokens | int | `80000` |  |
 | hermes-agent.config.delegation.api_key | string | `"${LITELLM_MASTER_KEY}"` |  |
 | hermes-agent.config.delegation.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
-| hermes-agent.config.delegation.fallback_providers[0].model | string | `"claude-haiku-5-5"` |  |
+| hermes-agent.config.delegation.fallback_providers[0].model | string | `"claude-haiku-4-5"` |  |
 | hermes-agent.config.delegation.fallback_providers[0].provider | string | `"litellm"` |  |
+| hermes-agent.config.delegation.fallback_providers[1].model | string | `"deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.delegation.fallback_providers[1].provider | string | `"litellm"` |  |
 | hermes-agent.config.delegation.max_concurrent_children | int | `8` |  |
 | hermes-agent.config.delegation.max_iterations | int | `30` |  |
 | hermes-agent.config.delegation.max_spawn_depth | int | `3` |  |
@@ -852,6 +876,11 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].path | string | `"/claude-pipe"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].target | string | `"http://claude-proxy.openagent.svc.cluster.local:4523"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].timeout | int | `300` |  |
+| litellm.proxy_config.guardrails[0].guardrail_name | string | `"headroom-compression"` |  |
+| litellm.proxy_config.guardrails[0].litellm_params.api_base | string | `"http://headroom.openagent.svc.cluster.local:8787"` |  |
+| litellm.proxy_config.guardrails[0].litellm_params.default_on | bool | `true` |  |
+| litellm.proxy_config.guardrails[0].litellm_params.guardrail | string | `"headroom"` |  |
+| litellm.proxy_config.guardrails[0].litellm_params.mode | string | `"pre_call"` |  |
 | litellm.proxy_config.litellm_settings.cache | bool | `true` |  |
 | litellm.proxy_config.litellm_settings.cache_params.host | string | `"os.environ/REDIS_HOST"` |  |
 | litellm.proxy_config.litellm_settings.cache_params.port | string | `"os.environ/REDIS_PORT"` |  |
