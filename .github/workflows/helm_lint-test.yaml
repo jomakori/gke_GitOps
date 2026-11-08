@@ -94,13 +94,28 @@ jobs:
 
       - name: Setup chart validation tools (kubeconform, yq, helm-unittest)
         run: |
+          # Every asset below is a github.com/<repo>/releases download, and that
+          # edge has been failing mid-transfer on these runners (a 504 on Python,
+          # exit 22 on cosign, a broken helm-unittest tarball — three separate
+          # jobs). Bounded retries turn a transient edge failure into a few
+          # seconds instead of a dead lint run; nothing else in the job changes.
+          attempt() {
+            local n=1
+            until "$@"; do
+              if [ "$n" -ge 5 ]; then echo "::error::giving up after 5 attempts: $*"; return 1; fi
+              echo "::warning::attempt $n/5 failed for: $*"
+              n=$((n + 1)); sleep $((n * 3))
+            done
+          }
+          dl() { curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 --connect-timeout 20 "$@"; }
+
           # kubeconform: validate rendered manifests against K8s OpenAPI schemas
-          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
-            | tar -xz -C /tmp
+          attempt dl https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz -o /tmp/kubeconform.tgz
+          tar -xzf /tmp/kubeconform.tgz -C /tmp
           sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
           # yq: required for selector-check script
-          curl -sLo /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+          attempt dl https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64 -o /tmp/yq
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
           # helm-unittest plugin: per-chart semantic assertions.
           # Upstream (helm-unittest/helm-unittest) — documentSelector support
           # and active maintenance. Pinned; install failure must fail the job
@@ -108,11 +123,17 @@ jobs:
           # helm v4 verifies plugin signatures by default and the upstream
           # release ships none (--verify=false needed); helm v3 has no
           # --verify flag at all, so keep it conditional on the major version.
-          if helm version --short 2>/dev/null | grep -qE '^v4'; then
-            helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2 --verify=false
-          else
-            helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2
-          fi
+          # A failed attempt can leave a half-written plugin dir behind, so each
+          # retry starts from a clean plugin cache.
+          install_unittest() {
+            helm plugin uninstall unittest >/dev/null 2>&1 || true
+            if helm version --short 2>/dev/null | grep -qE '^v4'; then
+              helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2 --verify=false
+            else
+              helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2
+            fi
+          }
+          attempt install_unittest
 
       - name: Setup Doppler CLI
         uses: dopplerhq/cli-action@master
