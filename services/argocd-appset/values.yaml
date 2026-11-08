@@ -513,6 +513,13 @@ services:
     helmPath: services/helm/excalidash
     gateways:
       enable_private: true
+      # draw.maklab.net is the host the Cloudflare Access app, DNS and tunnel
+      # path use; excalidash.maklab.net has no Access app and 403s. The tunnel
+      # sends every *.maklab.net to the istio gateway, so the VS host is what
+      # makes draw reachable at all.
+      subdomain: draw
+      accessAppId: 04d8dcc3-d1e0-496c-81fb-38cca8af833b
+      aud: f171877975deb236cd52ddedebc81725cfd5b78fa508d830300e41d1ce4382b7
     syncOptions:
       - CreateNamespace=true
     ignoreDifferences:
