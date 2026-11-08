@@ -22,6 +22,12 @@ spec:
               apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
               kind: TrustAccessApplication
               spec:
+                # The Access apps predate this chart and are still edited in
+                # Cloudflare, so the managed resource observes them: it reads
+                # status (the issued aud) back and never writes. Flip to ["*"]
+                # once policy/session changes are meant to flow from Git.
+                managementPolicies:
+                  - Observe
                 forProvider:
                   type: self_hosted
                 providerConfigRef:
@@ -45,6 +51,10 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.policies
                 toFieldPath: spec.forProvider.policies
+              # Adopt the existing app by id instead of creating a duplicate.
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.appId
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
               # Surface the issued audience on the XR so the istio app's
               # virtualServices.<name>.aud can be filled without reading the MR.
               - type: ToCompositeFieldPath

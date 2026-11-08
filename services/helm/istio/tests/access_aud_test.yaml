@@ -1,0 +1,61 @@
+suite: Cloudflare Access audience pinning on private hosts
+release:
+  name: istio
+  namespace: istio-system
+
+templates:
+  - templates/authorization-policy-private.yaml
+
+tests:
+  - it: denies requests whose token audience is not this host's Access app
+    set:
+      privateHosts: []
+      gateway:
+        namespace: istio-system
+      virtualServices:
+        excalidash:
+          enabled: false
+        openagent:
+          enabled: true
+          enablePrivate: true
+          host: openagent.maklab.net
+          aud: 214f5d0afc91a4d13f7920f30e6e04bbb37914d99f61ddfa255d2a6ef36c3a3a
+          destination:
+            host: openagent-hermes-agent.openagent.svc.cluster.local
+            port: 9120
+    asserts:
+      - equal:
+          path: spec.action
+          value: DENY
+      - equal:
+          path: spec.rules[0].from[0].source.notRequestPrincipals[0]
+          value: "*"
+      - equal:
+          path: spec.rules[0].to[0].operation.hosts[0]
+          value: openagent.maklab.net
+      - equal:
+          path: spec.rules[1].when[0].key
+          value: request.auth.claims[aud]
+      - equal:
+          path: spec.rules[1].when[0].notValues[0]
+          value: 214f5d0afc91a4d13f7920f30e6e04bbb37914d99f61ddfa255d2a6ef36c3a3a
+
+  - it: leaves hosts without an aud on the shared-audience check only
+    set:
+      privateHosts: []
+      gateway:
+        namespace: istio-system
+      virtualServices:
+        excalidash:
+          enabled: false
+        openagent:
+          enabled: true
+          enablePrivate: true
+          host: openagent.maklab.net
+          destination:
+            host: openagent-hermes-agent.openagent.svc.cluster.local
+            port: 9120
+    asserts:
+      - lengthEqual:
+          path: spec.rules
+          count: 1

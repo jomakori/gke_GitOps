@@ -15,13 +15,12 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 |------------|------|---------|
 | file://charts/claude-proxy | claude-proxy | 0.2.0 |
 | file://charts/headroom | headroom | 0.1.0 |
-| file://charts/hermes-webui | hermes-webui | 0.1.1 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |
 | oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.23.0 |
 
 ## OpenAgent stack
 
-The umbrella chart that runs the cluster's AI workforce: an LLM gateway, the Hermes Agent gateway, its web UI, and a Claude Pro proxy — plus the CRDs, secrets and routing that tie them together. Work is *loop-engineered*: tasks are decomposed, delegated to specialised personas, reviewed, and iterated rather than answered in a single pass.
+The umbrella chart that runs the cluster's AI workforce: an LLM gateway, the Hermes Agent gateway (which also serves its native Webapp), and a Claude Pro proxy — plus the CRDs, secrets and routing that tie them together. Work is *loop-engineered*: tasks are decomposed, delegated to specialised personas, reviewed, and iterated rather than answered in a single pass.
 
 ### Components
 
@@ -30,7 +29,6 @@ The umbrella chart that runs the cluster's AI workforce: an LLM gateway, the Her
 | `openagent-litellm` | remote OCI dep (LiteLLM Helm chart) | Multi-provider LLM gateway — model access only, no fallbacks. |
 | `valkey` (separate app) | `services/helm/valkey` | Shared standalone Valkey cache in its own namespace. The gateway reaches it as `valkey-cache.valkey.svc.cluster.local` for response caching and cross-replica rate-limit/budget state. |
 | `openagent-hermes` | remote OCI dep (Hermes Agent Helm chart) | Hermes Agent gateway — Discord bot + MCP servers. |
-| `hermes-webui` | local subchart (`charts/hermes-webui`) | Web dashboard — thin-client gateway mode, CF Access private. |
 | `claude-proxy` | local subchart (`charts/claude-proxy`) | Claude Pro subscription proxy — OAuth-based, ClusterIP `:4523`. |
 | `headroom` | local subchart (`charts/headroom`) | Prompt compression for the gateway. Called **only** by LiteLLM through the `headroom` `pre_call` guardrail — never registered as an MCP server. |
 | umbrella templates | local (`templates/`) | OMO agent fleet, skills, StackGres, istio gateway, ExternalSecrets. |
@@ -61,11 +59,10 @@ A shared token is the optional second layer. Create the Doppler key `HEADROOM_AP
 ```text
 openagent/                       ← umbrella
 ├── charts/
-│   ├── hermes-webui/            ← local subchart (web dashboard)
 │   ├── claude-proxy/            ← local subchart (Claude Pro proxy)
 │   └── headroom/                ← local subchart (prompt compression)
 ├── templates/                   ← flat manifests (condensed; no subdirs)
-│   ├── apps.yaml                ← dashboard-auth, hermes API svc, litellm VS, responses-proxy
+│   ├── apps.yaml                ← hermes API svc, litellm VS, responses-proxy
 │   ├── db.yaml                  ← StackGres SGScript (cluster owned by postgres-operator chart)
 │   ├── hermes.yaml              ← hermes mise config
 │   ├── hooks.yaml               ← MCP manifest CM + preflight Job + drift CronJob
@@ -118,18 +115,22 @@ Discord user
 
 All LLM traffic flows through LiteLLM; LiteLLM provides model access, while the OMO fleet (ConfigMap) owns routing and fallbacks.
 
-### Web dashboard
+### Webapp
 
 ```text
 Browser
   → https://openagent.maklab.net
     → Cloudflare Tunnel
-      → Istio Ingress Gateway
-        → openagent-hermes-workspace.openagent:3000 (Web UI)
-          → openagent-hermes-api.openagent:8642 (API, chat/sessions)
+      → Cloudflare Access (JWT)
+        → Istio Ingress Gateway ($.Values.istio gate, enable_private)
+          → openagent-hermes-agent.openagent:9120 (Webapp, in-process)
 ```
 
-The web UI runs in gateway mode as a pure HTTP client of the API server (`HERMES_WEBUI_GATEWAY_BASE_URL` → `openagent-hermes-api:8642`). It does **not** talk to the Hermes built-in dashboard, which is disabled (`HERMES_DASHBOARD=0`): that dashboard runs as a second Hermes process and each process loads the whole MCP fleet, doubling memory and boot contention for an in-cluster-only admin UI. See the `k8s-gitops-context` skill for connectivity modes and troubleshooting.
+The UI is Hermes's own Webapp (`hermes-agent.config.webapp`), served by the agent process itself — same sessions, memory and tools as Discord and the CLI. The third-party `hermes-webui` subchart and its `openagent-hermes-workspace:3000` drop-in Service are gone; `hermes-agent.service` publishes only the `webapp` port 9120.
+
+The built-in *dashboard* stays off (`HERMES_DASHBOARD=0`): it is a second Hermes process, and every process loads the whole MCP fleet (1596MiB / 107 processes with it on vs 604MiB / 61 off). The Webapp does not need it — it runs in-process.
+
+Sign-in: a non-loopback bind needs a sign-in provider, and basic auth is supplied by `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` / `_PASSWORD` / `_SECRET` from `openagent-secrets` (Doppler `svc_openagent`). Cloudflare Access stays the outer gate. See the `k8s-gitops-context` skill for connectivity and troubleshooting.
 
 ### Namespaces & secrets
 
@@ -213,9 +214,6 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 |-----|------|---------|-------------|
 | claude-proxy.enabled | bool | `true` |  |
 | clusterDomain | string | `"maklab.net"` |  |
-| dashboard.destination.host | string | `"openagent-hermes-workspace.openagent.svc.cluster.local"` |  |
-| dashboard.destination.port | int | `3000` |  |
-| dashboard.subdomain | string | `"openagent"` |  |
 | dopplerConfig | string | `"svc_openagent"` |  |
 | ghcrPullSecret | string | `""` |  |
 | hermes-agent.args | list | `[]` |  |
@@ -723,6 +721,10 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.tools.tool_search.max_search_limit | int | `20` |  |
 | hermes-agent.config.tools.tool_search.search_default_limit | int | `5` |  |
 | hermes-agent.config.tools.tool_search.threshold_pct | int | `10` |  |
+| hermes-agent.config.webapp.enabled | bool | `true` |  |
+| hermes-agent.config.webapp.host | string | `"0.0.0.0"` |  |
+| hermes-agent.config.webapp.port | int | `9120` |  |
+| hermes-agent.config.webapp.public_url | string | `"https://openagent.maklab.net"` |  |
 | hermes-agent.env | object | `{}` |  |
 | hermes-agent.extraEnvFrom[0].secretRef.name | string | `"openagent-secrets"` |  |
 | hermes-agent.extraEnv[0].name | string | `"DISCORD_BOT_TOKEN"` |  |
@@ -836,11 +838,16 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.resources.limits.memory | string | `"8Gi"` |  |
 | hermes-agent.resources.requests.cpu | string | `"2"` |  |
 | hermes-agent.resources.requests.memory | string | `"3Gi"` |  |
-| hermes-agent.service.enabled | bool | `false` |  |
-| hermes-agent.service.port | int | `9119` |  |
+| hermes-agent.service.enabled | bool | `true` |  |
+| hermes-agent.service.ports[0].name | string | `"webapp"` |  |
+| hermes-agent.service.ports[0].port | int | `9120` |  |
+| hermes-agent.service.ports[0].targetPort | int | `9120` |  |
 | hermes-agent.serviceAccount.automountServiceAccountToken | bool | `true` |  |
 | hermes-agent.serviceAccount.create | bool | `true` |  |
-| hermes-webui.enabled | bool | `true` |  |
+| hermes-agent.tests.resources.limits.cpu | string | `"1"` |  |
+| hermes-agent.tests.resources.limits.memory | string | `"2Gi"` |  |
+| hermes-agent.tests.resources.requests.cpu | string | `"100m"` |  |
+| hermes-agent.tests.resources.requests.memory | string | `"512Mi"` |  |
 | hermes.enabled | bool | `true` |  |
 | litellm.autoscaling.enabled | bool | `true` |  |
 | litellm.autoscaling.maxReplicas | int | `3` |  |

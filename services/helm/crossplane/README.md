@@ -60,21 +60,11 @@ is the value the Istio gateway has to accept.
 
 The Istio `RequestAuthentication` still takes its audience list from the
 Terraform-generated `accessAudienceTag` (`CF_ACCESS_AUDS` in Doppler), because
-Helm cannot render a value that only exists in another resource's status. That
-list is a union: on its own it accepts a token issued for any private app on any
-private host. Two things narrow it:
-
-- The XR copies the issued audience into `status.aud` (`ToCompositeFieldPath`
-  from the managed resource), so the value is readable from the XR instead of
-  the raw MR.
-- `services/helm/istio` honours an optional `virtualServices.<name>.aud`. When
-  set, the generated `AuthorizationPolicy` adds a DENY rule for
-  `request.auth.claims[aud] notValues [<aud>]`, so a token minted for one
-  application no longer satisfies the gate on another.
-
-Both are per-host opt-in; leaving `aud` unset keeps the union-only behaviour.
-The audience still has to be copied from `status.aud` into that value by hand
-until an aggregation step exists — tracked separately.
+Helm cannot render a value that only exists in another resource's status. Until
+an aggregation step exists, a host moved to Crossplane needs its AUD added to
+that list by hand — or the gateway keeps validating the Terraform-issued
+audiences only. Tracked separately; this chart deliberately does not touch the
+Terraform path yet.
 
 Second known gap: `allowedIdps` is left empty on purpose, so the Access
 application uses the account's default identity provider (Google). Terraform
