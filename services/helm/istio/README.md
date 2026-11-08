@@ -53,6 +53,7 @@ Services that require authenticated access opt in via `enablePrivate: true` in t
 1. The `applications.yaml` template (in argocd-appset) detects `gateways.enable_private` and injects the `enablePrivate` flag into the istio chart parameters, along with the CF Access team domain and AUD tag from Terraform/Doppler.
 2. `request-authentication.yaml` validates the CF Access JWT at the ingress gateway using the `Cf-Access-Jwt-Assertion` header.
 3. `authorization-policy-private.yaml` creates a DENY rule per private host — traffic without a valid JWT is rejected.
+4. Optional per-host audience pinning: an `aud` on the same `virtualServices` entry adds a second DENY rule (`request.auth.claims[aud] notValues [<aud>]`). Without it the gateway only proves the token came from *some* app in `cloudflare.access.audienceTag`, which is a union — so a token minted for one private host satisfies the gate on every other. `aud` for a Crossplane-managed app is readable from the `CloudflareAccessApp`'s `status.aud`.
 
 `enable_public` and `enable_private` are mutually exclusive. The argocd-appset template fails if both are set on the same service.
 
