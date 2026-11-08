@@ -50,3 +50,13 @@ spec:
               required:
                 - accountId
                 - host
+            status:
+              type: object
+              properties:
+                aud:
+                  type: string
+                  description: >-
+                    Audience issued by Cloudflare for this application, copied
+                    from the managed resource. This is the value the istio
+                    app's `virtualServices.<name>.aud` must carry for the
+                    per-host audience check to pass.

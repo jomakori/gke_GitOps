@@ -20,6 +20,19 @@ spec:
         - operation:
             hosts:
               - {{ $vs.host }}
+{{- if $vs.aud }}
+    # Token must be issued for THIS application, not merely for any app in the
+    # shared RequestAuthentication audience list. Without this rule a valid JWT
+    # for one private host satisfies the DENY check on every other one.
+    - when:
+        - key: request.auth.claims[aud]
+          notValues:
+            - {{ $vs.aud }}
+      to:
+        - operation:
+            hosts:
+              - {{ $vs.host }}
+{{- end }}
 ---
 {{- end }}
 {{- end }}

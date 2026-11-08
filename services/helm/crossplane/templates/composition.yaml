@@ -45,6 +45,11 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.policies
                 toFieldPath: spec.forProvider.policies
+              # Surface the issued audience on the XR so the istio app's
+              # virtualServices.<name>.aud can be filled without reading the MR.
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.aud
+                toFieldPath: status.aud
     - step: ready
       functionRef:
         name: function-auto-ready
