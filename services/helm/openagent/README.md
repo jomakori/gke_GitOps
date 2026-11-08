@@ -14,6 +14,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 | Repository | Name | Version |
 |------------|------|---------|
 | file://charts/claude-proxy | claude-proxy | 0.2.0 |
+| file://charts/headroom | headroom | 0.1.0 |
 | file://charts/hermes-webui | hermes-webui | 0.1.1 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |
 | oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.15.0 |
@@ -852,6 +853,11 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].path | string | `"/claude-pipe"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].target | string | `"http://claude-proxy.openagent.svc.cluster.local:4523"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].timeout | int | `300` |  |
+| litellm.proxy_config.guardrails[0].guardrail_name | string | `"headroom-compression"` |  |
+| litellm.proxy_config.guardrails[0].litellm_params.api_base | string | `"http://headroom.openagent.svc.cluster.local:8787"` |  |
+| litellm.proxy_config.guardrails[0].litellm_params.default_on | bool | `true` |  |
+| litellm.proxy_config.guardrails[0].litellm_params.guardrail | string | `"headroom"` |  |
+| litellm.proxy_config.guardrails[0].litellm_params.mode | string | `"pre_call"` |  |
 | litellm.proxy_config.litellm_settings.cache | bool | `true` |  |
 | litellm.proxy_config.litellm_settings.cache_params.host | string | `"os.environ/REDIS_HOST"` |  |
 | litellm.proxy_config.litellm_settings.cache_params.port | string | `"os.environ/REDIS_PORT"` |  |

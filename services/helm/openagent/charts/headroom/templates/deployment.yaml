@@ -1,0 +1,91 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headroom
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "headroom.labels" . | nindent 4 }}
+    app.kubernetes.io/component: headroom
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "headroom.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: headroom
+  template:
+    metadata:
+      labels:
+        {{- include "headroom.labels" . | nindent 8 }}
+        app.kubernetes.io/component: headroom
+    spec:
+      containers:
+        - name: headroom
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            # Bind 0.0.0.0 inside the container — required for the k8s Service to
+            # reach it at all (same reasoning as Docker port forwarding upstream).
+            # The ClusterIP-only Service + no Ingress is the actual network boundary.
+            - name: HEADROOM_HOST
+              value: "0.0.0.0"
+            - name: HEADROOM_PORT
+              value: {{ .Values.service.port | quote }}
+            # Both OFF — no content or usage leaves the pod. See values.yaml header
+            # comment for provenance on HEADROOM_BEACON.
+            - name: HEADROOM_TELEMETRY
+              value: {{ .Values.proxy.telemetry | quote }}
+            - name: HEADROOM_BEACON
+              value: {{ .Values.proxy.beacon | quote }}
+            # LiteLLM calls POST /v1/compress from a DIFFERENT pod. Headroom's
+            # loopback check inspects both client IP and Host header, neither of
+            # which is loopback through a k8s Service — without this, the guardrail
+            # gets a 404 (Headroom's deliberate "route invisible to scanners" shape,
+            # not a real missing route).
+            - name: HEADROOM_COMPRESS_ALLOW_REMOTE
+              value: {{ .Values.proxy.allowRemote | ternary "1" "0" | quote }}
+            {{- if .Values.proxy.token }}
+            - name: HEADROOM_PROXY_TOKEN
+              value: {{ .Values.proxy.token | quote }}
+            {{- else }}
+            # Binding 0.0.0.0 with no HEADROOM_PROXY_TOKEN makes the proxy refuse to
+            # start unless this is set, acknowledging that the runtime already
+            # confines reachability (ClusterIP, no Ingress, namespace-scoped
+            # NetworkPolicy boundary) rather than a token.
+            - name: HEADROOM_ALLOW_UNAUTHENTICATED_BIND
+              value: "1"
+            {{- end }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              name: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          # /livez and /readyz are the documented unauthenticated orchestration
+          # probes (https://headroomlabs-ai.github.io/headroom/proxy/); /readyz is
+          # explicitly "the endpoint used by the container health checks" and
+          # returns 503 until startup/subsystems are ready.
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 20
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 15
+            failureThreshold: 2
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 30
+            failureThreshold: 5
+            timeoutSeconds: 5
+{{- end }}

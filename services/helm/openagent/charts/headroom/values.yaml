@@ -1,0 +1,68 @@
+# Headroom prompt-compression sidecar — called by the LiteLLM `pre_call` guardrail
+# (services/helm/openagent/values.yaml litellm.proxy_config.guardrails), never by
+# clients directly. See README.md and https://docs.litellm.ai/docs/proxy/headroom.
+#
+# ENABLED BY DEFAULT AT BOTH LAYERS (flipped from opt-in 2026-11-07, user-directed):
+#   1. This subchart: Chart.yaml dependency `condition: headroom.enabled`. True (the
+#      default) means the umbrella renders this Deployment/Service out of the box.
+#   2. The LiteLLM guardrail's `default_on: true`. Every request through the proxy is
+#      compressed unless a caller explicitly opts out (per-request `guardrails` /
+#      `litellm_metadata.guardrails` field, or `--set headroom.enabled=false` to drop
+#      the sidecar entirely).
+enabled: true
+
+# Pre-built OFFICIAL image (ghcr.io/headroomlabs-ai/headroom) — unlike claude-proxy/OCP,
+# this is NOT a repo-built image; Headroom publishes its own multi-arch container.
+# Verified live against GHCR on 2026-11-07:
+#   - tag `0.43.1` is a published multi-arch OCI image index (linux/amd64 + linux/arm64 —
+#     this cluster's nodes are arm64).
+#   - the digest below is the INDEX digest (not a per-platform manifest digest); pulling
+#     by digest still resolves the right platform because containerd dereferences an
+#     index digest through to its platform manifests.
+#   - tag `0.27.0` — the `headroom-ai[proxy]==0.27.0` pin shown in LiteLLM's own "Deploy
+#     Headroom" example Dockerfile — does NOT exist as a published GHCR tag for this
+#     image (confirmed 404). That snippet is a generic pip-install Dockerfile example in
+#     LiteLLM's docs, not an upstream Headroom release; this chart follows Headroom's own
+#     published container instead, pinned by digest so `IfNotPresent` can never silently
+#     serve stale content under a reused tag (see tests/litellm_image_pin_test.yaml for
+#     why that failure mode matters in this repo).
+image:
+  repository: ghcr.io/headroomlabs-ai/headroom
+  tag: "0.43.1@sha256:c4486ccc8096ce44dd825361f1defb67e66710da1b2191f03b283992b8aaf01c"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8787
+
+# Every workload in this umbrella declares both request and limit for cpu and memory.
+# Headroom runs an in-process ML router (Kompress/Magika) for compression scoring, so it
+# is heavier than a pure network sidecar — sized above claude-proxy's idle footprint.
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# Headroom proxy runtime config — see https://headroomlabs-ai.github.io/headroom/proxy/
+proxy:
+  # Headroom is loopback-only by default (a non-loopback caller gets 404, not 403 — the
+  # route stays invisible to scanners). LiteLLM calls this service from a DIFFERENT pod,
+  # so the sidecar pattern this guardrail depends on requires allowing remote callers.
+  # The boundary is network, not this flag: ClusterIP + no Ingress + (optionally) the
+  # token below.
+  allowRemote: true
+  # Optional shared-secret header (sent by LiteLLM as `api_key` -> X-Headroom-Proxy-Token
+  # / Authorization: Bearer). Empty by default: this Service has no Ingress and is
+  # ClusterIP-only, so NetworkPolicy/namespace isolation is the primary boundary. Set a
+  # non-empty value (from a Secret, not plaintext values) if that is not sufficient.
+  token: ""
+  # Telemetry/beacon — both OFF. HEADROOM_TELEMETRY=off is documented upstream (LiteLLM's
+  # "Deploy Headroom" Dockerfile example sets it). HEADROOM_BEACON=off is set here per the
+  # approved spec as a defensive belt-and-suspenders control; this exact env var name was
+  # NOT found in the Headroom docs surveyed during implementation (docs.headroomlabs.ai,
+  # headroomlabs-ai.github.io) as of 2026-11-07 — if a given Headroom release has no such
+  # var, it is simply unused. Flag as unverified if a stricter guarantee is required.
+  telemetry: "off"
+  beacon: "off"

@@ -159,6 +159,22 @@ litellm:
           include_subpath: true
           forward_headers: true
           timeout: 300
+    # Headroom prompt-compression guardrail (services/helm/openagent/charts/headroom).
+    # Enabled by default (flipped from opt-in 2026-11-07, user-directed): the sidecar
+    # deploys by default (headroom.enabled=true — see charts/headroom/values.yaml) and
+    # every request through this proxy is compressed by default (`default_on: true`
+    # below) unless a caller explicitly opts out per-request/per-key, or the sidecar is
+    # removed entirely with `--set headroom.enabled=false`.
+    # https://docs.litellm.ai/docs/proxy/headroom
+    guardrails:
+      - guardrail_name: headroom-compression
+        litellm_params:
+          guardrail: headroom
+          mode: pre_call
+          # DNS name is the headroom Service's bare metadata.name (not
+          # release-prefixed) — same convention as claude-proxy above.
+          api_base: http://headroom.openagent.svc.cluster.local:8787
+          default_on: true
     litellm_settings:
       drop_params: true
       # Redis response cache AND proxy-wide coordination (rate-limit counters,
