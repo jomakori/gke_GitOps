@@ -568,4 +568,3 @@ services:
         value: "10Gi"
       - name: opendesign.ingress.enabled
         value: "false"
-# cloudflare id centralization: WIP probe commit, will be replaced
