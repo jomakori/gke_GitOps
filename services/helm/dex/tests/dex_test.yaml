@@ -25,6 +25,23 @@ tests:
             name: DEX_EXPAND_ENV
             value: "true"
 
+  - it: gives Dex a writable /tmp while the root filesystem stays read-only
+    template: charts/dex/templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: tmp
+            mountPath: /tmp
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: tmp
+            emptyDir: {}
+
   - it: serves the OIDC endpoints on 5556
     template: charts/dex/templates/service.yaml
     asserts:
