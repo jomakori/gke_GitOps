@@ -91,10 +91,21 @@ jobs:
           go install github.com/mikefarah/yq/v4@v4.53.6
           sudo install -m 0755 /tmp/gobin/kubeconform /usr/local/bin/kubeconform
           sudo install -m 0755 /tmp/gobin/yq /usr/local/bin/yq
-          # helm-unittest is a helm plugin: binary plus manifest. The manifest is
-          # written by hand (same fields as upstream) so the plugin's install hook
-          # cannot re-download a release tarball.
-          go install github.com/helm-unittest/helm-unittest/cmd/helm-unittest@v1.1.2
+          # helm-unittest is a helm plugin: binary plus manifest. Its go.mod
+          # carries replace directives, so `go install` refuses it — build from a
+          # shallow clone of the release tag instead (still avoids the release
+          # tarball CDN that 504s). The manifest is written by hand (same fields as
+          # upstream) so the plugin's install hook cannot re-download anything.
+          attempt() {
+            local n=1
+            until "$@"; do
+              if [ "$n" -ge 5 ]; then echo "::error::giving up after 5 attempts: $*"; return 1; fi
+              echo "::warning::attempt $n/5 failed for: $*"
+              n=$((n + 1)); sleep $((n * 3))
+            done
+          }
+          attempt git clone --depth 1 --branch v1.1.2 https://github.com/helm-unittest/helm-unittest.git /tmp/helm-unittest
+          ( cd /tmp/helm-unittest && go build -trimpath -o /tmp/gobin/helm-unittest ./cmd/helm-unittest )
           plugin_dir="$(helm env HELM_PLUGINS)/unittest"
           mkdir -p "$plugin_dir"
           install -m 0755 /tmp/gobin/helm-unittest "$plugin_dir/helm-unittest"
