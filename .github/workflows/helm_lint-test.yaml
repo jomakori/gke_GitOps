@@ -58,8 +58,20 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
-          check-latest: true
+          # Serve from the runner image's tool cache, never download. ubuntu-latest
+          # (26.04) ships 3.11.18 / 3.12.16 / 3.13.18 / 3.14.10 / 3.15.2 — no 3.10.x
+          # at all — so the old `3.10` + `check-latest: true` pair fetched a tarball
+          # from GitHub releases on every run, re-resolving the newest patch each
+          # time. That download 504'd twice and killed the job in ~30s before any
+          # chart was even rendered. Nothing here needs 3.10: every script in
+          # .useful-scripts/ is stdlib-only.
+          python-version: "3.13"
+
+      - name: Ensure PyYAML
+        # validate_litellm_config.sh reads the rendered ConfigMap with PyYAML.
+        # A tool-cache interpreter does not carry the image's site-packages, so
+        # install it only when it is genuinely missing (no-op otherwise).
+        run: python3 -c 'import yaml' || python3 -m pip install --quiet --disable-pip-version-check pyyaml
 
       - name: Setup Go
         uses: actions/setup-go@v5
