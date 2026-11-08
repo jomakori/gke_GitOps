@@ -1,0 +1,81 @@
+# Dex is the cluster's OIDC identity provider. It exists because Google has no
+# API for creating or updating OAuth clients (the IAP admin API was shut down in
+# March 2026 and never supported arbitrary redirect URIs), so every app that
+# cannot sit behind Cloudflare Access would otherwise need its own hand-made
+# Google client. Google is connected exactly once, here, and each app gets a
+# client below. Adding an integration = one PR against this file.
+dex:
+  # Issuer is baked into every ID token the apps verify, so it must be the
+  # public host. Nothing here is behind Cloudflare Access: this IS the login page.
+  config:
+    issuer: https://dex.maklab.net
+    # Clients live in this file; memory storage means a restart drops only
+    # short-lived auth/refresh codes, which clients re-obtain by logging in.
+    storage:
+      type: memory
+    web:
+      http: 0.0.0.0:5556
+    oauth2:
+      skipApprovalScreen: true
+    # $VARS expand from the pod env (DEX_EXPAND_ENV below) so the Google client
+    # secret stays in Doppler.
+    connectors:
+      - type: google
+        id: google
+        name: Google
+        config:
+          issuer: https://accounts.google.com
+          clientID: $GOOGLE_OAUTH_CLIENT_ID
+          clientSecret: $GOOGLE_OAUTH_CLIENT_SECRET
+          redirectURI: https://dex.maklab.net/callback
+    staticClients:
+      # Public client: Hermes sends PKCE (S256) and no secret, so there is no
+      # client credential to store, rotate, or leak anywhere.
+      - id: hermes
+        name: Hermes
+        public: true
+        redirectURIs:
+          - https://openagent.maklab.net/auth/callback
+
+  envFrom:
+    - secretRef:
+        name: dex-secrets
+
+  envVars:
+    # Lets the Google connector read its secret from the env above.
+    - name: DEX_EXPAND_ENV
+      value: "true"
+
+  service:
+    ports:
+      http:
+        port: 5556
+
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+
+# Chart layer below: how our ExternalSecret finds the Doppler values.
+
+# ClusterSecretStore is doppler-<name>; keys are explicit so this pod never
+# receives the rest of the CI config.
+dopplerConfig: ci
+secretKeys:
+  - GOOGLE_OAUTH_CLIENT_ID
+  - GOOGLE_OAUTH_CLIENT_SECRET

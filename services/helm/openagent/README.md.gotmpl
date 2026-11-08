@@ -119,7 +119,7 @@ The UI is Hermes's own Webapp (`hermes-agent.config.webapp`), served by the agen
 
 The built-in *dashboard* stays off (`HERMES_DASHBOARD=0`): it is a second Hermes process, and every process loads the whole MCP fleet (1596MiB / 107 processes with it on vs 604MiB / 61 off). The Webapp does not need it — it runs in-process.
 
-Sign-in: a non-loopback bind needs a sign-in provider, and basic auth is supplied by `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` / `_PASSWORD` / `_SECRET` from `openagent-secrets` (Doppler `svc_openagent`). Cloudflare Access stays the outer gate. See the `k8s-gitops-context` skill for connectivity and troubleshooting.
+Sign-in: a non-loopback bind needs a sign-in provider, and it is OIDC against the in-cluster Dex (`https://dex.maklab.net`, client `hermes`, declared `public: true` so PKCE is the credential), which relays Google. Nothing secret is stored for Hermes itself. Cloudflare Access stays the outer gate. Adding another app that needs Google sign-in means adding a client to `services/helm/dex/values.yaml`. See the `k8s-gitops-context` skill for connectivity and troubleshooting.
 
 ### Namespaces & secrets
 

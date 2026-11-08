@@ -1,0 +1,10 @@
+apiVersion: v2
+name: dex
+description: Values override layer for dexidp/dex — the cluster OIDC identity provider that fans Google logins out to apps which cannot use Cloudflare Access
+type: application
+version: 1.0.0
+appVersion: "2.46.0"
+dependencies:
+  - name: dex
+    version: 0.26.0
+    repository: https://charts.dexidp.io

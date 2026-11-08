@@ -130,7 +130,7 @@ The UI is Hermes's own Webapp (`hermes-agent.config.webapp`), served by the agen
 
 The built-in *dashboard* stays off (`HERMES_DASHBOARD=0`): it is a second Hermes process, and every process loads the whole MCP fleet (1596MiB / 107 processes with it on vs 604MiB / 61 off). The Webapp does not need it — it runs in-process.
 
-Sign-in: a non-loopback bind needs a sign-in provider, and basic auth is supplied by `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` / `_PASSWORD` / `_SECRET` from `openagent-secrets` (Doppler `svc_openagent`). Cloudflare Access stays the outer gate. See the `k8s-gitops-context` skill for connectivity and troubleshooting.
+Sign-in: a non-loopback bind needs a sign-in provider, and it is OIDC against the in-cluster Dex (`https://dex.maklab.net`, client `hermes`, declared `public: true` so PKCE is the credential), which relays Google. Nothing secret is stored for Hermes itself. Cloudflare Access stays the outer gate. Adding another app that needs Google sign-in means adding a client to `services/helm/dex/values.yaml`. See the `k8s-gitops-context` skill for connectivity and troubleshooting.
 
 ### Namespaces & secrets
 
@@ -237,6 +237,12 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.compression.target_ratio | float | `0.2` |  |
 | hermes-agent.config.compression.threshold | float | `0.35` |  |
 | hermes-agent.config.compression.threshold_tokens | int | `80000` |  |
+| hermes-agent.config.dashboard.oauth.self_hosted.client_id | string | `"hermes"` |  |
+| hermes-agent.config.dashboard.oauth.self_hosted.issuer | string | `"https://dex.maklab.net"` |  |
+| hermes-agent.config.dashboard.oauth.self_hosted.scopes[0] | string | `"openid"` |  |
+| hermes-agent.config.dashboard.oauth.self_hosted.scopes[1] | string | `"profile"` |  |
+| hermes-agent.config.dashboard.oauth.self_hosted.scopes[2] | string | `"email"` |  |
+| hermes-agent.config.dashboard.public_url | string | `"https://openagent.maklab.net"` |  |
 | hermes-agent.config.delegation.api_key | string | `"${LITELLM_MASTER_KEY}"` |  |
 | hermes-agent.config.delegation.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
 | hermes-agent.config.delegation.fallback_providers[0].model | string | `"claude-haiku-4-5"` |  |
