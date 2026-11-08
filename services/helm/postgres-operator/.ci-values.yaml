@@ -1,2 +1,2 @@
-# Render-only placeholder; ArgoCD passes argocd-appset crossplaneAccess.accountId.
-r2AccountId: "00000000000000000000000000000000"
+# Render-only empty placeholder; ArgoCD passes argocd-appset crossplaneAccess.accountId.
+r2AccountId: ""

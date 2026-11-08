@@ -13,7 +13,7 @@ spec:
   s3Compatible:
     bucket: {{ $c.backups.bucket }}
     region: {{ $c.backups.region }}
-    endpoint: {{ printf "https://%s.r2.cloudflarestorage.com" (required "r2AccountId is required when a cluster enables backups (injected from argocd-appset crossplaneAccess.accountId)" $.Values.r2AccountId) }}
+    endpoint: {{ printf "https://%s.r2.cloudflarestorage.com" $.Values.r2AccountId }}
     enablePathStyleAddressing: true
     awsCredentials:
       secretKeySelectors:

@@ -9,15 +9,15 @@ metadata:
   name: google-oauth
   namespace: crossplane-system
   annotations:
-    crossplane.io/external-name: {{ required "identityProvider.id is required (injected from argocd-appset crossplaneAccess.identityProviderId)" .Values.identityProvider.id }}
+    crossplane.io/external-name: {{ .Values.identityProvider.id }}
 spec:
   deletionPolicy: Orphan
   forProvider:
-    accountId: {{ required "accountId is required (injected from argocd-appset crossplaneAccess.accountId)" .Values.accountId | quote }}
+    accountId: {{ .Values.accountId | quote }}
     name: {{ .Values.identityProvider.name | quote }}
     type: {{ .Values.identityProvider.type | quote }}
     config:
-      clientId: {{ required "identityProvider.clientId is required (injected from argocd-appset crossplaneAccess.identityProviderClientId)" .Values.identityProvider.clientId | quote }}
+      clientId: {{ .Values.identityProvider.clientId | quote }}
       clientSecretSecretRef:
         name: {{ .Values.identityProvider.secretName }}
         namespace: crossplane-system

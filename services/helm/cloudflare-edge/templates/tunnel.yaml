@@ -7,10 +7,10 @@ metadata:
   name: {{ .Values.tunnel.name }}
   namespace: crossplane-system
   annotations:
-    crossplane.io/external-name: {{ required "tunnel.id is required (injected from argocd-appset crossplaneAccess.tunnelId)" .Values.tunnel.id }}
+    crossplane.io/external-name: {{ .Values.tunnel.id }}
 spec:
   deletionPolicy: Orphan
   forProvider:
-    accountId: {{ required "accountId is required (injected from argocd-appset crossplaneAccess.accountId)" .Values.accountId | quote }}
+    accountId: {{ .Values.accountId | quote }}
     name: {{ .Values.tunnel.name | quote }}
     configSrc: cloudflare

@@ -1,7 +1,7 @@
-# Render-only placeholders; ArgoCD passes the real ids from argocd-appset.
-accountId: "00000000000000000000000000000000"
+# Render-only empty placeholders; ArgoCD passes the real ids from argocd-appset.
+accountId: ""
 tunnel:
-  id: "00000000-0000-0000-0000-000000000000"
+  id: ""
 identityProvider:
-  id: "00000000-0000-0000-0000-000000000000"
-  clientId: "000000000000-ci-render-only.apps.googleusercontent.com"
+  id: ""
+  clientId: ""
