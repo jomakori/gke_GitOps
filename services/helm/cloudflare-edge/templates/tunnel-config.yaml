@@ -1,12 +1,13 @@
 # Remote ingress config for the tunnel: wildcard hostname -> istio gateway, then
 # the catch-all 404 rule Cloudflare requires last.
+# tunnel.id/accountId are injected by services/argocd-appset, never set in values.
 apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
 kind: TrustTunnelCloudflaredConfig
 metadata:
   name: {{ .Values.tunnel.name }}
   namespace: crossplane-system
   annotations:
-    crossplane.io/external-name: {{ .Values.tunnel.id }}
+    crossplane.io/external-name: {{ required "tunnel.id is required (injected from argocd-appset crossplaneAccess.tunnelId)" .Values.tunnel.id }}
 {{- $ingress := deepCopy .Values.tunnel.ingress }}
 {{- if .Values.clusterDomain }}
 {{-   $_ := set (index $ingress 0) "hostname" (printf "*.%s" .Values.clusterDomain) }}
@@ -14,7 +15,7 @@ metadata:
 spec:
   deletionPolicy: Orphan
   forProvider:
-    accountId: {{ .Values.accountId | quote }}
+    accountId: {{ required "accountId is required (injected from argocd-appset crossplaneAccess.accountId)" .Values.accountId | quote }}
     tunnelId: {{ .Values.tunnel.id | quote }}
     config:
       ingress:{{ toYaml $ingress | nindent 8 }}

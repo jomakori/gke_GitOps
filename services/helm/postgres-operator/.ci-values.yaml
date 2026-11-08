@@ -1,0 +1,5 @@
+# CI render inputs. r2AccountId normally arrives as a Helm parameter from
+# services/argocd-appset (crossplaneAccess.accountId); a bare `helm template` has
+# none and the SGObjectStorage template `required`s it. Render-only placeholder —
+# ArgoCD always passes the real value.
+r2AccountId: "00000000000000000000000000000000"

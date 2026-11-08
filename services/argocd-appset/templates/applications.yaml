@@ -80,10 +80,20 @@
 ---
 {{ include "argocd.application" (dict "key" $key "config" $umbrella "root" $) }}
 {{- else if eq $key "cloudflareEdge" }}
-{{- /* Tunnel + remote ingress config + account Access IdP, adopted by id. */}}
+{{- /* Tunnel + remote ingress config + account Access IdP, adopted by id. Every id
+       comes from crossplaneAccess so the chart itself holds none of them. */}}
 {{-   $edgeParams := list }}
 {{-   if $.Values.crossplaneAccess.accountId }}
 {{-     $edgeParams = append $edgeParams (dict "name" "accountId" "value" $.Values.crossplaneAccess.accountId) }}
+{{-   end }}
+{{-   if $.Values.crossplaneAccess.tunnelId }}
+{{-     $edgeParams = append $edgeParams (dict "name" "tunnel.id" "value" $.Values.crossplaneAccess.tunnelId) }}
+{{-   end }}
+{{-   if $.Values.crossplaneAccess.identityProviderId }}
+{{-     $edgeParams = append $edgeParams (dict "name" "identityProvider.id" "value" $.Values.crossplaneAccess.identityProviderId) }}
+{{-   end }}
+{{-   if $.Values.crossplaneAccess.identityProviderClientId }}
+{{-     $edgeParams = append $edgeParams (dict "name" "identityProvider.clientId" "value" $.Values.crossplaneAccess.identityProviderClientId) }}
 {{-   end }}
 {{-   if $.Values.clusterDomain }}
 {{-     $edgeParams = append $edgeParams (dict "name" "clusterDomain" "value" $.Values.clusterDomain) }}

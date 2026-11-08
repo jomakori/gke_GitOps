@@ -2,21 +2,23 @@
 # this one, so it is adopted by id rather than re-created. The client secret is a
 # write-only field: it comes from the ExternalSecret, which is why the MR keeps a
 # secret ref instead of a literal.
+# identityProvider.id/clientId are injected by services/argocd-appset; an empty id
+# would create a second IdP and Access apps would stop matching this one.
 apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
 kind: TrustAccessIdentityProvider
 metadata:
   name: google-oauth
   namespace: crossplane-system
   annotations:
-    crossplane.io/external-name: {{ .Values.identityProvider.id }}
+    crossplane.io/external-name: {{ required "identityProvider.id is required (injected from argocd-appset crossplaneAccess.identityProviderId)" .Values.identityProvider.id }}
 spec:
   deletionPolicy: Orphan
   forProvider:
-    accountId: {{ .Values.accountId | quote }}
+    accountId: {{ required "accountId is required (injected from argocd-appset crossplaneAccess.accountId)" .Values.accountId | quote }}
     name: {{ .Values.identityProvider.name | quote }}
     type: {{ .Values.identityProvider.type | quote }}
     config:
-      clientId: {{ .Values.identityProvider.clientId | quote }}
+      clientId: {{ required "identityProvider.clientId is required (injected from argocd-appset crossplaneAccess.identityProviderClientId)" .Values.identityProvider.clientId | quote }}
       clientSecretSecretRef:
         name: {{ .Values.identityProvider.secretName }}
         namespace: crossplane-system

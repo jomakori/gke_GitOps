@@ -10,13 +10,13 @@ Cloudflare tunnel, its remote ingress config and the account Access IdP, adopted
 |-----|------|---------|-------------|
 | accountId | string | `""` |  |
 | clusterDomain | string | `"maklab.net"` |  |
-| identityProvider.clientId | string | `"591553478034-eb6f9u11fgepvr6eatj5arsqtqugk3bv.apps.googleusercontent.com"` |  |
+| identityProvider.clientId | string | `""` |  |
 | identityProvider.dopplerConfig | string | `"ci"` |  |
-| identityProvider.id | string | `"dd196084-adc2-43ce-a6fd-b14cad588e13"` |  |
+| identityProvider.id | string | `""` |  |
 | identityProvider.name | string | `"Google OAuth"` |  |
 | identityProvider.secretName | string | `"cloudflare-google-oauth"` |  |
 | identityProvider.type | string | `"google"` |  |
-| tunnel.id | string | `"22c69db0-33cf-473a-8654-84f2208ff12f"` |  |
+| tunnel.id | string | `""` |  |
 | tunnel.ingress[0].hostname | string | `"*.maklab.net"` |  |
 | tunnel.ingress[0].originRequest.matchSnItoHost | bool | `true` |  |
 | tunnel.ingress[0].originRequest.noTlsVerify | bool | `true` |  |

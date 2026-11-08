@@ -55,7 +55,6 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.backups.credentialsSecretManagedByOperator | bool | `false` |  |
 | postgres.clusters.pg-main.backups.cronSchedule | string | `"0 2 */2 * *"` |  |
 | postgres.clusters.pg-main.backups.enabled | bool | `true` |  |
-| postgres.clusters.pg-main.backups.endpoint | string | `"https://f8caac5c12d315d3690fd6df74cacdb9.r2.cloudflarestorage.com"` |  |
 | postgres.clusters.pg-main.backups.region | string | `"auto"` |  |
 | postgres.clusters.pg-main.backups.retention | int | `4` |  |
 | postgres.clusters.pg-main.configName | string | `"pg-main-config"` |  |
@@ -85,6 +84,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.users[1].name | string | `"openagent"` |  |
 | postgres.clusters.pg-main.users[1].passwordKey | string | `"OPENAGENT_PG_PASSWORD"` |  |
 | postgres.clusters.pg-main.version | string | `"18"` |  |
+| r2AccountId | string | `""` |  |
 | renderClusters | bool | `true` |  |
 | renderOperator | bool | `true` |  |
 | stackgresOperator.adminui.service.exposeHTTP | bool | `false` |  |

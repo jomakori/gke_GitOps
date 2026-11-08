@@ -75,8 +75,15 @@ for chart_dir in "${CHARTS[@]}"; do
     # hermes-agent schema rejects Helm's injected `global` key; patch the
     # fresh tgz so schema-validating runs pass (no-op for other charts).
     .useful-scripts/patch_hermes_schema.sh "${chart_dir}" >/dev/null
+    # Charts whose render inputs come from ArgoCD (helm parameters) carry a
+    # .ci-values.yaml so a bare render still resolves them — same convention as
+    # ct_check.sh.
+    extra_values=()
+    if [[ -f "${chart_dir}/.ci-values.yaml" ]]; then
+        extra_values=(-f "${chart_dir}/.ci-values.yaml")
+    fi
     if ! helm template "${chart_dir}" \
-            --skip-schema-validation --validate=false \
+            --skip-schema-validation --validate=false "${extra_values[@]}" \
             > /tmp/openkite_kubeconform_$$.yaml 2> /tmp/openkite_kubeconform_$$.err; then
         echo "  ERROR: helm template failed for ${chart_dir}:"
         sed 's/^/    /' /tmp/openkite_kubeconform_$$.err
