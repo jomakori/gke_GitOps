@@ -37,13 +37,18 @@ service:
 # Every workload in this umbrella declares both request and limit for cpu and memory.
 # Headroom runs an in-process ML router (Kompress/Magika) for compression scoring, so it
 # is heavier than a pure network sidecar — sized above claude-proxy's idle footprint.
+# Sized from a live OOMKill at the previous 1Gi limit: a single worker compressing
+# ~300 KB request bodies with the in-process ONNX/Kompress scorer held several
+# hundred MB of payload copies plus the model, and was killed (exit 137) every few
+# minutes while a handful of sessions were active — each kill surfaced as
+# connection-refused on every in-flight LLM call.
 resources:
   requests:
     cpu: 250m
-    memory: 512Mi
+    memory: 1Gi
   limits:
     cpu: "1"
-    memory: 1Gi
+    memory: 3Gi
 
 # Headroom proxy runtime config — see https://headroomlabs-ai.github.io/headroom/proxy/
 proxy:
