@@ -1,0 +1,7 @@
+# Render-only empty placeholders; ArgoCD passes the real ids from argocd-appset.
+accountId: ""
+tunnel:
+  id: ""
+identityProvider:
+  id: ""
+  clientId: ""

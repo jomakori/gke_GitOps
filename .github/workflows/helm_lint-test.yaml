@@ -206,7 +206,9 @@ jobs:
           for chart in $charts; do
             helm dependency update "$chart" >/dev/null 2>&1 || true
             name=$(basename "$chart")
-            helm template "$name" "$chart" --skip-schema-validation --validate=false \
+            cv=()
+            if [ -f "$chart/.ci-values.yaml" ]; then cv=(-f "$chart/.ci-values.yaml"); fi
+            helm template "$name" "$chart" --skip-schema-validation --validate=false "${cv[@]}" \
               > "$outdir/$name.yaml" 2>/dev/null || echo "::warning::render failed for $chart"
           done
           .useful-scripts/check_workload_policy.py "$outdir"

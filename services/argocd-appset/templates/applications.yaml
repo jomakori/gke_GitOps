@@ -84,10 +84,12 @@
 {{ include "argocd.application" (dict "key" $key "config" $umbrella "root" $) }}
 {{- else if eq $key "cloudflareEdge" }}
 {{- /* Tunnel + remote ingress config + account Access IdP, adopted by id. */}}
-{{-   $edgeParams := list }}
-{{-   if $.Values.crossplaneAccess.accountId }}
-{{-     $edgeParams = append $edgeParams (dict "name" "accountId" "value" $.Values.crossplaneAccess.accountId) }}
-{{-   end }}
+{{-   $ca := required "crossplaneAccess ids are required for cloudflareEdge" $.Values.crossplaneAccess }}
+{{-   $edgeParams := list
+      (dict "name" "accountId" "value" (required "crossplaneAccess.accountId" $ca.accountId))
+      (dict "name" "tunnel.id" "value" (required "crossplaneAccess.tunnelId" $ca.tunnelId))
+      (dict "name" "identityProvider.id" "value" (required "crossplaneAccess.identityProviderId" $ca.identityProviderId))
+      (dict "name" "identityProvider.clientId" "value" (required "crossplaneAccess.identityProviderClientId" $ca.identityProviderClientId)) }}
 {{-   if $.Values.clusterDomain }}
 {{-     $edgeParams = append $edgeParams (dict "name" "clusterDomain" "value" $.Values.clusterDomain) }}
 {{-   end }}

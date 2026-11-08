@@ -1,5 +1,6 @@
 # Remote ingress config for the tunnel: wildcard hostname -> istio gateway, then
 # the catch-all 404 rule Cloudflare requires last.
+# tunnel.id/accountId come from argocd-appset.
 apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
 kind: TrustTunnelCloudflaredConfig
 metadata:

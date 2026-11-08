@@ -13,7 +13,7 @@ spec:
   s3Compatible:
     bucket: {{ $c.backups.bucket }}
     region: {{ $c.backups.region }}
-    endpoint: {{ $c.backups.endpoint }}
+    endpoint: {{ printf "https://%s.r2.cloudflarestorage.com" $.Values.r2AccountId }}
     enablePathStyleAddressing: true
     awsCredentials:
       secretKeySelectors:

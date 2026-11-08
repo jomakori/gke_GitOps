@@ -6,6 +6,9 @@ dopplerConfig: "svc_postgres_operator"
 renderOperator: true
 renderClusters: true
 
+# R2 endpoint account id; injected from argocd-appset crossplaneAccess.accountId.
+r2AccountId: ""
+
 # Docs: https://stackgres.io/doc/latest/install/helm/parameters
 #
 # The upstream subchart is declared with `alias: stackgresOperator` in Chart.yaml,
@@ -202,7 +205,7 @@ postgres:
         cronSchedule: "0 2 */2 * *"           # EVERY 2 DAYS @02:00 (centralized cluster — user requirement)
         retention: 4
         bucket: stackgres-pg-main
-        endpoint: https://f8caac5c12d315d3690fd6df74cacdb9.r2.cloudflarestorage.com
+        # Endpoint host built from r2AccountId (injected from argocd-appset).
         # The bucket itself is created once outside every pipeline (the Cloudflare
         # provider here carries the zero-trust groups only). This chart is the
         # declaration of record: name, endpoint, creds source and schedule. Losing
