@@ -13,8 +13,6 @@ tests:
       gateway:
         namespace: istio-system
       virtualServices:
-        excalidash:
-          enabled: false
         openagent:
           enabled: true
           enablePrivate: true
@@ -46,8 +44,6 @@ tests:
       gateway:
         namespace: istio-system
       virtualServices:
-        excalidash:
-          enabled: false
         openagent:
           enabled: true
           enablePrivate: true

@@ -164,11 +164,6 @@ Two layers of VirtualServices exist:
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |
 | virtualServices.argocd.host | string | `"argocd.maklab.net"` |  |
-| virtualServices.excalidash.destination.host | string | `"excalidash.excalidash.svc.cluster.local"` |  |
-| virtualServices.excalidash.destination.port | int | `80` |  |
-| virtualServices.excalidash.enablePrivate | bool | `true` |  |
-| virtualServices.excalidash.enabled | bool | `true` |  |
-| virtualServices.excalidash.host | string | `"draw.maklab.net"` |  |
 | virtualServices.headlamp.destination.host | string | `"headlamp.headlamp.svc.cluster.local"` |  |
 | virtualServices.headlamp.destination.port | int | `80` |  |
 | virtualServices.headlamp.enabled | bool | `false` |  |
