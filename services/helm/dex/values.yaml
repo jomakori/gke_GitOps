@@ -71,6 +71,15 @@ dex:
     seccompProfile:
       type: RuntimeDefault
 
+  # Dex resolves $VARS by writing a rendered copy of config.yaml to /tmp, so the
+  # root filesystem stays read-only and /tmp is the only writable path it needs.
+  volumes:
+    - name: tmp
+      emptyDir: {}
+  volumeMounts:
+    - name: tmp
+      mountPath: /tmp
+
 # Chart layer below: how our ExternalSecret finds the Doppler values.
 
 # ClusterSecretStore is doppler-<name>; keys are explicit so this pod never
