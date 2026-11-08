@@ -79,7 +79,9 @@ jobs:
           go-version: "1.24"
 
       - name: Setup Chart-Testing
-        uses: helm/chart-testing-action@v2
+        # Pinned exact: the floating `v2` tag still resolves to v2.8.0, which has
+        # no verify_blob input and unconditionally runs cosign-installer.
+        uses: helm/chart-testing-action@v2.9.0
         with:
           # The bundled sigstore/cosign-installer cannot validate its pinned
           # cosign release (v3.0.2) from the runner: `Unable to validate cosign
