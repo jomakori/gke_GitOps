@@ -1,0 +1,63 @@
+suite: Shared session links open the session
+release:
+  name: openagent
+  namespace: openagent
+
+tests:
+  # The link people copy out of Discord is the hash form; the app itself is a
+  # BrowserRouter SPA and only routes sessions through `?resume=`, so the two
+  # halves have to stay in step: hook posts `/#/<id>`, plugin rewrites it.
+  - it: posts the hash link form from the Discord session-link hook
+    template: templates/hooks.yaml
+    documentIndex: 0
+    asserts:
+      - matchRegex:
+          path: data["handler.py"]
+          pattern: 'url = f"\{_WEBUI_BASE\}/#\{session_id\}"'
+
+  - it: ships the deeplink plugin as a hidden dashboard tab
+    template: templates/session-deeplink-plugin.yaml
+    asserts:
+      - equal:
+          path: data["manifest.json"]
+          value: |-
+            {
+              "name": "session-deeplink",
+              "label": "Session deeplink",
+              "description": "Opens hash session links in the chat view",
+              "icon": "Link",
+              "version": "1.0.0",
+              "tab": {"path": "/session-deeplink", "hidden": true},
+              "slots": [],
+              "entry": "dist/index.js",
+              "css": null,
+              "has_api": false
+            }
+
+  - it: rewrites a shared hash link into the chat resume route
+    template: templates/session-deeplink-plugin.yaml
+    asserts:
+      - matchRegex:
+          path: data["index.js"]
+          pattern: 'window.location.replace\("/chat\?resume=" \+ encodeURIComponent\(match\[1\]\)\)'
+
+  - it: mounts the plugin where the dashboard scans for user plugins
+    template: charts/hermes-agent/templates/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: session-deeplink-plugin
+            configMap:
+              name: openagent-hermes-session-deeplink
+              items:
+                - key: manifest.json
+                  path: dashboard/manifest.json
+                - key: index.js
+                  path: dashboard/dist/index.js
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: session-deeplink-plugin
+            mountPath: /opt/data/plugins/session-deeplink
+            readOnly: true
