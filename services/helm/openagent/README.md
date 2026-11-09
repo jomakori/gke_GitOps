@@ -217,6 +217,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | dopplerConfig | string | `"svc_openagent"` |  |
 | ghcrPullSecret | string | `""` |  |
 | hermes-agent.args | list | `[]` |  |
+| hermes-agent.bootstrap.overwrite | bool | `true` |  |
 | hermes-agent.command[0] | string | `"/opt/tools/gitopsctl"` |  |
 | hermes-agent.command[1] | string | `"boot"` |  |
 | hermes-agent.config._config_version | int | `52` |  |
@@ -642,6 +643,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.model.provider | string | `"litellm"` |  |
 | hermes-agent.config.plugins.enabled[0] | string | `"discord-platform"` |  |
 | hermes-agent.config.plugins.enabled[1] | string | `"omo"` |  |
+| hermes-agent.config.plugins.enabled[2] | string | `"session-deeplink"` |  |
 | hermes-agent.config.plugins.entries.omo.allow_gateway_injection | bool | `true` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[1] | string | `"litellm/deepseek-v4-flash-direct"` |  |
@@ -719,6 +721,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.providers.litellm.models.claude-sonnet-5.context_length | int | `1000000` |  |
 | hermes-agent.config.providers.litellm.models.deepseek-v4-flash-direct.context_length | int | `1000000` |  |
 | hermes-agent.config.providers.litellm.models.deepseek-v4-flash-go.context_length | int | `1000000` |  |
+| hermes-agent.config.skills.disabled[0] | string | `"claude-code"` |  |
+| hermes-agent.config.skills.disabled[1] | string | `"codex"` |  |
 | hermes-agent.config.tool_output.max_lines | int | `500` |  |
 | hermes-agent.config.tools.tool_search.enabled | string | `"on"` |  |
 | hermes-agent.config.tools.tool_search.listing_max_tokens | int | `2000` |  |
@@ -803,9 +807,9 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumeMounts[5].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumeMounts[6].mountPath | string | `"/opt/data/mcp-verify"` |  |
 | hermes-agent.extraVolumeMounts[6].name | string | `"mcp-verify"` |  |
+| hermes-agent.extraVolumeMounts[6].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumeMounts[7].mountPath | string | `"/opt/data/plugins/session-deeplink"` |  |
 | hermes-agent.extraVolumeMounts[7].name | string | `"session-deeplink-plugin"` |  |
-| hermes-agent.extraVolumeMounts[7].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumeMounts[7].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumeMounts[8].mountPath | string | `"/opt/data/scripts/storage_gc_cron.sh"` |  |
 | hermes-agent.extraVolumeMounts[8].name | string | `"storage-gc-cron"` |  |

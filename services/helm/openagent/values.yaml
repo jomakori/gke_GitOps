@@ -393,6 +393,13 @@ hermes-agent:
   serviceAccount:
     create: true
     automountServiceAccountToken: true
+  # Chart config is the source of truth. The subchart default is `false`, which
+  # seeds config.yaml only on an empty PVC — so a merged routing change (e.g. a
+  # new default model) never reaches a running deployment and the live config
+  # silently keeps its old model. Re-seed on every deploy instead; runtime edits
+  # are discarded by design, so change this manifest rather than the dashboard.
+  bootstrap:
+    overwrite: true
   config:
     # Config schema version emitted by the pinned gateway image: v0.23.0
     # carries schema 52 (hermes_cli/config_defaults.py). Keep in lockstep with
@@ -475,6 +482,13 @@ hermes-agent:
     # read_file is pinned above tool_budget by design, so a per-turn aggregate
     # bound cannot express this one. The median read (9.5 KB) is untouched.
     file_read_max_chars: 40000
+    # Coding-CLI skills stay off: their CLIs are not installed in this image, so
+    # a loaded skill would only advertise tools the agent cannot run. Carried
+    # here because seeding now overwrites the PVC copy on every deploy.
+    skills:
+      disabled:
+        - claude-code
+        - codex
     tool_output:
       max_lines: 500
     # The guard the clamp cannot be: a read that asks for no bound at all on a
