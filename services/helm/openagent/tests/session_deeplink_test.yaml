@@ -41,6 +41,16 @@ tests:
           path: data["index.js"]
           pattern: 'window.location.replace\("/chat\?resume=" \+ encodeURIComponent\(match\[1\]\)\)'
 
+  # User plugins are withheld from /api/dashboard/plugins unless their name is
+  # in plugins.enabled (the consent gate), and the SPA only loads bundles it is
+  # told about — without this line the shim never runs.
+  - it: enables the deeplink plugin so the consent gate lets it load
+    template: charts/hermes-agent/templates/configmap.yaml
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^plugins:\n  enabled:\n  - discord-platform\n  - omo\n  - session-deeplink$"
+
   - it: mounts the plugin where the dashboard scans for user plugins
     template: charts/hermes-agent/templates/deployment.yaml
     asserts:

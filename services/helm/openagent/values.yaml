@@ -738,6 +738,9 @@ hermes-agent:
       enabled:
         - discord-platform
         - omo
+        # User plugins must be listed here or the dashboard API withholds them
+        # (consent gate) — the session deeplink shim would never load.
+        - session-deeplink
       entries:
         omo:
           # Opt-in for the plugin's wake-up injection; must stay a real boolean
