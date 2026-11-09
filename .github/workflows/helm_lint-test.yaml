@@ -70,8 +70,8 @@ jobs:
       - name: Ensure PyYAML
         # validate_litellm_config.sh reads the rendered ConfigMap with PyYAML.
         # A tool-cache interpreter does not carry the image's site-packages, so
-        # install it only when it is genuinely missing (no-op otherwise).
-        run: python3 -c 'import yaml' || python3 -m pip install --quiet --disable-pip-version-check pyyaml
+        # install it explicitly (pip retries by default; wheel is ~1 MB).
+        run: python3 -m pip install --quiet --disable-pip-version-check --retries 5 pyyaml
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -119,7 +119,21 @@ jobs:
           YAML
 
       - name: Setup Doppler CLI
-        uses: dopplerhq/cli-action@master
+        # dopplerhq/cli-action downloads the CLI at run time and has now died
+        # twice with `spawnSync /bin/sh ETIMEDOUT`. Doppler's own CDN is a
+        # different origin from the github.com assets that 504, so install it
+        # directly (idempotent script) with bounded retries.
+        run: |
+          attempt() {
+            local n=1
+            until "$@"; do
+              if [ "$n" -ge 5 ]; then echo "::error::giving up after 5 attempts: $*"; return 1; fi
+              echo "::warning::attempt $n/5 failed for: $*"
+              n=$((n + 1)); sleep $((n * 3))
+            done
+          }
+          attempt bash -c 'set -o pipefail; curl -fsSL --retry 5 --retry-all-errors --connect-timeout 20 https://cli.doppler.com/install.sh | sudo sh'
+          doppler --version
 
       - name: Fetch Doppler Secrets
         id: doppler
