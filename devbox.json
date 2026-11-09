@@ -1,6 +1,6 @@
 {
   "packages": [
-    "yq-go@latest",
+    "yq-go@4.54.1",
     "git@latest",
     "helm@latest",
     "go@latest"
