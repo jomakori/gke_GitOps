@@ -439,6 +439,7 @@ func Run(manifest string) error {
 	linkShims(env)
 	directDownloads(env)
 	prewarm(manifest)
+	SyncProfileMCP()
 	codegraphIndexes(env, manifest)
 	chownTree()
 	logf("handing over to hermes")
