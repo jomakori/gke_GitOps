@@ -1,0 +1,26 @@
+suite: openagent seeded config leads on the Go Flash lane
+# Regression: the chart seeds config.yaml from this chart, so the orchestrator
+# model lives in values.yaml, not in the PVC. When the seeded copy drifted the
+# live default silently fell back to the direct-API model. Assert the rendered
+# seed config itself, so a bad default or a reordered fallback chain fails here
+# instead of only showing up as the wrong model answering in the cluster.
+release:
+  name: openagent
+  namespace: openagent
+tests:
+  - it: seeds DeepSeek V4.1 Flash on the OpenCode Go plan as the orchestrator
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^model:\\n  default: deepseek-v4-flash-go\\n  provider: litellm$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
+  - it: falls back to a second Go model, then the credit-independent floor
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^fallback_providers:\\n- model: mimo-v2.6-flash\\n  provider: litellm\\n- model: deepseek-v4-flash-direct\\n  provider: litellm$"
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent-config
