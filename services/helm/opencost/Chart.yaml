@@ -17,5 +17,5 @@ maintainers:
 
 dependencies:
   - name: opencost
-    version: 2.5.20
+    version: 2.5.33
     repository: https://opencost.github.io/opencost-helm-chart
