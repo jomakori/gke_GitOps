@@ -42,6 +42,10 @@ Values override layer for dexidp/dex — the cluster OIDC identity provider that
 | dex.securityContext.runAsNonRoot | bool | `true` |  |
 | dex.securityContext.runAsUser | int | `1001` |  |
 | dex.service.ports.http.port | int | `5556` |  |
+| dex.volumeMounts[0].mountPath | string | `"/tmp"` |  |
+| dex.volumeMounts[0].name | string | `"tmp"` |  |
+| dex.volumes[0].emptyDir | object | `{}` |  |
+| dex.volumes[0].name | string | `"tmp"` |  |
 | dopplerConfig | string | `"ci"` |  |
 | secretKeys[0] | string | `"GOOGLE_OAUTH_CLIENT_ID"` |  |
 | secretKeys[1] | string | `"GOOGLE_OAUTH_CLIENT_SECRET"` |  |
