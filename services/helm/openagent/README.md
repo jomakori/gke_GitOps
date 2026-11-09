@@ -239,9 +239,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.compression.threshold_tokens | int | `80000` |  |
 | hermes-agent.config.dashboard.oauth.self_hosted.client_id | string | `"hermes"` |  |
 | hermes-agent.config.dashboard.oauth.self_hosted.issuer | string | `"https://dex.maklab.net"` |  |
-| hermes-agent.config.dashboard.oauth.self_hosted.scopes[0] | string | `"openid"` |  |
-| hermes-agent.config.dashboard.oauth.self_hosted.scopes[1] | string | `"profile"` |  |
-| hermes-agent.config.dashboard.oauth.self_hosted.scopes[2] | string | `"email"` |  |
+| hermes-agent.config.dashboard.oauth.self_hosted.scopes | string | `"openid profile email"` |  |
 | hermes-agent.config.dashboard.public_url | string | `"https://openagent.maklab.net"` |  |
 | hermes-agent.config.delegation.api_key | string | `"${LITELLM_MASTER_KEY}"` |  |
 | hermes-agent.config.delegation.base_url | string | `"http://openagent-litellm.openagent.svc.cluster.local:4000/v1"` |  |
@@ -805,11 +803,14 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumeMounts[5].readOnly | bool | `true` |  |
 | hermes-agent.extraVolumeMounts[6].mountPath | string | `"/opt/data/mcp-verify"` |  |
 | hermes-agent.extraVolumeMounts[6].name | string | `"mcp-verify"` |  |
-| hermes-agent.extraVolumeMounts[6].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[7].mountPath | string | `"/opt/data/scripts/storage_gc_cron.sh"` |  |
-| hermes-agent.extraVolumeMounts[7].name | string | `"storage-gc-cron"` |  |
+| hermes-agent.extraVolumeMounts[7].mountPath | string | `"/opt/data/plugins/session-deeplink"` |  |
+| hermes-agent.extraVolumeMounts[7].name | string | `"session-deeplink-plugin"` |  |
 | hermes-agent.extraVolumeMounts[7].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[7].subPath | string | `"storage_gc_cron.sh"` |  |
+| hermes-agent.extraVolumeMounts[7].readOnly | bool | `true` |  |
+| hermes-agent.extraVolumeMounts[8].mountPath | string | `"/opt/data/scripts/storage_gc_cron.sh"` |  |
+| hermes-agent.extraVolumeMounts[8].name | string | `"storage-gc-cron"` |  |
+| hermes-agent.extraVolumeMounts[8].readOnly | bool | `true` |  |
+| hermes-agent.extraVolumeMounts[8].subPath | string | `"storage_gc_cron.sh"` |  |
 | hermes-agent.extraVolumes[0].configMap.name | string | `"openagent-hermes-hooks"` |  |
 | hermes-agent.extraVolumes[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumes[1].configMap.name | string | `"openagent-hermes-read-guard"` |  |
@@ -827,6 +828,12 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumes[7].configMap.defaultMode | int | `365` |  |
 | hermes-agent.extraVolumes[7].configMap.name | string | `"openagent-storage-gc-cron"` |  |
 | hermes-agent.extraVolumes[7].name | string | `"storage-gc-cron"` |  |
+| hermes-agent.extraVolumes[8].configMap.items[0].key | string | `"manifest.json"` |  |
+| hermes-agent.extraVolumes[8].configMap.items[0].path | string | `"dashboard/manifest.json"` |  |
+| hermes-agent.extraVolumes[8].configMap.items[1].key | string | `"index.js"` |  |
+| hermes-agent.extraVolumes[8].configMap.items[1].path | string | `"dashboard/dist/index.js"` |  |
+| hermes-agent.extraVolumes[8].configMap.name | string | `"openagent-hermes-session-deeplink"` |  |
+| hermes-agent.extraVolumes[8].name | string | `"session-deeplink-plugin"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
 | hermes-agent.image.tag | string | `"v0.23.0"` |  |

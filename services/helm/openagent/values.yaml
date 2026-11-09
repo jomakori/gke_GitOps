@@ -1398,6 +1398,18 @@ hermes-agent:
       configMap:
         name: openagent-storage-gc-cron
         defaultMode: 0555
+    # Dashboard plugin (templates/session-deeplink-plugin.yaml) that rewrites a
+    # shared /#/<session_id> link into the chat resume route. Nested item paths
+    # build the <plugin>/dashboard/{manifest.json,dist/index.js} layout the
+    # plugin scanner expects.
+    - name: session-deeplink-plugin
+      configMap:
+        name: openagent-hermes-session-deeplink
+        items:
+          - key: manifest.json
+            path: dashboard/manifest.json
+          - key: index.js
+            path: dashboard/dist/index.js
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -1423,6 +1435,9 @@ hermes-agent:
       readOnly: true
     - name: mcp-verify
       mountPath: /opt/data/mcp-verify
+    - name: session-deeplink-plugin
+      mountPath: /opt/data/plugins/session-deeplink
+      readOnly: true
       readOnly: true
     # subPath is load-bearing: mounting the directory would shadow storage_gc.py
     # beside it. A subPath mount does not pick up ConfigMap edits in place, so

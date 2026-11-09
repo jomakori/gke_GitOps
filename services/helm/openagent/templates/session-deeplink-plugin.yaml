@@ -1,0 +1,37 @@
+{{- if .Values.hermes.enabled }}
+# Shared session links are https://<public>/#/<session_id> — the shape people
+# copy and re-share. The webapp's own route is /chat?resume=<id> (a
+# BrowserRouter SPA ignores the fragment), so this dashboard plugin rewrites
+# the hash into that route on load. Dashboard plugins are discovered from
+# $HERMES_HOME/plugins/*/dashboard/manifest.json; the hidden tab keeps the
+# plugin out of the sidebar while still loading its bundle at boot.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-hermes-session-deeplink
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  manifest.json: |-
+    {
+      "name": "session-deeplink",
+      "label": "Session deeplink",
+      "description": "Opens hash session links in the chat view",
+      "icon": "Link",
+      "version": "1.0.0",
+      "tab": {"path": "/session-deeplink", "hidden": true},
+      "slots": [],
+      "entry": "dist/index.js",
+      "css": null,
+      "has_api": false
+    }
+  index.js: |-
+    (function () {
+      var match = /^#\/([A-Za-z0-9_-]+)$/.exec(window.location.hash || "");
+      if (!match) return;
+      window.location.replace("/chat?resume=" + encodeURIComponent(match[1]));
+    })();
+{{- end }}
