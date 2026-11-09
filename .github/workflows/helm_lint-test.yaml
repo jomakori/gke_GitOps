@@ -58,41 +58,82 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
-          check-latest: true
+          # Serve from the runner image's tool cache, never download. ubuntu-latest
+          # (26.04) ships 3.11.18 / 3.12.16 / 3.13.18 / 3.14.10 / 3.15.2 — no 3.10.x
+          # at all — so the old `3.10` + `check-latest: true` pair fetched a tarball
+          # from GitHub releases on every run, re-resolving the newest patch each
+          # time. That download 504'd twice and killed the job in ~30s before any
+          # chart was even rendered. Nothing here needs 3.10: every script in
+          # .useful-scripts/ is stdlib-only.
+          python-version: "3.13"
+
+      - name: Ensure PyYAML
+        # validate_litellm_config.sh reads the rendered ConfigMap with PyYAML.
+        # A tool-cache interpreter does not carry the image's site-packages, so
+        # install it explicitly (pip retries by default; wheel is ~1 MB).
+        run: python3 -m pip install --quiet --disable-pip-version-check --retries 5 pyyaml
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.24"
 
-      - name: Setup Chart-Testing
-        uses: helm/chart-testing-action@v2
-
       - name: Setup chart validation tools (kubeconform, yq, helm-unittest)
+        env:
+          GOBIN: /tmp/gobin
         run: |
-          # kubeconform: validate rendered manifests against K8s OpenAPI schemas
-          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
-            | tar -xz -C /tmp
-          sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
-          # yq: required for selector-check script
-          curl -sLo /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
-          # helm-unittest plugin: per-chart semantic assertions.
-          # Upstream (helm-unittest/helm-unittest) — documentSelector support
-          # and active maintenance. Pinned; install failure must fail the job
-          # (no `|| true` — a missing plugin silently skipped all suites).
-          # helm v4 verifies plugin signatures by default and the upstream
-          # release ships none (--verify=false needed); helm v3 has no
-          # --verify flag at all, so keep it conditional on the major version.
-          if helm version --short 2>/dev/null | grep -qE '^v4'; then
-            helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2 --verify=false
-          else
-            helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.1.2
-          fi
+          # These runners intermittently get 504s on github.com/<repo>/releases
+          # downloads (three separate jobs died mid-asset this week, including the
+          # chart-testing and helm-unittest tarballs). The Go module proxy is a
+          # different CDN and every tool below is published there, so build the
+          # same pinned versions from source instead of fetching release assets.
+          go install github.com/yannh/kubeconform/cmd/kubeconform@v0.6.7
+          go install github.com/mikefarah/yq/v4@v4.53.6
+          sudo install -m 0755 /tmp/gobin/kubeconform /usr/local/bin/kubeconform
+          sudo install -m 0755 /tmp/gobin/yq /usr/local/bin/yq
+          # helm-unittest is a helm plugin: binary plus manifest. Its go.mod
+          # carries replace directives, so `go install` refuses it — build from a
+          # shallow clone of the release tag instead (still avoids the release
+          # tarball CDN that 504s). The manifest is written by hand (same fields as
+          # upstream) so the plugin's install hook cannot re-download anything.
+          attempt() {
+            local n=1
+            until "$@"; do
+              if [ "$n" -ge 5 ]; then echo "::error::giving up after 5 attempts: $*"; return 1; fi
+              echo "::warning::attempt $n/5 failed for: $*"
+              n=$((n + 1)); sleep $((n * 3))
+            done
+          }
+          attempt git clone --depth 1 --branch v1.1.2 https://github.com/helm-unittest/helm-unittest.git /tmp/helm-unittest
+          ( cd /tmp/helm-unittest && go build -trimpath -o /tmp/gobin/helm-unittest ./cmd/helm-unittest )
+          plugin_dir="$(helm env HELM_PLUGINS)/unittest"
+          mkdir -p "$plugin_dir"
+          install -m 0755 /tmp/gobin/helm-unittest "$plugin_dir/helm-unittest"
+          cat > "$plugin_dir/plugin.yaml" <<'YAML'
+          name: unittest
+          version: "1.1.2"
+          usage: unittest for helm charts
+          description: Unit test for helm chart in YAML.
+          ignoreFlags: false
+          command: "$HELM_PLUGIN_DIR/helm-unittest"
+          YAML
 
       - name: Setup Doppler CLI
-        uses: dopplerhq/cli-action@master
+        # dopplerhq/cli-action downloads the CLI at run time and has now died
+        # twice with `spawnSync /bin/sh ETIMEDOUT`. Doppler's own CDN is a
+        # different origin from the github.com assets that 504, so install it
+        # directly (idempotent script) with bounded retries.
+        run: |
+          attempt() {
+            local n=1
+            until "$@"; do
+              if [ "$n" -ge 5 ]; then echo "::error::giving up after 5 attempts: $*"; return 1; fi
+              echo "::warning::attempt $n/5 failed for: $*"
+              n=$((n + 1)); sleep $((n * 3))
+            done
+          }
+          attempt bash -c 'set -o pipefail; curl -fsSL --retry 5 --retry-all-errors --connect-timeout 20 https://cli.doppler.com/install.sh | sudo sh'
+          doppler --version
 
       - name: Fetch Doppler Secrets
         id: doppler

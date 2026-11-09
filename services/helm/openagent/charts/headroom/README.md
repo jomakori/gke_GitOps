@@ -29,9 +29,9 @@ Headroom prompt-compression sidecar, called by LiteLLM's pre_call guardrail. Ena
 | proxy.beacon | string | `"off"` |  |
 | proxy.telemetry | string | `"off"` |  |
 | resources.limits.cpu | string | `"1"` |  |
-| resources.limits.memory | string | `"1Gi"` |  |
+| resources.limits.memory | string | `"3Gi"` |  |
 | resources.requests.cpu | string | `"250m"` |  |
-| resources.requests.memory | string | `"512Mi"` |  |
+| resources.requests.memory | string | `"1Gi"` |  |
 | service.port | int | `8787` |  |
 
 ----------------------------------------------

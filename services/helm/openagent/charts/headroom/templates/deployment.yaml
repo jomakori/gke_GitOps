@@ -85,18 +85,22 @@ spec:
             periodSeconds: 5
             failureThreshold: 20
             timeoutSeconds: 5
+          # Probes share the proxy's single request thread with /v1/compress, so a
+          # legitimately slow compression (measured 6.5s on a 300 KB body) makes a
+          # 5s-timeout probe fail even though the process is healthy. Timeouts are
+          # set above the worst observed compression, not at the default.
           readinessProbe:
             httpGet:
               path: /readyz
               port: http
             periodSeconds: 15
             failureThreshold: 2
-            timeoutSeconds: 5
+            timeoutSeconds: 12
           livenessProbe:
             httpGet:
               path: /livez
               port: http
             periodSeconds: 30
             failureThreshold: 5
-            timeoutSeconds: 5
+            timeoutSeconds: 12
 {{- end }}

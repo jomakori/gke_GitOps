@@ -175,6 +175,15 @@ litellm:
           # release-prefixed) — same convention as claude-proxy above.
           api_base: http://headroom.openagent.svc.cluster.local:8787
           default_on: true
+          # Compression is an optimisation, never a dependency. fail_closed (the
+          # upstream default) makes EVERY request to EVERY model — including the
+          # terminal hop `deepseek-v4-flash-direct` — fail with
+          # `502 Headroom compression service unreachable` whenever this single-replica
+          # sidecar is restarting (it is OOMKilled and probe-timed-out under a few
+          # concurrent sessions). That is what turns the Hermes fallback chain into
+          # "every provider kept failing over". fail_open forwards the request
+          # uncompressed instead.
+          unreachable_fallback: fail_open
           # No `api_key` here on purpose. When the shared token is enabled
           # (headroom.proxy.auth.enabled=true) the guardrail picks up
           # HEADROOM_API_KEY from this pod's env — the documented fallback — and
