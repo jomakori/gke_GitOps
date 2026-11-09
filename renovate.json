@@ -1,24 +1,21 @@
 {
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
   ],
+  "schedule": [
+    "on tuesday"
+  ],
   "packageRules": [
     {
-      "matchManagers": [
-        "helm-requirements",
-        "helm-values"
-      ],
+      "description": "Platform services: Helm chart versions from Chart.yaml and workload image tags from values.yaml",
       "matchFileNames": [
-        "services/helm/**/Chart.yaml",
-        "services/helm/**/values.yaml"
+        "services/helm/**"
       ],
-      "enabled": true,
-      "releaseNotes": {
-        "enabled": true
-      }
+      "matchManagers": [
+        "helmv3",
+        "helm-values"
+      ]
     }
-  ],
-  "schedule": [
-    "every tuesday"
   ]
 }
