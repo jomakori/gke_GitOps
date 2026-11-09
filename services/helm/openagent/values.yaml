@@ -414,10 +414,8 @@ hermes-agent:
         self_hosted:
           issuer: https://dex.maklab.net
           client_id: hermes
-          scopes:
-            - openid
-            - profile
-            - email
+          # The provider takes one space-delimited string, not a YAML list.
+          scopes: openid profile email
     webapp:
       enabled: true
       host: 0.0.0.0
