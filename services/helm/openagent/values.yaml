@@ -1435,9 +1435,9 @@ hermes-agent:
       readOnly: true
     - name: mcp-verify
       mountPath: /opt/data/mcp-verify
+      readOnly: true
     - name: session-deeplink-plugin
       mountPath: /opt/data/plugins/session-deeplink
-      readOnly: true
       readOnly: true
     # subPath is load-bearing: mounting the directory would shadow storage_gc.py
     # beside it. A subPath mount does not pick up ConfigMap edits in place, so
