@@ -116,6 +116,7 @@ Two layers of VirtualServices exist:
 | certificate.renewBefore | string | `"720h"` |  |
 | certificate.secretName | string | `"wildcard-maklab-net-tls"` |  |
 | cloudflare.access.audienceTag | string | `""` |  |
+| cloudflare.access.crossplaneHosts | object | `{}` |  |
 | cloudflare.access.teamDomain | string | `""` |  |
 | cloudflare.apiTokenSecretKey | string | `"CF_API_TOKEN"` |  |
 | cloudflare.apiTokenSecretName | string | `"cloudflare-api-token"` |  |
@@ -160,6 +161,8 @@ Two layers of VirtualServices exist:
 | podDisruptionBudget.enabled | bool | `true` |  |
 | podDisruptionBudget.maxUnavailable | int | `1` |  |
 | privateHosts[0] | string | `"*.openkite.maklab.net"` |  |
+| privateHosts[1] | string | `"trade.maklab.net"` |  |
+| privateHosts[2] | string | `"staging-trade.maklab.net"` |  |
 | virtualServices.argocd.destination.host | string | `"argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |

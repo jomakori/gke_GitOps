@@ -349,10 +349,21 @@ spec:
       imagePullSecrets:
         - name: {{ $imagePullSecret }}
 {{- end }}
+      {{- with $svc.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ $appName }}
           image: {{ $imageRepo }}:{{ $tag }}
           imagePullPolicy: Always
+          {{- with $svc.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $svc.args }}
+          args: {{ toYaml . | nindent 12 }}
+          {{- end }}
           ports:
           - containerPort: {{ $svc.port }}
           resources:
@@ -363,13 +374,52 @@ spec:
             limits:
               {{- toYaml . | nindent 14 }}
           {{- end }}
+          {{- /* A console that reads the journal needs no Doppler values; setting
+                 service.envFrom=false keeps engine secrets out of a web-facing process. */}}
+          {{- if not (and (hasKey $svc "envFrom") (eq (toString $svc.envFrom) "false")) }}
           envFrom:
           - secretRef:
               name: {{ $namespace }}-vars
+          {{- end }}
           {{- if and $svc.storage $svc.storage.size }}
           volumeMounts:
           - name: data
             mountPath: /data
+            {{- if $svc.storage.readOnly }}
+            readOnly: true
+            {{- end }}
+          {{- end }}
+          {{- range $svc.extraContainers }}
+        - name: {{ .name }}
+          image: {{ .image }}
+          {{- with .command }}
+          command: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .args }}
+          args: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .envFromVars }}
+          envFrom:
+          - secretRef:
+              name: {{ $namespace }}-vars
+          {{- end }}
+          {{- with .env }}
+          env: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .ports }}
+          ports: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .securityContext }}
+          securityContext: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .resources }}
+          resources: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if and $svc.storage $svc.storage.size }}
+          volumeMounts:
+          - name: data
+            mountPath: /data
+          {{- end }}
           {{- end }}
       {{- if and $svc.storage $svc.storage.size }}
       volumes:

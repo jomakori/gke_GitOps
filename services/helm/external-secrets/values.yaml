@@ -48,6 +48,14 @@ clusterSecretStores:
   zurabase-prd:
     project: zurabase
     config: prd
+  # Tickerlight engine values live in the `apps` project. The console container
+  # never uses these stores; see apps/helm/values.yaml service.envFrom.
+  tickerlight-stg:
+    project: apps
+    config: tickerlight_stg
+  tickerlight-prd:
+    project: apps
+    config: tickerlight_prd
 
 # PodDisruptionBudget for the secrets controller. 2 replicas; every workload's secrets
 # depend on it, and without a PDB a drain can remove both.
