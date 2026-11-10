@@ -30,6 +30,15 @@ notesUi:
     production:
       dopplerConfig: notes-ui-prod
 
+# Engine values only. The console container consumes none of them (the app spec
+# sets service.envFrom=false), so a web-facing process never holds broker keys.
+tickerlight:
+  environment:
+    staging:
+      dopplerConfig: tickerlight_stg
+    production:
+      dopplerConfig: tickerlight_prd
+
 # App Configurations — key = app name (used for Application metadata.name + chart lookup)
 apps:
   demoApi:
@@ -153,4 +162,37 @@ apps:
       - name: openkite.environments.production.dopplerConfig
         value: "{{ .Values.openkite.environment.production.dopplerConfig }}"
       - name: openkite.enable_staging
+        value: "false"
+
+  # Tickerlight: console + trading-mcp engine in one pod, one claim at /data.
+  tickerlight:
+    enable: true
+    syncWave: "6"
+    helmPath: apps/helm/
+    destNamespace: argocd
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    gateways:
+      enable_public: true
+    syncOptions:
+      - CreateNamespace=true
+    ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+          - /spec/replicas
+    staging:
+      enable: true
+      label: staging
+    parameters:
+      - name: appName
+        value: "tickerlight"
+      - name: tickerlight.environments.staging.dopplerConfig
+        value: "{{ .Values.tickerlight.environment.staging.dopplerConfig }}"
+      - name: tickerlight.environments.production.dopplerConfig
+        value: "{{ .Values.tickerlight.environment.production.dopplerConfig }}"
+      - name: tickerlight.enable_staging
         value: "false"

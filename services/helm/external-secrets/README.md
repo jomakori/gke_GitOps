@@ -92,6 +92,10 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | clusterSecretStores.svc_postgres_operator.project | string | `"devops"` |  |
 | clusterSecretStores.svc_tailscale.config | string | `"svc_tailscale"` |  |
 | clusterSecretStores.svc_tailscale.project | string | `"devops"` |  |
+| clusterSecretStores.tickerlight-prd.config | string | `"tickerlight_prd"` |  |
+| clusterSecretStores.tickerlight-prd.project | string | `"apps"` |  |
+| clusterSecretStores.tickerlight-stg.config | string | `"tickerlight_stg"` |  |
+| clusterSecretStores.tickerlight-stg.project | string | `"apps"` |  |
 | clusterSecretStores.zurabase-dev.config | string | `"dev"` |  |
 | clusterSecretStores.zurabase-dev.project | string | `"zurabase"` |  |
 | clusterSecretStores.zurabase-prd.config | string | `"prd"` |  |

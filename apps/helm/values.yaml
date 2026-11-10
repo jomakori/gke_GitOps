@@ -121,3 +121,74 @@ openkite:
       memory: 320Mi
     resourceLimits:
       memory: 640Mi
+
+# Tickerlight console plus the trading-mcp engine it reads from, one pod so the
+# journal at /data is a plain shared volume and the console reads it locally.
+tickerlight:
+  enable_staging: true
+  enable_istio: true
+  # Gated hosts: trade.maklab.net and staging-trade.maklab.net are declared in
+  # services/helm/istio/values.yaml `privateHosts`.
+  image:
+    repository: ghcr.io/jomakori/tickerlight
+  environments:
+    staging:
+      subdomain: staging-trade
+      tag: v0.1.0
+    production:
+      subdomain: trade
+      tag: v0.1.0
+  service:
+    port: 8080
+    # The console reads the journal and nothing else: no Doppler values in this
+    # process. The engine container below takes them instead.
+    envFrom: false
+    # Both images are distroless-style non-root (uid 65532). fsGroup makes the
+    # claim group-writable so the engine can create the journal.
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 65532
+      runAsGroup: 65532
+      fsGroup: 65532
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+    resourceRequests:
+      cpu: 50m
+      memory: 128Mi
+    resourceLimits:
+      memory: 256Mi
+    storage:
+      size: 1Gi
+      # Journal is written by the engine container and only read here.
+      readOnly: true
+    # Bind the pod IP, and read the journal the engine writes. The path is the
+    # engine's constant; the flag is what turns sample mode off.
+    args:
+      - "-addr"
+      - "0.0.0.0:8080"
+      - "-journal"
+      - "/data/journal.jsonl"
+    extraContainers:
+      # Journal producer. Paths are code constants; -data-dir only points at the
+      # mount, and the two containers share the one volume.
+      - name: engine
+        image: ghcr.io/jomakori/trading-mcp:v0.1.0
+        args:
+          - "-data-dir"
+          - "/data"
+        envFromVars: true
+        env:
+          - name: TRADING_MCP_HTTP_ADDR
+            value: "127.0.0.1:8090"
+        ports:
+          - name: mcp
+            containerPort: 8090
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 384Mi
