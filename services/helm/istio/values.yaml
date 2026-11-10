@@ -144,7 +144,6 @@ virtualServices:
 privateHosts:
   - "*.openkite.maklab.net"
   - "trade.maklab.net"
-  - "staging-trade.maklab.net"
 
 # PodDisruptionBudget for the ingress gateway. It runs 2 replicas and fronts every
 # request into the cluster, but had no PDB — a node drain could take both.

@@ -185,7 +185,11 @@ apps:
         jsonPointers:
           - /spec/replicas
     staging:
-      enable: true
+      # Per-PR preview appsets require an Argo CD repo token secret
+      # (argocd-github-token-tickerlight) that does not exist yet, and the
+      # console image only ships on release tags. Until both are true this app
+      # renders production only and the chart's staging flag stays false.
+      enable: false
       label: staging
     parameters:
       - name: appName
