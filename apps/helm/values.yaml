@@ -175,7 +175,7 @@ tickerlight:
       # Journal producer. Paths are code constants; -data-dir only points at the
       # mount, and the two containers share the one volume.
       - name: engine
-        image: ghcr.io/jomakori/trading-mcp:v0.2.0
+        image: ghcr.io/jomakori/trading-mcp:v0.3.2
         args:
           - "-data-dir"
           - "/data"
