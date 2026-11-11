@@ -112,7 +112,7 @@ openkite:
       tag: v0.52.0
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
-      tag: v0.69.0
+      tag: v0.70.0
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080
@@ -175,7 +175,7 @@ tickerlight:
       # Journal producer. Paths are code constants; -data-dir only points at the
       # mount, and the two containers share the one volume.
       - name: engine
-        image: ghcr.io/jomakori/trading-mcp:v0.2.0
+        image: ghcr.io/jomakori/trading-mcp:v0.3.2
         args:
           - "-data-dir"
           - "/data"
