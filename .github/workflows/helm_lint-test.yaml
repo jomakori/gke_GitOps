@@ -74,7 +74,7 @@ jobs:
         run: python3 -m pip install --quiet --disable-pip-version-check --retries 5 pyyaml
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: "1.24"
 
