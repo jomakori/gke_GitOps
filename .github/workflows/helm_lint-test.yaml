@@ -76,7 +76,9 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version: "1.24"
+          # setup-go v7 exports GOTOOLCHAIN=local, so the toolchain must itself
+          # satisfy yq's go >= 1.25 requirement; 1.25 is in the runner image's cache.
+          go-version: "1.25"
 
       - name: Setup chart validation tools (kubeconform, yq, helm-unittest)
         env:
