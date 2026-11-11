@@ -231,6 +231,18 @@ jobs:
         # design (stdlib only), like the gate above.
         run: .useful-scripts/check_yaml_duplicate_keys.py
 
+      - name: OMO chain layer invariant (no same-layer fallback hops)
+        # A chain where two consecutive hops share a provider layer renders
+        # byte-perfect, passes helm lint, kubeconform, the reachability gate and
+        # the ArgoCD sync — and buys no resilience at all: a Claude Max outage
+        # kills claude-sonnet-5 and claude-haiku-4-5 together, and the Go plan's
+        # weekly cap 429s every Go model at once. The defect only surfaces as a
+        # turn that dies after hop 1, which is why the invariant is checked here
+        # instead of being re-derived by review. Repo-wide static check (~0.1s),
+        # unconditional like the two gates above; layer table lives in the
+        # script. Dependency-free by design (stdlib only, no PyYAML).
+        run: python3 scripts/check_omo_chain_layers.py
+
       - name: Workload policy (resources / probes / PDB) — ADVISORY
         # What no other gate here can see: a container with no requests/limits, no
         # probes, or a multi-pod workload with no PodDisruptionBudget renders

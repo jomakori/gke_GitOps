@@ -740,31 +740,37 @@ data:
     > `rebuilt_restart_limit_exceeded` with zero artifacts.
     >
     > **TERMINAL INVARIANT**: every chain ENDS on `deepseek-v4-flash-direct` — the credit-independent floor, so a sleeping Mac degrades to cloud instead of failing.
+    >
+    > **DISTINCT-LAYER INVARIANT**: consecutive hops must sit in DIFFERENT provider
+    > layers — claude-proxy (one Max subscription), opencode-go (one weekly plan
+    > cap), deepseek-direct, kilo. Same key/quota/proxy is not a fallback: a Claude
+    > outage kills `sonnet -> haiku` together, and the Go cap 429s `go -> mimo`
+    > together. Enforced by `scripts/check_omo_chain_layers.py` (pre-commit + CI).
 
     | OMO Agent | Role | Primary | Fallback chain |
     |-------|------|-------|----------|
-    | sisyphus | Sisyphus · Ultraworker (orchestrator) | deepseek-v4-flash-go | mimo-v2.6-flash → deepseek-v4-flash-direct |
-    | hephaestus | Hephaestus · Deep Agent | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | prometheus | Prometheus · Plan Builder | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | atlas | Atlas · Plan Executor | claude-sonnet-5 | deepseek-v4-flash-direct |
-    | metis | Metis · Plan Consultant | claude-sonnet-5 | deepseek-v4-flash-direct |
-    | momus | Momus · Plan Critic | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | kimi-k3.1-pro → deepseek-v4-flash-direct |
-    | librarian | Librarian · Research | claude-haiku-4-5 | deepseek-v4-flash-direct |
-    | explore | Explore · Repository Exploration | qwen3.6-35b-local | gpt-6-luna → claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | deepseek-v4-flash-go | mimo-v2.6-flash → deepseek-v4-flash-direct |
-    | (no scribe — writing routes via `writing` category) | writer | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | sisyphus | Sisyphus · Ultraworker (orchestrator) | deepseek-v4-flash-go | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | hephaestus | Hephaestus · Deep Agent | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | prometheus | Prometheus · Plan Builder | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | atlas | Atlas · Plan Executor | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | metis | Metis · Plan Consultant | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | momus | Momus · Plan Critic | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | oracle | Oracle · Architecture/Reasoning | claude-opus-5 | kimi-k3.1-pro → deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | librarian | Librarian · Research | claude-haiku-4-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | explore | Explore · Repository Exploration | qwen3.6-35b-local | claude-haiku-4-5 → deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | multimodal-looker | Multimodal-Looker · Multimodal Analysis | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | sisyphus-junior | Sisyphus-Junior · Specialized Execution Worker | deepseek-v4-flash-go | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | (no scribe — writing routes via `writing` category) | writer | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
 
     Categories (used when no named agent fits):
 
     | Category | Primary | Fallback chain |
     |---|---|---|
-    | quick | qwen3.6-35b-local | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | deep | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | ultrabrain | claude-opus-5 | claude-sonnet-5 → deepseek-v4-flash-direct |
-    | visual-engineering | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
-    | writing | claude-sonnet-5 | claude-haiku-4-5 → deepseek-v4-flash-direct |
+    | quick | claude-haiku-4-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | deep | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | ultrabrain | claude-opus-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | visual-engineering | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
+    | writing | claude-sonnet-5 | deepseek-v4-flash-go → deepseek-v4-flash-direct |
 
     **Pricing** ($/M in/out): `qwen3.6-35b-local` is **$0.00** (0.5s/hop warm, ~23 GB after idle, 131k window); the Claude proxy (flat Max fee) leads reasoning/vision — `claude-opus-5` $5.00/$25.00, `claude-sonnet-5` $3.00/$15.00, `claude-haiku-4-5` $1.00/$5.00, `claude-haiku-5-5` $0.10/$0.50; the Go lane (`deepseek-v4-flash-go` on `deepseek-v4.1-flash` $0.15/$0.60, `mimo-v2.6-flash` $0.14/$0.28, 1M windows) leads the orchestrator chains under a **weekly plan cap** that 429s every Go model at once — hence a non-Go hop always follows; `deepseek-v4-flash-direct` is the floor every chain ends on (no `model_info` → SpendLogs logs $0.00). DeepSeek Pro plus `kimi-k3`/`minimax-m3`/`gemini-3.6-flash`/`qwen3-6-plus` were dropped 2026-09 for cost.
 
