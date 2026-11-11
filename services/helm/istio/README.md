@@ -162,7 +162,6 @@ Two layers of VirtualServices exist:
 | podDisruptionBudget.maxUnavailable | int | `1` |  |
 | privateHosts[0] | string | `"*.openkite.maklab.net"` |  |
 | privateHosts[1] | string | `"trade.maklab.net"` |  |
-| privateHosts[2] | string | `"staging-trade.maklab.net"` |  |
 | virtualServices.argocd.destination.host | string | `"argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |

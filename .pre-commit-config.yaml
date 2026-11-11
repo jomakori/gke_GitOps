@@ -66,6 +66,25 @@ repos:
         language: system
         files: ^services/helm/openagent/
         pass_filenames: false
+      - id: omo-chain-layer-invariant
+        name: OMO chains — consecutive hops in distinct provider layers
+        description: |
+          Fail when two consecutive hops of an OMO fallback chain come from the
+          same provider layer (same key/quota/proxy). A hop is a fallback only
+          if it can fail independently of the one before it: a Claude Max
+          outage kills claude-sonnet-5 and claude-haiku-4-5 together, and the
+          Go plan's weekly cap 429s every Go model at once, so `sonnet ->
+          haiku` and `go -> mimo` are one failure domain wearing two names.
+
+          Nothing else in the repo can see this: the chains render
+          byte-perfect, helm lint, kubeconform, helm-unittest (unless a suite
+          pins the exact list) and the ArgoCD sync all stay green, and the
+          defect only shows up as a turn that dies after hop 1. The layer
+          table lives in scripts/check_omo_chain_layers.py, in one place.
+        entry: python3 scripts/check_omo_chain_layers.py
+        language: system
+        files: ^services/helm/openagent/values\.yaml$
+        pass_filenames: false
       - id: chart-values-reachability
         name: chart values reachability (no dead subchart config)
         description: |
