@@ -134,10 +134,10 @@ tickerlight:
   environments:
     staging:
       subdomain: staging-trade
-      tag: v0.1.0
+      tag: v0.2.0
     production:
       subdomain: trade
-      tag: v0.1.0
+      tag: v0.2.0
   service:
     port: 8080
     # The console reads the journal and nothing else: no Doppler values in this
@@ -166,16 +166,20 @@ tickerlight:
       readOnly: true
     # Bind the pod IP, and read the journal the engine writes. The path is the
     # engine's constant; the flag is what turns sample mode off.
+    # The judge scorer is the engine's mandatory gate, so it runs in this pod on
+    # a loopback listener the engine reaches at 127.0.0.1:8091 and nothing else
+    # can reach.
     args:
       - "-addr"
       - "0.0.0.0:8080"
       - "-journal"
       - "/data/journal.jsonl"
+      - "-judge-enabled"
     extraContainers:
       # Journal producer. Paths are code constants; -data-dir only points at the
       # mount, and the two containers share the one volume.
       - name: engine
-        image: ghcr.io/jomakori/trading-mcp:v0.3.2
+        image: ghcr.io/jomakori/trading-mcp:v0.3.3
         args:
           - "-data-dir"
           - "/data"
