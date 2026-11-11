@@ -144,6 +144,13 @@ apps:
     staging:
       enable: true
       label: staging
+      # Per-commit tag, not a constant pr-<N>. The app repo's staging job runs its
+      # build-image action with `pin-sha-tag: 'true'`, which publishes both
+      # `pr-<N>` and `pr-<N>-<7-char sha of the PR head>`. `.head_short_sha_7` is
+      # that same 7-character prefix (the generator's `head_short_sha` is 8), so
+      # every push renders a different tag and ArgoCD rolls the pod; with a
+      # constant pr-<N> the manifest never changed and staging kept the old image.
+      tagTemplate: "pr-{{ .number }}-{{ .head_short_sha_7 }}"
       # The staging host has one claimant at a time. While no open pull request
       # carries the label, the appset renders this placeholder for the host; CI in
       # the app repo keeps the marker directory it is generated from in sync with
