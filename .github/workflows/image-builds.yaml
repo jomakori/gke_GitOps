@@ -58,8 +58,12 @@ on:
       - .assets/images/gitopsctl/**
       - .github/workflows/image-builds.yaml
 
+# One group per ref: a repo-global group keeps a single pending run, so every
+# newly queued PR cancelled the previous one and its required checks never
+# reported. Pushes to main still serialise (same ref), builds of two PRs that
+# both touch image paths run side by side.
 concurrency:
-  group: image-builds
+  group: image-builds-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
