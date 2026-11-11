@@ -25,17 +25,17 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
-  - it: routes the OMO Sisyphus chain Go Flash, MiMo then DeepSeek
+  - it: routes the OMO Sisyphus chain Go Flash, Haiku then DeepSeek
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)chains:.*?          sisyphus:\\n          - litellm/deepseek-v4-flash-go\\n          - litellm/mimo-v2.6-flash\\n          - litellm/deepseek-v4-flash-direct"
+          pattern: "(?s)chains:.*?          sisyphus:\\n          - litellm/deepseek-v4-flash-go\\n          - litellm/claude-haiku-4-5\\n          - litellm/deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)          sisyphus-junior:\\n          - litellm/deepseek-v4-flash-go\\n          - litellm/mimo-v2.6-flash\\n          - litellm/deepseek-v4-flash-direct"
+          pattern: "(?s)          sisyphus-junior:\\n          - litellm/deepseek-v4-flash-go\\n          - litellm/claude-haiku-4-5\\n          - litellm/deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config

@@ -1,5 +1,5 @@
 suite: openagent local model lane
-# Local lane is a zero-cost read sink: it leads explore/librarian/quick, two cloud hops behind.
+# Local lane is a zero-cost read sink: it leads explore; three cloud hops behind it.
 release:
   name: openagent
   namespace: openagent
@@ -31,7 +31,7 @@ tests:
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)          explore:\n          - litellm/qwen3.6-35b-local\n          - litellm/gpt-6-luna\n          - litellm/claude-haiku-4-5\n          - litellm/deepseek-v4-flash-direct"
+          pattern: "(?s)          explore:\n          - litellm/qwen3.6-35b-local\n          - litellm/claude-haiku-4-5\n          - litellm/deepseek-v4-flash-go\n          - litellm/deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config

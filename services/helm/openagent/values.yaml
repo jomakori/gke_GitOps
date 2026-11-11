@@ -793,67 +793,90 @@ hermes-agent:
             # Known-transient exception: the Go plan's weekly cap (429
             # GoUsageLimitError, applies to every Go model at once) is expected
             # and absorbed — hop 1 is always paired with a non-Go hop below.
+            # LAYER-INVARIANT: consecutive hops must sit in DIFFERENT provider
+            # layers — same key/quota/proxy is not a fallback. A Claude Max
+            # outage kills every claude-* hop at once, and the Go plan's weekly
+            # cap 429s every Go model at once, so `sonnet -> haiku` or
+            # `go -> mimo` only burns a round-trip. Enforced by
+            # scripts/check_omo_chain_layers.py (pre-commit + CI); the layer
+            # table lives there.
+            #
+            # TARGET LADDER: claude-proxy -> opencode-go -> deepseek-direct,
+            # in that order, with claude-* staying primary where it already is.
+            # The two lanes that are already non-Claude-primary keep their
+            # primary (explore: local Qwen; sisyphus/sisyphus-junior: Go Flash)
+            # and carry the Claude layer behind it.
             chains:
               sisyphus:
                 - litellm/deepseek-v4-flash-go
-                - litellm/mimo-v2.6-flash
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
               hephaestus:
                 - litellm/claude-sonnet-5
-                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               prometheus:
                 - litellm/claude-sonnet-5
-                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               atlas:
                 - litellm/claude-sonnet-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               metis:
                 - litellm/claude-sonnet-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               momus:
                 - litellm/claude-sonnet-5
-                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               oracle:
+                # Kilo rung kept ahead of the Go lane: it is a distinct provider
+                # and the only reasoning-tier hop behind Opus.
                 - litellm/claude-opus-5
                 - litellm/kimi-k3.1-pro
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               librarian:
                 - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               explore:
+                # Local Qwen leads (zero-cost read sink); gpt-6-luna dropped —
+                # it is Kilo-served, i.e. the same layer as the local lane.
                 - litellm/qwen3.6-35b-local
-                - litellm/gpt-6-luna
                 - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               multimodal-looker:
                 - litellm/claude-sonnet-5
-                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               sisyphus-junior:
                 - litellm/deepseek-v4-flash-go
-                - litellm/mimo-v2.6-flash
+                - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-direct
             categories:
               quick:
                 - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               deep:
                 - litellm/claude-sonnet-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               ultrabrain:
                 - litellm/claude-opus-5
-                - litellm/claude-sonnet-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               visual-engineering:
                 - litellm/claude-sonnet-5
-                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               writing:
                 - litellm/claude-sonnet-5
-                - litellm/claude-haiku-4-5
+                - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
 
     mcp_servers:
