@@ -755,6 +755,10 @@ hermes-agent:
         # User plugins must be listed here or the dashboard API withholds them
         # (consent gate) — the session deeplink shim would never load.
         - session-deeplink
+        # trading-guard (templates/trading-guard-plugin.yaml) — pre_tool_call
+        # refusals in front of the trading tools. Same consent gate: without
+        # this line the ConfigMap mounts and nothing loads.
+        - trading-guard
       entries:
         omo:
           # Opt-in for the plugin's wake-up injection; must stay a real boolean
@@ -878,6 +882,45 @@ hermes-agent:
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
+
+    # ── Inbound: the tickerlight staging engine's alerts ────────────────
+    # Hermes' generic webhook receiver (gateway/platforms/webhook.py; docs at
+    # website/docs/user-guide/messaging/webhooks.md). Shape is the documented
+    # one: routes live under platforms.webhook.extra, each with its own secret,
+    # a prompt template over the JSON body, and a delivery target.
+    #
+    # The engine POSTs /webhooks/tickerlight-alerts with X-Webhook-Timestamp and
+    # X-Webhook-Signature-V2 (hex HMAC-SHA256 of "<timestamp>.<body>") keyed by
+    # the route secret; a stale timestamp (300s window) or a bad signature is
+    # rejected before the template runs. Reachability is the NetworkPolicy in
+    # templates/hermes-webhook-netpol.yaml — namespace tickerlight-staging only,
+    # port 8644 — and the Service port of the same name/number.
+    #
+    # deliver_only: the rendered prompt IS the message. An alert is a fact, not
+    # a question — no model turn, sub-second delivery, and no chance of a
+    # paraphrase dropping the symbol or the severity.
+    #
+    # No `events` filter: the engine names its own event type in the body rather
+    # than through a provider header, so the route accepts every verified
+    # delivery instead of silently matching none.
+    platforms:
+      webhook:
+        enabled: true
+        extra:
+          port: 8644
+          routes:
+            tickerlight-alerts:
+              # Per-route secret rather than the global fallback: each sender
+              # gets its own key, so a leaked one cannot sign for another route.
+              secret: "${HERMES_WEBHOOK_SECRET}"
+              prompt: |
+                tickerlight {severity}: {event} — {symbol} {state} (values {values}) at {ts}
+              deliver: "discord"
+              deliver_only: true
+              # No deliver_extra.chat_id: no dedicated alerts channel id exists in
+              # Doppler (only DISCORD_BOT_TOKEN/CLIENT_ID), so delivery falls back
+              # to the home channel per the receiver's documented behaviour. Add
+              # `deliver_extra: {chat_id: ...}` once a channel id is provisioned.
 
     mcp_servers:
       # ── Manifest = single source of truth ──────────────────────────────
@@ -1284,6 +1327,26 @@ hermes-agent:
           resources: false
           prompts: false
 
+      trading_staging:
+        lazy: true
+        # The tickerlight STAGING engine's own MCP server (sibling charts under
+        # services/helm/tickerlight-staging). Read-only surface only: the
+        # mutating tools — place_order, cancel_order, kill, arm_state — are
+        # deliberately absent from tools.include, which is the allowlist
+        # mechanism every entry here uses and the one `mcp verify` enforces.
+        # Bearer token: Hermes interpolates ${TRADING_MCP_HTTP_TOKEN} from the
+        # pod env when it connects (same envFrom secret bundle as the ${MCP_*}
+        # entries below), so no credential lands in this file.
+        url: "http://tickerlight-staging.tickerlight-staging.svc.cluster.local:8090/mcp"
+        headers:
+          Authorization: "Bearer ${TRADING_MCP_HTTP_TOKEN}"
+        timeout: 60
+        connect_timeout: 60
+        tools:
+          include: [caps_status, positions, account, list_orders, audit, quote]
+          resources: false
+          prompts: false
+
       bitwarden:
         lazy: true
         # Re-enabled: pinned, and the inline block below performs `bw login` /
@@ -1450,6 +1513,12 @@ hermes-agent:
             path: dashboard/manifest.json
           - key: index.js
             path: dashboard/dist/index.js
+    # trading-guard user plugin, generated from plugins/trading-guard/ by
+    # templates/trading-guard-plugin.yaml. Keys map 1:1 onto the filenames the
+    # scanner expects, so no `items:` remap is needed.
+    - name: trading-guard-plugin
+      configMap:
+        name: openagent-hermes-trading-guard
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -1478,6 +1547,13 @@ hermes-agent:
       readOnly: true
     - name: session-deeplink-plugin
       mountPath: /opt/data/plugins/session-deeplink
+      readOnly: true
+    # trading-guard — directory mount, same as session-deeplink above: the
+    # scanner walks plugins/<name>/ for plugin.yaml. Read-only because the
+    # plugin only reads; its arm-file check fails closed (the arm file lives in
+    # the engine's own volume, not here).
+    - name: trading-guard-plugin
+      mountPath: /opt/data/plugins/trading-guard
       readOnly: true
     # subPath is load-bearing: mounting the directory would shadow storage_gc.py
     # beside it. A subPath mount does not pick up ConfigMap edits in place, so
@@ -1606,6 +1682,16 @@ hermes-agent:
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
+  # The webhook receiver is an inbound surface: the tickerlight staging engine
+  # signs POST /webhooks/tickerlight-alerts with the route secret configured at
+  # hermes-agent.config.platforms.webhook.extra.routes. This value is what the
+  # subchart turns into WEBHOOK_ENABLED/WEBHOOK_PORT, so the listener and the
+  # route's `port` must agree — 8644 here, 8644 there, and the Service port in
+  # templates/apps.yaml.
+  webhook:
+    enabled: true
+    port: 8644
+
   service:
     enabled: true
     ports:

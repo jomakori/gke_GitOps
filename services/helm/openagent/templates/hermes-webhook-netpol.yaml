@@ -1,0 +1,49 @@
+{{- if .Values.hermes.enabled }}
+# Inbound path from the tickerlight staging engine into Hermes' webhook receiver.
+#
+# The pod has no NetworkPolicy today, so everything reaching it is admitted by
+# default. This policy keeps that true for the ports that already serve traffic
+# (8642 API, 9120 webapp) and narrows exactly one port, 8644, to the engine's
+# namespace: a webhook call is authenticated by its per-route HMAC signature,
+# but the network is the cheaper outer gate — no pod outside
+# tickerlight-staging reaches the receiver at all, and the Service is ClusterIP,
+# so nothing outside the cluster can either. 8642 and 9120 are listed without a
+# `from:` because omitting it admits every source, which is what they have
+# today; once a policy selects this pod, an unmentioned port is denied.
+#
+# Later step: tickerlight-production gets its own rule when that engine emits
+# the same alerts — add a second `from:` entry beside the staging one rather
+# than widening this selector.
+#
+# Deliberately Ingress-only: egress stays whatever the pod has today.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openagent-hermes-webhook
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hermes-webhook
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: openagent
+      app.kubernetes.io/name: hermes-agent
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8642
+        - protocol: TCP
+          port: 9120
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tickerlight-staging
+      ports:
+        - protocol: TCP
+          port: 8644
+{{- end }}

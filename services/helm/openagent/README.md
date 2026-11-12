@@ -639,11 +639,31 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.skiplagged.tools.prompts | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.tools.resources | bool | `false` |  |
 | hermes-agent.config.mcp_servers.skiplagged.url | string | `"https://mcp.skiplagged.com/mcp"` |  |
+| hermes-agent.config.mcp_servers.trading_staging.connect_timeout | int | `60` |  |
+| hermes-agent.config.mcp_servers.trading_staging.headers.Authorization | string | `"Bearer ${TRADING_MCP_HTTP_TOKEN}"` |  |
+| hermes-agent.config.mcp_servers.trading_staging.lazy | bool | `true` |  |
+| hermes-agent.config.mcp_servers.trading_staging.timeout | int | `60` |  |
+| hermes-agent.config.mcp_servers.trading_staging.tools.include[0] | string | `"caps_status"` |  |
+| hermes-agent.config.mcp_servers.trading_staging.tools.include[1] | string | `"positions"` |  |
+| hermes-agent.config.mcp_servers.trading_staging.tools.include[2] | string | `"account"` |  |
+| hermes-agent.config.mcp_servers.trading_staging.tools.include[3] | string | `"list_orders"` |  |
+| hermes-agent.config.mcp_servers.trading_staging.tools.include[4] | string | `"audit"` |  |
+| hermes-agent.config.mcp_servers.trading_staging.tools.include[5] | string | `"quote"` |  |
+| hermes-agent.config.mcp_servers.trading_staging.tools.prompts | bool | `false` |  |
+| hermes-agent.config.mcp_servers.trading_staging.tools.resources | bool | `false` |  |
+| hermes-agent.config.mcp_servers.trading_staging.url | string | `"http://tickerlight-staging.tickerlight-staging.svc.cluster.local:8090/mcp"` |  |
 | hermes-agent.config.model.default | string | `"deepseek-v4-flash-go"` |  |
 | hermes-agent.config.model.provider | string | `"litellm"` |  |
+| hermes-agent.config.platforms.webhook.enabled | bool | `true` |  |
+| hermes-agent.config.platforms.webhook.extra.port | int | `8644` |  |
+| hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.deliver | string | `"discord"` |  |
+| hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.deliver_only | bool | `true` |  |
+| hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.prompt | string | `"tickerlight {severity}: {event} — {symbol} {state} (values {values}) at {ts}\n"` |  |
+| hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.secret | string | `"${HERMES_WEBHOOK_SECRET}"` |  |
 | hermes-agent.config.plugins.enabled[0] | string | `"discord-platform"` |  |
 | hermes-agent.config.plugins.enabled[1] | string | `"omo"` |  |
 | hermes-agent.config.plugins.enabled[2] | string | `"session-deeplink"` |  |
+| hermes-agent.config.plugins.enabled[3] | string | `"trading-guard"` |  |
 | hermes-agent.config.plugins.entries.omo.allow_gateway_injection | bool | `true` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[0] | string | `"litellm/claude-sonnet-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.categories.deep[1] | string | `"litellm/deepseek-v4-flash-go"` |  |
@@ -817,10 +837,13 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumeMounts[7].mountPath | string | `"/opt/data/plugins/session-deeplink"` |  |
 | hermes-agent.extraVolumeMounts[7].name | string | `"session-deeplink-plugin"` |  |
 | hermes-agent.extraVolumeMounts[7].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[8].mountPath | string | `"/opt/data/scripts/storage_gc_cron.sh"` |  |
-| hermes-agent.extraVolumeMounts[8].name | string | `"storage-gc-cron"` |  |
+| hermes-agent.extraVolumeMounts[8].mountPath | string | `"/opt/data/plugins/trading-guard"` |  |
+| hermes-agent.extraVolumeMounts[8].name | string | `"trading-guard-plugin"` |  |
 | hermes-agent.extraVolumeMounts[8].readOnly | bool | `true` |  |
-| hermes-agent.extraVolumeMounts[8].subPath | string | `"storage_gc_cron.sh"` |  |
+| hermes-agent.extraVolumeMounts[9].mountPath | string | `"/opt/data/scripts/storage_gc_cron.sh"` |  |
+| hermes-agent.extraVolumeMounts[9].name | string | `"storage-gc-cron"` |  |
+| hermes-agent.extraVolumeMounts[9].readOnly | bool | `true` |  |
+| hermes-agent.extraVolumeMounts[9].subPath | string | `"storage_gc_cron.sh"` |  |
 | hermes-agent.extraVolumes[0].configMap.name | string | `"openagent-hermes-hooks"` |  |
 | hermes-agent.extraVolumes[0].name | string | `"hermes-hooks"` |  |
 | hermes-agent.extraVolumes[1].configMap.name | string | `"openagent-hermes-read-guard"` |  |
@@ -844,6 +867,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumes[8].configMap.items[1].path | string | `"dashboard/dist/index.js"` |  |
 | hermes-agent.extraVolumes[8].configMap.name | string | `"openagent-hermes-session-deeplink"` |  |
 | hermes-agent.extraVolumes[8].name | string | `"session-deeplink-plugin"` |  |
+| hermes-agent.extraVolumes[9].configMap.name | string | `"openagent-hermes-trading-guard"` |  |
+| hermes-agent.extraVolumes[9].name | string | `"trading-guard-plugin"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
 | hermes-agent.image.tag | string | `"v0.23.0"` |  |
@@ -871,6 +896,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.tests.resources.limits.memory | string | `"2Gi"` |  |
 | hermes-agent.tests.resources.requests.cpu | string | `"100m"` |  |
 | hermes-agent.tests.resources.requests.memory | string | `"512Mi"` |  |
+| hermes-agent.webhook.enabled | bool | `true` |  |
+| hermes-agent.webhook.port | int | `8644` |  |
 | hermes.enabled | bool | `true` |  |
 | litellm.autoscaling.enabled | bool | `true` |  |
 | litellm.autoscaling.maxReplicas | int | `3` |  |
