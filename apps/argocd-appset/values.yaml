@@ -16,6 +16,13 @@ demoApi:
     production:
       dopplerConfig: demo-api-prod
 
+openkite:
+  environment:
+    staging:
+      dopplerConfig: svc_openagent
+    production:
+      dopplerConfig: svc_openagent
+
 notesUi:
   environment:
     staging:
@@ -95,6 +102,74 @@ apps:
         value: "{{ .Values.notesUi.environment.staging.dopplerConfig }}"
       - name: notesUi.environments.production.dopplerConfig
         value: "{{ .Values.notesUi.environment.production.dopplerConfig }}"
+
+  # PROD — this entry renders the apps/helm umbrella (helmPath below) for the
+  # app's `production` environment: Deployment, Service and VirtualService at
+  # openkite.maklab.net, gated by Cloudflare Access because the app spec sets
+  # enable_private. There is no openkite-specific chart and no per-environment
+  # manifest anywhere: the workload is the `openkite:` spec in apps/helm/values.yaml.
+  #
+  # `openkite-preview` (the bespoke appset + workload chart pair) is deleted:
+  # everything it did is now either the spec above or the generic generator.
+  openkite:
+    enable: true
+    syncWave: "6"
+    helmPath: apps/helm/
+    destNamespace: argocd
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    # Injects openkite.enable_domain=true, so the umbrella renders the
+    # VirtualService for the host. Privacy is NOT expressed here: it is the app
+    # spec's `enable_private`, which renders the per-host Access DENY policy.
+    gateways:
+      enable_public: true
+    syncOptions:
+      - CreateNamespace=true
+    ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+          - /spec/replicas
+      - group: apps
+        kind: Secret
+        jsonPointers:
+          - /metadata/argocd.argoproj.io/sync-wave
+    # Previews are owned by Tilt, not this appset. `preview.repo` is what the
+    # staging admission watches; `enable_preview` is what admits previews.
+    preview:
+      repo: openkite
+    staging:
+      enable: true
+      label: staging
+      # Per-commit tag, not a constant pr-<N>. The app repo's staging job runs its
+      # build-image action with `pin-sha-tag: 'true'`, which publishes both
+      # `pr-<N>` and `pr-<N>-<7-char sha of the PR head>`. `.head_short_sha_7` is
+      # that same 7-character prefix (the generator's `head_short_sha` is 8), so
+      # every push renders a different tag and ArgoCD rolls the pod; with a
+      # constant pr-<N> the manifest never changed and staging kept the old image.
+      tagTemplate: "pr-{{ .number }}-{{ .head_short_sha_7 }}"
+      # The staging host has one claimant at a time. While no open pull request
+      # carries the label, the appset renders this placeholder for the host; CI in
+      # the app repo keeps the marker directory it is generated from in sync with
+      # the label. See services/helm/splash for why they must not coexist.
+      placeholder:
+        enable: true
+        helmPath: services/helm/splash/
+        namespace: istio-system
+        stateBranch: staging-state
+        statePath: idle
+    parameters:
+      - name: appName
+        value: "openkite"
+      - name: openkite.environments.staging.dopplerConfig
+        value: "{{ .Values.openkite.environment.staging.dopplerConfig }}"
+      - name: openkite.environments.production.dopplerConfig
+        value: "{{ .Values.openkite.environment.production.dopplerConfig }}"
+      - name: openkite.enable_staging
+        value: "false"
 
   # Tickerlight: console + trading-mcp engine in one pod, one claim at /data.
   tickerlight:

@@ -74,6 +74,54 @@ notesUi:
     storage:
       size: 1Gi
 
+openkite:
+  enable_staging: true
+  enable_istio: true
+  # Cloudflare Access gating for openkite.maklab.net and every pr<N>-openkite.maklab.net
+  # preview is declared in services/helm/istio/values.yaml `privateHosts`, where the
+  # istio Application (destination.namespace: istio-system) renders the DENY policy.
+  # OKT-147: do not add an `enable_private` here — it has no effect in this chart
+  # (the AuthorizationPolicy would render into istio-system from a non-istio
+  # Application and ArgoCD would skip it).
+  # ── Cluster access (OKT-159; scope widened by DEV-36) ────────────────
+  # The console acts on the cluster with its own ServiceAccount, and the scope
+  # is per environment: production gets cluster-admin, staging keeps the
+  # read-only role, and a preview gets no credential at all. OKT-159 removed the
+  # Doppler `TAILSCALE_KUBECONFIG` — it was never a scoped credential: the
+  # Tailscale operator's API-server proxy
+  # runs in auth mode, ignores the file's `token: unused`, and impersonates the
+  # caller's tailnet identity, which from an in-cluster pod resolves to a user
+  # bound to cluster-admin (ClusterRoleBinding/tailnet-user-k8s-admin). The SA
+  # replaces it with the same reach in production, because this is a
+  # single-operator console and read-only cannot act on what it shows.
+  # Cloudflare Access gates the hostname only — anything inside the cluster that
+  # can reach the console inherits the grant, and so would a bug in it.
+  clusterAdmin: true
+  # GHCR, not the shared ECR registry.
+  image:
+    repository: ghcr.io/jomakori/openkite
+  istio:
+    gateway: istio-system/maklab-gateway
+    requestTimeout: 30s
+    retryAttempts: 3
+    retryTimeout: 5s
+  environments:
+    staging:
+      # Single-label host: a third DNS label has no certificate under the wildcard.
+      subdomain: staging-openkite
+      tag: v0.1.0
+    production:
+      # Released image; the pin-bump workflow rewrites this on every release.
+      tag: v0.1.0
+  service:
+    # Container port: the Service is 80 and routes here.
+    port: 8080
+    resourceRequests:
+      cpu: 100m
+      memory: 320Mi
+    resourceLimits:
+      memory: 640Mi
+
 # Tickerlight console plus the trading-mcp engine it reads from, one pod so the
 # journal at /data is a plain shared volume and the console reads it locally.
 tickerlight:
