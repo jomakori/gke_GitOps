@@ -135,6 +135,36 @@ tickerlight:
     staging:
       subdomain: staging-trade
       tag: v0.2.0
+      # ── Engine MCP listener: published inside the cluster ──────────────
+      # The engine container below binds 127.0.0.1:8090, so only the console
+      # in the same pod can reach it. Staging binds the pod address instead,
+      # adds a second Service port for it, and admits the `openagent`
+      # namespace to that port and nothing else (templates/networkpolicy.yaml).
+      # Production declares no `sidecar` block, so it keeps the loopback
+      # address, the single console port, and no NetworkPolicy.
+      sidecar:
+        # Which service.extraContainers entry these settings apply to.
+        container: engine
+        # Service port published for that container.
+        port: 8090
+        portName: mcp
+        # Namespaces admitted to `port`. Nothing else can reach it.
+        fromNamespaces:
+          - openagent
+        # Env overrides for that container, by name. The shared list keeps the
+        # loopback address; this environment replaces it.
+        env:
+          TRADING_MCP_HTTP_ADDR: "0.0.0.0:8090"
+          # The engine refuses a non-loopback bind unless this is the literal
+          # `true`, so it is quoted here and stringified by the chart.
+          TRADING_MCP_HTTP_ALLOW_NON_LOOPBACK: "true"
+        # Alert sink credentials. envFrom already carries every key from the
+        # app's ExternalSecret; these two are named explicitly so the contract
+        # is visible in the rendered pod, and `optional` keeps a Doppler config
+        # without them from blocking startup. No values here, ever.
+        secretEnv:
+          - TRADING_ALERT_WEBHOOK_URL
+          - TRADING_ALERT_WEBHOOK_SECRET
     production:
       subdomain: trade
       tag: v0.2.0
@@ -185,6 +215,9 @@ tickerlight:
           - "/data"
         envFromVars: true
         env:
+          # Loopback default: the console reaches the engine in the same pod,
+          # nothing outside it can. An environment that publishes this port
+          # overrides the address through `environments.<env>.sidecar.env`.
           - name: TRADING_MCP_HTTP_ADDR
             value: "127.0.0.1:8090"
         ports:

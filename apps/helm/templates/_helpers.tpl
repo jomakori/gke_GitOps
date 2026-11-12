@@ -62,6 +62,13 @@
 {{- $defSub      := ternary $kebabName (printf "staging.%s" $kebabName) (eq $envName "production") }}
 {{- $subdomain   := $env.subdomain | default $defSub }}
 {{- $tag         := $env.tag | default "latest" }}
+{{- /* Sidecar exposure (per environment): which service.extraContainers entry
+       gets its env overridden, which extra port the Service publishes, and
+       which namespaces the NetworkPolicy admits to that port. Declared by an
+       environment that publishes a listener; empty (no port, no policy) when
+       the environment does not, which keeps that environment's render
+       unchanged. */}}
+{{- $sidecar     := $env.sidecar | default dict }}
 {{- $fullDomain  := printf "%s.%s" $subdomain $domain }}
 {{- /* The ECR pull secret belongs to the shared registry; an app naming its own
        (public) registry gets no Secret — an empty kubernetes.io/dockercfg is rejected
@@ -403,7 +410,37 @@ spec:
           - secretRef:
               name: {{ $namespace }}-vars
           {{- end }}
-          {{- with .env }}
+          {{- /* Resolve this container's env: the shared list, with any
+                 per-environment override applied by name (an environment that
+                 publishes the listener swaps a loopback bind for a pod one),
+                 then the named secret keys appended as optional refs. Keys and
+                 order of the shared list are preserved, so an environment with
+                 no overrides renders the list exactly as written. */}}
+          {{- $overrides := dict }}
+          {{- $secretEnv := list }}
+          {{- if and $sidecar.container (eq (toString $sidecar.container) (toString .name)) }}
+          {{- $overrides = $sidecar.env | default dict }}
+          {{- $secretEnv = $sidecar.secretEnv | default list }}
+          {{- end }}
+          {{- $cenv := list }}
+          {{- $cenvNames := list }}
+          {{- range .env }}
+          {{- $item := deepCopy . }}
+          {{- if hasKey $overrides $item.name }}
+          {{- $item = set $item "value" (index $overrides $item.name) }}
+          {{- end }}
+          {{- $cenv = append $cenv $item }}
+          {{- $cenvNames = append $cenvNames $item.name }}
+          {{- end }}
+          {{- range $name := keys $overrides | sortAlpha }}
+          {{- if not (has $name $cenvNames) }}
+          {{- $cenv = append $cenv (dict "name" $name "value" (index $overrides $name)) }}
+          {{- end }}
+          {{- end }}
+          {{- range $secretEnv }}
+          {{- $cenv = append $cenv (dict "name" . "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-vars" $namespace) "key" . "optional" true))) }}
+          {{- end }}
+          {{- with $cenv }}
           env: {{ toYaml . | nindent 12 }}
           {{- end }}
           {{- with .ports }}
@@ -449,7 +486,19 @@ spec:
     protocol: TCP
     port: 80
     targetPort: {{ $svc.port }}
+{{- if $sidecar.port }}
+  {{- /* Additional Service port for the sidecar listener this environment
+         publishes. Named so the caller can address it independently of the
+         console port above. */}}
+  - name: {{ $sidecar.portName | default "sidecar" }}
+    protocol: TCP
+    port: {{ $sidecar.port }}
+    targetPort: {{ $sidecar.port }}
+{{- end }}
   type: {{ ternary "ClusterIP" "NodePort" $enableIstio }}
+{{- if $sidecar.port }}
+{{- include "app.networkPolicy" (dict "appName" $appName "envName" $envName "namespace" $namespace "sidecarPort" ($sidecar.port | int) "servicePort" ($svc.port | int) "fromNamespaces" ($sidecar.fromNamespaces | default list)) }}
+{{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
 {{- /* VirtualService — Istio routing (replaces ALB Ingress)           */}}
