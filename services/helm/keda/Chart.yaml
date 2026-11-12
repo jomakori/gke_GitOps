@@ -1,9 +1,0 @@
-apiVersion: v2
-name: keda
-description: A Helm chart for Kubernetes Event-driven Autoscaling (KEDA)
-version: 2.19.0
-appVersion: 2.19.0
-dependencies:
-  - name: keda
-    version: "2.19.0"
-    repository: "https://kedacore.github.io/charts"
