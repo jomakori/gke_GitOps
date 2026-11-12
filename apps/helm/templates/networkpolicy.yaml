@@ -1,0 +1,66 @@
+{{- /* ═════════════════════════════════════════════════════════════════════
+  app.networkPolicy — ingress policy for an environment that publishes a
+  sidecar listener.
+
+  Included from `app.manifests` only when `environments.<env>.sidecar.port`
+  is set, so an environment that keeps its sidecar on loopback (production
+  today) renders no NetworkPolicy and no Service port at all.
+
+  Selector is the pod's own app/env label pair — the same pair the Service
+  and the Deployment use — so the policy cannot select the other
+  environment's pod: `env` differs, and the two environments live in
+  separate namespaces anyway.
+  ═════════════════════════════════════════════════════════════════════ */}}
+{{- define "app.networkPolicy" }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .appName }}-{{ .envName }}-sidecar
+  namespace: {{ .namespace }}
+  labels:
+    app: {{ .appName }}
+    env: {{ .envName }}
+  annotations:
+    # Same wave as the ExternalSecret (-1): the policy lands before the pod
+    # that it selects, so there is no window where the published port is
+    # reachable by every namespace.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .appName }}
+      env: {{ .envName }}
+  policyTypes:
+    # Ingress only. Deliberately no egress rules: the engine keeps
+    # unrestricted egress — cluster DNS in kube-system, the venue and alert
+    # endpoints on the internet, and the journal volume.
+    - Ingress
+  ingress:
+    # The console port is DELIBERATELY broader than the sidecar port: open to
+    # every namespace, no peer restriction. Nothing in this pod authenticates
+    # a caller on 8080; what protects it is the layer above — the host is
+    # gated by Cloudflare Access (services/helm/istio `privateHosts`) and the
+    # only other path in is `kubectl port-forward`, which runs against the
+    # kubelet and sources from the node, not from a pod. An in-cluster caller
+    # that reaches this port gets exactly the UI a browser gets. The sidecar
+    # port below is the one that carries the engine's MCP API, so it is the
+    # one worth narrowing to a single namespace.
+    - ports:
+        - protocol: TCP
+          port: {{ .servicePort }}
+    # The sidecar listener: only these namespaces, only this port.
+    {{- with .fromNamespaces }}
+    - from:
+        {{- range . }}
+        - namespaceSelector:
+            matchLabels:
+              # Label the API server sets on every namespace; a workload
+              # cannot spoof it.
+              kubernetes.io/metadata.name: {{ . }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ $.sidecarPort }}
+    {{- end }}
+{{- end }}
