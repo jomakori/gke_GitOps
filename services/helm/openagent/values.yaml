@@ -190,6 +190,7 @@ litellm:
           # the Secret is already inherited via environmentSecrets, so the
           # credential lives in Doppler only, never in values.
     litellm_settings:
+      # 1.109 defaults this to false (unsupported params 400 instead of being dropped).
       drop_params: true
       # Redis response cache AND proxy-wide coordination (rate-limit counters,
       # budget reservations, cache invalidation, pod lock) — one block does both.
