@@ -65,7 +65,7 @@ jobs:
           # time. That download 504'd twice and killed the job in ~30s before any
           # chart was even rendered. Nothing here needs 3.10: every script in
           # .useful-scripts/ is stdlib-only.
-          python-version: "3.13"
+          python-version: "3.15"
 
       - name: Ensure PyYAML
         # validate_litellm_config.sh reads the rendered ConfigMap with PyYAML.
