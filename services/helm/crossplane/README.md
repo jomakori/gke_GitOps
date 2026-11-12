@@ -7,7 +7,7 @@ Crossplane core, the fork-built Cloudflare Zero Trust provider, and the Cloudfla
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.crossplane.io/stable | crossplane | 2.4.2 |
+| https://charts.crossplane.io/stable | crossplane | 2.4.3 |
 
 Cloudflare Access applications stop being a Terraform resource and become a
 Crossplane managed resource reconciled from this repo.

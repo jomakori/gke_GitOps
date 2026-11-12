@@ -140,7 +140,7 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | rabbitmq.default_password | string | `"plane"` |  |
 | rabbitmq.default_user | string | `"plane"` |  |
 | rabbitmq.external_rabbitmq_url | string | `""` |  |
-| rabbitmq.image | string | `"rabbitmq:3.13.6-management-alpine"` |  |
+| rabbitmq.image | string | `"rabbitmq:4.4.0-management-alpine"` |  |
 | rabbitmq.labels | object | `{}` |  |
 | rabbitmq.local_setup | bool | `true` |  |
 | rabbitmq.managementPort | int | `15672` |  |
@@ -157,7 +157,7 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | redis.assign_cluster_ip | bool | `false` |  |
 | redis.cpuLimit | string | `"500m"` |  |
 | redis.cpuRequest | string | `"50m"` |  |
-| redis.image | string | `"valkey/valkey:7.2.11-alpine"` |  |
+| redis.image | string | `"valkey/valkey:9.1.3-alpine"` |  |
 | redis.labels | object | `{}` |  |
 | redis.local_setup | bool | `true` |  |
 | redis.memoryLimit | string | `"256Mi"` |  |

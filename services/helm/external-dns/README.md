@@ -7,7 +7,7 @@ ExternalDNS — automatic DNS record management via Cloudflare for maklab.net
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://kubernetes-sigs.github.io/external-dns/ | external-dns | 1.16.1 |
+| https://kubernetes-sigs.github.io/external-dns/ | external-dns | 1.23.0 |
 
 ## Under the hood
 

@@ -15,7 +15,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 |------------|------|---------|
 | file://charts/claude-proxy | claude-proxy | 0.2.0 |
 | file://charts/headroom | headroom | 0.1.0 |
-| oci://ghcr.io/berriai | litellm(litellm-helm) | 1.92.0 |
+| oci://ghcr.io/berriai | litellm(litellm-helm) | 1.109.1 |
 | oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.23.0 |
 
 ## OpenAgent stack
@@ -785,7 +785,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraInitContainers[1].env[1].value | string | `"https://github.com/jomakori/hermes-omo-plugin.git"` |  |
 | hermes-agent.extraInitContainers[1].env[2].name | string | `"OMO_PROVISION_REF"` |  |
 | hermes-agent.extraInitContainers[1].env[2].value | string | `"main"` |  |
-| hermes-agent.extraInitContainers[1].image | string | `"alpine/git:2.45.2"` |  |
+| hermes-agent.extraInitContainers[1].image | string | `"alpine/git:v2.54.0"` |  |
 | hermes-agent.extraInitContainers[1].imagePullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.extraInitContainers[1].name | string | `"provision-omo-plugin"` |  |
 | hermes-agent.extraInitContainers[1].securityContext.runAsGroup | int | `10000` |  |
@@ -893,7 +893,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.fullnameOverride | string | `"openagent-litellm"` |  |
 | litellm.image.pullPolicy | string | `"IfNotPresent"` |  |
 | litellm.image.repository | string | `"ghcr.io/berriai/litellm"` |  |
-| litellm.image.tag | string | `"1.98.0@sha256:20b5044b619055374061a6d5b7b08754cad75aeabbf82ddf4f69cc0cf80ddaf4"` |  |
+| litellm.image.tag | string | `"v1.109.0@sha256:26aecfb02fb17ac6590f0549478561f9fbb3f69314317320b2e32a21beed4006"` |  |
 | litellm.masterkeySecretKey | string | `"masterkey"` |  |
 | litellm.masterkeySecretName | string | `"openagent-litellm-masterkey"` |  |
 | litellm.migrationJob.enabled | bool | `false` |  |

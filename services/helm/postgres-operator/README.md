@@ -7,7 +7,7 @@ A Helm chart for StackGres - a PostgreSQL operator
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://stackgres.io/downloads/stackgres-k8s/stackgres/helm/ | stackgresOperator(stackgres-operator) | 1.18.6 |
+| https://stackgres.io/downloads/stackgres-k8s/stackgres/helm/ | stackgresOperator(stackgres-operator) | 1.19.4 |
 
 ## Under the hood
 

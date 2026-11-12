@@ -13,7 +13,7 @@ Vertical Pod Autoscaler - automatically adjusts CPU and memory requests for pods
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.fairwinds.com/stable | vpa | 4.6.0 |
+| https://charts.fairwinds.com/stable | vpa | 5.2.0 |
 
 ## Overview
 

@@ -7,7 +7,7 @@ A Helm chart for the External Secrets operator
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.external-secrets.io/ | external-secrets | 2.5.0 |
+| https://charts.external-secrets.io/ | external-secrets | 2.15.0 |
 
 ## Under the hood
 
