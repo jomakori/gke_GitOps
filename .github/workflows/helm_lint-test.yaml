@@ -74,9 +74,12 @@ jobs:
         run: python3 -m pip install --quiet --disable-pip-version-check --retries 5 pyyaml
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
-          go-version: "1.24"
+          # setup-go v7 exports GOTOOLCHAIN=local, so the toolchain must itself
+          # satisfy the tools built below: yq needs >= 1.25, helm-unittest >= 1.26.
+          # 1.26 is in the runner image's cache, so nothing is downloaded.
+          go-version: "1.26"
 
       - name: Setup chart validation tools (kubeconform, yq, helm-unittest)
         env:
