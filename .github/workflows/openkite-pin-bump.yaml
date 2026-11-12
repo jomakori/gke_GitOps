@@ -23,7 +23,7 @@ jobs:
     name: Move the prod tag
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           # Checkout's stored Authorization header overrides credentials in the remote
