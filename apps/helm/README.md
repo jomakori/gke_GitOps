@@ -24,7 +24,6 @@ All manifests are produced by a single 373-line `_helpers.tpl` define (`app.mani
 | `ServiceAccount` + ECR `dockercfg` Secret | Always |
 | `ExternalSecret` | `environments.<env>.dopplerConfig` is set |
 | `ClusterRole` + `ClusterRoleBinding` | `clusterRead` is set (never in previews) |
-| `SGCluster` (StackGres) or `PerconaServerMongoDB` | `enable_db.type` is `postgres` or `mongodb` |
 | `Deployment` | Always (scheduled on `intent: apps` nodes) |
 | `Service` | Always (ClusterIP when Istio, NodePort otherwise) |
 | `VirtualService` | `enable_domain` + `enable_istio` (both default true) |
@@ -38,7 +37,6 @@ When `enable_db` is set, the chart generates an operator CR in the app namespace
 | DB type | Operator CR | Autoscaling |
 |---------|-------------|-------------|
 | `postgres` | `SGCluster` (StackGres) | Connection-based horizontal (`replicasConnectionsUsageTarget: 0.5`) |
-| `mongodb` | `PerconaServerMongoDB` (Percona) | Static replica set size (no connection-based scaling) |
 
 - `deployment: db` → single instance (fixed)
 - `deployment: cluster` → multiple instances with PDB
@@ -138,7 +136,7 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.clusterAdmin | bool | `true` |  |
 | openkite.enable_istio | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
-| openkite.environments.production.tag | string | `"v0.58.3"` |  |
+| openkite.environments.production.tag | string | `"v0.70.0"` |  |
 | openkite.environments.staging.subdomain | string | `"staging-openkite"` |  |
 | openkite.environments.staging.tag | string | `"v0.52.0"` |  |
 | openkite.image.repository | string | `"ghcr.io/jomakori/openkite"` |  |
@@ -152,3 +150,40 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | openkite.service.resourceRequests.memory | string | `"320Mi"` |  |
 | registry | string | `"123456.dkr.ecr.us-east-2.amazonaws.com"` |  |
 | storageClass | string | `"local-path"` |  |
+| tickerlight.enable_istio | bool | `true` |  |
+| tickerlight.enable_staging | bool | `true` |  |
+| tickerlight.environments.production.subdomain | string | `"trade"` |  |
+| tickerlight.environments.production.tag | string | `"v0.2.0"` |  |
+| tickerlight.environments.staging.subdomain | string | `"staging-trade"` |  |
+| tickerlight.environments.staging.tag | string | `"v0.2.0"` |  |
+| tickerlight.image.repository | string | `"ghcr.io/jomakori/tickerlight"` |  |
+| tickerlight.service.args[0] | string | `"-addr"` |  |
+| tickerlight.service.args[1] | string | `"0.0.0.0:8080"` |  |
+| tickerlight.service.args[2] | string | `"-journal"` |  |
+| tickerlight.service.args[3] | string | `"/data/journal.jsonl"` |  |
+| tickerlight.service.args[4] | string | `"-judge-enabled"` |  |
+| tickerlight.service.containerSecurityContext.allowPrivilegeEscalation | bool | `false` |  |
+| tickerlight.service.containerSecurityContext.capabilities.drop[0] | string | `"ALL"` |  |
+| tickerlight.service.envFrom | bool | `false` |  |
+| tickerlight.service.extraContainers[0].args[0] | string | `"-data-dir"` |  |
+| tickerlight.service.extraContainers[0].args[1] | string | `"/data"` |  |
+| tickerlight.service.extraContainers[0].envFromVars | bool | `true` |  |
+| tickerlight.service.extraContainers[0].env[0].name | string | `"TRADING_MCP_HTTP_ADDR"` |  |
+| tickerlight.service.extraContainers[0].env[0].value | string | `"127.0.0.1:8090"` |  |
+| tickerlight.service.extraContainers[0].image | string | `"ghcr.io/jomakori/trading-mcp:v0.3.4"` |  |
+| tickerlight.service.extraContainers[0].name | string | `"engine"` |  |
+| tickerlight.service.extraContainers[0].ports[0].containerPort | int | `8090` |  |
+| tickerlight.service.extraContainers[0].ports[0].name | string | `"mcp"` |  |
+| tickerlight.service.extraContainers[0].resources.limits.memory | string | `"384Mi"` |  |
+| tickerlight.service.extraContainers[0].resources.requests.cpu | string | `"50m"` |  |
+| tickerlight.service.extraContainers[0].resources.requests.memory | string | `"128Mi"` |  |
+| tickerlight.service.podSecurityContext.fsGroup | int | `65532` |  |
+| tickerlight.service.podSecurityContext.runAsGroup | int | `65532` |  |
+| tickerlight.service.podSecurityContext.runAsNonRoot | bool | `true` |  |
+| tickerlight.service.podSecurityContext.runAsUser | int | `65532` |  |
+| tickerlight.service.port | int | `8080` |  |
+| tickerlight.service.resourceLimits.memory | string | `"256Mi"` |  |
+| tickerlight.service.resourceRequests.cpu | string | `"50m"` |  |
+| tickerlight.service.resourceRequests.memory | string | `"128Mi"` |  |
+| tickerlight.service.storage.readOnly | bool | `true` |  |
+| tickerlight.service.storage.size | string | `"1Gi"` |  |

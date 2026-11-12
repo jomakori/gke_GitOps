@@ -264,52 +264,6 @@ spec:
       connections:
         max: 200
         default: 5
-{{- else if eq $dbType "mongodb" }}
----
-apiVersion: psmdb.percona.com/v1
-kind: PerconaServerMongoDB
-metadata:
-  name: {{ $dbName }}
-  namespace: {{ $namespace }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
-  finalizers:
-    - percona.com/delete-psmdb-pods-in-order
-spec:
-  crVersion: "1.22.0"
-  image: percona/percona-server-mongodb:8.0.19-7
-  imagePullPolicy: IfNotPresent
-  unsafeFlags:
-    replsetSize: true
-  updateStrategy: SmartUpdate
-  upgradeOptions:
-    apply: disabled
-  secrets:
-    users: {{ $namespace }}-vars
-  replsets:
-    - name: rs0
-      size: {{ if $isCluster }}{{ $dbScaling.minInstances | default 3 }}{{ else }}1{{ end }}
-      {{- if $isCluster }}
-      podDisruptionBudget:
-        maxUnavailable: 1
-      {{- end }}
-      resources:
-        limits:
-          cpu: "600m"
-          memory: "1Gi"
-        requests:
-          cpu: "300m"
-          memory: "1Gi"
-      volumeSpec:
-        persistentVolumeClaim:
-          storageClassName: {{ $dbStorageClass | quote }}
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: {{ $dbStorage | quote }}
-  sharding:
-    enabled: false
 {{- end }}
 {{- end }}
 

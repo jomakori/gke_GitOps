@@ -78,18 +78,10 @@ redis:
   affinity: {}
 
 postgres:
+  # Plane's database is the external pg-main StackGres cluster; the chart's
+  # bundled postgres workload is not used. The flag must stay false — the
+  # templates guard their DATABASE_URL and stateful workload on it.
   local_setup: false
-  image: postgres:15.7-alpine
-  servicePort: 5432
-  storageClass: ""
-  volumeSize: 1Gi
-  pullPolicy: IfNotPresent
-  assign_cluster_ip: false
-  labels: {}
-  annotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
 
 rabbitmq:
   local_setup: true

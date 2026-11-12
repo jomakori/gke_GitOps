@@ -22,7 +22,6 @@ All manifests are produced by a single 373-line `_helpers.tpl` define (`app.mani
 | `ServiceAccount` + ECR `dockercfg` Secret | Always |
 | `ExternalSecret` | `environments.<env>.dopplerConfig` is set |
 | `ClusterRole` + `ClusterRoleBinding` | `clusterRead` is set (never in previews) |
-| `SGCluster` (StackGres) or `PerconaServerMongoDB` | `enable_db.type` is `postgres` or `mongodb` |
 | `Deployment` | Always (scheduled on `intent: apps` nodes) |
 | `Service` | Always (ClusterIP when Istio, NodePort otherwise) |
 | `VirtualService` | `enable_domain` + `enable_istio` (both default true) |
@@ -36,7 +35,6 @@ When `enable_db` is set, the chart generates an operator CR in the app namespace
 | DB type | Operator CR | Autoscaling |
 |---------|-------------|-------------|
 | `postgres` | `SGCluster` (StackGres) | Connection-based horizontal (`replicasConnectionsUsageTarget: 0.5`) |
-| `mongodb` | `PerconaServerMongoDB` (Percona) | Static replica set size (no connection-based scaling) |
 
 - `deployment: db` → single instance (fixed)
 - `deployment: cluster` → multiple instances with PDB
