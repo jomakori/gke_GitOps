@@ -142,7 +142,6 @@ virtualServices:
 # Wildcards are allowed and Istio treats `*.example.com` in `operation.hosts` as a
 # suffix match, so a single entry covers every preview host.
 privateHosts:
-  - "*.openkite.maklab.net"
   - "trade.maklab.net"
   - "staging-trade.maklab.net"
 
