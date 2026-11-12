@@ -28,7 +28,7 @@ valkey:
     # Pinned, not `latest`: the chart's appVersion is a moving target across
     # chart bumps, and a cache restarting into a different build is a silent
     # behaviour change. Renovate bumps this line.
-    tag: "9.1.2"
+    tag: "9.1.3"
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
