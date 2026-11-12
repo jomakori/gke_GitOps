@@ -1056,22 +1056,6 @@ hermes-agent:
           prompts: false
           include: [search_dashboards, get_dashboard_by_uid, get_dashboard_summary, get_dashboard_panel_queries, list_datasources, get_datasource_by_uid, get_datasource_by_name, query_prometheus, list_prometheus_metric_names, list_prometheus_label_names, list_prometheus_label_values, list_loki_label_names]
 
-      doppler:
-        lazy: true
-        command: "npx"
-        args: ["-y", "@dopplerhq/mcp-server@1.0.5"]
-        connect_timeout: 180
-        idle_timeout_seconds: 1800
-        max_lifetime_seconds: 21600
-        env:
-          DOPPLER_TOKEN: "${MCP_DOPPLER_TOKEN}"
-          npm_config_cache: "/opt/data/.npm-mcp/doppler"
-        auth_probe: {tool: workplace_get}
-        tools:
-          resources: false
-          prompts: false
-          include: [secrets_get, secrets_list, secrets_names, secrets_update, secrets_delete, secrets_download, configs_list, configs_get, projects_list, projects_get, activity_logs_list, workplace_get]
-
       arctic-shift:
         lazy: true
         # Read-only Reddit search against the Arctic Shift archive API. No
