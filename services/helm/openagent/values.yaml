@@ -917,10 +917,13 @@ hermes-agent:
                 tickerlight {severity}: {event} — {symbol} {state} (values {values}) at {ts}
               deliver: "discord"
               deliver_only: true
-              # No deliver_extra.chat_id: no dedicated alerts channel id exists in
-              # Doppler (only DISCORD_BOT_TOKEN/CLIENT_ID), so delivery falls back
-              # to the home channel per the receiver's documented behaviour. Add
-              # `deliver_extra: {chat_id: ...}` once a channel id is provisioned.
+              # Without a chat_id the receiver falls back to the profile's home
+              # channel, and that id is not one the bot can post to — the first
+              # end-to-end alert returned "Unknown Channel". The channel id is
+              # config, not a secret holder, but it lives in Doppler with the
+              # rest of the Discord wiring so a re-point needs no chart change.
+              deliver_extra:
+                chat_id: "${DISCORD_ALERTS_CHANNEL_ID}"
 
     mcp_servers:
       # ── Manifest = single source of truth ──────────────────────────────

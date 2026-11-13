@@ -49,12 +49,12 @@ tests:
       - matchRegex:
           path: data["config.yaml"]
           pattern: "(?m)^ {10}deliver_only: true$"
-      # No chat_id: there is no alerts-channel id in Doppler yet, so delivery
-      # falls back to the home channel. The route must not name a variable that
-      # is never set, or the receiver would target an unresolved id.
-      - notMatchRegex:
+      # The route must name its destination. Falling back to the profile home
+      # channel is how the first alert died with "Unknown Channel"; the id comes
+      # from Doppler so re-pointing needs no chart change.
+      - matchRegex:
           path: data["config.yaml"]
-          pattern: "chat_id:"
+          pattern: "chat_id: \\$\\{DISCORD_ALERTS_CHANNEL_ID\\}"
       # Every field the engine sends has to reach the message, or an alert
       # arrives without the symbol or the severity it is about.
       - matchRegex:
