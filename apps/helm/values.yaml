@@ -170,9 +170,13 @@ tickerlight:
       tag: v0.3.1
   service:
     port: 8080
-    # The console reads the journal and nothing else: no Doppler values in this
-    # process. The engine container below takes them instead.
+    # The console reads the journal and the engine's policy, nothing else. It
+    # takes no envFrom, so no Doppler value reaches this web-facing process by
+    # bulk; the one key it needs is named below: caps_status is authenticated,
+    # and the console calls it over the pod's own loopback.
     envFrom: false
+    secretEnv:
+      - TRADING_MCP_HTTP_TOKEN
     # Both images are distroless-style non-root (uid 65532). fsGroup makes the
     # claim group-writable so the engine can create the journal.
     podSecurityContext:

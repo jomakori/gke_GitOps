@@ -382,11 +382,25 @@ spec:
               {{- toYaml . | nindent 14 }}
           {{- end }}
           {{- /* A console that reads the journal needs no Doppler values; setting
-                 service.envFrom=false keeps engine secrets out of a web-facing process. */}}
+                 service.envFrom=false keeps engine secrets out of a web-facing process.
+                 A console that renders the engine's policy is the exception: it needs
+                 the engine's bearer token to call caps_status, so name that single key
+                 here. Nothing else from the app's ExternalSecret reaches this process. */}}
           {{- if not (and (hasKey $svc "envFrom") (eq (toString $svc.envFrom) "false")) }}
           envFrom:
           - secretRef:
               name: {{ $namespace }}-vars
+          {{- end }}
+          {{- with $svc.secretEnv }}
+          env:
+          {{- range . }}
+          - name: {{ . }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $namespace }}-vars
+                key: {{ . }}
+                optional: true
+          {{- end }}
           {{- end }}
           {{- if and $svc.storage $svc.storage.size }}
           volumeMounts:
