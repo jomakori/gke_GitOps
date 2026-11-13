@@ -155,7 +155,7 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | tickerlight.enable_istio | bool | `true` |  |
 | tickerlight.enable_staging | bool | `true` |  |
 | tickerlight.environments.production.subdomain | string | `"trade"` |  |
-| tickerlight.environments.production.tag | string | `"v0.2.0"` |  |
+| tickerlight.environments.production.tag | string | `"v0.3.1"` |  |
 | tickerlight.environments.staging.sidecar.container | string | `"engine"` |  |
 | tickerlight.environments.staging.sidecar.env.TRADING_MCP_HTTP_ADDR | string | `"0.0.0.0:8090"` |  |
 | tickerlight.environments.staging.sidecar.env.TRADING_MCP_HTTP_ALLOW_NON_LOOPBACK | string | `"true"` |  |
@@ -165,7 +165,7 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | tickerlight.environments.staging.sidecar.secretEnv[0] | string | `"TRADING_ALERT_WEBHOOK_URL"` |  |
 | tickerlight.environments.staging.sidecar.secretEnv[1] | string | `"TRADING_ALERT_WEBHOOK_SECRET"` |  |
 | tickerlight.environments.staging.subdomain | string | `"staging-trade"` |  |
-| tickerlight.environments.staging.tag | string | `"v0.2.0"` |  |
+| tickerlight.environments.staging.tag | string | `"v0.3.1"` |  |
 | tickerlight.image.repository | string | `"ghcr.io/jomakori/tickerlight"` |  |
 | tickerlight.service.args[0] | string | `"-addr"` |  |
 | tickerlight.service.args[1] | string | `"0.0.0.0:8080"` |  |
@@ -180,7 +180,7 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | tickerlight.service.extraContainers[0].envFromVars | bool | `true` |  |
 | tickerlight.service.extraContainers[0].env[0].name | string | `"TRADING_MCP_HTTP_ADDR"` |  |
 | tickerlight.service.extraContainers[0].env[0].value | string | `"127.0.0.1:8090"` |  |
-| tickerlight.service.extraContainers[0].image | string | `"ghcr.io/jomakori/trading-mcp:v0.3.5"` |  |
+| tickerlight.service.extraContainers[0].image | string | `"ghcr.io/jomakori/trading-mcp:v0.3.6"` |  |
 | tickerlight.service.extraContainers[0].name | string | `"engine"` |  |
 | tickerlight.service.extraContainers[0].ports[0].containerPort | int | `8090` |  |
 | tickerlight.service.extraContainers[0].ports[0].name | string | `"mcp"` |  |
