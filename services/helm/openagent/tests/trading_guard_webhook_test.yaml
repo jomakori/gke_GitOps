@@ -152,6 +152,23 @@ tests:
       - matchRegex:
           path: data["README.md"]
           pattern: "(?m)^# trading-guard"
+      # The shipped copy must read the arm path the engine writes
+      # (internal/runconfig: Join(dataDir, "arm", <file>)). A guard pointed at
+      # the old flat path refuses every mutating call for the wrong reason —
+      # visible as protection, worth none — so the rendered ConfigMap is
+      # asserted here, on the exact assignment, not just on the constants.
+      - matchRegex:
+          path: data["__init__.py"]
+          pattern: '(?m)^ARM_FILE_PATH = os\.path\.join\(DEFAULT_DATA_DIR, ARM_DIR_NAME, ARM_FILENAME\)$'
+      - matchRegex:
+          path: data["__init__.py"]
+          pattern: '(?m)^ARM_FILENAME = "trading-mcp\.armed\.json"$'
+      - notMatchRegex:
+          path: data["__init__.py"]
+          pattern: '(?m)^ARM_FILE_PATH = "/data/trading-mcp\.armed\.json"$'
+      - matchRegex:
+          path: data["README.md"]
+          pattern: "/data/arm/trading-mcp\\.armed\\.json"
 
   - it: mounts the plugin where the scanner looks for user plugins
     template: charts/hermes-agent/templates/deployment.yaml

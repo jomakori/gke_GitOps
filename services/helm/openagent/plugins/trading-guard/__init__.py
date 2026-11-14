@@ -4,7 +4,9 @@ Registers one ``pre_tool_call`` hook that sits in front of every tool call an
 agent can make and refuses three things:
 
 1. **Not armed.** Any mutating trading tool (:data:`MUTATING_TRADING_TOOLS`)
-   called while ``internal/arm``'s arm file is not currently valid. This is
+   called while ``internal/arm``'s arm file is not currently valid. The path
+   is ``internal/runconfig``'s: ``<data-dir>/arm/trading-mcp.armed.json``,
+   i.e. ``/data/arm/trading-mcp.armed.json`` for the deployment. This is
    a SECOND, independent check layered in front of ``cmd/trading-mcp``'s own
    ``requireArmed`` gate (``cmd/trading-mcp/main.go``) — not a replacement
    for it. ``check_armed()`` below re-implements the read side of
@@ -57,27 +59,42 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 # ---------------------------------------------------------------------------
-# Arm file location. Mirrors internal/runconfig: one fixed name inside the
-# data directory (/data), so this plugin and trading-mcp always agree on
-# where the operator-written arm file lives without a second place to
-# configure it.
+# Arm file location. Source of truth is internal/runconfig (config.go) on the
+# engine side: the arm file is a fixed name inside the "arm" subdirectory of
+# the data directory, i.e. /data/arm/trading-mcp.armed.json by default. The
+# subdirectory is not decoration — it is mode 0700, while the data directory
+# above it is group-writable on a shared claim, and internal/arm refuses to
+# read an arm file from a group-writable directory. Built as the same join
+# the engine performs so the two cannot drift by literal.
 # ---------------------------------------------------------------------------
 
 ARM_FILE_ENV = "TRADING_MCP_ARM_FILE"
-ARM_FILE_PATH = "/data/trading-mcp.armed.json"
+DEFAULT_DATA_DIR = "/data"
+ARM_DIR_NAME = "arm"
+ARM_FILENAME = "trading-mcp.armed.json"
+ARM_FILE_PATH = os.path.join(DEFAULT_DATA_DIR, ARM_DIR_NAME, ARM_FILENAME)
 
 
 def default_arm_file_path() -> str:
-    """Mirrors internal/runconfig.NewConfig(""): the arm file is a fixed
-    name inside the data directory, not a configurable path. The env var
-    above is honoured only as a test/back-compat override."""
+    """The engine's compiled-in default, rebuilt the way
+    internal/runconfig.NewConfig("") builds it: Join(dataDir, "arm",
+    "trading-mcp.armed.json") with the data directory defaulting to /data.
+    There is no second literal to keep in sync — this returns the join
+    above."""
     return ARM_FILE_PATH
 
 
 def arm_file_path() -> str:
-    """Mirrors internal/arm.PathFromEnv(): the configured path, falling
-    back to the default. Read fresh every call — never cached — so an
-    operator repointing the env var mid-session takes effect immediately."""
+    """The path this plugin reads: ``TRADING_MCP_ARM_FILE`` when set, else
+    the engine's default. Read fresh every call — never cached.
+
+    The env override is a PLUGIN-SIDE knob for tests and adapters, NOT
+    engine parity: the engine reads no path from its environment (see the
+    runconfig package doc — no path flows through it). So if this override
+    is set while the engine is using its compiled default, the guard is
+    comparing a different file than the engine writes, by construction, and
+    every mutating call will be refused for the wrong reason. In a real
+    deployment leave it unset."""
     return os.environ.get(ARM_FILE_ENV) or default_arm_file_path()
 
 
