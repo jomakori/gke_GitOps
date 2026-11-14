@@ -126,6 +126,9 @@ tests:
               - namespaceSelector:
                   matchLabels:
                     kubernetes.io/metadata.name: tickerlight-staging
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: tickerlight-production
             ports:
               - protocol: TCP
                 port: 8644
