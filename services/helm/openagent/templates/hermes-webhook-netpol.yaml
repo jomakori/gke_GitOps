@@ -11,9 +11,9 @@
 # `from:` because omitting it admits every source, which is what they have
 # today; once a policy selects this pod, an unmentioned port is denied.
 #
-# Later step: tickerlight-production gets its own rule when that engine emits
-# the same alerts — add a second `from:` entry beside the staging one rather
-# than widening this selector.
+# Both tickerlight namespaces are listed: staging proves the chain, production
+# is the one where a missed alert costs money. Two entries, not a widened
+# selector, so adding another namespace is always a deliberate edit.
 #
 # Deliberately Ingress-only: egress stays whatever the pod has today.
 apiVersion: networking.k8s.io/v1
@@ -43,6 +43,9 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: tickerlight-staging
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tickerlight-production
       ports:
         - protocol: TCP
           port: 8644
