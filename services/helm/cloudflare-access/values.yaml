@@ -1,7 +1,9 @@
 # -- Cloudflare account that owns the Access applications. Not a secret; same
-# value as CF_ACCOUNT_ID in Doppler. Injected by the appset from
-# crossplaneAccess.accountId, and required once the app is enabled.
-accountId: ""
+# value as CF_ACCOUNT_ID in Doppler, and still overridden by the appset from
+# crossplaneAccess.accountId. Defaulted here because the static `apps` entries
+# below need a renderable account outside the appset too (CI lints this chart on
+# its own defaults).
+accountId: "f8caac5c12d315d3690fd6df74cacdb9"
 
 # -- Same value the Terraform-managed apps used.
 sessionDuration: 24h
