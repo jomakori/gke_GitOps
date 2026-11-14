@@ -59,10 +59,10 @@ spec:
                   variables:
                     - fromFieldPath: spec.accountId
                     - fromFieldPath: spec.appId
-                  toFieldPath: metadata.annotations[crossplane.io/external-name]
                   strategy: string
                   string:
                     fmt: "accounts/%s/%s"
+                toFieldPath: metadata.annotations[crossplane.io/external-name]
               # Surface the issued audience on the XR so the istio app's
               # virtualServices.<name>.aud can be filled without reading the MR.
               - type: ToCompositeFieldPath
