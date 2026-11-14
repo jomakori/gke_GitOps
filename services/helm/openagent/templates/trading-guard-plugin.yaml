@@ -1,0 +1,33 @@
+{{- if .Values.hermes.enabled }}
+# trading-guard — the pre_tool_call safety plugin for the trading tools. The
+# source lives as real chart files (plugins/trading-guard/*) so it is diffable
+# and importable, and this ConfigMap is generated from it: the deployed copy can
+# never drift from the reviewed copy.
+#
+# What it refuses (a second, independent boundary in front of trading-mcp's own
+# internal/arm gate — it holds no broker credential and needs none):
+#   1. a mutating trading call while trading is not armed,
+#   2. any call that writes or targets the arm file / its nonce sidecar,
+#   3. a signal and a place inside one agent turn (seat separation).
+#
+# Mounted as a directory at $HERMES_HOME/plugins/trading-guard (the scanner
+# reads <plugin>/plugin.yaml), and named in hermes-agent.config.plugins.enabled
+# — user plugins are opt-in, so one half without the other is a plugin that
+# validates and never loads.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openagent-hermes-trading-guard
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openagent.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  plugin.yaml: |
+{{ .Files.Get "plugins/trading-guard/plugin.yaml" | indent 4 }}
+  __init__.py: |
+{{ .Files.Get "plugins/trading-guard/__init__.py" | indent 4 }}
+  README.md: |
+{{ .Files.Get "plugins/trading-guard/README.md" | indent 4 }}
+{{- end }}

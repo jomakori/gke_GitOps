@@ -52,10 +52,10 @@ openkite:
     staging:
       # Single-label host: a third DNS label has no certificate under the wildcard.
       subdomain: staging-openkite
-      tag: v0.52.0
+      tag: v0.1.0
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
-      tag: v0.70.0
+      tag: v0.1.0
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080
@@ -77,15 +77,49 @@ tickerlight:
   environments:
     staging:
       subdomain: staging-trade
-      tag: v0.2.0
+      tag: v0.3.1
+      # ── Engine MCP listener: published inside the cluster ──────────────
+      # The engine container below binds 127.0.0.1:8090, so only the console
+      # in the same pod can reach it. Staging binds the pod address instead,
+      # adds a second Service port for it, and admits the `openagent`
+      # namespace to that port and nothing else (templates/networkpolicy.yaml).
+      # Production declares no `sidecar` block, so it keeps the loopback
+      # address, the single console port, and no NetworkPolicy.
+      sidecar:
+        # Which service.extraContainers entry these settings apply to.
+        container: engine
+        # Service port published for that container.
+        port: 8090
+        portName: mcp
+        # Namespaces admitted to `port`. Nothing else can reach it.
+        fromNamespaces:
+          - openagent
+        # Env overrides for that container, by name. The shared list keeps the
+        # loopback address; this environment replaces it.
+        env:
+          TRADING_MCP_HTTP_ADDR: "0.0.0.0:8090"
+          # The engine refuses a non-loopback bind unless this is the literal
+          # `true`, so it is quoted here and stringified by the chart.
+          TRADING_MCP_HTTP_ALLOW_NON_LOOPBACK: "true"
+        # Alert sink credentials. envFrom already carries every key from the
+        # app's ExternalSecret; these two are named explicitly so the contract
+        # is visible in the rendered pod, and `optional` keeps a Doppler config
+        # without them from blocking startup. No values here, ever.
+        secretEnv:
+          - TRADING_ALERT_WEBHOOK_URL
+          - TRADING_ALERT_WEBHOOK_SECRET
     production:
       subdomain: trade
-      tag: v0.2.0
+      tag: v0.3.1
   service:
     port: 8080
-    # The console reads the journal and nothing else: no Doppler values in this
-    # process. The engine container below takes them instead.
+    # The console reads the journal and the engine's policy, nothing else. It
+    # takes no envFrom, so no Doppler value reaches this web-facing process by
+    # bulk; the one key it needs is named below: caps_status is authenticated,
+    # and the console calls it over the pod's own loopback.
     envFrom: false
+    secretEnv:
+      - TRADING_MCP_HTTP_TOKEN
     # Both images are distroless-style non-root (uid 65532). fsGroup makes the
     # claim group-writable so the engine can create the journal.
     podSecurityContext:
@@ -122,12 +156,15 @@ tickerlight:
       # Journal producer. Paths are code constants; -data-dir only points at the
       # mount, and the two containers share the one volume.
       - name: engine
-        image: ghcr.io/jomakori/trading-mcp:v0.3.4
+        image: ghcr.io/jomakori/trading-mcp:v0.3.6
         args:
           - "-data-dir"
           - "/data"
         envFromVars: true
         env:
+          # Loopback default: the console reaches the engine in the same pod,
+          # nothing outside it can. An environment that publishes this port
+          # overrides the address through `environments.<env>.sidecar.env`.
           - name: TRADING_MCP_HTTP_ADDR
             value: "127.0.0.1:8090"
         ports:

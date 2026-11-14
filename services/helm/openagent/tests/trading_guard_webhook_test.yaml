@@ -1,0 +1,170 @@
+suite: trading-guard and the inbound webhook path
+release:
+  name: openagent
+  namespace: openagent
+
+# The chart renders config.yaml through migrate-config.py, so the document is
+# sorted with two-space nesting; the patterns below match that output, not the
+# values.yaml spelling.
+tests:
+  # ── Outbound: the staging engine's MCP server ─────────────────────────
+  - it: allowlists exactly the six read tools on trading_staging
+    template: charts/hermes-agent/templates/configmap.yaml
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ {2}trading_staging:$"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: '(?m)^ {6}include:\n {6}- caps_status\n {6}- positions\n {6}- account\n {6}- list_orders\n {6}- audit\n {6}- quote$'
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: 'url: http://tickerlight-staging\.tickerlight-staging\.svc\.cluster\.local:8090/mcp'
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: 'Authorization: Bearer \$\{TRADING_MCP_HTTP_TOKEN\}'
+
+  # The four mutating tools must never appear anywhere in the rendered config:
+  # an allowlist that also names them is not an allowlist.
+  - it: never mentions the mutating tools
+    template: charts/hermes-agent/templates/configmap.yaml
+    asserts:
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "place_order|cancel_order|arm_state"
+
+  # ── Inbound: the webhook route ────────────────────────────────────────
+  - it: renders the tickerlight-alerts route with a per-route secret
+    template: charts/hermes-agent/templates/configmap.yaml
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ {8}tickerlight-alerts:$"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: '(?m)^ {10}secret: \$\{HERMES_WEBHOOK_SECRET\}$'
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ {10}deliver: discord$"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ {10}deliver_only: true$"
+      # The route must name its destination. Falling back to the profile home
+      # channel is how the first alert died with "Unknown Channel"; the id comes
+      # from Doppler so re-pointing needs no chart change.
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "chat_id: \\$\\{DISCORD_ALERTS_CHANNEL_ID\\}"
+      # Every field the engine sends has to reach the message, or an alert
+      # arrives without the symbol or the severity it is about.
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: '(?m)^ {12}tickerlight \{severity\}: \{event\} .*\{symbol\} \{state\} \(values \{values\}\) at \{ts\}$'
+
+  - it: turns the webhook listener on at 8644
+    template: charts/hermes-agent/templates/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEBHOOK_ENABLED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WEBHOOK_PORT
+            value: "8644"
+
+  - it: exposes 8644 beside the API port on the same selector
+    template: templates/apps.yaml
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - contains:
+          path: spec.ports
+          content:
+            name: webhook
+            port: 8644
+            targetPort: 8644
+            protocol: TCP
+      - contains:
+          path: spec.ports
+          content:
+            name: api
+            port: 8642
+            targetPort: 8642
+            protocol: TCP
+
+  - it: admits 8644 from the engine namespace and leaves the other ports open
+    template: templates/hermes-webhook-netpol.yaml
+    asserts:
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/instance: openagent
+            app.kubernetes.io/name: hermes-agent
+      - equal:
+          path: spec.policyTypes
+          value:
+            - Ingress
+      # No `from:` on the first rule = every source, i.e. the access 8642 and
+      # 9120 already have. Dropping it would black-hole the API and the web UI.
+      - contains:
+          path: spec.ingress
+          content:
+            ports:
+              - protocol: TCP
+                port: 8642
+              - protocol: TCP
+                port: 9120
+      - contains:
+          path: spec.ingress
+          content:
+            from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: tickerlight-staging
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: tickerlight-production
+            ports:
+              - protocol: TCP
+                port: 8644
+
+  # ── trading-guard ─────────────────────────────────────────────────────
+  - it: ships the plugin source verbatim in a ConfigMap
+    template: templates/trading-guard-plugin.yaml
+    asserts:
+      - equal:
+          path: metadata.name
+          value: openagent-hermes-trading-guard
+      - equal:
+          path: metadata.namespace
+          value: openagent
+      - matchRegex:
+          path: data["plugin.yaml"]
+          pattern: "(?m)^name: trading-guard$"
+      - matchRegex:
+          path: data["__init__.py"]
+          pattern: "(?m)^def register"
+      - matchRegex:
+          path: data["README.md"]
+          pattern: "(?m)^# trading-guard"
+
+  - it: mounts the plugin where the scanner looks for user plugins
+    template: charts/hermes-agent/templates/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: trading-guard-plugin
+            configMap:
+              name: openagent-hermes-trading-guard
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: trading-guard-plugin
+            mountPath: /opt/data/plugins/trading-guard
+            readOnly: true

@@ -49,7 +49,7 @@ tests:
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?m)^plugins:\n  enabled:\n  - discord-platform\n  - omo\n  - session-deeplink$"
+          pattern: "(?m)^plugins:\n  enabled:\n  - discord-platform\n  - omo\n  - session-deeplink\n  - trading-guard$"
 
   - it: mounts the plugin where the dashboard scans for user plugins
     template: charts/hermes-agent/templates/deployment.yaml
