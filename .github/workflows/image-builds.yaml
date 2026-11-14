@@ -83,7 +83,7 @@ env:
 jobs:
   detect-changes:
     name: Detect changed image paths
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     outputs:
       ocp: ${{ steps.filter.outputs.ocp }}
       gitopsctl: ${{ steps.filter.outputs.gitopsctl }}
@@ -111,7 +111,7 @@ jobs:
     name: Build and push OCP image
     # Newest STABLE arm64 runner label. ubuntu-26.04(-arm) is still preview —
     # never use it. Verified live against actions/runner-images' README.
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     needs: detect-changes
     if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.ocp == 'true'
     steps:
@@ -194,7 +194,7 @@ jobs:
 
   gitopsctl-image:
     name: Build and push gitopsctl image
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     needs: detect-changes
     if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.gitopsctl == 'true'
     steps:
