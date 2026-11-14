@@ -19,7 +19,7 @@
 #
 # Build target: linux/arm64 — the cluster (k3d on OrbStack, Apple Silicon) is arm64.
 
-ARG NODE_IMAGE=node:22-bookworm-slim
+ARG NODE_IMAGE=node:26-bookworm-slim
 FROM ${NODE_IMAGE}
 
 ARG OCP_VERSION=v3.36.0-dev51-haiku55

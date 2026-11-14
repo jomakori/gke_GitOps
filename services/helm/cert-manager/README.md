@@ -7,7 +7,7 @@ cert-manager — automated TLS certificate management via Let's Encrypt
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.jetstack.io | cert-manager | 1.17.2 |
+| https://charts.jetstack.io | cert-manager | v1.21.3 |
 
 ## Under the hood
 

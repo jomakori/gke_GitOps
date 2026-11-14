@@ -7,7 +7,7 @@ A Helm chart for Metrics Server
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://kubernetes-sigs.github.io/metrics-server | metrics-server | 3.13.0 |
+| https://kubernetes-sigs.github.io/metrics-server | metrics-server | 3.14.0 |
 
 ## Under the hood
 

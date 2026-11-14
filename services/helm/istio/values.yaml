@@ -116,12 +116,6 @@ virtualServices:
     destination:
       host: opencost.opencost.svc.cluster.local
       port: 9090
-  headlamp:
-    enabled: false
-    host: headlamp.maklab.net
-    destination:
-      host: headlamp.headlamp.svc.cluster.local
-      port: 80
 
   # Hermes built-in dashboard (agent port 9119): high-level Hermes admin —
   # /api/analytics/usage (token usage), /api/analytics/models, sessions,

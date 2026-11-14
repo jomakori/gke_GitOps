@@ -1,5 +1,5 @@
 # CI render inputs: this chart renders one app, named by appName. ArgoCD passes it
 # as a helm parameter; a bare `helm template` needs this file.
-appName: demoApi
-demoApi:
+appName: openkite
+openkite:
   enable_staging: false

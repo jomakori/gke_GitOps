@@ -27,7 +27,7 @@ Pick the chart source in this order:
 2. **No chart of its own, but a maintained community chart exists** → **wrap it as a values-override layer** *(the default for a service with no chart)* — `excalidash` is the reference (it wraps the chart published at `https://charts.alekc.dev`).
 3. **No chart anywhere** → custom chart, local templates only.
 
-Depending on an official chart repo rather than vendoring is fine where we take the chart unmodified and the source is stable and project-owned (most of `cert-manager`, `keda`, `tailscale`, …). Vendoring is preferred as soon as we add local templates or expect to adjust the chart, and a vendored copy counts as *having* a chart — it is never a gap.
+Depending on an official chart repo rather than vendoring is fine where we take the chart unmodified and the source is stable and project-owned (most of `cert-manager`, `tailscale`, …). Vendoring is preferred as soon as we add local templates or expect to adjust the chart, and a vendored copy counts as *having* a chart — it is never a gap.
 
 | Pattern | When | Shape |
 |---|---|---|

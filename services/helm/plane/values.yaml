@@ -61,7 +61,7 @@ ssl:
 
 redis:
   local_setup: true
-  image: valkey/valkey:7.2.11-alpine
+  image: valkey/valkey:9.1.3-alpine
   servicePort: 6379
   storageClass: "local-path"
   volumeSize: 100Mi
@@ -78,22 +78,14 @@ redis:
   affinity: {}
 
 postgres:
+  # Plane's database is the external pg-main StackGres cluster; the chart's
+  # bundled postgres workload is not used. The flag must stay false — the
+  # templates guard their DATABASE_URL and stateful workload on it.
   local_setup: false
-  image: postgres:15.7-alpine
-  servicePort: 5432
-  storageClass: ""
-  volumeSize: 1Gi
-  pullPolicy: IfNotPresent
-  assign_cluster_ip: false
-  labels: {}
-  annotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
 
 rabbitmq:
   local_setup: true
-  image: rabbitmq:3.13.6-management-alpine
+  image: rabbitmq:4.4.0-management-alpine
   pullPolicy: IfNotPresent
   memoryLimit: 2Gi
   cpuLimit: 1000m

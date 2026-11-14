@@ -18,9 +18,6 @@ clusterSecretStores:
   svc_grafana:
     project: devops
     config: svc_grafana
-  svc_mongodb:
-    project: devops
-    config: svc_mongodb
   svc_postgres_operator:
     project: devops
     config: svc_postgres_operator

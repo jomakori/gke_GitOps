@@ -120,18 +120,7 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | minio.tolerations | list | `[]` |  |
 | minio.volumeSize | string | `"1Gi"` |  |
 | planeVersion | string | `"v1.4.1"` |  |
-| postgres.affinity | object | `{}` |  |
-| postgres.annotations | object | `{}` |  |
-| postgres.assign_cluster_ip | bool | `false` |  |
-| postgres.image | string | `"postgres:15.7-alpine"` |  |
-| postgres.labels | object | `{}` |  |
 | postgres.local_setup | bool | `false` |  |
-| postgres.nodeSelector | object | `{}` |  |
-| postgres.pullPolicy | string | `"IfNotPresent"` |  |
-| postgres.servicePort | int | `5432` |  |
-| postgres.storageClass | string | `""` |  |
-| postgres.tolerations | list | `[]` |  |
-| postgres.volumeSize | string | `"1Gi"` |  |
 | rabbitmq.affinity | object | `{}` |  |
 | rabbitmq.annotations | object | `{}` |  |
 | rabbitmq.assign_cluster_ip | bool | `false` |  |
@@ -140,7 +129,7 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | rabbitmq.default_password | string | `"plane"` |  |
 | rabbitmq.default_user | string | `"plane"` |  |
 | rabbitmq.external_rabbitmq_url | string | `""` |  |
-| rabbitmq.image | string | `"rabbitmq:3.13.6-management-alpine"` |  |
+| rabbitmq.image | string | `"rabbitmq:4.4.0-management-alpine"` |  |
 | rabbitmq.labels | object | `{}` |  |
 | rabbitmq.local_setup | bool | `true` |  |
 | rabbitmq.managementPort | int | `15672` |  |
@@ -157,7 +146,7 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | redis.assign_cluster_ip | bool | `false` |  |
 | redis.cpuLimit | string | `"500m"` |  |
 | redis.cpuRequest | string | `"50m"` |  |
-| redis.image | string | `"valkey/valkey:7.2.11-alpine"` |  |
+| redis.image | string | `"valkey/valkey:9.1.3-alpine"` |  |
 | redis.labels | object | `{}` |  |
 | redis.local_setup | bool | `true` |  |
 | redis.memoryLimit | string | `"256Mi"` |  |

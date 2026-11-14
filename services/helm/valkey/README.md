@@ -7,7 +7,7 @@ Standalone Valkey cache (official Valkey Helm chart) — the cluster's Redis-pro
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://valkey-io.github.io/valkey-helm/ | valkey | 0.12.0 |
+| https://valkey-io.github.io/valkey-helm/ | valkey | 0.12.1 |
 
 ## Under the hood
 
@@ -53,7 +53,7 @@ Disabled: the Service is `ClusterIP`-only and every consumer is in-cluster (the 
 | valkey.image.pullPolicy | string | `"IfNotPresent"` |  |
 | valkey.image.registry | string | `"docker.io"` |  |
 | valkey.image.repository | string | `"valkey/valkey"` |  |
-| valkey.image.tag | string | `"9.1.2"` |  |
+| valkey.image.tag | string | `"9.1.3"` |  |
 | valkey.nodeSelector.intent | string | `"apps"` |  |
 | valkey.replica.enabled | bool | `false` |  |
 | valkey.resources.limits.memory | string | `"256Mi"` |  |
