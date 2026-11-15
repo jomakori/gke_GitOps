@@ -59,7 +59,13 @@ tests:
       # arrives without the symbol or the severity it is about.
       - matchRegex:
           path: data["config.yaml"]
-          pattern: '(?m)^ {12}tickerlight \{severity\}: \{event\} .*\{symbol\} \{state\} \(values \{values\}\) at \{ts\}$'
+          pattern: '(?m)^ {12}\*\*Tickerlight · \{severity\} · \{event\}\*\*$'
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: '(?m)^ {12}state `\{state\}` · symbol `\{symbol\}` · \{ts\}$'
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: '(?m)^ {12}```json$'
 
   - it: turns the webhook listener on at 8644
     template: charts/hermes-agent/templates/deployment.yaml
