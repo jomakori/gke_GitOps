@@ -8,5 +8,5 @@ appVersion: "1.22.0"
 
 dependencies:
   - name: psmdb-operator
-    version: 1.22.0
+    version: 1.23.2
     repository: https://percona.github.io/percona-helm-charts/
