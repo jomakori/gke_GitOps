@@ -412,7 +412,14 @@ spec:
           {{- end }}
           {{- range $svc.extraContainers }}
         - name: {{ .name }}
+          {{- /* imageTag: same runs a second binary from the service's own
+                 image, so a companion container tracks the image tag already
+                 pinned for the environment instead of repeating it here. */}}
+          {{- if and .imageTag (eq (toString .imageTag) "same") }}
+          image: {{ $imageRepo }}:{{ $tag }}
+          {{- else }}
           image: {{ .image }}
+          {{- end }}
           {{- with .command }}
           command: {{ toYaml . | nindent 12 }}
           {{- end }}
