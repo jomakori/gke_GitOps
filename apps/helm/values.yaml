@@ -134,7 +134,7 @@ tickerlight:
   environments:
     staging:
       subdomain: staging-trade
-      tag: v0.3.3
+      tag: v0.4.0
       # ── Engine MCP listener: published inside the cluster ──────────────
       # The engine container below binds 127.0.0.1:8090, so only the console
       # in the same pod can reach it. Staging binds the pod address instead,
@@ -167,7 +167,7 @@ tickerlight:
           - TRADING_ALERT_WEBHOOK_SECRET
     production:
       subdomain: trade
-      tag: v0.3.3
+      tag: v0.4.0
   service:
     port: 8080
     # The console reads the journal and the engine's status snapshot, and asks
@@ -233,3 +233,30 @@ tickerlight:
             memory: 128Mi
           limits:
             memory: 384Mi
+      # Proposer. Same image as the console: the decider binary ships beside it,
+      # and it reaches the engine over the pod's own loopback, so this container
+      # publishes no port. It writes the decisions journal on the shared volume
+      # and reads arm state and the kill switch as guards only — it cannot arm,
+      # size or cancel anything.
+      - name: decider
+        imageTag: same
+        command:
+          - "/usr/local/bin/trading-decider"
+        args:
+          - "-interval"
+          - "15m"
+        envFromVars: true
+        env:
+          # One symbol per tick, in this order.
+          - name: DECIDER_SYMBOLS
+            value: "AAPL,MSFT,SPY,QQQ"
+          - name: DECIDER_INTERVAL
+            value: "15m"
+          - name: DECIDER_JOURNAL
+            value: "/data/decisions.jsonl"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 256Mi
