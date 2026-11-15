@@ -56,7 +56,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           # Serve from the runner image's tool cache, never download. ubuntu-latest
           # (26.04) ships 3.11.18 / 3.12.16 / 3.13.18 / 3.14.10 / 3.15.2 — no 3.10.x
