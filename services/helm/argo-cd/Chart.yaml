@@ -1,0 +1,17 @@
+apiVersion: v2
+name: argo-cd
+description: ArgoCD managing itself — thin wrapper over the official argo-cd Helm chart, adopted from the Terraform-installed release. Production HA values live in values.yaml.
+type: application
+
+# Wrapper version; the upstream chart pin below is what Renovate bumps.
+version: 0.1.0
+# Tracks the pinned upstream chart's appVersion (ArgoCD v3.6.1 in argo-cd 10.18.0).
+appVersion: "v3.6.1"
+
+dependencies:
+  # Latest upstream at adoption time (live release ran 10.11.7 / v3.5.7, so the
+  # first sync is also an upgrade — review the diff before enabling). Renovate
+  # tracks this pin.
+  - name: argo-cd
+    version: 10.18.0
+    repository: https://argoproj.github.io/argo-helm

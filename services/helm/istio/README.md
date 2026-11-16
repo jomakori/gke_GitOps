@@ -29,7 +29,7 @@ This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), *
 | `gateway.yaml` | `maklab-gateway` — wildcard `*.<clusterDomain>`, TLS passthrough, HTTP→HTTPS redirect |
 | `cluster-issuer.yaml` | `letsencrypt-prod` — Let's Encrypt ACME via Cloudflare DNS-01 |
 | `certificate.yaml` | `wildcard-maklab-net` — wildcard TLS cert for `*.<clusterDomain>` |
-| `virtual-services.yaml` | One `VirtualService` per entry in `virtualServices` with `enabled: true` |
+| `virtual-services.yaml` | One `VirtualService` per entry in `virtualServices` with `enabled: true`; plus a `DestinationRule` (TLS origination, `insecureSkipVerify` unless set `false`) when the entry sets `destination.tls.enabled` — for backends that serve TLS themselves, e.g. `argocd-server` with `server.insecure: false` |
 | `peer-authentication.yaml` | STRICT mTLS mesh-wide |
 | `request-authentication.yaml` | CF Access JWT validation (conditional on `cloudflare.access.audienceTag`) |
 | `authorization-policy-private.yaml` | DENY rules per private VS (conditional on `enablePrivate: true`) |

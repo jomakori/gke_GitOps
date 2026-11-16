@@ -57,6 +57,52 @@ services:
       - CreateNamespace=true
       - ServerSideApply=true
 
+  # ArgoCD managing itself (docs/argocd-self-manage.md). Ships DISABLED: flip
+  # `enable` only after `terraform state rm helm_release.argocd` in devops_Terraform,
+  # or two owners fight over the same release. Deliberately conservative:
+  # - name MUST stay `argo-cd` — the Application name is the Helm release name and
+  #   drives every Service name (argo-cd-argocd-server, pinned by the istio
+  #   VirtualService above and the webhook).
+  # - no finalizer, so deleting the Application can never cascade-delete ArgoCD.
+  # - prune off and selfHeal off until the first synced diff is verified clean;
+  #   then selfHeal can go on (prune stays off: ArgoCD must never prune itself).
+  argoCd:
+    enable: false
+    name: argo-cd
+    syncWave: "0"
+    destNamespace: argocd
+    finalizer: false
+    selfHeal: false
+    noPrune: true # `prune: false` is ignored by the helper (default true); noPrune works
+    # Not consumed by the chart (the webhook secret is Terraform-owned); the
+    # appset helper always passes one, so point it at the existing config.
+    dopplerConfig: "svc_argocd"
+    syncOptions:
+      - CreateNamespace=true
+      # The release was installed by Terraform's helm provider; ignore diffs are
+      # only honoured on automated syncs with this option.
+      - RespectIgnoreDifferences=true
+      # SSA: adopt the Helm-installed objects without a 256KB last-applied annotation.
+      - ServerSideApply=true
+    retryLimit: 3
+    retryMaxDuration: 3m
+    ignoreDifferences:
+      # Written by ArgoCD itself at runtime (admin password hash/mtime/tokens,
+      # server signing key) — chart renders the Secret empty.
+      - group: ""
+        kind: Secret
+        name: argocd-secret
+        namespace: argocd
+        jsonPointers:
+          - /data
+      # Same: notifications secret is populated out-of-band.
+      - group: ""
+        kind: Secret
+        name: argocd-notifications-secret
+        namespace: argocd
+        jsonPointers:
+          - /data
+
   # Wave 1 — Secret engine
   externalSecrets:
     enable: true
@@ -114,6 +160,13 @@ services:
           - .webhooks[].objectSelector
           - .webhooks[].timeoutSeconds
           - .webhooks[].rules[].scope
+    # argocd VirtualService: port 80 matches the Terraform-installed server, which
+    # runs server.insecure=true. services/helm/argo-cd runs it secure (TLS on the
+    # server, plain HTTP gets a 307), so the PR that flips `argoCd.enable` MUST also
+    # change the port below to "443" and add
+    #   - name: virtualServices.argocd.destination.tls.enabled
+    #     value: "true"
+    # (docs/argocd-self-manage.md, step 4) or argocd.maklab.net redirect-loops.
     parameters:
       - name: virtualServices.argocd.enabled
         value: "true"
