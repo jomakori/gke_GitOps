@@ -914,8 +914,17 @@ hermes-agent:
               # Per-route secret rather than the global fallback: each sender
               # gets its own key, so a leaked one cannot sign for another route.
               secret: "${HERMES_WEBHOOK_SECRET}"
+              # One block per alert: what kind, which side of the condition, then
+              # the numbers as their own fenced payload. Markdown is Discord's, so
+              # the header carries the severity and the event id where they are
+              # read first, and {values} keeps its JSON shape instead of being
+              # flattened mid-sentence.
               prompt: |
-                tickerlight {severity}: {event} — {symbol} {state} (values {values}) at {ts}
+                **Tickerlight · {severity} · {event}**
+                state `{state}` · symbol `{symbol}` · {ts}
+                ```json
+                {values}
+                ```
               deliver: "discord"
               deliver_only: true
               # Without a chat_id the receiver falls back to the profile's home

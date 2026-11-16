@@ -659,7 +659,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.deliver | string | `"discord"` |  |
 | hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.deliver_extra.chat_id | string | `"${DISCORD_ALERTS_CHANNEL_ID}"` |  |
 | hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.deliver_only | bool | `true` |  |
-| hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.prompt | string | `"tickerlight {severity}: {event} — {symbol} {state} (values {values}) at {ts}\n"` |  |
+| hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.prompt | string | `"**Tickerlight · {severity} · {event}**\nstate `{state}` · symbol `{symbol}` · {ts}\n```json\n{values}\n```\n"` |  |
 | hermes-agent.config.platforms.webhook.extra.routes.tickerlight-alerts.secret | string | `"${HERMES_WEBHOOK_SECRET}"` |  |
 | hermes-agent.config.plugins.enabled[0] | string | `"discord-platform"` |  |
 | hermes-agent.config.plugins.enabled[1] | string | `"omo"` |  |

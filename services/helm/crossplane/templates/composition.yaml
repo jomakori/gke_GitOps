@@ -52,8 +52,16 @@ spec:
                 fromFieldPath: spec.policies
                 toFieldPath: spec.forProvider.policies
               # Adopt the existing app by id instead of creating a duplicate.
-              - type: FromCompositeFieldPath
-                fromFieldPath: spec.appId
+              # The provider imports by "<accounts>/<account_id>/<app_id>", a
+              # bare app id fails with "expected urlencoded segments".
+              - type: CombineFromComposite
+                combine:
+                  variables:
+                    - fromFieldPath: spec.accountId
+                    - fromFieldPath: spec.appId
+                  strategy: string
+                  string:
+                    fmt: "accounts/%s/%s"
                 toFieldPath: metadata.annotations[crossplane.io/external-name]
               # Surface the issued audience on the XR so the istio app's
               # virtualServices.<name>.aud can be filled without reading the MR.

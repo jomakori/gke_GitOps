@@ -47,8 +47,20 @@ three apart without parsing prose.
   tainted turn.
 - **The arm file is writable by the operator, not by agents.** Control 2 matches
   `write_file` / `append_file` / `patch` / `edit_file` paths and `terminal`
-  commands (including `/data/trading-mcp.armed.json` and its `.nonces.json`
-  sidecar), because the nonce sidecar is part of the same integrity boundary.
+  commands (including `/data/arm/trading-mcp.armed.json` and its
+  `.nonces.json` sidecar), because the nonce sidecar is part of the same
+  integrity boundary.
+- **Path parity is the whole control.** `internal/runconfig` builds the arm
+  path as `<data-dir>/arm/trading-mcp.armed.json` — `/data/arm/trading-mcp.armed.json`
+  in the deployment. The `arm` subdirectory is not cosmetic: it is `0700`
+  because `internal/arm` refuses to read an arm file out of a group-writable
+  directory, and `/data` is group-writable on a shared claim. **A host-side
+  adapter guard MUST read exactly that path — `/data/arm/trading-mcp.armed.json`
+  — because that is the path the engine writes.** A guard reading any other
+  path refuses every mutating call for the wrong reason and protects nothing.
+  `TRADING_MCP_ARM_FILE` is a plugin-side override for tests and adapters only;
+  the engine reads no path from its environment, so setting it in a deployment
+  is a guaranteed mismatch.
 - **In-process state.** The turn→tool map lives in the hook process; a restart
   clears it. Control 1 and control 2 hold no state at all.
 

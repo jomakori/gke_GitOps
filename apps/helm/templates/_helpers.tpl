@@ -345,15 +345,26 @@ spec:
           - secretRef:
               name: {{ $namespace }}-vars
           {{- end }}
-          {{- with $svc.secretEnv }}
+          {{- /* Plain env for this container: the app-wide list, with any
+                 per-environment value applied by name. An environment that
+                 names something here and not in the shared list gets it too,
+                 which is how a control stays off everywhere it is not wanted:
+                 absent means off. */}}
+          {{- $svcEnv := $svc.secretEnv | default list }}
+          {{- $plainEnv := $env.env | default dict }}
+          {{- if or $svcEnv (gt (len $plainEnv) 0) }}
           env:
-          {{- range . }}
+          {{- range $svcEnv }}
           - name: {{ . }}
             valueFrom:
               secretKeyRef:
                 name: {{ $namespace }}-vars
                 key: {{ . }}
                 optional: true
+          {{- end }}
+          {{- range $k, $v := $plainEnv }}
+          - name: {{ $k }}
+            value: {{ $v | quote }}
           {{- end }}
           {{- end }}
           {{- if and $svc.storage $svc.storage.size }}
@@ -366,7 +377,14 @@ spec:
           {{- end }}
           {{- range $svc.extraContainers }}
         - name: {{ .name }}
+          {{- /* imageTag: same runs a second binary from the service's own
+                 image, so a companion container tracks the image tag already
+                 pinned for the environment instead of repeating it here. */}}
+          {{- if and .imageTag (eq (toString .imageTag) "same") }}
+          image: {{ $imageRepo }}:{{ $tag }}
+          {{- else }}
           image: {{ .image }}
+          {{- end }}
           {{- with .command }}
           command: {{ toYaml . | nindent 12 }}
           {{- end }}
