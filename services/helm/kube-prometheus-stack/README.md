@@ -7,7 +7,7 @@ A Helm chart for kube-prometheus-stack
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://prometheus-community.github.io/helm-charts | kube-prometheus-stack | 85.0.3 |
+| https://prometheus-community.github.io/helm-charts | kube-prometheus-stack | 93.2.2 |
 
 ## Under the hood
 

@@ -7,7 +7,7 @@ A Helm chart for the External Secrets operator
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.external-secrets.io/ | external-secrets | 2.5.0 |
+| https://charts.external-secrets.io/ | external-secrets | 2.15.0 |
 
 ## Under the hood
 
@@ -49,7 +49,6 @@ The store references `doppler-machine-token` in the `external-secrets` namespace
 | `doppler-svc-postgres-operator` | devops | svc_postgres_operator | postgres-operator |
 | `doppler-svc-argocd` | devops | svc_argocd | argocd ApplicationSet PR generator (apps/openkite-preview) |
 | `doppler-svc-onedev` | devops | svc_onedev | onedev |
-| `doppler-svc-mongodb` | devops | svc_mongodb | mongodb-operator, app PerconaServerMongoDB CRs |
 | `doppler-svc-openclaw` | devops | svc_openclaw | openclaw |
 | `doppler-zurabase-dev` | zurabase | dev | future zurabase service |
 | `doppler-zurabase-stg` | zurabase | stg | future zurabase service |
@@ -84,8 +83,6 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | clusterSecretStores.svc_excalidash.project | string | `"devops"` |  |
 | clusterSecretStores.svc_grafana.config | string | `"svc_grafana"` |  |
 | clusterSecretStores.svc_grafana.project | string | `"devops"` |  |
-| clusterSecretStores.svc_mongodb.config | string | `"svc_mongodb"` |  |
-| clusterSecretStores.svc_mongodb.project | string | `"devops"` |  |
 | clusterSecretStores.svc_openagent.config | string | `"svc_openagent"` |  |
 | clusterSecretStores.svc_openagent.project | string | `"devops"` |  |
 | clusterSecretStores.svc_postgres_operator.config | string | `"svc_postgres_operator"` |  |

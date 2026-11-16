@@ -199,36 +199,6 @@ services:
     syncWave: "4"
     dopplerConfig: "svc_cloudflare"
 
-  keda:
-    enable: false
-    syncWave: "4"
-    argocdNamespace: argocd
-    finalizer: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
-
-  mongodbOperator:
-    enable: false
-    syncWave: "4"
-    argocdNamespace: argocd
-    argoProject: default
-
-    syncOptions:
-      - CreateNamespace=true
-      - ApplyOutOfSyncOnly=true
-      - RespectIgnoreDifferences=true
-    retryLimit: 2
-    retryMaxDuration: 3m
-    managedNamespaceMetadata:
-      labels:
-        argocd.argoproj.io/respect-existing: "true"
-    ignoreDifferences:
-      - group: apiextensions.k8s.io
-        kind: CustomResourceDefinition
-        jqPathExpressions:
-          - .
-
   # Wave 4 — StackGres operator only (upstream subchart + operator admin ES + SGConfig hook).
   # Cluster CRs live in the separate cluster-scope app `postgresClusters` below —
   # a namespaced app can only manage resources in its own namespace.
@@ -487,17 +457,6 @@ services:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-
-  openagentDiscord:
-    enable: false
-    syncWave: "3"
-    destNamespace: openagent
-    dopplerConfig: "svc_openagent"
-    parameters:
-      - name: config.mentionOnly
-        value: "false"
-    syncOptions:
-      - CreateNamespace=true
 
   # Dex: the cluster OIDC identity provider. Public on purpose — it is the login
   # page apps redirect to, so it cannot itself sit behind Cloudflare Access.
