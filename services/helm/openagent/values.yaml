@@ -226,14 +226,26 @@ litellm:
         model_info:
           max_input_tokens: 1000000
           max_output_tokens: 384000
-      # OpenCode Go lane (provider: opencode go). Routed via OPENCODE_API_BASE/KEY.
+      # OpenCode Go lane (subscription plan, NOT pay-as-you-go). Same gateway
+      # host as the two aliases above; OPENCODE_API_BASE already points at the
+      # Go path. Its own weekly usage cap is the reason each one carries a full
+      # fallback chain below — an exhausted Go plan answers 429
+      # `GoUsageLimitError` on EVERY model at once, so a Go hop can never be
+      # terminal. `x-opencode-session` is mandatory here: without it the gateway
+      # rejects the request with 400 `MissingSessionID` before routing.
       - model_name: deepseek-v4-flash-go
         litellm_params:
           model: openai/deepseek-v4.1-flash
           api_base: os.environ/OPENCODE_API_BASE
           api_key: os.environ/OPENCODE_API_KEY
+          extra_headers:
+            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a16"
+            User-Agent: "hermes-litellm/1.0"
           order: 1
         model_info:
+          input_cost_per_token: 0.00000015
+          output_cost_per_token: 0.0000006
+          cache_read_input_token_cost: 0.000000003
           max_input_tokens: 1000000
           max_output_tokens: 384000
       # Claude proxy (Claude Max subscription, flat fee) — the literal aliases the
@@ -317,28 +329,6 @@ litellm:
         model_info:
           max_input_tokens: 131072
           max_output_tokens: 32768
-      # OpenCode Go lane (subscription plan, NOT pay-as-you-go). Same gateway
-      # host as the two aliases above; OPENCODE_API_BASE already points at the
-      # Go path. Its own weekly usage cap is the reason each one carries a full
-      # fallback chain below — an exhausted Go plan answers 429
-      # `GoUsageLimitError` on EVERY model at once, so a Go hop can never be
-      # terminal. `x-opencode-session` is mandatory here: without it the gateway
-      # rejects the request with 400 `MissingSessionID` before routing.
-      - model_name: deepseek-v4-flash-go
-        litellm_params:
-          model: openai/deepseek-v4.1-flash
-          api_base: os.environ/OPENCODE_API_BASE
-          api_key: os.environ/OPENCODE_API_KEY
-          extra_headers:
-            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a16"
-            User-Agent: "hermes-litellm/1.0"
-          order: 1
-        model_info:
-          input_cost_per_token: 0.00000015
-          output_cost_per_token: 0.0000006
-          cache_read_input_token_cost: 0.000000003
-          max_input_tokens: 1000000
-          max_output_tokens: 384000
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
 # No cache instance is declared here: the standalone Valkey lives in the
