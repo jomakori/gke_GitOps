@@ -82,7 +82,7 @@ missing or whose audience is absent from `cloudflare.access.audienceTag`.
 ### VirtualServices
 
 Two layers of VirtualServices exist:
-1. **This chart** (istio umbrella) — spec-driven entries in `virtualServices`, primarily for infrastructure services (argocd, headlamp, opencost). Registered explicitly in the values.
+1. **This chart** (istio umbrella) — spec-driven entries in `virtualServices`, primarily for infrastructure services (argocd, opencost). Registered explicitly in the values.
 2. **App chart** (apps/helm) — per-app per-environment VS for application workloads, generated from the parameterized app chart.
 
 ### Doppler config
@@ -167,10 +167,6 @@ Two layers of VirtualServices exist:
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |
 | virtualServices.argocd.host | string | `"argocd.maklab.net"` |  |
-| virtualServices.headlamp.destination.host | string | `"headlamp.headlamp.svc.cluster.local"` |  |
-| virtualServices.headlamp.destination.port | int | `80` |  |
-| virtualServices.headlamp.enabled | bool | `false` |  |
-| virtualServices.headlamp.host | string | `"headlamp.maklab.net"` |  |
 | virtualServices.hermes-dashboard.destination.host | string | `"openagent-hermes-agent.openagent.svc.cluster.local"` |  |
 | virtualServices.hermes-dashboard.destination.port | int | `9119` |  |
 | virtualServices.hermes-dashboard.enabled | bool | `true` |  |

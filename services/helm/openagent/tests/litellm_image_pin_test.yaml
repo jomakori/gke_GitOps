@@ -20,7 +20,7 @@ tests:
     asserts:
       - matchRegex:
           path: spec.template.spec.containers[0].image
-          pattern: '^ghcr\.io/berriai/litellm:[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$'
+          pattern: '^ghcr\.io/berriai/litellm:v?[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$'
         # Selected by container name, not `metadata.name`: several documents in
         # this release are named `openagent-litellm` (Service, HPA, PDB), and a
         # selector that matches more than one document fails as

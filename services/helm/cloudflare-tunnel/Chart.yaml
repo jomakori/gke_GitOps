@@ -7,5 +7,5 @@ appVersion: "latest"
 
 dependencies:
   - name: cloudflare-tunnel
-    version: 0.16.4
+    version: 0.16.15
     repository: oci://ghcr.io/lexfrei/charts

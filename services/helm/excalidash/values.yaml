@@ -1,7 +1,7 @@
 # Local values — consumed by templates/externalsecret.yaml
 dopplerConfig: "svc_excalidash"
 
-# ── Upstream chart overrides (alekc/excalidash v1.0.0) ─────────────────
+# ── Upstream chart overrides (alekc/excalidash v2.0.2) ─────────────────
 # Docs: https://artifacthub.io/packages/helm/alekc/excalidash
 excalidash:
   ingress:

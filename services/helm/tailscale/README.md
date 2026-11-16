@@ -8,7 +8,7 @@ Tailscale Kubernetes Operator
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://pkgs.tailscale.com/helmcharts | tailscale-operator | 1.98.9 |
+| https://pkgs.tailscale.com/helmcharts | tailscale-operator | 1.104.4 |
 
 ## Values
 

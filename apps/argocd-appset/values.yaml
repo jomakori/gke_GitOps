@@ -9,26 +9,12 @@ storageClass: ""
 targetRevision: ""
 
 # App Environment Values — dopplerConfig maps to ClusterSecretStore/doppler-{name}
-demoApi:
-  environment:
-    staging:
-      dopplerConfig: demo-api-staging
-    production:
-      dopplerConfig: demo-api-prod
-
 openkite:
   environment:
     staging:
       dopplerConfig: svc_openagent
     production:
       dopplerConfig: svc_openagent
-
-notesUi:
-  environment:
-    staging:
-      dopplerConfig: notes-ui-staging
-    production:
-      dopplerConfig: notes-ui-prod
 
 # Engine values only. The console container consumes none of them (the app spec
 # sets service.envFrom=false), so a web-facing process never holds broker keys.
@@ -41,68 +27,6 @@ tickerlight:
 
 # App Configurations — key = app name (used for Application metadata.name + chart lookup)
 apps:
-  demoApi:
-    enable: false
-    syncWave: "6"
-    helmPath: apps/helm/
-    destNamespace: argocd
-    argocdNamespace: argocd
-    argoProject: default
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
-    gateways:
-      enable_public: true
-    syncOptions:
-      - CreateNamespace=true
-    ignoreDifferences:
-      - group: apps
-        kind: Deployment
-        jsonPointers:
-          - /spec/replicas
-      - group: apps
-        kind: Secret
-        jsonPointers:
-          - /metadata/argocd.argoproj.io/sync-wave
-    parameters:
-      - name: appName
-        value: "demoApi"
-      - name: demoApi.environments.staging.dopplerConfig
-        value: "{{ .Values.demoApi.environment.staging.dopplerConfig }}"
-      - name: demoApi.environments.production.dopplerConfig
-        value: "{{ .Values.demoApi.environment.production.dopplerConfig }}"
-
-  notesUi:
-    enable: false
-    syncWave: "6"
-    helmPath: apps/helm/
-    destNamespace: argocd
-    argocdNamespace: argocd
-    argoProject: default
-    finalizers:
-      - resources-finalizer.argocd.argoproj.io
-    selfHeal: true
-    gateways:
-      enable_public: true
-    syncOptions:
-      - CreateNamespace=true
-    ignoreDifferences:
-      - group: apps
-        kind: Deployment
-        jsonPointers:
-          - /spec/replicas
-      - group: apps
-        kind: Secret
-        jsonPointers:
-          - /metadata/argocd.argoproj.io/sync-wave
-    parameters:
-      - name: appName
-        value: "notesUi"
-      - name: notesUi.environments.staging.dopplerConfig
-        value: "{{ .Values.notesUi.environment.staging.dopplerConfig }}"
-      - name: notesUi.environments.production.dopplerConfig
-        value: "{{ .Values.notesUi.environment.production.dopplerConfig }}"
-
   # PROD — this entry renders the apps/helm umbrella (helmPath below) for the
   # app's `production` environment: Deployment, Service and VirtualService at
   # openkite.maklab.net, gated by Cloudflare Access because the app spec sets
