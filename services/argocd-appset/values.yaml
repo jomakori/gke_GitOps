@@ -160,6 +160,13 @@ services:
           - .webhooks[].objectSelector
           - .webhooks[].timeoutSeconds
           - .webhooks[].rules[].scope
+    # argocd VirtualService: port 80 matches the Terraform-installed server, which
+    # runs server.insecure=true. services/helm/argo-cd runs it secure (TLS on the
+    # server, plain HTTP gets a 307), so the PR that flips `argoCd.enable` MUST also
+    # change the port below to "443" and add
+    #   - name: virtualServices.argocd.destination.tls.enabled
+    #     value: "true"
+    # (docs/argocd-self-manage.md, step 4) or argocd.maklab.net redirect-loops.
     parameters:
       - name: virtualServices.argocd.enabled
         value: "true"

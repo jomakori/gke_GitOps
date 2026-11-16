@@ -9,7 +9,7 @@
 
 ## Under the hood
 
-A thin wrapper around the official [argo-cd Helm chart](https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd): no local templates, only production overrides (HA replicas, PDBs, autoscaling, resource limits, hard pod anti-affinity, custom health checks for `ExternalSecret` and `CronJob`, `server.insecure`, `NodePort` server Service) under the upstream `argo-cd:` key. The values were ported verbatim from the Terraform install so adoption renders no config drift.
+A thin wrapper around the official [argo-cd Helm chart](https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd): no local templates, only production overrides (HA replicas, PDBs, autoscaling, resource limits, hard pod anti-affinity, custom health checks for `ExternalSecret` and `CronJob`, `NodePort` server Service) under the upstream `argo-cd:` key. The values were ported from the Terraform install with two deliberate changes: `server.insecure` is **false** (the server terminates TLS; the Istio route must target 443 with TLS origination) and `global.domain` is `argocd.maklab.net` (drives `argocd-cm` `url`). See the cutover doc.
 
 ### Self-management
 

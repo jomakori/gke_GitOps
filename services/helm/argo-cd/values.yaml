@@ -1,14 +1,19 @@
 # Docs: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
 #
-# ArgoCD manages itself from this chart. Ported verbatim from the Terraform
-# values (devops_Terraform/k8s-maklab-cluster/helm/argocd-values.yaml) so the
-# adopted release renders no drift. The Application is named `argo-cd` on purpose:
+# ArgoCD manages itself from this chart. Ported from the Terraform values
+# (devops_Terraform/k8s-maklab-cluster/helm/argocd-values.yaml) with two deliberate
+# changes: server.insecure is now false and global.domain is set. The Application is named `argo-cd` on purpose:
 # the release name drives every Service name (argo-cd-argocd-server, ...) and the
 # Istio VirtualService, webhook and Terraform root apps pin them. Do not rename.
 #
 # Overrides live under the upstream chart's key.
 argo-cd:
+  # External endpoint. global.domain feeds the chart's default configs.cm.url
+  # (https://<domain>), which ArgoCD uses for SSO/Dex callbacks, notification links
+  # and CLI/UI redirects. Without it the live release carries the chart's
+  # placeholder https://argocd.example.com.
   global:
+    domain: argocd.maklab.net
     podAntiAffinity: hard
 
   # ┌──────────────────────────────────────────────────────────────────────────┐
@@ -31,7 +36,11 @@ argo-cd:
   # └──────────────────────────────────────────────────────────────────────────┘
   configs:
     params:
-      server.insecure: true
+      # Secure mode: argocd-server terminates TLS itself (self-signed cert unless a
+      # argocd-server-tls Secret exists) and 307-redirects plain HTTP to HTTPS. The
+      # Istio VirtualService must therefore target port 443 and originate TLS — see
+      # docs/argocd-self-manage.md. Was `true` in the Terraform install.
+      server.insecure: false
     cm:
       create: true
       exec.enabled: true

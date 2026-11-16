@@ -11,7 +11,7 @@ ArgoCD managing itself — thin wrapper over the official argo-cd Helm chart, ad
 
 ## Under the hood
 
-A thin wrapper around the official [argo-cd Helm chart](https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd): no local templates, only production overrides (HA replicas, PDBs, autoscaling, resource limits, hard pod anti-affinity, custom health checks for `ExternalSecret` and `CronJob`, `server.insecure`, `NodePort` server Service) under the upstream `argo-cd:` key. The values were ported verbatim from the Terraform install so adoption renders no config drift.
+A thin wrapper around the official [argo-cd Helm chart](https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd): no local templates, only production overrides (HA replicas, PDBs, autoscaling, resource limits, hard pod anti-affinity, custom health checks for `ExternalSecret` and `CronJob`, `NodePort` server Service) under the upstream `argo-cd:` key. The values were ported from the Terraform install with two deliberate changes: `server.insecure` is **false** (the server terminates TLS; the Istio route must target 443 with TLS origination) and `global.domain` is `argocd.maklab.net` (drives `argocd-cm` `url`). See the cutover doc.
 
 ### Self-management
 
@@ -36,7 +36,7 @@ The Application is named `argo-cd`, which is the Helm release name and therefore
 | argo-cd.configs.cm."resource.customizations.health.batch_CronJob" | string | `"hs = {}\n-- Suspended CronJobs do not run; surface them as Suspended.\nif obj.spec ~= nil and obj.spec.suspend == true then\n  hs.status = \"Suspended\"\n  hs.message = \"CronJob is suspended\"\n  return hs\nend\n-- No status yet: the CronJob has not been scheduled.\nif obj.status == nil or obj.status.lastScheduleTime == nil then\n  hs.status = \"Healthy\"\n  hs.message = \"CronJob has not been scheduled yet\"\n  return hs\nend\n-- The CronJob has been scheduled. If the last run did not succeed, report\n-- Healthy (not Degraded, not Progressing) so ArgoCD keeps the app in sync\n-- and keeps retrying; the drift signal stays visible in the Job's logs.\nif obj.status.lastSuccessfulTime == nil or obj.status.lastSuccessfulTime < obj.status.lastScheduleTime then\n  hs.status = \"Healthy\"\n  hs.message = \"Last scheduled run did not succeed — check Job logs (drift?)\"\n  return hs\nend\nhs.status = \"Healthy\"\nhs.message = \"CronJob completed its last scheduled run successfully\"\nreturn hs\n"` |  |
 | argo-cd.configs.cm."resource.customizations.health.external-secrets.io_ExternalSecret" | string | `"hs = {}\nif obj.status ~= nil then\n  for _, condition in ipairs(obj.status.conditions or {}) do\n    if condition.type == \"Ready\" then\n      if condition.status == \"True\" then\n        hs.status = \"Healthy\"\n        hs.message = condition.message\n      else\n        hs.status = \"Degraded\"\n        hs.message = condition.message\n      end\n    end\n  end\nend\nif hs.status == nil then\n  hs.status = \"Progressing\"\n  hs.message = \"Waiting for ExternalSecret to sync\"\nend\nreturn hs\n"` |  |
 | argo-cd.configs.cm.create | bool | `true` |  |
-| argo-cd.configs.params."server.insecure" | bool | `true` |  |
+| argo-cd.configs.params."server.insecure" | bool | `false` |  |
 | argo-cd.controller.pdb.enabled | bool | `true` |  |
 | argo-cd.controller.pdb.minAvailable | int | `1` |  |
 | argo-cd.controller.replicas | int | `2` |  |
@@ -48,6 +48,7 @@ The Application is named `argo-cd`, which is the Helm release name and therefore
 | argo-cd.dex.resources.limits.memory | string | `"256Mi"` |  |
 | argo-cd.dex.resources.requests.cpu | string | `"100m"` |  |
 | argo-cd.dex.resources.requests.memory | string | `"128Mi"` |  |
+| argo-cd.global.domain | string | `"argocd.maklab.net"` |  |
 | argo-cd.global.podAntiAffinity | string | `"hard"` |  |
 | argo-cd.notifications.pdb.enabled | bool | `true` |  |
 | argo-cd.notifications.pdb.minAvailable | int | `1` |  |
