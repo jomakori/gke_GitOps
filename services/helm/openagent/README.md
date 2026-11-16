@@ -806,7 +806,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraInitContainers[1].env[1].value | string | `"https://github.com/jomakori/hermes-omo-plugin.git"` |  |
 | hermes-agent.extraInitContainers[1].env[2].name | string | `"OMO_PROVISION_REF"` |  |
 | hermes-agent.extraInitContainers[1].env[2].value | string | `"main"` |  |
-| hermes-agent.extraInitContainers[1].image | string | `"alpine/git:v2.54.0"` |  |
+| hermes-agent.extraInitContainers[1].image | string | `"alpine/git:v2.54.1"` |  |
 | hermes-agent.extraInitContainers[1].imagePullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.extraInitContainers[1].name | string | `"provision-omo-plugin"` |  |
 | hermes-agent.extraInitContainers[1].securityContext.runAsGroup | int | `10000` |  |

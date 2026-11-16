@@ -1595,7 +1595,7 @@ hermes-agent:
     # the omo: values. Flip OMO_PROVISION_ENABLED to "true" (and confirm
     # OMO_PROVISION_REPOSITORY exists) to provision; until then it no-ops.
     - name: provision-omo-plugin
-      image: alpine/git:v2.54.0
+      image: alpine/git:v2.54.1
       imagePullPolicy: IfNotPresent
       securityContext:
         runAsUser: 10000

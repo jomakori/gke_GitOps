@@ -8,7 +8,7 @@ Values override layer for alekc/excalidash (self-hosted Excalidraw dashboard)
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.alekc.dev | excalidash | 2.0.2 |
+| https://charts.alekc.dev | excalidash | 2.0.4 |
 
 ## Values
 

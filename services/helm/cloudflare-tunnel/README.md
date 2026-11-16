@@ -7,7 +7,7 @@ Cloudflare Zero Trust tunnel for public access to *.maklab.net
 
 | Repository | Name | Version |
 |------------|------|---------|
-| oci://ghcr.io/lexfrei/charts | cloudflare-tunnel | 0.16.15 |
+| oci://ghcr.io/lexfrei/charts | cloudflare-tunnel | 0.16.16 |
 
 ## Under the hood
 
