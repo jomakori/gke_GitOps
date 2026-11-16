@@ -108,7 +108,11 @@ virtualServices:
     host: argocd.maklab.net
     destination:
       host: argo-cd-argocd-server.argocd.svc.cluster.local
-      port: 80
+      port: 443
+      tls:
+        enabled: true
+        # argo-cd serves a self-signed cert in-cluster by default.
+        insecureSkipVerify: true
 
   opencost:
     enabled: false
