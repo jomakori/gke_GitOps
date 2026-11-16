@@ -11,17 +11,17 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
-  - it: routes Hermes fallbacks to MiMo, then the DeepSeek floor
+  - it: routes Hermes fallbacks to the DeepSeek floor
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)fallback_providers:\\s*-\\s*model: mimo-v2.6-flash\\s*provider: litellm\\s*-\\s*model: deepseek-v4-flash-direct"
+          pattern: "(?s)fallback_providers:\\s*-\\s*model: deepseek-v4-flash-direct\\s*provider: litellm"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
       - notMatchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)fallback_providers:\\n- model: copilot-luna"
+          pattern: "mimo-v2.6-flash"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
