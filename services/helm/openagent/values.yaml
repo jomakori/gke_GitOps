@@ -217,7 +217,7 @@ litellm:
       redis_host: os.environ/REDIS_HOST
       redis_port: os.environ/REDIS_PORT
     model_list:
-      # Terminal hop: needs neither Claude nor a local Ollama host, so every chain ends here.
+      # Terminal hop: DeepSeek API (direct). Cheap/reliable floor.
       - model_name: deepseek-v4-flash-direct
         litellm_params:
           model: deepseek/deepseek-flash
@@ -225,6 +225,28 @@ litellm:
           order: 1
           use_chat_completions_api: true
         model_info:
+          max_input_tokens: 1000000
+          max_output_tokens: 384000
+      # OpenCode Go lane (subscription plan, NOT pay-as-you-go). Same gateway
+      # host as the two aliases above; OPENCODE_API_BASE already points at the
+      # Go path. Its own weekly usage cap is the reason each one carries a full
+      # fallback chain below — an exhausted Go plan answers 429
+      # `GoUsageLimitError` on EVERY model at once, so a Go hop can never be
+      # terminal. `x-opencode-session` is mandatory here: without it the gateway
+      # rejects the request with 400 `MissingSessionID` before routing.
+      - model_name: deepseek-v4-flash-go
+        litellm_params:
+          model: openai/deepseek-v4.1-flash
+          api_base: os.environ/OPENCODE_API_BASE
+          api_key: os.environ/OPENCODE_API_KEY
+          extra_headers:
+            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a16"
+            User-Agent: "hermes-litellm/1.0"
+          order: 1
+        model_info:
+          input_cost_per_token: 0.00000015
+          output_cost_per_token: 0.0000006
+          cache_read_input_token_cost: 0.000000003
           max_input_tokens: 1000000
           max_output_tokens: 384000
       # Claude proxy (Claude Max subscription, flat fee) — the literal aliases the
@@ -284,6 +306,7 @@ litellm:
           cache_read_input_token_cost: 0.00000001
           max_input_tokens: 1000000
           max_output_tokens: 128000
+
       # Local lane: Qwen3.6-35B-A3B on the Mac host (Ollama MLX); beat LFM2.5 on replay 7/12 vs 6/12 and prefill 660 vs 341 tok/s.
       # Thinking MUST be off via nested extra_body.reasoning_effort — top-level is stripped by drop_params and ollama#16383 500s return.
       # The tag pins the window (`PARAMETER num_ctx 131072`) so the declared context matches what the runner allocates.
@@ -307,65 +330,6 @@ litellm:
         model_info:
           max_input_tokens: 131072
           max_output_tokens: 32768
-      # OpenCode gateway lane: OpenAI-compatible endpoint fronting third-party
-      # models. extra_headers pins a
-      # stable per-model session id (static UUID, not request-generated) plus
-      # a UA string so the opencode gateway can attribute LiteLLM traffic.
-      - model_name: gpt-6-luna
-        litellm_params:
-          model: openai/gpt-6-luna
-          api_base: os.environ/OPENCODE_API_BASE
-          api_key: os.environ/OPENCODE_API_KEY
-          extra_headers:
-            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a14"
-            User-Agent: "hermes-litellm/1.0"
-          order: 1
-      - model_name: kimi-k3.1-pro
-        litellm_params:
-          model: openai/kimi-k3.1-pro
-          api_base: os.environ/OPENCODE_API_BASE
-          api_key: os.environ/OPENCODE_API_KEY
-          extra_headers:
-            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a15"
-            User-Agent: "hermes-litellm/1.0"
-          order: 1
-      # OpenCode Go lane (subscription plan, NOT pay-as-you-go). Same gateway
-      # host as the two aliases above; OPENCODE_API_BASE already points at the
-      # Go path. Its own weekly usage cap is the reason each one carries a full
-      # fallback chain below — an exhausted Go plan answers 429
-      # `GoUsageLimitError` on EVERY model at once, so a Go hop can never be
-      # terminal. `x-opencode-session` is mandatory here: without it the gateway
-      # rejects the request with 400 `MissingSessionID` before routing.
-      - model_name: deepseek-v4-flash-go
-        litellm_params:
-          model: openai/deepseek-v4.1-flash
-          api_base: os.environ/OPENCODE_API_BASE
-          api_key: os.environ/OPENCODE_API_KEY
-          extra_headers:
-            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a16"
-            User-Agent: "hermes-litellm/1.0"
-          order: 1
-        model_info:
-          input_cost_per_token: 0.00000015
-          output_cost_per_token: 0.0000006
-          cache_read_input_token_cost: 0.000000003
-          max_input_tokens: 1000000
-          max_output_tokens: 384000
-      - model_name: mimo-v2.6-flash
-        litellm_params:
-          model: openai/mimo-v2.6-flash
-          api_base: os.environ/OPENCODE_API_BASE
-          api_key: os.environ/OPENCODE_API_KEY
-          extra_headers:
-            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a17"
-            User-Agent: "hermes-litellm/1.0"
-          order: 1
-        model_info:
-          input_cost_per_token: 0.00000014
-          output_cost_per_token: 0.00000028
-          cache_read_input_token_cost: 0.0000000028
-          max_input_tokens: 1048576
-          max_output_tokens: 131072
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
 # No cache instance is declared here: the standalone Valkey lives in the
@@ -438,10 +402,8 @@ hermes-agent:
       # decorative: an exhausted plan 429s every Go model simultaneously.
       default: deepseek-v4-flash-go
       provider: litellm
-    # Fallback: a second Go model, then the credit-independent DeepSeek floor.
+    # Fallback: credit-independent DeepSeek floor.
     fallback_providers:
-      - provider: litellm
-        model: mimo-v2.6-flash
       - provider: litellm
         model: deepseek-v4-flash-direct
     providers:
@@ -458,8 +420,6 @@ hermes-agent:
             context_length: 1000000
           deepseek-v4-flash-go:
             context_length: 1000000
-          mimo-v2.6-flash:
-            context_length: 1048576
           claude-opus-5:
             context_length: 1000000
           claude-sonnet-5:
@@ -689,6 +649,9 @@ hermes-agent:
       enabled: true
       threshold: 0.35
       target_ratio: 0.20
+      # Use OpenCode Go flash lane for LLM-driven compaction/summarization when supported.
+      model: deepseek-v4-flash-go
+      provider: litellm
       # Absolute cap, applied as min(ratio trigger, this) and clamped to the
       # window: the 0.35 ratio cannot bind on a 1M-token window.
       threshold_tokens: 80000
@@ -837,19 +800,16 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               oracle:
-                # Kilo rung kept ahead of the Go lane: it is a distinct provider
-                # and the only reasoning-tier hop behind Opus.
                 - litellm/claude-opus-5
-                - litellm/kimi-k3.1-pro
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               librarian:
+                - litellm/qwen3.6-35b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               explore:
-                # Local Qwen leads (zero-cost read sink); gpt-6-luna dropped —
-                # it is Kilo-served, i.e. the same layer as the local lane.
+                # Local Qwen leads (zero-cost read sink) on existing lane.
                 - litellm/qwen3.6-35b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-go
@@ -864,6 +824,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
             categories:
               quick:
+                - litellm/qwen3.6-35b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
@@ -1645,10 +1606,10 @@ hermes-agent:
   # Ready once the gateway actually answers; readiness failures never restart
   # a pod.
   #
-  # No livenessProbe: the image's s6-overlay already supervises and restarts
-  # `hermes gateway run` on crash, so a liveness probe would duplicate that
-  # while adding a way to kill-restart the whole pod (dropping in-flight
-  # orchestration).
+  # LivenessProbe added (conservative): catches wedged state where the API/health
+  # endpoint stops answering but the container stays Running (s6 may supervise
+  # subprocesses yet the gateway never becomes healthy again). StartupProbe
+  # gates it during long boot; high threshold avoids killing busy-but-alive pods.
   probes:
     startup:
       httpGet:
@@ -1667,6 +1628,15 @@ hermes-agent:
       # restarts, so this only gates the endpoints, not the pod lifecycle.
       periodSeconds: 10
       failureThreshold: 3
+      timeoutSeconds: 3
+    liveness:
+      httpGet:
+        path: /health
+        port: 8642
+      # 6 failures × 10s = 60s of sustained unhealth before restart.
+      # Startup probe covers boot; this only acts after startup succeeds.
+      periodSeconds: 10
+      failureThreshold: 6
       timeoutSeconds: 3
   resources:
     # `limits.memory` must be >= the VPA's `maxMemory` (8Gi) — if the VPA emits

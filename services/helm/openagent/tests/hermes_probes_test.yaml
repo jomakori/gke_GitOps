@@ -7,7 +7,7 @@ release:
   name: openagent
   namespace: openagent
 tests:
-  - it: renders startup + readiness probes on the gateway container, and no liveness probe
+  - it: renders startup, readiness, and liveness probes on the gateway container
     asserts:
       - isKind:
           of: Deployment
@@ -30,10 +30,7 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent
-      # s6-overlay already restarts `hermes gateway run` on crash, so a
-      # liveness probe would add nothing but a way to kill-restart the pod.
-      # Assert it stays absent.
-      - notExists:
+      - exists:
           path: spec.template.spec.containers[0].livenessProbe
         documentSelector:
           path: metadata.name
@@ -95,6 +92,36 @@ tests:
           value: openagent-hermes-agent
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.timeoutSeconds
+          value: 3
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /health
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: 8642
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.periodSeconds
+          value: 10
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.failureThreshold
+          value: 6
+        documentSelector:
+          path: metadata.name
+          value: openagent-hermes-agent
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.timeoutSeconds
           value: 3
         documentSelector:
           path: metadata.name
