@@ -37,7 +37,7 @@ litellm:
   image:
     repository: ghcr.io/berriai/litellm
     # Immutable: upstream republishes `main-stable`, and IfNotPresent keeps one cached build per node.
-    tag: "v1.109.0@sha256:26aecfb02fb17ac6590f0549478561f9fbb3f69314317320b2e32a21beed4006"
+    tag: "v1.109.1@sha256:11175975a3093e05e92faee2fe2fe3412a3ae2fcaa849eb0fe25d5f0d8bcb2e9"
     pullPolicy: IfNotPresent
   service:
     port: 4000
@@ -346,10 +346,10 @@ hermes-agent:
   # Image for the gateway pod AND the MCP verification Jobs: both run the same
   # toolchain, and the mise node/uv on the PVC is ABI-coupled to this image.
   # Pinned explicitly so a Job never resolves an empty tag; keep in lockstep
-  # with the hermes-agent chart dependency's appVersion (1.23.0 -> v0.23.0).
+  # with the hermes-agent chart dependency's appVersion (1.25.0 -> v0.23.1).
   image:
     repository: nousresearch/hermes-agent
-    tag: "v0.23.0"
+    tag: "v0.23.1"
     pullPolicy: IfNotPresent
   # The agent runs kubectl inside the pod and needs admin access to the
   # cluster. The chart default (automount=false) left it with no identity, so
@@ -366,14 +366,14 @@ hermes-agent:
   bootstrap:
     overwrite: true
   config:
-    # Config schema version emitted by the pinned gateway image: v0.23.0
-    # carries schema 52 (hermes_cli/config_defaults.py). Keep in lockstep with
+    # Config schema version emitted by the pinned gateway image: v0.23.1
+    # carries schema 53 (hermes_cli/config_defaults.py). Keep in lockstep with
     # image.tag above. Required because bootstrap.overwrite=true re-seeds
     # config.yaml from this chart on every pod start, so the version the
     # image's config migration stamps onto the PVC is always overwritten;
     # with no version key the image's docker_config_migrate reads 0, warns
     # "predates version 12", and skips stamping on every boot.
-    _config_version: 52
+    _config_version: 53
     # Serve the first-party Webapp on the ingress Service. Non-loopback binds
     # require a Hermes sign-in provider, and the provider is OIDC against the
     # in-cluster Dex (services/helm/dex), which relays Google — so Hermes keeps

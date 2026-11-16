@@ -14,7 +14,7 @@ enabled: true
 # Pre-built OFFICIAL image (ghcr.io/headroomlabs-ai/headroom) — unlike claude-proxy/OCP,
 # this is NOT a repo-built image; Headroom publishes its own multi-arch container.
 # Verified live against GHCR on 2026-11-07:
-#   - tag `0.43.1` is a published multi-arch OCI image index (linux/amd64 + linux/arm64 —
+#   - tag `0.44.0` is a published multi-arch OCI image index (linux/amd64 + linux/arm64 —
 #     this cluster's nodes are arm64).
 #   - the digest below is the INDEX digest (not a per-platform manifest digest); pulling
 #     by digest still resolves the right platform because containerd dereferences an
@@ -28,7 +28,7 @@ enabled: true
 #     why that failure mode matters in this repo).
 image:
   repository: ghcr.io/headroomlabs-ai/headroom
-  tag: "0.43.1@sha256:c4486ccc8096ce44dd825361f1defb67e66710da1b2191f03b283992b8aaf01c"
+  tag: "0.44.0@sha256:10ef5f71c4cae3a02ca28107dfcf379aa73314ff26544c1f9988140e71f732f4"
   pullPolicy: IfNotPresent
 
 service:
