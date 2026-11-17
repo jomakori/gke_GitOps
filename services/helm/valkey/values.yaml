@@ -28,7 +28,7 @@ valkey:
     # Pinned, not `latest`: the chart's appVersion is a moving target across
     # chart bumps, and a cache restarting into a different build is a silent
     # behaviour change. Renovate bumps this line.
-    tag: "9.1.2"
+    tag: "9.1.3"
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -42,13 +42,14 @@ valkey:
   # having: LiteLLM keeps rate-limit counters and budget reservations in Redis,
   # not just cached replies, so losing the dataset on restart under-enforces
   # limits until the database catches up.
-  dataStorage:
+  persistence:
     enabled: true
-    requestedSize: 1Gi
-    className: local-path
+    size: 1Gi
+    storageClass: local-path
   # Written into /data/conf/valkey.conf by the chart's init container and passed
-  # to valkey-server as its config file.
-  valkeyConfig: |
+  # to valkey-server as its config file. Rendered as a template by the chart, so
+  # keep it free of `{{`.
+  extraConfig: |
     appendonly yes
     appendfsync everysec
     maxmemory 192mb

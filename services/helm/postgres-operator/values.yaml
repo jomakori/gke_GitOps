@@ -173,8 +173,16 @@ postgres:
       # pgbouncer is listed because pooling is now enabled.
       resources:
         cluster-controller:
-          cpu: "200m"
-          memory: 256Mi
+          # Not a capacity problem: pg-main-0 kept running the 1.18.6 sidecar after
+          # the operator was upgraded to 1.19.5 (2026-11-16T07:39Z), and from that
+          # minute its reconcile cycle span-wedged — CPU went from a flat 3.6m to
+          # pinned at the 200m cap for 26h with zero log output, which is what
+          # fired CPUThrottlingHigh. Recreating the pod loads the matching 1.19.5
+          # sidecar and the loop goes away (baseline back to ~4m). 250m covers that
+          # baseline with room for extension installs and SGScript bursts; it is a
+          # request==limit pair, so keep it modest rather than parking a full core.
+          cpu: "250m"
+          memory: 384Mi
         patroni:
           cpu: "1000m"
           memory: 1Gi

@@ -24,7 +24,6 @@ All manifests are produced by a single 373-line `_helpers.tpl` define (`app.mani
 | `ServiceAccount` + ECR `dockercfg` Secret | Always |
 | `ExternalSecret` | `environments.<env>.dopplerConfig` is set |
 | `ClusterRole` + `ClusterRoleBinding` | `clusterRead` is set (never in previews) |
-| `SGCluster` (StackGres) or `PerconaServerMongoDB` | `enable_db.type` is `postgres` or `mongodb` |
 | `Deployment` | Always (scheduled on `intent: apps` nodes) |
 | `Service` | Always (ClusterIP when Istio, NodePort otherwise) |
 | `VirtualService` | `enable_domain` + `enable_istio` (both default true) |
@@ -38,7 +37,6 @@ When `enable_db` is set, the chart generates an operator CR in the app namespace
 | DB type | Operator CR | Autoscaling |
 |---------|-------------|-------------|
 | `postgres` | `SGCluster` (StackGres) | Connection-based horizontal (`replicasConnectionsUsageTarget: 0.5`) |
-| `mongodb` | `PerconaServerMongoDB` (Percona) | Static replica set size (no connection-based scaling) |
 
 - `deployment: db` → single instance (fixed)
 - `deployment: cluster` → multiple instances with PDB
@@ -101,40 +99,6 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | clusterDomain | string | `"maklab.net"` |  |
-| demoApi.enable_db.deployment | string | `"cluster"` |  |
-| demoApi.enable_db.storage | string | `"10Gi"` |  |
-| demoApi.enable_db.type | string | `"postgres"` |  |
-| demoApi.enable_db.version | string | `"17"` |  |
-| demoApi.enable_istio | bool | `true` |  |
-| demoApi.enable_scaling.HPA.maxReplicas | int | `6` |  |
-| demoApi.enable_scaling.HPA.minReplicas | int | `2` |  |
-| demoApi.enable_scaling.db.maxInstances | int | `5` |  |
-| demoApi.enable_scaling.db.minInstances | int | `2` |  |
-| demoApi.enable_staging | bool | `true` |  |
-| demoApi.environments.production.tag | float | `1.43` |  |
-| demoApi.environments.staging.tag | float | `1.23` |  |
-| demoApi.istio.gateway | string | `"istio-system/maklab-gateway"` |  |
-| demoApi.istio.requestTimeout | string | `"30s"` |  |
-| demoApi.istio.retryAttempts | int | `3` |  |
-| demoApi.istio.retryTimeout | string | `"5s"` |  |
-| demoApi.service.port | int | `3000` |  |
-| demoApi.service.resourceRequests.cpu | string | `"256m"` |  |
-| demoApi.service.resourceRequests.memory | string | `"256Mi"` |  |
-| demoApi.service.storage.size | string | `"1Gi"` |  |
-| notesUi.enable_istio | bool | `true` |  |
-| notesUi.enable_scaling.HPA.maxReplicas | int | `6` |  |
-| notesUi.enable_scaling.HPA.minReplicas | int | `1` |  |
-| notesUi.enable_staging | bool | `true` |  |
-| notesUi.environments.production.tag | string | `"1.0.1"` |  |
-| notesUi.environments.staging.tag | string | `"pr-7"` |  |
-| notesUi.istio.gateway | string | `"istio-system/maklab-gateway"` |  |
-| notesUi.istio.requestTimeout | string | `"30s"` |  |
-| notesUi.istio.retryAttempts | int | `3` |  |
-| notesUi.istio.retryTimeout | string | `"5s"` |  |
-| notesUi.service.port | int | `8080` |  |
-| notesUi.service.resourceRequests.cpu | string | `"100m"` |  |
-| notesUi.service.resourceRequests.memory | string | `"256Mi"` |  |
-| notesUi.service.storage.size | string | `"1Gi"` |  |
 | openkite.clusterAdmin | bool | `true` |  |
 | openkite.enable_istio | bool | `true` |  |
 | openkite.enable_staging | bool | `true` |  |
@@ -155,7 +119,7 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | tickerlight.enable_istio | bool | `true` |  |
 | tickerlight.enable_staging | bool | `true` |  |
 | tickerlight.environments.production.subdomain | string | `"trade"` |  |
-| tickerlight.environments.production.tag | string | `"v0.3.1"` |  |
+| tickerlight.environments.production.tag | string | `"v0.4.0"` |  |
 | tickerlight.environments.staging.sidecar.container | string | `"engine"` |  |
 | tickerlight.environments.staging.sidecar.env.TRADING_MCP_HTTP_ADDR | string | `"0.0.0.0:8090"` |  |
 | tickerlight.environments.staging.sidecar.env.TRADING_MCP_HTTP_ALLOW_NON_LOOPBACK | string | `"true"` |  |
@@ -165,7 +129,7 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | tickerlight.environments.staging.sidecar.secretEnv[0] | string | `"TRADING_ALERT_WEBHOOK_URL"` |  |
 | tickerlight.environments.staging.sidecar.secretEnv[1] | string | `"TRADING_ALERT_WEBHOOK_SECRET"` |  |
 | tickerlight.environments.staging.subdomain | string | `"staging-trade"` |  |
-| tickerlight.environments.staging.tag | string | `"v0.3.1"` |  |
+| tickerlight.environments.staging.tag | string | `"v0.4.0"` |  |
 | tickerlight.image.repository | string | `"ghcr.io/jomakori/tickerlight"` |  |
 | tickerlight.service.args[0] | string | `"-addr"` |  |
 | tickerlight.service.args[1] | string | `"0.0.0.0:8080"` |  |
@@ -180,13 +144,28 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | tickerlight.service.extraContainers[0].envFromVars | bool | `true` |  |
 | tickerlight.service.extraContainers[0].env[0].name | string | `"TRADING_MCP_HTTP_ADDR"` |  |
 | tickerlight.service.extraContainers[0].env[0].value | string | `"127.0.0.1:8090"` |  |
-| tickerlight.service.extraContainers[0].image | string | `"ghcr.io/jomakori/trading-mcp:v0.3.6"` |  |
+| tickerlight.service.extraContainers[0].image | string | `"ghcr.io/jomakori/trading-mcp:v0.3.7"` |  |
 | tickerlight.service.extraContainers[0].name | string | `"engine"` |  |
 | tickerlight.service.extraContainers[0].ports[0].containerPort | int | `8090` |  |
 | tickerlight.service.extraContainers[0].ports[0].name | string | `"mcp"` |  |
 | tickerlight.service.extraContainers[0].resources.limits.memory | string | `"384Mi"` |  |
 | tickerlight.service.extraContainers[0].resources.requests.cpu | string | `"50m"` |  |
 | tickerlight.service.extraContainers[0].resources.requests.memory | string | `"128Mi"` |  |
+| tickerlight.service.extraContainers[1].args[0] | string | `"-interval"` |  |
+| tickerlight.service.extraContainers[1].args[1] | string | `"15m"` |  |
+| tickerlight.service.extraContainers[1].command[0] | string | `"/usr/local/bin/trading-decider"` |  |
+| tickerlight.service.extraContainers[1].envFromVars | bool | `true` |  |
+| tickerlight.service.extraContainers[1].env[0].name | string | `"DECIDER_SYMBOLS"` |  |
+| tickerlight.service.extraContainers[1].env[0].value | string | `"AAPL,MSFT,SPY,QQQ"` |  |
+| tickerlight.service.extraContainers[1].env[1].name | string | `"DECIDER_INTERVAL"` |  |
+| tickerlight.service.extraContainers[1].env[1].value | string | `"15m"` |  |
+| tickerlight.service.extraContainers[1].env[2].name | string | `"DECIDER_JOURNAL"` |  |
+| tickerlight.service.extraContainers[1].env[2].value | string | `"/data/decisions.jsonl"` |  |
+| tickerlight.service.extraContainers[1].imageTag | string | `"same"` |  |
+| tickerlight.service.extraContainers[1].name | string | `"decider"` |  |
+| tickerlight.service.extraContainers[1].resources.limits.memory | string | `"256Mi"` |  |
+| tickerlight.service.extraContainers[1].resources.requests.cpu | string | `"50m"` |  |
+| tickerlight.service.extraContainers[1].resources.requests.memory | string | `"128Mi"` |  |
 | tickerlight.service.podSecurityContext.fsGroup | int | `65532` |  |
 | tickerlight.service.podSecurityContext.runAsGroup | int | `65532` |  |
 | tickerlight.service.podSecurityContext.runAsNonRoot | bool | `true` |  |
@@ -195,5 +174,6 @@ All app deployments use `nodeSelector: intent: apps` to land on application-dedi
 | tickerlight.service.resourceLimits.memory | string | `"256Mi"` |  |
 | tickerlight.service.resourceRequests.cpu | string | `"50m"` |  |
 | tickerlight.service.resourceRequests.memory | string | `"128Mi"` |  |
+| tickerlight.service.secretEnv[0] | string | `"TRADING_MCP_HTTP_TOKEN"` |  |
 | tickerlight.service.storage.readOnly | bool | `true` |  |
 | tickerlight.service.storage.size | string | `"1Gi"` |  |

@@ -271,52 +271,6 @@ spec:
       connections:
         max: 200
         default: 5
-{{- else if eq $dbType "mongodb" }}
----
-apiVersion: psmdb.percona.com/v1
-kind: PerconaServerMongoDB
-metadata:
-  name: {{ $dbName }}
-  namespace: {{ $namespace }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
-  finalizers:
-    - percona.com/delete-psmdb-pods-in-order
-spec:
-  crVersion: "1.22.0"
-  image: percona/percona-server-mongodb:8.0.19-7
-  imagePullPolicy: IfNotPresent
-  unsafeFlags:
-    replsetSize: true
-  updateStrategy: SmartUpdate
-  upgradeOptions:
-    apply: disabled
-  secrets:
-    users: {{ $namespace }}-vars
-  replsets:
-    - name: rs0
-      size: {{ if $isCluster }}{{ $dbScaling.minInstances | default 3 }}{{ else }}1{{ end }}
-      {{- if $isCluster }}
-      podDisruptionBudget:
-        maxUnavailable: 1
-      {{- end }}
-      resources:
-        limits:
-          cpu: "600m"
-          memory: "1Gi"
-        requests:
-          cpu: "300m"
-          memory: "1Gi"
-      volumeSpec:
-        persistentVolumeClaim:
-          storageClassName: {{ $dbStorageClass | quote }}
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: {{ $dbStorage | quote }}
-  sharding:
-    enabled: false
 {{- end }}
 {{- end }}
 
@@ -391,15 +345,26 @@ spec:
           - secretRef:
               name: {{ $namespace }}-vars
           {{- end }}
-          {{- with $svc.secretEnv }}
+          {{- /* Plain env for this container: the app-wide list, with any
+                 per-environment value applied by name. An environment that
+                 names something here and not in the shared list gets it too,
+                 which is how a control stays off everywhere it is not wanted:
+                 absent means off. */}}
+          {{- $svcEnv := $svc.secretEnv | default list }}
+          {{- $plainEnv := $env.env | default dict }}
+          {{- if or $svcEnv (gt (len $plainEnv) 0) }}
           env:
-          {{- range . }}
+          {{- range $svcEnv }}
           - name: {{ . }}
             valueFrom:
               secretKeyRef:
                 name: {{ $namespace }}-vars
                 key: {{ . }}
                 optional: true
+          {{- end }}
+          {{- range $k, $v := $plainEnv }}
+          - name: {{ $k }}
+            value: {{ $v | quote }}
           {{- end }}
           {{- end }}
           {{- if and $svc.storage $svc.storage.size }}
@@ -412,7 +377,14 @@ spec:
           {{- end }}
           {{- range $svc.extraContainers }}
         - name: {{ .name }}
+          {{- /* imageTag: same runs a second binary from the service's own
+                 image, so a companion container tracks the image tag already
+                 pinned for the environment instead of repeating it here. */}}
+          {{- if and .imageTag (eq (toString .imageTag) "same") }}
+          image: {{ $imageRepo }}:{{ $tag }}
+          {{- else }}
           image: {{ .image }}
+          {{- end }}
           {{- with .command }}
           command: {{ toYaml . | nindent 12 }}
           {{- end }}

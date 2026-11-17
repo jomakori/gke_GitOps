@@ -25,7 +25,7 @@ This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), *
 | `gateway.yaml` | `maklab-gateway` — wildcard `*.<clusterDomain>`, TLS passthrough, HTTP→HTTPS redirect |
 | `cluster-issuer.yaml` | `letsencrypt-prod` — Let's Encrypt ACME via Cloudflare DNS-01 |
 | `certificate.yaml` | `wildcard-maklab-net` — wildcard TLS cert for `*.<clusterDomain>` |
-| `virtual-services.yaml` | One `VirtualService` per entry in `virtualServices` with `enabled: true` |
+| `virtual-services.yaml` | One `VirtualService` per entry in `virtualServices` with `enabled: true`; plus a `DestinationRule` (TLS origination, `insecureSkipVerify` unless set `false`) when the entry sets `destination.tls.enabled` — for backends that serve TLS themselves, e.g. `argocd-server` with `server.insecure: false` |
 | `peer-authentication.yaml` | STRICT mTLS mesh-wide |
 | `request-authentication.yaml` | CF Access JWT validation (conditional on `cloudflare.access.audienceTag`) |
 | `authorization-policy-private.yaml` | DENY rules per private VS (conditional on `enablePrivate: true`) |
@@ -78,7 +78,7 @@ missing or whose audience is absent from `cloudflare.access.audienceTag`.
 ### VirtualServices
 
 Two layers of VirtualServices exist:
-1. **This chart** (istio umbrella) — spec-driven entries in `virtualServices`, primarily for infrastructure services (argocd, headlamp, opencost). Registered explicitly in the values.
+1. **This chart** (istio umbrella) — spec-driven entries in `virtualServices`, primarily for infrastructure services (argocd, opencost). Registered explicitly in the values.
 2. **App chart** (apps/helm) — per-app per-environment VS for application workloads, generated from the parameterized app chart.
 
 ### Doppler config

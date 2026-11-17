@@ -22,31 +22,17 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-litellm-config
-  - it: registers MiMo 2.6 Flash on the Go lane with a distinct session header
+  - it: pins the Go alias in the Hermes context map so prompts are sized to 1M
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)api_base: os.environ/OPENCODE_API_BASE.*?x-opencode-session: 5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a17.*?model: openai/mimo-v2.6-flash.*?model_name: mimo-v2.6-flash"
-        documentSelector:
-          path: metadata.name
-          value: openagent-litellm-config
-      - matchRegex:
-          path: data["config.yaml"]
-          pattern: "(?s)max_input_tokens: 1048576.*?max_output_tokens: 131072.*?model_name: mimo-v2.6-flash"
-        documentSelector:
-          path: metadata.name
-          value: openagent-litellm-config
-  - it: pins both Go aliases in the Hermes context map so prompts are sized to 1M
-    asserts:
-      - matchRegex:
-          path: data["config.yaml"]
-          pattern: "(?s)deepseek-v4-flash-go:\n        context_length: 1000000"
+          pattern: "(?s)deepseek-v4-flash-go:\\s+context_length: 1000000"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
-      - matchRegex:
+      - notMatchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)mimo-v2.6-flash:\n        context_length: 1048576"
+          pattern: "mimo-v2.6-flash"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
