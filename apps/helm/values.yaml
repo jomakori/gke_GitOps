@@ -209,3 +209,69 @@ tickerlight:
             memory: 128Mi
           limits:
             memory: 256Mi
+
+# Strands — note/link judge web app, public host. The app runs its own Google
+# sign-in, so strands.maklab.net is deliberately NOT in services/helm/istio
+# `privateHosts`: a Cloudflare Access app in front of it would be a second,
+# redundant login and the app would never see the Google identity it expects.
+strands:
+  # Production only: no standing staging environment, no per-PR previews.
+  enable_staging: false
+  enable_istio: true
+  # GHCR, not the shared ECR registry.
+  image:
+    repository: ghcr.io/jomakori/strands
+  istio:
+    gateway: istio-system/maklab-gateway
+    requestTimeout: 30s
+    retryAttempts: 3
+    retryTimeout: 5s
+  environments:
+    production:
+      # Released image; the pin-bump workflow rewrites this on every release.
+      tag: v0.1.0
+      subdomain: strands
+  service:
+    port: 8080
+    resourceRequests:
+      cpu: 100m
+      memory: 320Mi
+    resourceLimits:
+      cpu: 500m
+      memory: 512Mi
+    # The server serves /healthz without touching Postgres, so both probes stay
+    # green while the SGCluster below is still booting. A readiness probe on a
+    # DB-backed route would hold the first pod out of the Service for minutes.
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 3
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
+    # DATABASE_URL comes from the binding Secret StackGres generates for the
+    # cluster below (`<cluster>-binding`, key `uri`), not from Doppler: the
+    # operator owns that credential and rotates it, so no copy of it is kept
+    # anywhere else. The URI carries no database path, so libpq/sqlx use the
+    # user name — `postgres` — which is the cluster's default database.
+    envSecretRefs:
+      - name: DATABASE_URL
+        secret: strands-production-db-binding
+        key: uri
+  # One Postgres of its own: personal app, its own data, no shared instance.
+  # The chart renders a single-instance SGCluster named `strands-production-db`
+  # on the global storage class (local-path).
+  enable_db:
+    type: postgres
+    deployment: db
+    version: "17"
+    storage: 5Gi
