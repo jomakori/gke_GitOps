@@ -349,7 +349,7 @@ hermes-agent:
   # with the hermes-agent chart dependency's appVersion (1.23.0 -> v0.23.0).
   image:
     repository: nousresearch/hermes-agent
-    tag: "v0.23.0"
+    tag: "v0.23.2"
     pullPolicy: IfNotPresent
   # The agent runs kubectl inside the pod and needs admin access to the
   # cluster. The chart default (automount=false) left it with no identity, so
