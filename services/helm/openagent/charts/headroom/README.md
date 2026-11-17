@@ -1,6 +1,6 @@
 # headroom
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.43.1](https://img.shields.io/badge/AppVersion-0.43.1-informational?style=flat-square)
+![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.44.0](https://img.shields.io/badge/AppVersion-0.44.0-informational?style=flat-square)
 
 Headroom prompt-compression sidecar, called by LiteLLM's pre_call guardrail. Enabled by default (headroom.enabled=true): the Deployment/Service render with the umbrella chart, and the guardrail's default_on is true so requests are compressed unless a caller opts out per-key/per-request or the sidecar is dropped with --set headroom.enabled=false.
 
@@ -17,7 +17,7 @@ Headroom prompt-compression sidecar, called by LiteLLM's pre_call guardrail. Ena
 | enabled | bool | `true` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/headroomlabs-ai/headroom"` |  |
-| image.tag | string | `"0.43.1@sha256:c4486ccc8096ce44dd825361f1defb67e66710da1b2191f03b283992b8aaf01c"` |  |
+| image.tag | string | `"0.44.0@sha256:10ef5f71c4cae3a02ca28107dfcf379aa73314ff26544c1f9988140e71f732f4"` |  |
 | networkPolicy.enabled | bool | `true` |  |
 | networkPolicy.litellm.instance | string | `""` |  |
 | networkPolicy.litellm.podLabelName | string | `"litellm"` |  |

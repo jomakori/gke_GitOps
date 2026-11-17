@@ -16,7 +16,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 | file://charts/claude-proxy | claude-proxy | 0.2.0 |
 | file://charts/headroom | headroom | 0.1.0 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.109.1 |
-| oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.23.0 |
+| oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.26.0 |
 
 ## OpenAgent stack
 
@@ -220,7 +220,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.bootstrap.overwrite | bool | `true` |  |
 | hermes-agent.command[0] | string | `"/opt/tools/gitopsctl"` |  |
 | hermes-agent.command[1] | string | `"boot"` |  |
-| hermes-agent.config._config_version | int | `52` |  |
+| hermes-agent.config._config_version | int | `53` |  |
 | hermes-agent.config.agent.api_max_retries | int | `1` |  |
 | hermes-agent.config.agent.disabled_toolsets[0] | string | `"tts"` |  |
 | hermes-agent.config.agent.disabled_toolsets[1] | string | `"vision"` |  |
@@ -956,7 +956,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumes[9].name | string | `"trading-guard-plugin"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
-| hermes-agent.image.tag | string | `"v0.23.0"` |  |
+| hermes-agent.image.tag | string | `"v0.23.2"` |  |
 | hermes-agent.probes.liveness.failureThreshold | int | `6` |  |
 | hermes-agent.probes.liveness.httpGet.path | string | `"/health"` |  |
 | hermes-agent.probes.liveness.httpGet.port | int | `8642` |  |
@@ -1010,7 +1010,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.fullnameOverride | string | `"openagent-litellm"` |  |
 | litellm.image.pullPolicy | string | `"IfNotPresent"` |  |
 | litellm.image.repository | string | `"ghcr.io/berriai/litellm"` |  |
-| litellm.image.tag | string | `"v1.109.0@sha256:26aecfb02fb17ac6590f0549478561f9fbb3f69314317320b2e32a21beed4006"` |  |
+| litellm.image.tag | string | `"v1.109.1@sha256:11175975a3093e05e92faee2fe2fe3412a3ae2fcaa849eb0fe25d5f0d8bcb2e9"` |  |
 | litellm.masterkeySecretKey | string | `"masterkey"` |  |
 | litellm.masterkeySecretName | string | `"openagent-litellm-masterkey"` |  |
 | litellm.migrationJob.enabled | bool | `false` |  |
