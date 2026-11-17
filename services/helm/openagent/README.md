@@ -216,6 +216,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | clusterDomain | string | `"maklab.net"` |  |
 | dopplerConfig | string | `"svc_openagent"` |  |
 | ghcrPullSecret | string | `""` |  |
+| headroom.enabled | bool | `false` |  |
 | hermes-agent.args | list | `[]` |  |
 | hermes-agent.bootstrap.overwrite | bool | `true` |  |
 | hermes-agent.command[0] | string | `"/opt/tools/gitopsctl"` |  |
@@ -937,12 +938,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].path | string | `"/claude-pipe"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].target | string | `"http://claude-proxy.openagent.svc.cluster.local:4523"` |  |
 | litellm.proxy_config.general_settings.pass_through_endpoints[0].timeout | int | `300` |  |
-| litellm.proxy_config.guardrails[0].guardrail_name | string | `"headroom-compression"` |  |
-| litellm.proxy_config.guardrails[0].litellm_params.api_base | string | `"http://headroom.openagent.svc.cluster.local:8787"` |  |
-| litellm.proxy_config.guardrails[0].litellm_params.default_on | bool | `true` |  |
-| litellm.proxy_config.guardrails[0].litellm_params.guardrail | string | `"headroom"` |  |
-| litellm.proxy_config.guardrails[0].litellm_params.mode | string | `"pre_call"` |  |
-| litellm.proxy_config.guardrails[0].litellm_params.unreachable_fallback | string | `"fail_open"` |  |
+| litellm.proxy_config.guardrails | list | `[]` |  |
 | litellm.proxy_config.litellm_settings.cache | bool | `true` |  |
 | litellm.proxy_config.litellm_settings.cache_params.host | string | `"os.environ/REDIS_HOST"` |  |
 | litellm.proxy_config.litellm_settings.cache_params.port | string | `"os.environ/REDIS_PORT"` |  |
