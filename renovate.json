@@ -15,7 +15,42 @@
       "matchManagers": [
         "helmv3",
         "helm-values"
-      ]
+      ],
+      "separateMajorMinor": true,
+      "separateMinorPatch": false
+    },
+    {
+      "description": "Automerge patch and minor updates for platform Helm charts/images (keep major manual)",
+      "matchFileNames": [
+        "services/helm/**"
+      ],
+      "matchManagers": [
+        "helmv3",
+        "helm-values"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Keep major upgrades manual/reviewed",
+      "matchFileNames": [
+        "services/helm/**"
+      ],
+      "matchManagers": [
+        "helmv3",
+        "helm-values"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false
     }
   ]
 }
