@@ -16,7 +16,7 @@ Umbrella chart for the openagent stack — LiteLLM gateway, Hermes Agent, Claude
 | file://charts/claude-proxy | claude-proxy | 0.2.0 |
 | file://charts/headroom | headroom | 0.1.0 |
 | oci://ghcr.io/berriai | litellm(litellm-helm) | 1.109.1 |
-| oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.25.0 |
+| oci://ghcr.io/jyje/hermes-agent-helm | hermes-agent | 1.26.0 |
 
 ## OpenAgent stack
 
@@ -956,7 +956,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumes[9].name | string | `"trading-guard-plugin"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
-| hermes-agent.image.tag | string | `"v0.23.1"` |  |
+| hermes-agent.image.tag | string | `"v0.23.2"` |  |
 | hermes-agent.probes.liveness.failureThreshold | int | `6` |  |
 | hermes-agent.probes.liveness.httpGet.path | string | `"/health"` |  |
 | hermes-agent.probes.liveness.httpGet.port | int | `8642` |  |

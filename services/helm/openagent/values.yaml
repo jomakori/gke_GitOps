@@ -346,10 +346,10 @@ hermes-agent:
   # Image for the gateway pod AND the MCP verification Jobs: both run the same
   # toolchain, and the mise node/uv on the PVC is ABI-coupled to this image.
   # Pinned explicitly so a Job never resolves an empty tag; keep in lockstep
-  # with the hermes-agent chart dependency's appVersion (1.25.0 -> v0.23.1).
+  # with the hermes-agent chart dependency's appVersion (1.26.0 -> v0.23.2).
   image:
     repository: nousresearch/hermes-agent
-    tag: "v0.23.1"
+    tag: "v0.23.2"
     pullPolicy: IfNotPresent
   # The agent runs kubectl inside the pod and needs admin access to the
   # cluster. The chart default (automount=false) left it with no identity, so
@@ -366,7 +366,7 @@ hermes-agent:
   bootstrap:
     overwrite: true
   config:
-    # Config schema version emitted by the pinned gateway image: v0.23.1
+    # Config schema version emitted by the pinned gateway image: v0.23.2
     # carries schema 53 (hermes_cli/config_defaults.py). Keep in lockstep with
     # image.tag above. Required because bootstrap.overwrite=true re-seeds
     # config.yaml from this chart on every pod start, so the version the
