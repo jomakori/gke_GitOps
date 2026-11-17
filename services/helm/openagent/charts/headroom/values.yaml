@@ -11,6 +11,21 @@
 #      the sidecar entirely).
 enabled: true
 
+# Enabling scaling out is safe on the guardrail path: LiteLLM sends the whole
+# conversation per call, and /v1/compress holds no cross-request state. Replicas
+# do NOT share a compression cache, so per-pod hit rate falls as the fleet grows
+# — accepted, because the alternative is one throttled pod on the critical path.
+replicaCount: 2
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+# With the HPA floor at 2, a single node drain should never remove the sidecar.
+pdb:
+  enabled: true
+  maxUnavailable: 1
+
 # Pre-built OFFICIAL image (ghcr.io/headroomlabs-ai/headroom) — unlike claude-proxy/OCP,
 # this is NOT a repo-built image; Headroom publishes its own multi-arch container.
 # Verified live against GHCR on 2026-11-07:
@@ -42,12 +57,18 @@ service:
 # hundred MB of payload copies plus the model, and was killed (exit 137) every few
 # minutes while a handful of sessions were active — each kill surfaced as
 # connection-refused on every in-flight LLM call.
+# The in-process ML router (Kompress/Magika) scores every compressed body, so the
+# CPU cost tracks request payloads rather than connection count. Sized from the
+# 48h peak: 0.78 core and 1.57Gi RSS. The previous 250m/1Gi requests sat BELOW
+# real usage (request drives scheduling and HPA math, so understating it both
+# overpacks nodes and makes utilisation read high), and the 1 CPU limit throttled
+# 58% of periods.
 resources:
   requests:
-    cpu: 250m
-    memory: 1Gi
+    cpu: 500m
+    memory: 1536Mi
   limits:
-    cpu: "1"
+    cpu: "2"
     memory: 3Gi
 
 # Headroom proxy runtime config — see https://headroomlabs-ai.github.io/headroom/proxy/

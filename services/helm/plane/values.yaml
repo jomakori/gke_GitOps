@@ -150,8 +150,12 @@ web:
 space:
   replicas: 1
   memoryLimit: 1000Mi
-  cpuLimit: 500m
-  cpuRequest: 50m
+  # 500m limit held 80-97% of CFS periods throttled during bursts over the 48h
+  # to 2026-11-17 (measured on live/api/space/beatworker), i.e. the cap was
+  # shaping latency, not protecting anything. Request raised with it so the
+  # scheduler reserves what the pod actually uses.
+  cpuLimit: 1
+  cpuRequest: 100m
   memoryRequest: 50Mi
   image: artifacts.plane.so/makeplane/plane-space
   pullPolicy: Always
@@ -180,8 +184,12 @@ admin:
 live:
   replicas: 1
   memoryLimit: 1000Mi
-  cpuLimit: 500m
-  cpuRequest: 50m
+  # 500m limit held 80-97% of CFS periods throttled during bursts over the 48h
+  # to 2026-11-17 (measured on live/api/space/beatworker), i.e. the cap was
+  # shaping latency, not protecting anything. Request raised with it so the
+  # scheduler reserves what the pod actually uses.
+  cpuLimit: 1
+  cpuRequest: 100m
   memoryRequest: 50Mi
   image: artifacts.plane.so/makeplane/plane-live
   pullPolicy: Always
@@ -195,8 +203,12 @@ live:
 api:
   replicas: 1
   memoryLimit: 1000Mi
-  cpuLimit: 500m
-  cpuRequest: 50m
+  # 500m limit held 80-97% of CFS periods throttled during bursts over the 48h
+  # to 2026-11-17 (measured on live/api/space/beatworker), i.e. the cap was
+  # shaping latency, not protecting anything. Request raised with it so the
+  # scheduler reserves what the pod actually uses.
+  cpuLimit: 1
+  cpuRequest: 100m
   memoryRequest: 50Mi
   image: artifacts.plane.so/makeplane/plane-backend
   pullPolicy: Always
@@ -224,8 +236,12 @@ worker:
 beatworker:
   replicas: 1
   memoryLimit: 1000Mi
-  cpuLimit: 500m
-  cpuRequest: 50m
+  # 500m limit held 80-97% of CFS periods throttled during bursts over the 48h
+  # to 2026-11-17 (measured on live/api/space/beatworker), i.e. the cap was
+  # shaping latency, not protecting anything. Request raised with it so the
+  # scheduler reserves what the pod actually uses.
+  cpuLimit: 1
+  cpuRequest: 100m
   memoryRequest: 50Mi
   image: artifacts.plane.so/makeplane/plane-backend
   pullPolicy: Always

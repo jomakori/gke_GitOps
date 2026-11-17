@@ -11,7 +11,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  replicas: 1
+  # Omitted while the HPA owns the count: ArgoCD self-heal would otherwise
+  # reset a scaled-up fleet back to the rendered value on every sync.
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
   selector:
     matchLabels:
       {{- include "headroom.selectorLabels" . | nindent 6 }}
