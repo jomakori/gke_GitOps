@@ -1389,6 +1389,22 @@ hermes-agent:
           include: [resolve-library-id, query-docs]
           resources: false
           prompts: false
+      tsenta:
+        lazy: true
+        # Public remote Streamable-HTTP MCP (api.autojobs.me) behind OAuth 2.1 +
+        # Dynamic Client Registration. The grant lives in /opt/data/mcp-tokens on
+        # the PVC and carries a refresh token, so it renews unattended; a revoked
+        # grant is re-established with `hermes mcp login tsenta` (paste-back flow,
+        # the host is headless). Full tool surface: reads, applications, auto-apply.
+        url: "https://api.autojobs.me/api/v1/mcp"
+        auth: oauth
+        timeout: 60
+        connect_timeout: 60
+        auth_probe: {tool: get-application-balance, args: {}}
+        tools:
+          include: [get-application-balance, get-job-recommendations, get-job-details, get-jobs-by-ids, report-job-pay-estimate, fetch-job-description, apply-to-job, request-resume-upload, upload-custom-resume, check-custom-resume, apply-with-custom-resume, approve-application, submit-application-review, get-application-review, skip-optimization, skip-cover-letter, list-applications, get-application-status, regenerate-resume, list-tracked-applications, track-application, update-tracked-application, delete-tracked-application, import-tracked-applications, get-inbox-address, list-inbox-messages, get-inbox-message, get-inbox-thread, get-inbox-unread-count, get-inbox-attachment, reply-to-inbox-message, mark-inbox-message-read, mark-all-inbox-messages-read, update-inbox-forwarding, find-networking-contacts, find-contact-email, save-outreach-draft, get-profile-status, submit-resume, set-personal-info, set-work-authorization, set-application-preferences, get-apply-preferences, set-apply-preferences, set-work-experience, set-projects, set-education, set-certifications, set-skills, set-custom-sections, set-resume-layout, list-resume-profiles, get-resume-profile, create-resume-profile, rename-resume-profile, set-default-resume-profile, delete-resume-profile, submit-feedback, explain-account, get-subscription-info, get-evaluation-summary, compare-applied-vs-served-jobs, update-feed-filters, inspect-served-jobs, assess-feed-relevance, search-companies, set-keyword-search, get-auto-apply-state, dry-run-auto-apply, commit-auto-apply-config, resolve-locations, refresh-matching-profile, get-matching-profile-summary, get-manual-applications, escalate-to-support]
+          resources: false
+          prompts: false
   env: {}
   extraEnv:
     - name: DISCORD_BOT_TOKEN
