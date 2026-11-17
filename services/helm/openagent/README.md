@@ -874,7 +874,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraEnv[9].valueFrom.secretKeyRef.name | string | `"openagent-secrets"` |  |
 | hermes-agent.extraInitContainers[0].args[0] | string | `"install"` |  |
 | hermes-agent.extraInitContainers[0].args[1] | string | `"/opt/tools/gitopsctl"` |  |
-| hermes-agent.extraInitContainers[0].image | string | `"ghcr.io/jomakori/gitopsctl:a84af6f1784037f350d280d8e0a65217e01e8de1"` |  |
+| hermes-agent.extraInitContainers[0].image | string | `"ghcr.io/jomakori/gitopsctl:299d909569fe18ff877e366da3b059c52392fc7b"` |  |
 | hermes-agent.extraInitContainers[0].imagePullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.extraInitContainers[0].name | string | `"install-gitopsctl"` |  |
 | hermes-agent.extraInitContainers[0].securityContext.runAsGroup | int | `10000` |  |
@@ -1152,7 +1152,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | storageGc.usedPercentMark | int | `80` |  |
 | tools.image.pullPolicy | string | `"IfNotPresent"` |  |
 | tools.image.repository | string | `"ghcr.io/jomakori/gitopsctl"` |  |
-| tools.image.tag | string | `"a84af6f1784037f350d280d8e0a65217e01e8de1"` |  |
+| tools.image.tag | string | `"299d909569fe18ff877e366da3b059c52392fc7b"` |  |
 | vpa.enabled | bool | `true` |  |
 | vpa.targets[0].containers[0].controlledValues | string | `"RequestsOnly"` |  |
 | vpa.targets[0].containers[0].maxCpu | string | `"2"` |  |
