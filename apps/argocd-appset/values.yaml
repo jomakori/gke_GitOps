@@ -75,12 +75,9 @@ apps:
       # every push renders a different tag and ArgoCD rolls the pod; with a
       # constant pr-<N> the manifest never changed and staging kept the old image.
       tagTemplate: "pr-{{ .number }}-{{ .head_short_sha_7 }}"
-      # The staging host has one claimant at a time. While no open pull request
-      # carries the label, the appset renders this placeholder for the host; CI in
-      # the app repo keeps the marker directory it is generated from in sync with
-      # the label. See services/helm/splash for why they must not coexist.
+      # Placeholder splash for idle staging host disabled (staging-state branch resolution failing).
       placeholder:
-        enable: true
+        enable: false
         helmPath: services/helm/splash/
         namespace: istio-system
         stateBranch: staging-state
