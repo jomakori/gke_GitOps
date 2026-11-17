@@ -73,7 +73,9 @@ spec:
     namespace: {{ $destNamespace | quote }}
   syncPolicy:
     automated:
-      prune: {{ $cfg.prune | default true }}
+      {{- /* `prune: false` is swallowed by `default true`; noPrune is the working opt-out
+            (used by argo-cd, which must never prune itself). */}}
+      prune: {{ not $cfg.noPrune }}
       {{- if $cfg.selfHeal }}
       selfHeal: true
       {{- end }}

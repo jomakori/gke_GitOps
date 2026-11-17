@@ -18,6 +18,15 @@ spec:
       port: 8642
       targetPort: 8642
       protocol: TCP
+    # Inbound from the tickerlight staging engine (POST /webhooks/<route>).
+    # Same pod selector, in-cluster only: ClusterIP, and the NetworkPolicy in
+    # templates/hermes-webhook-netpol.yaml restricts this port to namespace
+    # tickerlight-staging. The listener itself is switched on by the `webhook:`
+    # value on the hermes-agent subchart (WEBHOOK_ENABLED/WEBHOOK_PORT).
+    - name: webhook
+      port: 8644
+      targetPort: 8644
+      protocol: TCP
 
 ---
 apiVersion: networking.istio.io/v1

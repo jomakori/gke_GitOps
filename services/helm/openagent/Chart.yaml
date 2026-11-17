@@ -9,12 +9,12 @@ maintainers:
 dependencies:
   - name: litellm-helm
     alias: litellm
-    version: 1.92.0
+    version: 1.109.1
     repository: oci://ghcr.io/berriai
     condition: litellm.enabled
 
   - name: hermes-agent
-    version: 1.23.0
+    version: 1.26.0
     repository: oci://ghcr.io/jyje/hermes-agent-helm
     condition: hermes.enabled
 

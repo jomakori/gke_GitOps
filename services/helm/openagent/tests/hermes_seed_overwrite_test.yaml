@@ -16,11 +16,11 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
-  - it: falls back to a second Go model, then the credit-independent floor
+  - it: falls back to the credit-independent DeepSeek floor
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?m)^fallback_providers:\\n- model: mimo-v2.6-flash\\n  provider: litellm\\n- model: deepseek-v4-flash-direct\\n  provider: litellm$"
+          pattern: "(?m)^fallback_providers:\\n- model: deepseek-v4-flash-direct\\n  provider: litellm$"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config

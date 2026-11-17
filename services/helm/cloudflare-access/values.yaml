@@ -1,7 +1,9 @@
 # -- Cloudflare account that owns the Access applications. Not a secret; same
-# value as CF_ACCOUNT_ID in Doppler. Injected by the appset from
-# crossplaneAccess.accountId, and required once the app is enabled.
-accountId: ""
+# value as CF_ACCOUNT_ID in Doppler, and still overridden by the appset from
+# crossplaneAccess.accountId. Defaulted here because the static `apps` entries
+# below need a renderable account outside the appset too (CI lints this chart on
+# its own defaults).
+accountId: "f8caac5c12d315d3690fd6df74cacdb9"
 
 # -- Same value the Terraform-managed apps used.
 sessionDuration: 24h
@@ -10,9 +12,23 @@ sessionDuration: 24h
 # cleared the account identity provider), which matches the Terraform apps.
 policies: []
 
+# -- apps: host map, injected by services/argocd-appset from every service with
+# gateways.enable_private: true. One CloudflareAccessApp per entry.
+#
 # Example:
 #   openkite:
 #     host: openkite.maklab.net
-# -- apps: host map, injected by services/argocd-appset from every service with
-# gateways.enable_private: true. One CloudflareAccessApp per entry.
-apps: {}
+#
+# The tickerlight console hosts are listed here explicitly: their routes come
+# from apps/helm (the `tickerlight` Application), which the appset does not walk
+# for `gateways.enable_private`, so nothing injects them. They are gated by
+# services/helm/istio `privateHosts` and need an Access app per host or the DENY
+# policy has no JWT to accept.
+apps:
+  tickerlight:
+    host: trade.maklab.net
+    # Access app "trade-private" created 2026-11-14 in the same Google IdP.
+    appId: "52479931-1173-483a-b370-4a53e5a2c24b"
+  tickerlightStaging:
+    host: staging-trade.maklab.net
+    appId: "0f0346ef-04c8-4caa-ac9e-d30d753e81a2"

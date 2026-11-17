@@ -214,3 +214,80 @@ func TestExecuteUnresolvedPlaceholderFails(t *testing.T) {
 		t.Fatalf("a server with an unresolved placeholder must not also report PASS:\n%s", out)
 	}
 }
+
+// writeGrant drops a token file for an OAuth server into dir.
+func writeGrant(t *testing.T, dir, name, body string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name+".json"), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestExecuteOAuthServerCertifiesGrant pins why an OAuth server is never
+// handshaked here: the grant is issued to the agent (DCR + PKCE) and refreshed
+// by it, so this runner cannot replay it — it would only ever produce a 401 that
+// reads as a server fault. The grant file is the durable half, so certify that.
+func TestExecuteOAuthServerCertifiesGrant(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("MCP_TOKEN_DIR", dir)
+	writeGrant(t, dir, "oauthy", `{"access_token":"a","refresh_token":"r"}`)
+
+	server := &Server{
+		URL:   "https://oauth.invalid/mcp",
+		Auth:  "oauth",
+		Tools: &ToolsConfig{Include: []string{"tool_a"}},
+	}
+	manifest := writeManifest(t, map[string]*Server{"oauthy": server})
+
+	rc := 1
+	out := captureStdout(t, func() { rc = Execute(manifest, "preflight", nil) })
+	if rc != 0 {
+		t.Fatalf("rc = %d, want 0\n%s", rc, out)
+	}
+	if !strings.Contains(out, "PASS oauthy oauth grant on disk") {
+		t.Fatalf("expected the grant to be certified:\n%s", out)
+	}
+}
+
+func TestExecuteOAuthServerMissingGrantFails(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("MCP_TOKEN_DIR", dir)
+
+	server := &Server{
+		URL:   "https://oauth.invalid/mcp",
+		Auth:  "oauth",
+		Tools: &ToolsConfig{Include: []string{"tool_a"}},
+	}
+	manifest := writeManifest(t, map[string]*Server{"oauthy": server})
+
+	rc := 1
+	out := captureStdout(t, func() { rc = Execute(manifest, "drift", nil) })
+	if rc != 1 {
+		t.Fatalf("rc = %d, want 1\n%s", rc, out)
+	}
+	if !strings.Contains(out, "FAIL oauthy: no oauth grant") || !strings.Contains(out, "hermes mcp login oauthy") {
+		t.Fatalf("expected a named missing-grant failure with the fix command:\n%s", out)
+	}
+}
+
+func TestExecuteOAuthServerEmptyGrantFails(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("MCP_TOKEN_DIR", dir)
+	writeGrant(t, dir, "oauthy", `{"access_token":"","refresh_token":""}`)
+
+	server := &Server{
+		URL:   "https://oauth.invalid/mcp",
+		Auth:  "oauth",
+		Tools: &ToolsConfig{Include: []string{"tool_a"}},
+	}
+	manifest := writeManifest(t, map[string]*Server{"oauthy": server})
+
+	rc := 1
+	out := captureStdout(t, func() { rc = Execute(manifest, "preflight", nil) })
+	if rc != 1 {
+		t.Fatalf("rc = %d, want 1\n%s", rc, out)
+	}
+	if !strings.Contains(out, "holds no token") {
+		t.Fatalf("expected an empty-grant failure:\n%s", out)
+	}
+}

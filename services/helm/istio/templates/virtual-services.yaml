@@ -26,6 +26,29 @@ spec:
       {{- if $vs.timeout }}
       timeout: {{ $vs.timeout }}
       {{- end }}
+{{- /* destination.tls.enabled: the backend serves TLS itself (e.g. argocd-server
+       with server.insecure=false, which 307-redirects plain HTTP). Originate TLS
+       from the gateway; in-cluster backends use self-signed certs, so verification
+       is skipped unless destination.tls.insecureSkipVerify is set to false. */}}
+{{- if and $vs.destination.tls $vs.destination.tls.enabled }}
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.gateway.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  host: {{ $vs.destination.host }}
+  trafficPolicy:
+    portLevelSettings:
+      - port:
+          number: {{ $vs.destination.port | default 80 }}
+        tls:
+          mode: SIMPLE
+          insecureSkipVerify: {{ if hasKey $vs.destination.tls "insecureSkipVerify" }}{{ $vs.destination.tls.insecureSkipVerify }}{{ else }}true{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

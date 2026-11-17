@@ -4,6 +4,6 @@ description: "Headroom prompt-compression sidecar, called by LiteLLM's pre_call 
 type: application
 version: 0.1.0
 # Tracks the pinned upstream image tag below (ghcr.io/headroomlabs-ai/headroom).
-appVersion: "0.43.1"
+appVersion: "0.44.0"
 maintainers:
   - name: local

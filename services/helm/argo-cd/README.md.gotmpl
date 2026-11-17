@@ -1,0 +1,22 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+{{ template "chart.badgesSection" . }}
+{{ template "chart.description" . }}
+{{ template "chart.homepageLine" . }}
+{{ template "chart.maintainersSection" . }}
+{{ template "chart.sourcesSection" . }}
+{{ template "chart.requirementsSection" . }}
+
+## Under the hood
+
+A thin wrapper around the official [argo-cd Helm chart](https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd): no local templates, only production overrides (HA replicas, PDBs, autoscaling, resource limits, hard pod anti-affinity, custom health checks for `ExternalSecret` and `CronJob`, `NodePort` server Service) under the upstream `argo-cd:` key. The values were ported from the Terraform install with two deliberate changes: `server.insecure` is **false** (the server terminates TLS; the Istio route must target 443 with TLS origination) and `global.domain` is `argocd.maklab.net` (drives `argocd-cm` `url`). See the cutover doc.
+
+### Self-management
+
+This chart is deployed by the `argoCd` registry entry in `services/argocd-appset/values.yaml` — ArgoCD syncing its own release. The entry ships **disabled**; see [`docs/argocd-self-manage.md`](../../../docs/argocd-self-manage.md) for the cutover order and the guard rails (no finalizer, no prune, `selfHeal` off until verified).
+
+### Do not rename
+
+The Application is named `argo-cd`, which is the Helm release name and therefore the prefix of every Service (`argo-cd-argocd-server`, ...). The Istio VirtualService for `argocd.maklab.net` and the Terraform-owned root apps and webhook pin those names.
+
+{{ template "chart.valuesSection" . }}

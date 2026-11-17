@@ -29,7 +29,7 @@ This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), *
 | `gateway.yaml` | `maklab-gateway` — wildcard `*.<clusterDomain>`, TLS passthrough, HTTP→HTTPS redirect |
 | `cluster-issuer.yaml` | `letsencrypt-prod` — Let's Encrypt ACME via Cloudflare DNS-01 |
 | `certificate.yaml` | `wildcard-maklab-net` — wildcard TLS cert for `*.<clusterDomain>` |
-| `virtual-services.yaml` | One `VirtualService` per entry in `virtualServices` with `enabled: true` |
+| `virtual-services.yaml` | One `VirtualService` per entry in `virtualServices` with `enabled: true`; plus a `DestinationRule` (TLS origination, `insecureSkipVerify` unless set `false`) when the entry sets `destination.tls.enabled` — for backends that serve TLS themselves, e.g. `argocd-server` with `server.insecure: false` |
 | `peer-authentication.yaml` | STRICT mTLS mesh-wide |
 | `request-authentication.yaml` | CF Access JWT validation (conditional on `cloudflare.access.audienceTag`) |
 | `authorization-policy-private.yaml` | DENY rules per private VS (conditional on `enablePrivate: true`) |
@@ -82,7 +82,7 @@ missing or whose audience is absent from `cloudflare.access.audienceTag`.
 ### VirtualServices
 
 Two layers of VirtualServices exist:
-1. **This chart** (istio umbrella) — spec-driven entries in `virtualServices`, primarily for infrastructure services (argocd, headlamp, opencost). Registered explicitly in the values.
+1. **This chart** (istio umbrella) — spec-driven entries in `virtualServices`, primarily for infrastructure services (argocd, opencost). Registered explicitly in the values.
 2. **App chart** (apps/helm) — per-app per-environment VS for application workloads, generated from the parameterized app chart.
 
 ### Doppler config
@@ -162,14 +162,11 @@ Two layers of VirtualServices exist:
 | podDisruptionBudget.maxUnavailable | int | `1` |  |
 | privateHosts[0] | string | `"*.openkite.maklab.net"` |  |
 | privateHosts[1] | string | `"trade.maklab.net"` |  |
+| privateHosts[2] | string | `"staging-trade.maklab.net"` |  |
 | virtualServices.argocd.destination.host | string | `"argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
 | virtualServices.argocd.destination.port | int | `80` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |
 | virtualServices.argocd.host | string | `"argocd.maklab.net"` |  |
-| virtualServices.headlamp.destination.host | string | `"headlamp.headlamp.svc.cluster.local"` |  |
-| virtualServices.headlamp.destination.port | int | `80` |  |
-| virtualServices.headlamp.enabled | bool | `false` |  |
-| virtualServices.headlamp.host | string | `"headlamp.maklab.net"` |  |
 | virtualServices.hermes-dashboard.destination.host | string | `"openagent-hermes-agent.openagent.svc.cluster.local"` |  |
 | virtualServices.hermes-dashboard.destination.port | int | `9119` |  |
 | virtualServices.hermes-dashboard.enabled | bool | `true` |  |

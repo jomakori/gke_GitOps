@@ -13,66 +13,9 @@ storageClass: "local-path"
 # │   enable_staging : true        (staging ON unless explicitly off)│
 # │   subdomain     : <appName>    (prod) / <appName>-staging        │
 # │   HPA.minReplicas : service.replicas  (defaults to replicas)     │
-# │   enable_db     : {...}        (spec-driven DB — see demoApi)    │
+# │   enable_db     : {...}        (spec-driven DB — enable_db.type:    │
+# │                    postgres → SGCluster; see templates/_helpers.tpl)│
 # └──────────────────────────────────────────────────────────────────┘
-
-demoApi:
-  enable_staging: true
-  enable_istio: true
-  enable_db:
-    type: postgres
-    deployment: cluster
-    version: "17"
-    storage: 10Gi
-  enable_scaling:
-    HPA:
-      minReplicas: 2
-      maxReplicas: 6
-    db:
-      minInstances: 2
-      maxInstances: 5
-  istio:
-    gateway: istio-system/maklab-gateway
-    requestTimeout: 30s
-    retryAttempts: 3
-    retryTimeout: 5s
-  environments:
-    staging:
-      tag: 1.23
-    production:
-      tag: 1.43
-  service:
-    port: 3000
-    resourceRequests:
-      cpu: 256m
-      memory: 256Mi
-    storage:
-      size: 1Gi
-
-notesUi:
-  enable_staging: true
-  enable_istio: true
-  enable_scaling:
-    HPA:
-      minReplicas: 1
-      maxReplicas: 6
-  istio:
-    gateway: istio-system/maklab-gateway
-    requestTimeout: 30s
-    retryAttempts: 3
-    retryTimeout: 5s
-  environments:
-    staging:
-      tag: "pr-7"
-    production:
-      tag: "1.0.1"
-  service:
-    port: 8080
-    resourceRequests:
-      cpu: 100m
-      memory: 256Mi
-    storage:
-      size: 1Gi
 
 openkite:
   enable_staging: true
@@ -109,10 +52,10 @@ openkite:
     staging:
       # Single-label host: a third DNS label has no certificate under the wildcard.
       subdomain: staging-openkite
-      tag: v0.52.0
+      tag: v0.1.0
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
-      tag: v0.70.0
+      tag: v0.1.0
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080
@@ -134,15 +77,55 @@ tickerlight:
   environments:
     staging:
       subdomain: staging-trade
-      tag: v0.2.0
+      tag: v0.4.2
+      # ── Engine MCP listener: published inside the cluster ──────────────
+      # The engine container below binds 127.0.0.1:8090, so only the console
+      # in the same pod can reach it. Staging binds the pod address instead,
+      # adds a second Service port for it, and admits the `openagent`
+      # namespace to that port and nothing else (templates/networkpolicy.yaml).
+      # Production declares no `sidecar` block, so it keeps the loopback
+      # address, the single console port, and no NetworkPolicy.
+      sidecar:
+        # Which service.extraContainers entry these settings apply to.
+        container: engine
+        # Service port published for that container.
+        port: 8090
+        portName: mcp
+        # Namespaces admitted to `port`. Nothing else can reach it.
+        fromNamespaces:
+          - openagent
+        # Env overrides for that container, by name. The shared list keeps the
+        # loopback address; this environment replaces it.
+        env:
+          TRADING_MCP_HTTP_ADDR: "0.0.0.0:8090"
+          # The engine refuses a non-loopback bind unless this is the literal
+          # `true`, so it is quoted here and stringified by the chart.
+          TRADING_MCP_HTTP_ALLOW_NON_LOOPBACK: "true"
+        # Alert sink credentials. envFrom already carries every key from the
+        # app's ExternalSecret; these two are named explicitly so the contract
+        # is visible in the rendered pod, and `optional` keeps a Doppler config
+        # without them from blocking startup. No values here, ever.
+        secretEnv:
+          - TRADING_ALERT_WEBHOOK_URL
+          - TRADING_ALERT_WEBHOOK_SECRET
     production:
       subdomain: trade
-      tag: v0.2.0
+      tag: v0.4.2
+      # The console may open an arming window only here: it needs the engine's
+      # admin URL, and an environment without this key renders no form and no
+      # route. Who may use it is the Cloudflare Access policy on the host, not
+      # anything in this file.
+      env:
+        TICKERLIGHT_ENGINE_ADMIN_URL: "http://127.0.0.1:8090"
   service:
     port: 8080
-    # The console reads the journal and nothing else: no Doppler values in this
-    # process. The engine container below takes them instead.
+    # The console reads the journal and the engine's status snapshot, and asks
+    # the engine for caps_status over the pod's own loopback. It takes no
+    # envFrom, so no Doppler value reaches this web-facing process by bulk; the
+    # one key it needs is named below and authenticates that loopback call.
     envFrom: false
+    secretEnv:
+      - TRADING_MCP_HTTP_TOKEN
     # Both images are distroless-style non-root (uid 65532). fsGroup makes the
     # claim group-writable so the engine can create the journal.
     podSecurityContext:
@@ -179,12 +162,15 @@ tickerlight:
       # Journal producer. Paths are code constants; -data-dir only points at the
       # mount, and the two containers share the one volume.
       - name: engine
-        image: ghcr.io/jomakori/trading-mcp:v0.3.3
+        image: ghcr.io/jomakori/trading-mcp:v0.3.8
         args:
           - "-data-dir"
           - "/data"
         envFromVars: true
         env:
+          # Loopback default: the console reaches the engine in the same pod,
+          # nothing outside it can. An environment that publishes this port
+          # overrides the address through `environments.<env>.sidecar.env`.
           - name: TRADING_MCP_HTTP_ADDR
             value: "127.0.0.1:8090"
         ports:
@@ -196,3 +182,30 @@ tickerlight:
             memory: 128Mi
           limits:
             memory: 384Mi
+      # Proposer. Same image as the console: the decider binary ships beside it,
+      # and it reaches the engine over the pod's own loopback, so this container
+      # publishes no port. It writes the decisions journal on the shared volume
+      # and reads arm state and the kill switch as guards only — it cannot arm,
+      # size or cancel anything.
+      - name: decider
+        imageTag: same
+        command:
+          - "/usr/local/bin/trading-decider"
+        args:
+          - "-interval"
+          - "15m"
+        envFromVars: true
+        env:
+          # One symbol per tick, in this order.
+          - name: DECIDER_SYMBOLS
+            value: "AAPL,MSFT,SPY,QQQ"
+          - name: DECIDER_INTERVAL
+            value: "15m"
+          - name: DECIDER_JOURNAL
+            value: "/data/decisions.jsonl"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 256Mi

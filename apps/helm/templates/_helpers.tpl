@@ -62,6 +62,13 @@
 {{- $defSub      := ternary $kebabName (printf "staging.%s" $kebabName) (eq $envName "production") }}
 {{- $subdomain   := $env.subdomain | default $defSub }}
 {{- $tag         := $env.tag | default "latest" }}
+{{- /* Sidecar exposure (per environment): which service.extraContainers entry
+       gets its env overridden, which extra port the Service publishes, and
+       which namespaces the NetworkPolicy admits to that port. Declared by an
+       environment that publishes a listener; empty (no port, no policy) when
+       the environment does not, which keeps that environment's render
+       unchanged. */}}
+{{- $sidecar     := $env.sidecar | default dict }}
 {{- $fullDomain  := printf "%s.%s" $subdomain $domain }}
 {{- /* The ECR pull secret belongs to the shared registry; an app naming its own
        (public) registry gets no Secret — an empty kubernetes.io/dockercfg is rejected
@@ -264,52 +271,6 @@ spec:
       connections:
         max: 200
         default: 5
-{{- else if eq $dbType "mongodb" }}
----
-apiVersion: psmdb.percona.com/v1
-kind: PerconaServerMongoDB
-metadata:
-  name: {{ $dbName }}
-  namespace: {{ $namespace }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
-  finalizers:
-    - percona.com/delete-psmdb-pods-in-order
-spec:
-  crVersion: "1.22.0"
-  image: percona/percona-server-mongodb:8.0.19-7
-  imagePullPolicy: IfNotPresent
-  unsafeFlags:
-    replsetSize: true
-  updateStrategy: SmartUpdate
-  upgradeOptions:
-    apply: disabled
-  secrets:
-    users: {{ $namespace }}-vars
-  replsets:
-    - name: rs0
-      size: {{ if $isCluster }}{{ $dbScaling.minInstances | default 3 }}{{ else }}1{{ end }}
-      {{- if $isCluster }}
-      podDisruptionBudget:
-        maxUnavailable: 1
-      {{- end }}
-      resources:
-        limits:
-          cpu: "600m"
-          memory: "1Gi"
-        requests:
-          cpu: "300m"
-          memory: "1Gi"
-      volumeSpec:
-        persistentVolumeClaim:
-          storageClassName: {{ $dbStorageClass | quote }}
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: {{ $dbStorage | quote }}
-  sharding:
-    enabled: false
 {{- end }}
 {{- end }}
 
@@ -375,11 +336,36 @@ spec:
               {{- toYaml . | nindent 14 }}
           {{- end }}
           {{- /* A console that reads the journal needs no Doppler values; setting
-                 service.envFrom=false keeps engine secrets out of a web-facing process. */}}
+                 service.envFrom=false keeps engine secrets out of a web-facing process.
+                 A console that renders the engine's policy is the exception: it needs
+                 the engine's bearer token to call caps_status, so name that single key
+                 here. Nothing else from the app's ExternalSecret reaches this process. */}}
           {{- if not (and (hasKey $svc "envFrom") (eq (toString $svc.envFrom) "false")) }}
           envFrom:
           - secretRef:
               name: {{ $namespace }}-vars
+          {{- end }}
+          {{- /* Plain env for this container: the app-wide list, with any
+                 per-environment value applied by name. An environment that
+                 names something here and not in the shared list gets it too,
+                 which is how a control stays off everywhere it is not wanted:
+                 absent means off. */}}
+          {{- $svcEnv := $svc.secretEnv | default list }}
+          {{- $plainEnv := $env.env | default dict }}
+          {{- if or $svcEnv (gt (len $plainEnv) 0) }}
+          env:
+          {{- range $svcEnv }}
+          - name: {{ . }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $namespace }}-vars
+                key: {{ . }}
+                optional: true
+          {{- end }}
+          {{- range $k, $v := $plainEnv }}
+          - name: {{ $k }}
+            value: {{ $v | quote }}
+          {{- end }}
           {{- end }}
           {{- if and $svc.storage $svc.storage.size }}
           volumeMounts:
@@ -391,7 +377,14 @@ spec:
           {{- end }}
           {{- range $svc.extraContainers }}
         - name: {{ .name }}
+          {{- /* imageTag: same runs a second binary from the service's own
+                 image, so a companion container tracks the image tag already
+                 pinned for the environment instead of repeating it here. */}}
+          {{- if and .imageTag (eq (toString .imageTag) "same") }}
+          image: {{ $imageRepo }}:{{ $tag }}
+          {{- else }}
           image: {{ .image }}
+          {{- end }}
           {{- with .command }}
           command: {{ toYaml . | nindent 12 }}
           {{- end }}
@@ -403,7 +396,37 @@ spec:
           - secretRef:
               name: {{ $namespace }}-vars
           {{- end }}
-          {{- with .env }}
+          {{- /* Resolve this container's env: the shared list, with any
+                 per-environment override applied by name (an environment that
+                 publishes the listener swaps a loopback bind for a pod one),
+                 then the named secret keys appended as optional refs. Keys and
+                 order of the shared list are preserved, so an environment with
+                 no overrides renders the list exactly as written. */}}
+          {{- $overrides := dict }}
+          {{- $secretEnv := list }}
+          {{- if and $sidecar.container (eq (toString $sidecar.container) (toString .name)) }}
+          {{- $overrides = $sidecar.env | default dict }}
+          {{- $secretEnv = $sidecar.secretEnv | default list }}
+          {{- end }}
+          {{- $cenv := list }}
+          {{- $cenvNames := list }}
+          {{- range .env }}
+          {{- $item := deepCopy . }}
+          {{- if hasKey $overrides $item.name }}
+          {{- $item = set $item "value" (index $overrides $item.name) }}
+          {{- end }}
+          {{- $cenv = append $cenv $item }}
+          {{- $cenvNames = append $cenvNames $item.name }}
+          {{- end }}
+          {{- range $name := keys $overrides | sortAlpha }}
+          {{- if not (has $name $cenvNames) }}
+          {{- $cenv = append $cenv (dict "name" $name "value" (index $overrides $name)) }}
+          {{- end }}
+          {{- end }}
+          {{- range $secretEnv }}
+          {{- $cenv = append $cenv (dict "name" . "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-vars" $namespace) "key" . "optional" true))) }}
+          {{- end }}
+          {{- with $cenv }}
           env: {{ toYaml . | nindent 12 }}
           {{- end }}
           {{- with .ports }}
@@ -449,7 +472,19 @@ spec:
     protocol: TCP
     port: 80
     targetPort: {{ $svc.port }}
+{{- if $sidecar.port }}
+  {{- /* Additional Service port for the sidecar listener this environment
+         publishes. Named so the caller can address it independently of the
+         console port above. */}}
+  - name: {{ $sidecar.portName | default "sidecar" }}
+    protocol: TCP
+    port: {{ $sidecar.port }}
+    targetPort: {{ $sidecar.port }}
+{{- end }}
   type: {{ ternary "ClusterIP" "NodePort" $enableIstio }}
+{{- if $sidecar.port }}
+{{- include "app.networkPolicy" (dict "appName" $appName "envName" $envName "namespace" $namespace "sidecarPort" ($sidecar.port | int) "servicePort" ($svc.port | int) "fromNamespaces" ($sidecar.fromNamespaces | default list)) }}
+{{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
 {{- /* VirtualService — Istio routing (replaces ALB Ingress)           */}}

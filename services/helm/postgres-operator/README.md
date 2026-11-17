@@ -7,7 +7,7 @@ A Helm chart for StackGres - a PostgreSQL operator
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://stackgres.io/downloads/stackgres-k8s/stackgres/helm/ | stackgresOperator(stackgres-operator) | 1.18.6 |
+| https://stackgres.io/downloads/stackgres-k8s/stackgres/helm/ | stackgresOperator(stackgres-operator) | 1.19.5 |
 
 ## Under the hood
 
@@ -65,8 +65,8 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.namespace | string | `"data"` |  |
 | postgres.clusters.pg-main.poolingConfigName | string | `"pg-main-pooling"` |  |
 | postgres.clusters.pg-main.profile | string | `"production"` |  |
-| postgres.clusters.pg-main.resources.cluster-controller.cpu | string | `"200m"` |  |
-| postgres.clusters.pg-main.resources.cluster-controller.memory | string | `"256Mi"` |  |
+| postgres.clusters.pg-main.resources.cluster-controller.cpu | string | `"250m"` |  |
+| postgres.clusters.pg-main.resources.cluster-controller.memory | string | `"384Mi"` |  |
 | postgres.clusters.pg-main.resources.patroni.cpu | string | `"1000m"` |  |
 | postgres.clusters.pg-main.resources.patroni.memory | string | `"1Gi"` |  |
 | postgres.clusters.pg-main.resources.pgbouncer.cpu | string | `"250m"` |  |

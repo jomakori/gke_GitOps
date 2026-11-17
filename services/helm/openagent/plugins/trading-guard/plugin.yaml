@@ -1,0 +1,15 @@
+name: trading-guard
+version: 0.1.0
+description: >
+  T6 safety guard for trading-mcp. Registers a pre_tool_call hook that refuses
+  (1) any mutating trading tool call while trading is not armed, (2) any agent
+  tool call that attempts to write, extend, or otherwise target the arm file
+  or its nonce sidecar, and (3) a signal-generation and order-placement call
+  arriving in the same agent turn (D10 seat separation). Every refusal names
+  the control that fired in a structured JSON reason. This plugin does not
+  hold or need the broker credential; it is a second, independent trust
+  boundary layered in front of trading-mcp's own internal/arm gate, not a
+  replacement for it.
+author: trading-mcp
+provides_hooks:
+  - pre_tool_call

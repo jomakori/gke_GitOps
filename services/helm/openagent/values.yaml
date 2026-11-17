@@ -27,8 +27,14 @@ tools:
     repository: ghcr.io/jomakori/gitopsctl
     # Published commit sha of the gitopsctl image (bare sha, no `sha-`
     # prefix). `latest` must never be used with IfNotPresent.
-    tag: c10f0bc9fd96b0623a97d21e3c86b893bcb6a05f
+    tag: 299d909569fe18ff877e366da3b059c52392fc7b
     pullPolicy: IfNotPresent
+
+# Headroom is disabled: as a LiteLLM default-on pre_call guardrail it compressed every
+# request, including tool results, which sent agents into re-read loops. Values kept so
+# the subchart can be re-enabled by flipping this flag and restoring the guardrail entry.
+headroom:
+  enabled: false
 
 # ── LiteLLM upstream chart values ──────────────────────────────────
 litellm:
@@ -37,7 +43,7 @@ litellm:
   image:
     repository: ghcr.io/berriai/litellm
     # Immutable: upstream republishes `main-stable`, and IfNotPresent keeps one cached build per node.
-    tag: "1.98.0@sha256:20b5044b619055374061a6d5b7b08754cad75aeabbf82ddf4f69cc0cf80ddaf4"
+    tag: "v1.109.1@sha256:11175975a3093e05e92faee2fe2fe3412a3ae2fcaa849eb0fe25d5f0d8bcb2e9"
     pullPolicy: IfNotPresent
   service:
     port: 4000
@@ -78,12 +84,14 @@ litellm:
   autoscaling:
     enabled: true
     minReplicas: 2
-    # 3, not 4. Each replica parks ~1Gi of real usage (and claims 1.5Gi) on a
-    # VM that is chronically at its 16Gi ceiling — see the OrbStack overcommit
-    # analysis (Committed_AS 27.9Gi vs CommitLimit 25.7Gi). A 4th replica is a
-    # memory spike that has repeatedly pushed the node over and OOMKilled
-    # CoreDNS. Cap at 3 until the VM is raised.
-    maxReplicas: 3
+    # 4. The old cap of 3 cited the 16Gi-VM overcommit analysis (Committed_AS
+    # 27.9Gi vs CommitLimit 25.7Gi), which no longer describes the host: the VM
+    # is now 51Gi total / 114Gi CommitLimit, with MemAvailable ~34Gi and
+    # Committed_AS 39.3Gi measured 2026-11-17. Over the 48h to that date every
+    # node kept at least 56% of its memory free at its worst moment, and no pod
+    # in the cluster was OOMKilled, so the 4th replica's 1.5Gi request is covered.
+    # Re-check this comment if the VM is resized down again.
+    maxReplicas: 4
     targetCPUUtilizationPercentage: 70
     # Memory HPA (same pattern as argocd-repo-server in-cluster). Litellm is
     # memory-bound (Python + prisma + uvicorn), CPU is mostly idle even under
@@ -159,37 +167,14 @@ litellm:
           include_subpath: true
           forward_headers: true
           timeout: 300
-    # Headroom prompt-compression guardrail (services/helm/openagent/charts/headroom).
-    # Enabled by default (flipped from opt-in 2026-11-07, user-directed): the sidecar
-    # deploys by default (headroom.enabled=true — see charts/headroom/values.yaml) and
-    # every request through this proxy is compressed by default (`default_on: true`
-    # below) unless a caller explicitly opts out per-request/per-key, or the sidecar is
-    # removed entirely with `--set headroom.enabled=false`.
-    # https://docs.litellm.ai/docs/proxy/headroom
-    guardrails:
-      - guardrail_name: headroom-compression
-        litellm_params:
-          guardrail: headroom
-          mode: pre_call
-          # DNS name is the headroom Service's bare metadata.name (not
-          # release-prefixed) — same convention as claude-proxy above.
-          api_base: http://headroom.openagent.svc.cluster.local:8787
-          default_on: true
-          # Compression is an optimisation, never a dependency. fail_closed (the
-          # upstream default) makes EVERY request to EVERY model — including the
-          # terminal hop `deepseek-v4-flash-direct` — fail with
-          # `502 Headroom compression service unreachable` whenever this single-replica
-          # sidecar is restarting (it is OOMKilled and probe-timed-out under a few
-          # concurrent sessions). That is what turns the Hermes fallback chain into
-          # "every provider kept failing over". fail_open forwards the request
-          # uncompressed instead.
-          unreachable_fallback: fail_open
-          # No `api_key` here on purpose. When the shared token is enabled
-          # (headroom.proxy.auth.enabled=true) the guardrail picks up
-          # HEADROOM_API_KEY from this pod's env — the documented fallback — and
-          # the Secret is already inherited via environmentSecrets, so the
-          # credential lives in Doppler only, never in values.
+    # Headroom prompt-compression guardrail removed 2026-11-17: it compressed every
+    # request by default and replaced tool results with placeholders, so agents
+    # re-read files they had already read until they ran out of iterations. The chart
+    # stays in the tree; re-enable by restoring this entry plus `headroom.enabled: true`.
+    guardrails: []
+
     litellm_settings:
+      # 1.109 defaults this to false (unsupported params 400 instead of being dropped).
       drop_params: true
       # Redis response cache AND proxy-wide coordination (rate-limit counters,
       # budget reservations, cache invalidation, pod lock) — one block does both.
@@ -216,7 +201,7 @@ litellm:
       redis_host: os.environ/REDIS_HOST
       redis_port: os.environ/REDIS_PORT
     model_list:
-      # Terminal hop: needs neither Claude nor a local Ollama host, so every chain ends here.
+      # Terminal hop: DeepSeek API (direct). Cheap/reliable floor.
       - model_name: deepseek-v4-flash-direct
         litellm_params:
           model: deepseek/deepseek-flash
@@ -224,6 +209,28 @@ litellm:
           order: 1
           use_chat_completions_api: true
         model_info:
+          max_input_tokens: 1000000
+          max_output_tokens: 384000
+      # OpenCode Go lane (subscription plan, NOT pay-as-you-go). Same gateway
+      # host as the two aliases above; OPENCODE_API_BASE already points at the
+      # Go path. Its own weekly usage cap is the reason each one carries a full
+      # fallback chain below — an exhausted Go plan answers 429
+      # `GoUsageLimitError` on EVERY model at once, so a Go hop can never be
+      # terminal. `x-opencode-session` is mandatory here: without it the gateway
+      # rejects the request with 400 `MissingSessionID` before routing.
+      - model_name: deepseek-v4-flash-go
+        litellm_params:
+          model: openai/deepseek-v4.1-flash
+          api_base: os.environ/OPENCODE_API_BASE
+          api_key: os.environ/OPENCODE_API_KEY
+          extra_headers:
+            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a16"
+            User-Agent: "hermes-litellm/1.0"
+          order: 1
+        model_info:
+          input_cost_per_token: 0.00000015
+          output_cost_per_token: 0.0000006
+          cache_read_input_token_cost: 0.000000003
           max_input_tokens: 1000000
           max_output_tokens: 384000
       # Claude proxy (Claude Max subscription, flat fee) — the literal aliases the
@@ -283,6 +290,7 @@ litellm:
           cache_read_input_token_cost: 0.00000001
           max_input_tokens: 1000000
           max_output_tokens: 128000
+
       # Local lane: Qwen3.6-35B-A3B on the Mac host (Ollama MLX); beat LFM2.5 on replay 7/12 vs 6/12 and prefill 660 vs 341 tok/s.
       # Thinking MUST be off via nested extra_body.reasoning_effort — top-level is stripped by drop_params and ollama#16383 500s return.
       # The tag pins the window (`PARAMETER num_ctx 131072`) so the declared context matches what the runner allocates.
@@ -306,65 +314,6 @@ litellm:
         model_info:
           max_input_tokens: 131072
           max_output_tokens: 32768
-      # OpenCode gateway lane: OpenAI-compatible endpoint fronting third-party
-      # models. extra_headers pins a
-      # stable per-model session id (static UUID, not request-generated) plus
-      # a UA string so the opencode gateway can attribute LiteLLM traffic.
-      - model_name: gpt-6-luna
-        litellm_params:
-          model: openai/gpt-6-luna
-          api_base: os.environ/OPENCODE_API_BASE
-          api_key: os.environ/OPENCODE_API_KEY
-          extra_headers:
-            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a14"
-            User-Agent: "hermes-litellm/1.0"
-          order: 1
-      - model_name: kimi-k3.1-pro
-        litellm_params:
-          model: openai/kimi-k3.1-pro
-          api_base: os.environ/OPENCODE_API_BASE
-          api_key: os.environ/OPENCODE_API_KEY
-          extra_headers:
-            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a15"
-            User-Agent: "hermes-litellm/1.0"
-          order: 1
-      # OpenCode Go lane (subscription plan, NOT pay-as-you-go). Same gateway
-      # host as the two aliases above; OPENCODE_API_BASE already points at the
-      # Go path. Its own weekly usage cap is the reason each one carries a full
-      # fallback chain below — an exhausted Go plan answers 429
-      # `GoUsageLimitError` on EVERY model at once, so a Go hop can never be
-      # terminal. `x-opencode-session` is mandatory here: without it the gateway
-      # rejects the request with 400 `MissingSessionID` before routing.
-      - model_name: deepseek-v4-flash-go
-        litellm_params:
-          model: openai/deepseek-v4.1-flash
-          api_base: os.environ/OPENCODE_API_BASE
-          api_key: os.environ/OPENCODE_API_KEY
-          extra_headers:
-            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a16"
-            User-Agent: "hermes-litellm/1.0"
-          order: 1
-        model_info:
-          input_cost_per_token: 0.00000015
-          output_cost_per_token: 0.0000006
-          cache_read_input_token_cost: 0.000000003
-          max_input_tokens: 1000000
-          max_output_tokens: 384000
-      - model_name: mimo-v2.6-flash
-        litellm_params:
-          model: openai/mimo-v2.6-flash
-          api_base: os.environ/OPENCODE_API_BASE
-          api_key: os.environ/OPENCODE_API_KEY
-          extra_headers:
-            x-opencode-session: "5f1b1e0a-6e3a-4b1d-9c2f-7a2b6e9d0a17"
-            User-Agent: "hermes-litellm/1.0"
-          order: 1
-        model_info:
-          input_cost_per_token: 0.00000014
-          output_cost_per_token: 0.00000028
-          cache_read_input_token_cost: 0.0000000028
-          max_input_tokens: 1048576
-          max_output_tokens: 131072
 
 # ── LiteLLM cache (Redis/Valkey) ───────────────────────────────────
 # No cache instance is declared here: the standalone Valkey lives in the
@@ -381,10 +330,10 @@ hermes-agent:
   # Image for the gateway pod AND the MCP verification Jobs: both run the same
   # toolchain, and the mise node/uv on the PVC is ABI-coupled to this image.
   # Pinned explicitly so a Job never resolves an empty tag; keep in lockstep
-  # with the hermes-agent chart dependency's appVersion (1.23.0 -> v0.23.0).
+  # with the hermes-agent chart dependency's appVersion (1.26.0 -> v0.23.2).
   image:
     repository: nousresearch/hermes-agent
-    tag: "v0.23.0"
+    tag: "v0.23.2"
     pullPolicy: IfNotPresent
   # The agent runs kubectl inside the pod and needs admin access to the
   # cluster. The chart default (automount=false) left it with no identity, so
@@ -401,14 +350,14 @@ hermes-agent:
   bootstrap:
     overwrite: true
   config:
-    # Config schema version emitted by the pinned gateway image: v0.23.0
-    # carries schema 52 (hermes_cli/config_defaults.py). Keep in lockstep with
+    # Config schema version emitted by the pinned gateway image: v0.23.2
+    # carries schema 53 (hermes_cli/config_defaults.py). Keep in lockstep with
     # image.tag above. Required because bootstrap.overwrite=true re-seeds
     # config.yaml from this chart on every pod start, so the version the
     # image's config migration stamps onto the PVC is always overwritten;
     # with no version key the image's docker_config_migrate reads 0, warns
     # "predates version 12", and skips stamping on every boot.
-    _config_version: 52
+    _config_version: 53
     # Serve the first-party Webapp on the ingress Service. Non-loopback binds
     # require a Hermes sign-in provider, and the provider is OIDC against the
     # in-cluster Dex (services/helm/dex), which relays Google — so Hermes keeps
@@ -437,10 +386,8 @@ hermes-agent:
       # decorative: an exhausted plan 429s every Go model simultaneously.
       default: deepseek-v4-flash-go
       provider: litellm
-    # Fallback: a second Go model, then the credit-independent DeepSeek floor.
+    # Fallback: credit-independent DeepSeek floor.
     fallback_providers:
-      - provider: litellm
-        model: mimo-v2.6-flash
       - provider: litellm
         model: deepseek-v4-flash-direct
     providers:
@@ -457,8 +404,6 @@ hermes-agent:
             context_length: 1000000
           deepseek-v4-flash-go:
             context_length: 1000000
-          mimo-v2.6-flash:
-            context_length: 1048576
           claude-opus-5:
             context_length: 1000000
           claude-sonnet-5:
@@ -688,6 +633,9 @@ hermes-agent:
       enabled: true
       threshold: 0.35
       target_ratio: 0.20
+      # Use OpenCode Go flash lane for LLM-driven compaction/summarization when supported.
+      model: deepseek-v4-flash-go
+      provider: litellm
       # Absolute cap, applied as min(ratio trigger, this) and clamped to the
       # window: the 0.35 ratio cannot bind on a 1M-token window.
       threshold_tokens: 80000
@@ -755,6 +703,10 @@ hermes-agent:
         # User plugins must be listed here or the dashboard API withholds them
         # (consent gate) — the session deeplink shim would never load.
         - session-deeplink
+        # trading-guard (templates/trading-guard-plugin.yaml) — pre_tool_call
+        # refusals in front of the trading tools. Same consent gate: without
+        # this line the ConfigMap mounts and nothing loads.
+        - trading-guard
       entries:
         omo:
           # Opt-in for the plugin's wake-up injection; must stay a real boolean
@@ -832,19 +784,16 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               oracle:
-                # Kilo rung kept ahead of the Go lane: it is a distinct provider
-                # and the only reasoning-tier hop behind Opus.
                 - litellm/claude-opus-5
-                - litellm/kimi-k3.1-pro
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               librarian:
+                - litellm/qwen3.6-35b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
               explore:
-                # Local Qwen leads (zero-cost read sink); gpt-6-luna dropped —
-                # it is Kilo-served, i.e. the same layer as the local lane.
+                # Local Qwen leads (zero-cost read sink) on existing lane.
                 - litellm/qwen3.6-35b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-go
@@ -859,6 +808,7 @@ hermes-agent:
                 - litellm/deepseek-v4-flash-direct
             categories:
               quick:
+                - litellm/qwen3.6-35b-local
                 - litellm/claude-haiku-4-5
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
@@ -878,6 +828,57 @@ hermes-agent:
                 - litellm/claude-sonnet-5
                 - litellm/deepseek-v4-flash-go
                 - litellm/deepseek-v4-flash-direct
+
+    # ── Inbound: the tickerlight staging engine's alerts ────────────────
+    # Hermes' generic webhook receiver (gateway/platforms/webhook.py; docs at
+    # website/docs/user-guide/messaging/webhooks.md). Shape is the documented
+    # one: routes live under platforms.webhook.extra, each with its own secret,
+    # a prompt template over the JSON body, and a delivery target.
+    #
+    # The engine POSTs /webhooks/tickerlight-alerts with X-Webhook-Timestamp and
+    # X-Webhook-Signature-V2 (hex HMAC-SHA256 of "<timestamp>.<body>") keyed by
+    # the route secret; a stale timestamp (300s window) or a bad signature is
+    # rejected before the template runs. Reachability is the NetworkPolicy in
+    # templates/hermes-webhook-netpol.yaml — namespace tickerlight-staging only,
+    # port 8644 — and the Service port of the same name/number.
+    #
+    # deliver_only: the rendered prompt IS the message. An alert is a fact, not
+    # a question — no model turn, sub-second delivery, and no chance of a
+    # paraphrase dropping the symbol or the severity.
+    #
+    # No `events` filter: the engine names its own event type in the body rather
+    # than through a provider header, so the route accepts every verified
+    # delivery instead of silently matching none.
+    platforms:
+      webhook:
+        enabled: true
+        extra:
+          port: 8644
+          routes:
+            tickerlight-alerts:
+              # Per-route secret rather than the global fallback: each sender
+              # gets its own key, so a leaked one cannot sign for another route.
+              secret: "${HERMES_WEBHOOK_SECRET}"
+              # One block per alert: what kind, which side of the condition, then
+              # the numbers as their own fenced payload. Markdown is Discord's, so
+              # the header carries the severity and the event id where they are
+              # read first, and {values} keeps its JSON shape instead of being
+              # flattened mid-sentence.
+              prompt: |
+                **Tickerlight · {severity} · {event}**
+                state `{state}` · symbol `{symbol}` · {ts}
+                ```json
+                {values}
+                ```
+              deliver: "discord"
+              deliver_only: true
+              # Without a chat_id the receiver falls back to the profile's home
+              # channel, and that id is not one the bot can post to — the first
+              # end-to-end alert returned "Unknown Channel". The channel id is
+              # config, not a secret holder, but it lives in Doppler with the
+              # rest of the Discord wiring so a re-point needs no chart change.
+              deliver_extra:
+                chat_id: "${DISCORD_ALERTS_CHANNEL_ID}"
 
     mcp_servers:
       # ── Manifest = single source of truth ──────────────────────────────
@@ -1268,6 +1269,26 @@ hermes-agent:
           resources: false
           prompts: false
 
+      trading_staging:
+        lazy: true
+        # The tickerlight STAGING engine's own MCP server (sibling charts under
+        # services/helm/tickerlight-staging). Read-only surface only: the
+        # mutating tools — place_order, cancel_order, kill, arm_state — are
+        # deliberately absent from tools.include, which is the allowlist
+        # mechanism every entry here uses and the one `mcp verify` enforces.
+        # Bearer token: Hermes interpolates ${TRADING_MCP_HTTP_TOKEN} from the
+        # pod env when it connects (same envFrom secret bundle as the ${MCP_*}
+        # entries below), so no credential lands in this file.
+        url: "http://tickerlight-staging.tickerlight-staging.svc.cluster.local:8090/mcp"
+        headers:
+          Authorization: "Bearer ${TRADING_MCP_HTTP_TOKEN}"
+        timeout: 60
+        connect_timeout: 60
+        tools:
+          include: [caps_status, positions, account, list_orders, audit, quote]
+          resources: false
+          prompts: false
+
       bitwarden:
         lazy: true
         # Re-enabled: pinned, and the inline block below performs `bw login` /
@@ -1334,6 +1355,22 @@ hermes-agent:
           npm_config_loglevel: "error"
         tools:
           include: [resolve-library-id, query-docs]
+          resources: false
+          prompts: false
+      tsenta:
+        lazy: true
+        # Public remote Streamable-HTTP MCP (api.autojobs.me) behind OAuth 2.1 +
+        # Dynamic Client Registration. The grant lives in /opt/data/mcp-tokens on
+        # the PVC and carries a refresh token, so it renews unattended; a revoked
+        # grant is re-established with `hermes mcp login tsenta` (paste-back flow,
+        # the host is headless). Full tool surface: reads, applications, auto-apply.
+        url: "https://api.autojobs.me/api/v1/mcp"
+        auth: oauth
+        timeout: 60
+        connect_timeout: 60
+        auth_probe: {tool: get-application-balance, args: {}}
+        tools:
+          include: [get-application-balance, get-job-recommendations, get-job-details, get-jobs-by-ids, report-job-pay-estimate, fetch-job-description, apply-to-job, request-resume-upload, upload-custom-resume, check-custom-resume, apply-with-custom-resume, approve-application, submit-application-review, get-application-review, skip-optimization, skip-cover-letter, list-applications, get-application-status, regenerate-resume, list-tracked-applications, track-application, update-tracked-application, delete-tracked-application, import-tracked-applications, get-inbox-address, list-inbox-messages, get-inbox-message, get-inbox-thread, get-inbox-unread-count, get-inbox-attachment, reply-to-inbox-message, mark-inbox-message-read, mark-all-inbox-messages-read, update-inbox-forwarding, find-networking-contacts, find-contact-email, save-outreach-draft, get-profile-status, submit-resume, set-personal-info, set-work-authorization, set-application-preferences, get-apply-preferences, set-apply-preferences, set-work-experience, set-projects, set-education, set-certifications, set-skills, set-custom-sections, set-resume-layout, list-resume-profiles, get-resume-profile, create-resume-profile, rename-resume-profile, set-default-resume-profile, delete-resume-profile, submit-feedback, explain-account, get-subscription-info, get-evaluation-summary, compare-applied-vs-served-jobs, update-feed-filters, inspect-served-jobs, assess-feed-relevance, search-companies, set-keyword-search, get-auto-apply-state, dry-run-auto-apply, commit-auto-apply-config, resolve-locations, refresh-matching-profile, get-matching-profile-summary, get-manual-applications, escalate-to-support]
           resources: false
           prompts: false
   env: {}
@@ -1434,6 +1471,12 @@ hermes-agent:
             path: dashboard/manifest.json
           - key: index.js
             path: dashboard/dist/index.js
+    # trading-guard user plugin, generated from plugins/trading-guard/ by
+    # templates/trading-guard-plugin.yaml. Keys map 1:1 onto the filenames the
+    # scanner expects, so no `items:` remap is needed.
+    - name: trading-guard-plugin
+      configMap:
+        name: openagent-hermes-trading-guard
   extraVolumeMounts:
     - name: hermes-hooks
       mountPath: /opt/data/hooks/discord-session-link
@@ -1463,6 +1506,13 @@ hermes-agent:
     - name: session-deeplink-plugin
       mountPath: /opt/data/plugins/session-deeplink
       readOnly: true
+    # trading-guard — directory mount, same as session-deeplink above: the
+    # scanner walks plugins/<name>/ for plugin.yaml. Read-only because the
+    # plugin only reads; its arm-file check fails closed (the arm file lives in
+    # the engine's own volume, not here).
+    - name: trading-guard-plugin
+      mountPath: /opt/data/plugins/trading-guard
+      readOnly: true
     # subPath is load-bearing: mounting the directory would shadow storage_gc.py
     # beside it. A subPath mount does not pick up ConfigMap edits in place, so
     # changing the wrapper restarts this pod on the next sync.
@@ -1476,7 +1526,7 @@ hermes-agent:
     # Subchart values cannot be templated, so this image is a literal copy of
     # tools.image above — bump both together.
     - name: install-gitopsctl
-      image: ghcr.io/jomakori/gitopsctl:c10f0bc9fd96b0623a97d21e3c86b893bcb6a05f
+      image: ghcr.io/jomakori/gitopsctl:299d909569fe18ff877e366da3b059c52392fc7b
       imagePullPolicy: IfNotPresent
       args: ["install", "/opt/tools/gitopsctl"]
       securityContext:
@@ -1490,7 +1540,7 @@ hermes-agent:
     # the omo: values. Flip OMO_PROVISION_ENABLED to "true" (and confirm
     # OMO_PROVISION_REPOSITORY exists) to provision; until then it no-ops.
     - name: provision-omo-plugin
-      image: alpine/git:2.45.2
+      image: alpine/git:v2.54.1
       imagePullPolicy: IfNotPresent
       securityContext:
         runAsUser: 10000
@@ -1540,10 +1590,10 @@ hermes-agent:
   # Ready once the gateway actually answers; readiness failures never restart
   # a pod.
   #
-  # No livenessProbe: the image's s6-overlay already supervises and restarts
-  # `hermes gateway run` on crash, so a liveness probe would duplicate that
-  # while adding a way to kill-restart the whole pod (dropping in-flight
-  # orchestration).
+  # LivenessProbe added (conservative): catches wedged state where the API/health
+  # endpoint stops answering but the container stays Running (s6 may supervise
+  # subprocesses yet the gateway never becomes healthy again). StartupProbe
+  # gates it during long boot; high threshold avoids killing busy-but-alive pods.
   probes:
     startup:
       httpGet:
@@ -1562,6 +1612,15 @@ hermes-agent:
       # restarts, so this only gates the endpoints, not the pod lifecycle.
       periodSeconds: 10
       failureThreshold: 3
+      timeoutSeconds: 3
+    liveness:
+      httpGet:
+        path: /health
+        port: 8642
+      # 6 failures × 10s = 60s of sustained unhealth before restart.
+      # Startup probe covers boot; this only acts after startup succeeds.
+      periodSeconds: 10
+      failureThreshold: 6
       timeoutSeconds: 3
   resources:
     # `limits.memory` must be >= the VPA's `maxMemory` (8Gi) — if the VPA emits
@@ -1590,6 +1649,16 @@ hermes-agent:
   extraEnvFrom:
     - secretRef:
         name: openagent-secrets
+  # The webhook receiver is an inbound surface: the tickerlight staging engine
+  # signs POST /webhooks/tickerlight-alerts with the route secret configured at
+  # hermes-agent.config.platforms.webhook.extra.routes. This value is what the
+  # subchart turns into WEBHOOK_ENABLED/WEBHOOK_PORT, so the listener and the
+  # route's `port` must agree — 8644 here, 8644 there, and the Service port in
+  # templates/apps.yaml.
+  webhook:
+    enabled: true
+    port: 8644
+
   service:
     enabled: true
     ports:

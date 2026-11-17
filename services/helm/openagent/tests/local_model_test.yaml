@@ -35,15 +35,15 @@ tests:
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
-      - notMatchRegex:
+      - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)          librarian:\n          - litellm/qwen3.6-35b-local"
+          pattern: "(?s)          librarian:\n          - litellm/qwen3.6-35b-local\n          - litellm/claude-haiku-4-5\n          - litellm/deepseek-v4-flash-go\n          - litellm/deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config
-      - notMatchRegex:
+      - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?s)          quick:\n          - litellm/qwen3.6-35b-local\n          - litellm/claude-haiku-4-5"
+          pattern: "(?s)          quick:\n          - litellm/qwen3.6-35b-local\n          - litellm/claude-haiku-4-5\n          - litellm/deepseek-v4-flash-go\n          - litellm/deepseek-v4-flash-direct"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config

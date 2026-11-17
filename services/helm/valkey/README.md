@@ -1,13 +1,13 @@
 # valkey
 
-![Version: 0.12.0](https://img.shields.io/badge/Version-0.12.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 9.1.2](https://img.shields.io/badge/AppVersion-9.1.2-informational?style=flat-square)
+![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 9.1.3](https://img.shields.io/badge/AppVersion-9.1.3-informational?style=flat-square)
 Standalone Valkey cache (official Valkey Helm chart) — the cluster's Redis-protocol cache service. Apps consume it; the instance lives here, never in an app release.
 
 ## Requirements
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://valkey-io.github.io/valkey-helm/ | valkey | 0.12.0 |
+| https://valkey-io.github.io/valkey-helm/ | valkey | 1.0.0 |
 
 ## Under the hood
 
@@ -45,20 +45,20 @@ Disabled: the Service is `ClusterIP`-only and every consumer is in-cluster (the 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | valkey.auth.enabled | bool | `false` |  |
-| valkey.dataStorage.className | string | `"local-path"` |  |
-| valkey.dataStorage.enabled | bool | `true` |  |
-| valkey.dataStorage.requestedSize | string | `"1Gi"` |  |
 | valkey.enabled | bool | `true` |  |
+| valkey.extraConfig | string | `"appendonly yes\nappendfsync everysec\nmaxmemory 192mb\nmaxmemory-policy noeviction\n"` |  |
 | valkey.fullnameOverride | string | `"valkey-cache"` |  |
 | valkey.image.pullPolicy | string | `"IfNotPresent"` |  |
 | valkey.image.registry | string | `"docker.io"` |  |
 | valkey.image.repository | string | `"valkey/valkey"` |  |
-| valkey.image.tag | string | `"9.1.2"` |  |
+| valkey.image.tag | string | `"9.1.3"` |  |
 | valkey.nodeSelector.intent | string | `"apps"` |  |
+| valkey.persistence.enabled | bool | `true` |  |
+| valkey.persistence.size | string | `"1Gi"` |  |
+| valkey.persistence.storageClass | string | `"local-path"` |  |
 | valkey.replica.enabled | bool | `false` |  |
 | valkey.resources.limits.memory | string | `"256Mi"` |  |
 | valkey.resources.requests.cpu | string | `"50m"` |  |
 | valkey.resources.requests.memory | string | `"64Mi"` |  |
 | valkey.service.port | int | `6379` |  |
 | valkey.service.type | string | `"ClusterIP"` |  |
-| valkey.valkeyConfig | string | `"appendonly yes\nappendfsync everysec\nmaxmemory 192mb\nmaxmemory-policy noeviction\n"` |  |
