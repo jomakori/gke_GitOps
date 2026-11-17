@@ -30,8 +30,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | api.affinity | object | `{}` |  |
 | api.annotations | object | `{}` |  |
 | api.assign_cluster_ip | bool | `false` |  |
-| api.cpuLimit | string | `"500m"` |  |
-| api.cpuRequest | string | `"50m"` |  |
+| api.cpuLimit | int | `1` |  |
+| api.cpuRequest | string | `"100m"` |  |
 | api.image | string | `"artifacts.plane.so/makeplane/plane-backend"` |  |
 | api.labels | object | `{}` |  |
 | api.memoryLimit | string | `"1000Mi"` |  |
@@ -42,8 +42,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | api.tolerations | list | `[]` |  |
 | beatworker.affinity | object | `{}` |  |
 | beatworker.annotations | object | `{}` |  |
-| beatworker.cpuLimit | string | `"500m"` |  |
-| beatworker.cpuRequest | string | `"50m"` |  |
+| beatworker.cpuLimit | int | `1` |  |
+| beatworker.cpuRequest | string | `"100m"` |  |
 | beatworker.image | string | `"artifacts.plane.so/makeplane/plane-backend"` |  |
 | beatworker.labels | object | `{}` |  |
 | beatworker.memoryLimit | string | `"1000Mi"` |  |
@@ -89,8 +89,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | live.affinity | object | `{}` |  |
 | live.annotations | object | `{}` |  |
 | live.assign_cluster_ip | bool | `false` |  |
-| live.cpuLimit | string | `"500m"` |  |
-| live.cpuRequest | string | `"50m"` |  |
+| live.cpuLimit | int | `1` |  |
+| live.cpuRequest | string | `"100m"` |  |
 | live.image | string | `"artifacts.plane.so/makeplane/plane-live"` |  |
 | live.labels | object | `{}` |  |
 | live.memoryLimit | string | `"1000Mi"` |  |
@@ -160,8 +160,8 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | space.affinity | object | `{}` |  |
 | space.annotations | object | `{}` |  |
 | space.assign_cluster_ip | bool | `false` |  |
-| space.cpuLimit | string | `"500m"` |  |
-| space.cpuRequest | string | `"50m"` |  |
+| space.cpuLimit | int | `1` |  |
+| space.cpuRequest | string | `"100m"` |  |
 | space.image | string | `"artifacts.plane.so/makeplane/plane-space"` |  |
 | space.labels | object | `{}` |  |
 | space.memoryLimit | string | `"1000Mi"` |  |

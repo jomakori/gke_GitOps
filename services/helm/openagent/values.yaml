@@ -78,12 +78,14 @@ litellm:
   autoscaling:
     enabled: true
     minReplicas: 2
-    # 3, not 4. Each replica parks ~1Gi of real usage (and claims 1.5Gi) on a
-    # VM that is chronically at its 16Gi ceiling — see the OrbStack overcommit
-    # analysis (Committed_AS 27.9Gi vs CommitLimit 25.7Gi). A 4th replica is a
-    # memory spike that has repeatedly pushed the node over and OOMKilled
-    # CoreDNS. Cap at 3 until the VM is raised.
-    maxReplicas: 3
+    # 4. The old cap of 3 cited the 16Gi-VM overcommit analysis (Committed_AS
+    # 27.9Gi vs CommitLimit 25.7Gi), which no longer describes the host: the VM
+    # is now 51Gi total / 114Gi CommitLimit, with MemAvailable ~34Gi and
+    # Committed_AS 39.3Gi measured 2026-11-17. Over the 48h to that date every
+    # node kept at least 56% of its memory free at its worst moment, and no pod
+    # in the cluster was OOMKilled, so the 4th replica's 1.5Gi request is covered.
+    # Re-check this comment if the VM is resized down again.
+    maxReplicas: 4
     targetCPUUtilizationPercentage: 70
     # Memory HPA (same pattern as argocd-repo-server in-cluster). Litellm is
     # memory-bound (Python + prisma + uvicorn), CPU is mostly idle even under

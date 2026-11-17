@@ -990,7 +990,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.webhook.port | int | `8644` |  |
 | hermes.enabled | bool | `true` |  |
 | litellm.autoscaling.enabled | bool | `true` |  |
-| litellm.autoscaling.maxReplicas | int | `3` |  |
+| litellm.autoscaling.maxReplicas | int | `4` |  |
 | litellm.autoscaling.minReplicas | int | `2` |  |
 | litellm.autoscaling.targetCPUUtilizationPercentage | int | `70` |  |
 | litellm.autoscaling.targetMemoryUtilizationPercentage | int | `85` |  |

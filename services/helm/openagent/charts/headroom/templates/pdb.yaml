@@ -1,0 +1,18 @@
+{{- if and .Values.enabled .Values.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: headroom
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "headroom.labels" . | nindent 4 }}
+    app.kubernetes.io/component: headroom
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{- include "headroom.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: headroom
+{{- end }}

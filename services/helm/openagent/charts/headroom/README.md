@@ -14,6 +14,10 @@ Headroom prompt-compression sidecar, called by LiteLLM's pre_call guardrail. Ena
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| autoscaling.enabled | bool | `true` |  |
+| autoscaling.maxReplicas | int | `4` |  |
+| autoscaling.minReplicas | int | `2` |  |
+| autoscaling.targetCPUUtilizationPercentage | int | `70` |  |
 | enabled | bool | `true` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/headroomlabs-ai/headroom"` |  |
@@ -22,16 +26,19 @@ Headroom prompt-compression sidecar, called by LiteLLM's pre_call guardrail. Ena
 | networkPolicy.litellm.instance | string | `""` |  |
 | networkPolicy.litellm.podLabelName | string | `"litellm"` |  |
 | networkPolicy.nodeCIDRs[0] | string | `"192.168.97.0/24"` |  |
+| pdb.enabled | bool | `true` |  |
+| pdb.maxUnavailable | int | `1` |  |
 | proxy.allowRemote | bool | `true` |  |
 | proxy.auth.enabled | bool | `false` |  |
 | proxy.auth.existingSecret.key | string | `"HEADROOM_API_KEY"` |  |
 | proxy.auth.existingSecret.name | string | `"openagent-secrets"` |  |
 | proxy.beacon | string | `"off"` |  |
 | proxy.telemetry | string | `"off"` |  |
-| resources.limits.cpu | string | `"1"` |  |
+| replicaCount | int | `2` |  |
+| resources.limits.cpu | string | `"2"` |  |
 | resources.limits.memory | string | `"3Gi"` |  |
-| resources.requests.cpu | string | `"250m"` |  |
-| resources.requests.memory | string | `"1Gi"` |  |
+| resources.requests.cpu | string | `"500m"` |  |
+| resources.requests.memory | string | `"1536Mi"` |  |
 | service.port | int | `8787` |  |
 
 ----------------------------------------------
