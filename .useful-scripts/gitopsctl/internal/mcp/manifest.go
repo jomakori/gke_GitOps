@@ -64,9 +64,14 @@ type AuthProbe struct {
 }
 
 type Server struct {
-	Command            string            `json:"command,omitempty"`
-	Args               []string          `json:"args,omitempty"`
-	URL                string            `json:"url,omitempty"`
+	Command string   `json:"command,omitempty"`
+	Args    []string `json:"args,omitempty"`
+	URL     string   `json:"url,omitempty"`
+	// Auth names the credential scheme the agent uses for this server. Only
+	// "oauth" is treated specially: its grant belongs to the agent, so the
+	// runner certifies the stored grant instead of handshaking (see
+	// CertifyOAuthGrant).
+	Auth               string            `json:"auth,omitempty"`
 	Env                map[string]string `json:"env,omitempty"`
 	Headers            map[string]string `json:"headers,omitempty"`
 	Enabled            *bool             `json:"enabled,omitempty"`
