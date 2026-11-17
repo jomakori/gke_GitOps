@@ -36,13 +36,6 @@ clusterSecretStores:
   svc_argocd:
     project: devops
     config: svc_argocd
-  # Strands app config (GOOGLE_CLIENT_ID/SECRET, LITELLM_*, STRANDS_SECRET_KEY,
-  # PUBLIC_BASE_URL, SESSION_COOKIE_SECURE). DATABASE_URL is deliberately NOT
-  # here — the SGCluster's binding Secret carries it (apps/helm/values.yaml,
-  # strands.service.envSecretRefs).
-  svc_strands:
-    project: devops
-    config: svc_strands
   zurabase-dev:
     project: zurabase
     config: dev

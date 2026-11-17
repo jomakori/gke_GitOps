@@ -240,7 +240,7 @@ strands:
       cpu: 500m
       memory: 512Mi
     # The server serves /healthz without touching Postgres, so both probes stay
-    # green while the SGCluster below is still booting. A readiness probe on a
+    # green while the database lane is still settling. A readiness probe on a
     # DB-backed route would hold the first pod out of the Service for minutes.
     readinessProbe:
       httpGet:
@@ -258,20 +258,7 @@ strands:
       periodSeconds: 20
       timeoutSeconds: 3
       failureThreshold: 3
-    # DATABASE_URL comes from the binding Secret StackGres generates for the
-    # cluster below (`<cluster>-binding`, key `uri`), not from Doppler: the
-    # operator owns that credential and rotates it, so no copy of it is kept
-    # anywhere else. The URI carries no database path, so libpq/sqlx use the
-    # user name — `postgres` — which is the cluster's default database.
-    envSecretRefs:
-      - name: DATABASE_URL
-        secret: strands-production-db-binding
-        key: uri
-  # One Postgres of its own: personal app, its own data, no shared instance.
-  # The chart renders a single-instance SGCluster named `strands-production-db`
-  # on the global storage class (local-path).
-  enable_db:
-    type: postgres
-    deployment: db
-    version: "17"
-    storage: 5Gi
+    # No database block: `strands` is its own role and database inside the
+    # shared data/pg-main cluster. DATABASE_URL therefore rides envFrom
+    # (<namespace>-vars) from Doppler like every other key, and this app owns
+    # no SGCluster.

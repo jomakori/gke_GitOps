@@ -327,18 +327,6 @@ spec:
           {{- end }}
           ports:
           - containerPort: {{ $svc.port }}
-          {{- /* Probes are raw probe blocks, rendered only when an app declares
-                 them: an app that needs a liveness/readiness path is the app that
-                 knows which path is safe to poll, and every other app keeps the
-                 Deployment it had before this key existed. */}}
-          {{- with $svc.readinessProbe }}
-          readinessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with $svc.livenessProbe }}
-          livenessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
           resources:
             requests:
               memory: {{ $svc.resourceRequests.memory }}
@@ -364,12 +352,7 @@ spec:
                  absent means off. */}}
           {{- $svcEnv := $svc.secretEnv | default list }}
           {{- $plainEnv := $env.env | default dict }}
-          {{- /* Named keys from a Secret this chart does not own — the generated
-                 credential of a DB the chart does create (see enable_db), which
-                 must not be copied into Doppler or into values. Rendered after the
-                 two lists above so an explicit reference wins over envFrom. */}}
-          {{- $refEnv := $svc.envSecretRefs | default list }}
-          {{- if or $svcEnv (gt (len $plainEnv) 0) (gt (len $refEnv) 0) }}
+          {{- if or $svcEnv (gt (len $plainEnv) 0) }}
           env:
           {{- range $svcEnv }}
           - name: {{ . }}
@@ -382,13 +365,6 @@ spec:
           {{- range $k, $v := $plainEnv }}
           - name: {{ $k }}
             value: {{ $v | quote }}
-          {{- end }}
-          {{- range $refEnv }}
-          - name: {{ .name }}
-            valueFrom:
-              secretKeyRef:
-                name: {{ .secret }}
-                key: {{ .key }}
           {{- end }}
           {{- end }}
           {{- if and $svc.storage $svc.storage.size }}
