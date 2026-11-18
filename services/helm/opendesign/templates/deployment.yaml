@@ -180,10 +180,31 @@ spec:
                         2>/dev/null && break
                       sleep 5
                     done &
-          envFrom:
-            - configMapRef:
-                name: {{ include "opendesign.fullname" . }}
           env:
+            - name: NODE_ENV
+              value: "production"
+            # V8 heap cap ~75% of resources.limits.memory; 192 left no heap for boot
+            # (465 bundled plugins) and aborted with a V8 fatal OOM.
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=1536"
+            - name: OD_BIND_HOST
+              value: {{ .Values.config.bindHost | quote }}
+            - name: OD_PORT
+              value: "7456"
+            - name: OD_WEB_PORT
+              value: "7456"
+            - name: OD_ALLOWED_ORIGINS
+              value: {{ .Values.config.allowedOrigins | default (printf "https://%s" (include "opendesign.domain" .)) | quote }}
+            - name: OD_PUBLIC_BASE_URL
+              value: {{ .Values.config.publicBaseUrl | default (printf "https://%s" (include "opendesign.domain" .)) | quote }}
+            {{- if .Values.config.disableApiAuth }}
+            - name: OD_DISABLE_API_AUTH
+              value: "1"
+            {{- end }}
+            {{- if .Values.provider.endpoint }}
+            - name: OD_LITELLM_ENDPOINT
+              value: {{ .Values.provider.endpoint | quote }}
+            {{- end }}
             - name: HOME
               value: /app/.od
             - name: CODEX_HOME
