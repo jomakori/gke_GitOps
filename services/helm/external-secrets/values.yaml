@@ -24,6 +24,10 @@ clusterSecretStores:
   svc_cloudflare:
     project: devops
     config: svc_cloudflare
+  # strands reads its own config from here; apps/helm binds <app>-vars to it.
+  svc_strands:
+    project: devops
+    config: svc_strands
   svc_openagent:
     project: devops
     config: svc_openagent
