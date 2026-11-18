@@ -209,3 +209,58 @@ tickerlight:
             memory: 128Mi
           limits:
             memory: 256Mi
+
+# Strands — note/link judge web app, public host. The app runs its own Google
+# sign-in, so strands.maklab.net is deliberately NOT in services/helm/istio
+# `privateHosts`: a Cloudflare Access app in front of it would be a second,
+# redundant login and the app would never see the Google identity it expects.
+strands:
+  # Production only: no standing staging environment, no per-PR previews.
+  enable_staging: false
+  enable_istio: true
+  # GHCR, not the shared ECR registry.
+  image:
+    repository: ghcr.io/jomakori/strands
+  istio:
+    gateway: istio-system/maklab-gateway
+    requestTimeout: 30s
+    retryAttempts: 3
+    retryTimeout: 5s
+  environments:
+    production:
+      # Released image. metadata-action strips the leading `v` from a semver
+      # tag, so release v0.1.0 publishes as `0.1.0` — pinned by tag, never
+      # `latest`, so a sync cannot move this Deployment on its own.
+      tag: "0.1.0"
+      subdomain: strands
+  service:
+    port: 8080
+    resourceRequests:
+      cpu: 100m
+      memory: 320Mi
+    resourceLimits:
+      cpu: 500m
+      memory: 512Mi
+    # The server serves /healthz without touching Postgres, so both probes stay
+    # green while the database lane is still settling. A readiness probe on a
+    # DB-backed route would hold the first pod out of the Service for minutes.
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 3
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
+    # No database block: `strands` is its own role and database inside the
+    # shared data/pg-main cluster. DATABASE_URL therefore rides envFrom
+    # (<namespace>-vars) from Doppler like every other key, and this app owns
+    # no SGCluster.

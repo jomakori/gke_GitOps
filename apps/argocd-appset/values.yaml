@@ -25,6 +25,13 @@ tickerlight:
     production:
       dopplerConfig: tickerlight_prd
 
+# Strands — production only, so its namespace is created from this block alone
+# (templates/namespaces.yaml) and no staging/preview namespace exists.
+strands:
+  environment:
+    production:
+      dopplerConfig: svc_strands
+
 # App Configurations — key = app name (used for Application metadata.name + chart lookup)
 apps:
   # PROD — this entry renders the apps/helm umbrella (helmPath below) for the
@@ -128,3 +135,36 @@ apps:
         value: "{{ .Values.tickerlight.environment.production.dopplerConfig }}"
       - name: tickerlight.enable_staging
         value: "true"
+
+  # Strands: public host, own Postgres. No preview appset and no standing
+  # staging environment — one production Application, one namespace.
+  strands:
+    enable: true
+    syncWave: "6"
+    helmPath: apps/helm/
+    destNamespace: argocd
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    # Injects strands.enable_domain=true so the umbrella renders the
+    # VirtualService for strands.maklab.net. Public on purpose: the app has its
+    # own Google sign-in, and no `enable_private` / `privateHosts` entry exists
+    # for this host, so Cloudflare Access does not gate it.
+    gateways:
+      enable_public: true
+    syncOptions:
+      - CreateNamespace=true
+    ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+          - /spec/replicas
+    parameters:
+      - name: appName
+        value: "strands"
+      - name: strands.environments.production.dopplerConfig
+        value: "{{ .Values.strands.environment.production.dopplerConfig }}"
+      - name: strands.enable_staging
+        value: "false"
