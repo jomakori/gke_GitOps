@@ -5,7 +5,9 @@ metadata:
   labels: {{- include "opendesign.labels" . | nindent 4 }}
 data:
   NODE_ENV: "production"
-  NODE_OPTIONS: "--max-old-space-size=192"
+  # V8 heap cap ~75% of the 2Gi limit; 192 left no heap for boot (465 bundled plugins)
+  # and aborted with a V8 fatal OOM.
+  NODE_OPTIONS: "--max-old-space-size=1536"
   OD_BIND_HOST: {{ .Values.config.bindHost | quote }}
   OD_PORT: "7456"
   OD_WEB_PORT: "7456"
