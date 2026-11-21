@@ -57,9 +57,10 @@ services:
       - CreateNamespace=true
       - ServerSideApply=true
 
-  # ArgoCD managing itself (docs/argocd-self-manage.md). Ships DISABLED: flip
-  # `enable` only after `terraform state rm helm_release.argocd` in devops_Terraform,
-  # or two owners fight over the same release. Deliberately conservative:
+  # ArgoCD managing itself (docs/argocd-self-manage.md). Enable only alongside
+  # coordinated Terraform cutover: `terraform state rm helm_release.argocd` in
+  # devops_Terraform (never destroy), keep root apps/webhook in TF.
+  # Deliberately conservative:
   # - name MUST stay `argo-cd` — the Application name is the Helm release name and
   #   drives every Service name (argo-cd-argocd-server, pinned by the istio
   #   VirtualService above and the webhook).
@@ -67,7 +68,7 @@ services:
   # - prune off and selfHeal off until the first synced diff is verified clean;
   #   then selfHeal can go on (prune stays off: ArgoCD must never prune itself).
   argoCd:
-    enable: false
+    enable: true
     name: argo-cd
     syncWave: "0"
     destNamespace: argocd
@@ -160,13 +161,8 @@ services:
           - .webhooks[].objectSelector
           - .webhooks[].timeoutSeconds
           - .webhooks[].rules[].scope
-    # argocd VirtualService: port 80 matches the Terraform-installed server, which
-    # runs server.insecure=true. services/helm/argo-cd runs it secure (TLS on the
-    # server, plain HTTP gets a 307), so the PR that flips `argoCd.enable` MUST also
-    # change the port below to "443" and add
-    #   - name: virtualServices.argocd.destination.tls.enabled
-    #     value: "true"
-    # (docs/argocd-self-manage.md, step 4) or argocd.maklab.net redirect-loops.
+    # argocd VirtualService: secure self-managed server (server.insecure=false)
+    # serves TLS on 443; route via TLS origination to avoid HTTP 307 redirect loops.
     parameters:
       - name: virtualServices.argocd.enabled
         value: "true"
@@ -175,7 +171,9 @@ services:
       - name: virtualServices.argocd.destination.host
         value: argo-cd-argocd-server.argocd.svc.cluster.local
       - name: virtualServices.argocd.destination.port
-        value: "80"
+        value: "443"
+      - name: virtualServices.argocd.destination.tls.enabled
+        value: "true"
   tailscale:
     enable: true
     syncWave: "2"

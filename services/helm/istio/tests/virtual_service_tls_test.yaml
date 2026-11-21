@@ -19,6 +19,8 @@ tests:
           destination:
             host: argo-cd-argocd-server.argocd.svc.cluster.local
             port: 80
+            tls:
+              enabled: false
     asserts:
       - documentSelector:
           path: metadata.name
