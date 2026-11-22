@@ -213,12 +213,17 @@ tickerlight:
           limits:
             memory: 256Mi
 
-# Strands — note/link judge web app, public host. The app runs its own Google
-# sign-in, so strands.maklab.net is deliberately NOT in services/helm/istio
+# Strands — note/link judge web app, public production host. The app runs its own
+# Google sign-in, so strands.maklab.net is deliberately NOT in services/helm/istio
 # `privateHosts`: a Cloudflare Access app in front of it would be a second,
 # redundant login and the app would never see the Google identity it expects.
+# The staging host deviates from that: it has no accounts, so it IS gated and is
+# declared in that same `privateHosts` list.
 strands:
-  # Production only: no standing staging environment, no per-PR previews.
+  # Standing staging host, one pinned tag, no per-PR previews. The flag is set by
+  # the appset (strands.environment.staging.enable), so this value only has to
+  # render a lint-clean chart; a merge that pins a staging tag flips the flag in
+  # the same commit.
   enable_staging: false
   enable_istio: true
   # GHCR, not the shared ECR registry.
@@ -230,6 +235,13 @@ strands:
     retryAttempts: 3
     retryTimeout: 5s
   environments:
+    staging:
+      # Single-label host: a third DNS label has no certificate under the wildcard.
+      subdomain: staging-strands
+      # Placeholder, not a release: the staging pin rewrites this to `pr-<N>` from
+      # the app repo's staging image job. It is never a semver tag, so a released
+      # image cannot be mistaken for staging content if the flag is flipped early.
+      tag: "0.0.0"
     production:
       # Released image. metadata-action strips the leading `v` from a semver
       # tag, so release v0.1.0 publishes as `0.1.0` — pinned by tag, never
