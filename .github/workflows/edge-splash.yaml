@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - edge/splash/**
+      - apps/helm/values.yaml
       - .github/workflows/edge-splash.yaml
   workflow_dispatch:
 
@@ -55,5 +56,42 @@ jobs:
             echo "CLOUDFLARE_ACCOUNT_ID=$account"
           } >> "$GITHUB_ENV"
 
+      - name: Install yq
+        run: |
+          set -euo pipefail
+          sudo curl -sSLo /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      # A staging host exists exactly where an app spec declares one, so the app
+      # specs are the route list: adding an app needs no change to this workflow.
+      - name: Resolve the staging hosts
+        run: |
+          set -euo pipefail
+          domain="$(yq -r '.clusterDomain' apps/helm/values.yaml)"
+          yq -r 'to_entries[]
+                 | select(.value | type == "!!map")
+                 | select((.value.enable_staging | tostring) != "false")
+                 | (.value.environments.staging.subdomain // "")
+                 | select(. != "")' apps/helm/values.yaml \
+            | sed "s|$|.$domain|" > staging-hosts.txt
+          if [ ! -s staging-hosts.txt ]; then
+            echo "No app declares a staging host" >&2
+            exit 1
+          fi
+          cat staging-hosts.txt
+
       - name: Deploy Splash
-        run: npx --yes wrangler@4 deploy --config edge/splash/wrangler.toml
+        run: |
+          set -euo pipefail
+          zone="$(yq -r '.clusterDomain' apps/helm/values.yaml)"
+          work="$(mktemp -d)"
+          cp edge/splash/worker.js "$work/"
+          {
+            cat edge/splash/wrangler.toml
+            echo "routes = ["
+            while read -r host; do
+              printf '  { pattern = "%s/*", zone_name = "%s" },\n' "$host" "$zone"
+            done < staging-hosts.txt
+            echo "]"
+          } > "$work/wrangler.toml"
+          npx --yes wrangler@4 deploy --config "$work/wrangler.toml"
