@@ -36,6 +36,11 @@ dex:
         public: true
         redirectURIs:
           - https://openagent.maklab.net/auth/callback
+      - id: strands
+        name: Strands
+        public: true
+        redirectURIs:
+          - https://strands.maklab.net/auth/google/callback
 
   envFrom:
     - secretRef:

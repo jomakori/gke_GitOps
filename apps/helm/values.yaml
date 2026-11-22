@@ -55,10 +55,13 @@ openkite:
       tag: v0.1.0
     production:
       # Released image; the pin-bump workflow rewrites this on every release.
-      tag: v0.1.0
+      tag: v1.0.0
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080
+    # Fixture data source: staging and every preview serve the console's seeded cluster,
+    # production reads the cluster it runs in. The chart picks the value per environment.
+    dataMode: OPENKITE_DATA_MODE
     resourceRequests:
       cpu: 100m
       memory: 320Mi
@@ -209,3 +212,70 @@ tickerlight:
             memory: 128Mi
           limits:
             memory: 256Mi
+
+# Strands — note/link judge web app, public production host. The app runs its own
+# Google sign-in, so strands.maklab.net is deliberately NOT in services/helm/istio
+# `privateHosts`: a Cloudflare Access app in front of it would be a second,
+# redundant login and the app would never see the Google identity it expects.
+# The staging host deviates from that: it has no accounts, so it IS gated and is
+# declared in that same `privateHosts` list.
+strands:
+  # Standing staging host, one pinned tag, no per-PR previews. The flag is set by
+  # the appset (strands.environment.staging.enable), so this value only has to
+  # render a lint-clean chart; a merge that pins a staging tag flips the flag in
+  # the same commit.
+  enable_staging: false
+  enable_istio: true
+  # GHCR, not the shared ECR registry.
+  image:
+    repository: ghcr.io/jomakori/strands
+  istio:
+    gateway: istio-system/maklab-gateway
+    requestTimeout: 30s
+    retryAttempts: 3
+    retryTimeout: 5s
+  environments:
+    staging:
+      # Single-label host: a third DNS label has no certificate under the wildcard.
+      subdomain: staging-strands
+      # Placeholder, not a release: the staging pin rewrites this to `pr-<N>` from
+      # the app repo's staging image job. It is never a semver tag, so a released
+      # image cannot be mistaken for staging content if the flag is flipped early.
+      tag: "0.0.0"
+    production:
+      # Released image. metadata-action strips the leading `v` from a semver
+      # tag, so release v0.1.0 publishes as `0.1.0` — pinned by tag, never
+      # `latest`, so a sync cannot move this Deployment on its own.
+      tag: "0.6.0"
+      subdomain: strands
+  service:
+    port: 8080
+    resourceRequests:
+      cpu: 100m
+      memory: 320Mi
+    resourceLimits:
+      cpu: 500m
+      memory: 512Mi
+    # The server serves /healthz without touching Postgres, so both probes stay
+    # green while the database lane is still settling. A readiness probe on a
+    # DB-backed route would hold the first pod out of the Service for minutes.
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 3
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
+    # No database block: `strands` is its own role and database inside the
+    # shared data/pg-main cluster. DATABASE_URL therefore rides envFrom
+    # (<namespace>-vars) from Doppler like every other key, and this app owns
+    # no SGCluster.

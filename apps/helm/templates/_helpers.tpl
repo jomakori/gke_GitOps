@@ -352,7 +352,14 @@ spec:
                  absent means off. */}}
           {{- $svcEnv := $svc.secretEnv | default list }}
           {{- $plainEnv := $env.env | default dict }}
-          {{- if or $svcEnv (gt (len $plainEnv) 0) }}
+          {{- /* Which data source the app renders: a preview and any non-production
+                 environment serve the app's seeded fixtures, because neither holds a
+                 credential for a real cluster; production reads the cluster it runs in.
+                 `service.dataMode` names the variable that selects between them, and a
+                 value set there by hand wins over the default. */}}
+          {{- $dataMode := ternary "fixtures" "live" (or $isPreview (ne $envName "production")) }}
+          {{- $dataModeVar := $svc.dataMode | default "" }}
+          {{- if or $svcEnv (gt (len $plainEnv) 0) $dataModeVar }}
           env:
           {{- range $svcEnv }}
           - name: {{ . }}
@@ -362,18 +369,27 @@ spec:
                 key: {{ . }}
                 optional: true
           {{- end }}
+          {{- if and $dataModeVar (not (hasKey $plainEnv $dataModeVar)) }}
+          - name: {{ $dataModeVar }}
+            value: {{ $dataMode | quote }}
+          {{- end }}
           {{- range $k, $v := $plainEnv }}
           - name: {{ $k }}
             value: {{ $v | quote }}
           {{- end }}
           {{- end }}
-          {{- if and $svc.storage $svc.storage.size }}
+          {{- if or (and $svc.storage $svc.storage.size) $svc.extraVolumeMounts }}
           volumeMounts:
+          {{- if and $svc.storage $svc.storage.size }}
           - name: data
             mountPath: /data
             {{- if $svc.storage.readOnly }}
             readOnly: true
             {{- end }}
+          {{- end }}
+          {{- with $svc.extraVolumeMounts }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
           {{- end }}
           {{- range $svc.extraContainers }}
         - name: {{ .name }}
@@ -444,11 +460,16 @@ spec:
             mountPath: /data
           {{- end }}
           {{- end }}
-      {{- if and $svc.storage $svc.storage.size }}
+      {{- if or (and $svc.storage $svc.storage.size) $svc.extraVolumes }}
       volumes:
+      {{- if and $svc.storage $svc.storage.size }}
       - name: data
         persistentVolumeClaim:
           claimName: {{ $namespace }}-pvc
+      {{- end }}
+      {{- with $svc.extraVolumes }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
       {{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
