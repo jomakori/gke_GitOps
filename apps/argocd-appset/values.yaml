@@ -25,6 +25,23 @@ tickerlight:
     production:
       dopplerConfig: tickerlight_prd
 
+# Strands — one standing staging host plus production. Both environments read
+# their own config in the `apps` Doppler project (`strands_stg`, `strands_prd`),
+# rendered as the doppler-strands-stg / doppler-strands-prd ClusterSecretStores.
+# The staging environment's namespace is created from this block
+# (templates/namespaces.yaml) and the staging render stays off until `enable`
+# flips with a pinned image tag.
+strands:
+  environment:
+    staging:
+      dopplerConfig: strands_stg
+      # Passed to the umbrella as `strands.enable_staging`. Leave false unless
+      # apps/helm `environments.staging.tag` is a real staging image: with it
+      # false the umbrella renders neither the staging Deployment nor its host.
+      enable: false
+    production:
+      dopplerConfig: strands_prd
+
 # App Configurations — key = app name (used for Application metadata.name + chart lookup)
 apps:
   # PROD — this entry renders the apps/helm umbrella (helmPath below) for the
@@ -75,12 +92,9 @@ apps:
       # every push renders a different tag and ArgoCD rolls the pod; with a
       # constant pr-<N> the manifest never changed and staging kept the old image.
       tagTemplate: "pr-{{ .number }}-{{ .head_short_sha_7 }}"
-      # The staging host has one claimant at a time. While no open pull request
-      # carries the label, the appset renders this placeholder for the host; CI in
-      # the app repo keeps the marker directory it is generated from in sync with
-      # the label. See services/helm/splash for why they must not coexist.
+      # Placeholder splash for idle staging host disabled (staging-state branch resolution failing).
       placeholder:
-        enable: true
+        enable: false
         helmPath: services/helm/splash/
         namespace: istio-system
         stateBranch: staging-state
@@ -131,3 +145,41 @@ apps:
         value: "{{ .Values.tickerlight.environment.production.dopplerConfig }}"
       - name: tickerlight.enable_staging
         value: "true"
+
+  # Strands: public production host that runs its own Google sign-in, plus one
+  # standing staging host (gated, no accounts). No preview appset: staging is a
+  # single pinned tag, not a namespace per PR.
+  strands:
+    enable: true
+    syncWave: "6"
+    helmPath: apps/helm/
+    destNamespace: argocd
+    argocdNamespace: argocd
+    argoProject: default
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    selfHeal: true
+    # Injects strands.enable_domain=true so the umbrella renders the
+    # VirtualService for strands.maklab.net. Public on purpose: the app has its
+    # own Google sign-in, and no `enable_private` / `privateHosts` entry exists
+    # for this host, so Cloudflare Access does not gate it.
+    gateways:
+      enable_public: true
+    syncOptions:
+      - CreateNamespace=true
+    ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+          - /spec/replicas
+    parameters:
+      - name: appName
+        value: "strands"
+      - name: strands.environments.staging.dopplerConfig
+        value: "{{ .Values.strands.environment.staging.dopplerConfig }}"
+      - name: strands.environments.production.dopplerConfig
+        value: "{{ .Values.strands.environment.production.dopplerConfig }}"
+      # One source of truth for the render gate: the staging tag and this flag
+      # are written together, so a tag can never render against a stale flag.
+      - name: strands.enable_staging
+        value: "{{ .Values.strands.environment.staging.enable }}"

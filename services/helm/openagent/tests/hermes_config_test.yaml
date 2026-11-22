@@ -13,11 +13,11 @@ release:
   name: openagent
   namespace: openagent
 tests:
-  - it: stamps the seeded hermes config.yaml with _config_version 52
+  - it: stamps the seeded hermes config.yaml with _config_version 53
     asserts:
       - matchRegex:
           path: data["config.yaml"]
-          pattern: "(?m)^_config_version: 52$"
+          pattern: "(?m)^_config_version: 53$"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent-config

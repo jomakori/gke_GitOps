@@ -4,11 +4,11 @@ description: Standalone Valkey cache (official Valkey Helm chart) — the cluste
 type: application
 
 # Tracks the upstream chart; the image tag is pinned in values.yaml, not here.
-version: 0.12.0
-appVersion: "9.1.2"
+version: 1.0.0
+appVersion: "9.1.3"
 
 dependencies:
   - name: valkey
-    version: 0.12.1
+    version: 1.0.0
     repository: https://valkey-io.github.io/valkey-helm/
     condition: valkey.enabled

@@ -27,8 +27,14 @@ tools:
     repository: ghcr.io/jomakori/gitopsctl
     # Published commit sha of the gitopsctl image (bare sha, no `sha-`
     # prefix). `latest` must never be used with IfNotPresent.
-    tag: a84af6f1784037f350d280d8e0a65217e01e8de1
+    tag: 299d909569fe18ff877e366da3b059c52392fc7b
     pullPolicy: IfNotPresent
+
+# Headroom is disabled: as a LiteLLM default-on pre_call guardrail it compressed every
+# request, including tool results, which sent agents into re-read loops. Values kept so
+# the subchart can be re-enabled by flipping this flag and restoring the guardrail entry.
+headroom:
+  enabled: false
 
 # ── LiteLLM upstream chart values ──────────────────────────────────
 litellm:
@@ -37,7 +43,7 @@ litellm:
   image:
     repository: ghcr.io/berriai/litellm
     # Immutable: upstream republishes `main-stable`, and IfNotPresent keeps one cached build per node.
-    tag: "v1.109.0@sha256:26aecfb02fb17ac6590f0549478561f9fbb3f69314317320b2e32a21beed4006"
+    tag: "v1.109.1@sha256:11175975a3093e05e92faee2fe2fe3412a3ae2fcaa849eb0fe25d5f0d8bcb2e9"
     pullPolicy: IfNotPresent
   service:
     port: 4000
@@ -78,12 +84,14 @@ litellm:
   autoscaling:
     enabled: true
     minReplicas: 2
-    # 3, not 4. Each replica parks ~1Gi of real usage (and claims 1.5Gi) on a
-    # VM that is chronically at its 16Gi ceiling — see the OrbStack overcommit
-    # analysis (Committed_AS 27.9Gi vs CommitLimit 25.7Gi). A 4th replica is a
-    # memory spike that has repeatedly pushed the node over and OOMKilled
-    # CoreDNS. Cap at 3 until the VM is raised.
-    maxReplicas: 3
+    # 4. The old cap of 3 cited the 16Gi-VM overcommit analysis (Committed_AS
+    # 27.9Gi vs CommitLimit 25.7Gi), which no longer describes the host: the VM
+    # is now 51Gi total / 114Gi CommitLimit, with MemAvailable ~34Gi and
+    # Committed_AS 39.3Gi measured 2026-11-17. Over the 48h to that date every
+    # node kept at least 56% of its memory free at its worst moment, and no pod
+    # in the cluster was OOMKilled, so the 4th replica's 1.5Gi request is covered.
+    # Re-check this comment if the VM is resized down again.
+    maxReplicas: 4
     targetCPUUtilizationPercentage: 70
     # Memory HPA (same pattern as argocd-repo-server in-cluster). Litellm is
     # memory-bound (Python + prisma + uvicorn), CPU is mostly idle even under
@@ -159,36 +167,12 @@ litellm:
           include_subpath: true
           forward_headers: true
           timeout: 300
-    # Headroom prompt-compression guardrail (services/helm/openagent/charts/headroom).
-    # Enabled by default (flipped from opt-in 2026-11-07, user-directed): the sidecar
-    # deploys by default (headroom.enabled=true — see charts/headroom/values.yaml) and
-    # every request through this proxy is compressed by default (`default_on: true`
-    # below) unless a caller explicitly opts out per-request/per-key, or the sidecar is
-    # removed entirely with `--set headroom.enabled=false`.
-    # https://docs.litellm.ai/docs/proxy/headroom
-    guardrails:
-      - guardrail_name: headroom-compression
-        litellm_params:
-          guardrail: headroom
-          mode: pre_call
-          # DNS name is the headroom Service's bare metadata.name (not
-          # release-prefixed) — same convention as claude-proxy above.
-          api_base: http://headroom.openagent.svc.cluster.local:8787
-          default_on: true
-          # Compression is an optimisation, never a dependency. fail_closed (the
-          # upstream default) makes EVERY request to EVERY model — including the
-          # terminal hop `deepseek-v4-flash-direct` — fail with
-          # `502 Headroom compression service unreachable` whenever this single-replica
-          # sidecar is restarting (it is OOMKilled and probe-timed-out under a few
-          # concurrent sessions). That is what turns the Hermes fallback chain into
-          # "every provider kept failing over". fail_open forwards the request
-          # uncompressed instead.
-          unreachable_fallback: fail_open
-          # No `api_key` here on purpose. When the shared token is enabled
-          # (headroom.proxy.auth.enabled=true) the guardrail picks up
-          # HEADROOM_API_KEY from this pod's env — the documented fallback — and
-          # the Secret is already inherited via environmentSecrets, so the
-          # credential lives in Doppler only, never in values.
+    # Headroom prompt-compression guardrail removed 2026-11-17: it compressed every
+    # request by default and replaced tool results with placeholders, so agents
+    # re-read files they had already read until they ran out of iterations. The chart
+    # stays in the tree; re-enable by restoring this entry plus `headroom.enabled: true`.
+    guardrails: []
+
     litellm_settings:
       # 1.109 defaults this to false (unsupported params 400 instead of being dropped).
       drop_params: true
@@ -346,10 +330,10 @@ hermes-agent:
   # Image for the gateway pod AND the MCP verification Jobs: both run the same
   # toolchain, and the mise node/uv on the PVC is ABI-coupled to this image.
   # Pinned explicitly so a Job never resolves an empty tag; keep in lockstep
-  # with the hermes-agent chart dependency's appVersion (1.23.0 -> v0.23.0).
+  # with the hermes-agent chart dependency's appVersion (1.26.0 -> v0.23.2).
   image:
     repository: nousresearch/hermes-agent
-    tag: "v0.23.0"
+    tag: "v0.23.2"
     pullPolicy: IfNotPresent
   # The agent runs kubectl inside the pod and needs admin access to the
   # cluster. The chart default (automount=false) left it with no identity, so
@@ -366,14 +350,14 @@ hermes-agent:
   bootstrap:
     overwrite: true
   config:
-    # Config schema version emitted by the pinned gateway image: v0.23.0
-    # carries schema 52 (hermes_cli/config_defaults.py). Keep in lockstep with
+    # Config schema version emitted by the pinned gateway image: v0.23.2
+    # carries schema 53 (hermes_cli/config_defaults.py). Keep in lockstep with
     # image.tag above. Required because bootstrap.overwrite=true re-seeds
     # config.yaml from this chart on every pod start, so the version the
     # image's config migration stamps onto the PVC is always overwritten;
     # with no version key the image's docker_config_migrate reads 0, warns
     # "predates version 12", and skips stamping on every boot.
-    _config_version: 52
+    _config_version: 53
     # Serve the first-party Webapp on the ingress Service. Non-loopback binds
     # require a Hermes sign-in provider, and the provider is OIDC against the
     # in-cluster Dex (services/helm/dex), which relays Google — so Hermes keeps
@@ -1389,6 +1373,22 @@ hermes-agent:
           include: [resolve-library-id, query-docs]
           resources: false
           prompts: false
+      tsenta:
+        lazy: true
+        # Public remote Streamable-HTTP MCP (api.autojobs.me) behind OAuth 2.1 +
+        # Dynamic Client Registration. The grant lives in /opt/data/mcp-tokens on
+        # the PVC and carries a refresh token, so it renews unattended; a revoked
+        # grant is re-established with `hermes mcp login tsenta` (paste-back flow,
+        # the host is headless). Full tool surface: reads, applications, auto-apply.
+        url: "https://api.autojobs.me/api/v1/mcp"
+        auth: oauth
+        timeout: 60
+        connect_timeout: 60
+        auth_probe: {tool: get-application-balance, args: {}}
+        tools:
+          include: [get-application-balance, get-job-recommendations, get-job-details, get-jobs-by-ids, report-job-pay-estimate, fetch-job-description, apply-to-job, request-resume-upload, upload-custom-resume, check-custom-resume, apply-with-custom-resume, approve-application, submit-application-review, get-application-review, skip-optimization, skip-cover-letter, list-applications, get-application-status, regenerate-resume, list-tracked-applications, track-application, update-tracked-application, delete-tracked-application, import-tracked-applications, get-inbox-address, list-inbox-messages, get-inbox-message, get-inbox-thread, get-inbox-unread-count, get-inbox-attachment, reply-to-inbox-message, mark-inbox-message-read, mark-all-inbox-messages-read, update-inbox-forwarding, find-networking-contacts, find-contact-email, save-outreach-draft, get-profile-status, submit-resume, set-personal-info, set-work-authorization, set-application-preferences, get-apply-preferences, set-apply-preferences, set-work-experience, set-projects, set-education, set-certifications, set-skills, set-custom-sections, set-resume-layout, list-resume-profiles, get-resume-profile, create-resume-profile, rename-resume-profile, set-default-resume-profile, delete-resume-profile, submit-feedback, explain-account, get-subscription-info, get-evaluation-summary, compare-applied-vs-served-jobs, update-feed-filters, inspect-served-jobs, assess-feed-relevance, search-companies, set-keyword-search, get-auto-apply-state, dry-run-auto-apply, commit-auto-apply-config, resolve-locations, refresh-matching-profile, get-matching-profile-summary, get-manual-applications, escalate-to-support]
+          resources: false
+          prompts: false
   env: {}
   extraEnv:
     - name: DISCORD_BOT_TOKEN
@@ -1542,7 +1542,7 @@ hermes-agent:
     # Subchart values cannot be templated, so this image is a literal copy of
     # tools.image above — bump both together.
     - name: install-gitopsctl
-      image: ghcr.io/jomakori/gitopsctl:a84af6f1784037f350d280d8e0a65217e01e8de1
+      image: ghcr.io/jomakori/gitopsctl:299d909569fe18ff877e366da3b059c52392fc7b
       imagePullPolicy: IfNotPresent
       args: ["install", "/opt/tools/gitopsctl"]
       securityContext:

@@ -42,13 +42,14 @@ valkey:
   # having: LiteLLM keeps rate-limit counters and budget reservations in Redis,
   # not just cached replies, so losing the dataset on restart under-enforces
   # limits until the database catches up.
-  dataStorage:
+  persistence:
     enabled: true
-    requestedSize: 1Gi
-    className: local-path
+    size: 1Gi
+    storageClass: local-path
   # Written into /data/conf/valkey.conf by the chart's init container and passed
-  # to valkey-server as its config file.
-  valkeyConfig: |
+  # to valkey-server as its config file. Rendered as a template by the chart, so
+  # keep it free of `{{`.
+  extraConfig: |
     appendonly yes
     appendfsync everysec
     maxmemory 192mb

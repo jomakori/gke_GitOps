@@ -1,8 +1,10 @@
 package mcp
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -59,6 +61,21 @@ func Execute(manifestPath, mode string, only []string) int {
 	failures := 0
 	for _, named := range selected {
 		name, server := named.Name, named.Server
+
+		// OAuth servers hold no credential this runner can replay. The grant is
+		// issued to the agent (DCR + PKCE), refreshed by it, and stored under the
+		// agent's token dir — handshaking from here can only 401, which says
+		// nothing about the server. Certify the durable half instead: the grant
+		// file the agent reconnects from.
+		if strings.EqualFold(server.Auth, "oauth") {
+			if err := CertifyOAuthGrant(name); err != nil {
+				failures++
+				fmt.Printf("FAIL %s: %v\n", name, err)
+				continue
+			}
+			fmt.Printf("PASS %s oauth grant on disk\n", name)
+			continue
+		}
 
 		// Unresolved placeholders first, and cheaply: the child env is built
 		// from a baseline plus what the entry declares, and a name that resolves
@@ -172,6 +189,41 @@ func printFailure(name string, err error) {
 			fmt.Printf("    %s\n", line)
 		}
 	}
+}
+
+// oauthTokenDir is where the agent keeps its per-server OAuth grants.
+// MCP_TOKEN_DIR wins so tests (and any relocation) do not need a real home dir.
+func oauthTokenDir() string {
+	if dir := os.Getenv("MCP_TOKEN_DIR"); dir != "" {
+		return dir
+	}
+	home := os.Getenv("HERMES_HOME")
+	if home == "" {
+		home = "/opt/data"
+	}
+	return filepath.Join(home, "mcp-tokens")
+}
+
+// CertifyOAuthGrant asserts a usable grant is on disk for an OAuth server: the
+// file exists, parses, and carries at least one token. Whether that token is
+// still accepted upstream is the agent's question — it owns the refresh flow.
+func CertifyOAuthGrant(name string) error {
+	path := filepath.Join(oauthTokenDir(), name+".json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("no oauth grant at %s (authenticate once with `hermes mcp login %s`): %w", path, name, err)
+	}
+	var grant struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.Unmarshal(raw, &grant); err != nil {
+		return fmt.Errorf("oauth grant %s is not valid JSON: %w", path, err)
+	}
+	if grant.AccessToken == "" && grant.RefreshToken == "" {
+		return fmt.Errorf("oauth grant %s holds no token (re-run `hermes mcp login %s`)", path, name)
+	}
+	return nil
 }
 
 // sortedKeys renders a placeholder-name set deterministically, so job output
