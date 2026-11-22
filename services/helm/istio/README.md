@@ -165,7 +165,9 @@ Two layers of VirtualServices exist:
 | privateHosts[2] | string | `"staging-trade.maklab.net"` |  |
 | privateHosts[3] | string | `"staging-strands.maklab.net"` |  |
 | virtualServices.argocd.destination.host | string | `"argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
-| virtualServices.argocd.destination.port | int | `80` |  |
+| virtualServices.argocd.destination.port | int | `443` |  |
+| virtualServices.argocd.destination.tls.enabled | bool | `true` |  |
+| virtualServices.argocd.destination.tls.insecureSkipVerify | bool | `true` |  |
 | virtualServices.argocd.enabled | bool | `true` |  |
 | virtualServices.argocd.host | string | `"argocd.maklab.net"` |  |
 | virtualServices.hermes-dashboard.destination.host | string | `"openagent-hermes-agent.openagent.svc.cluster.local"` |  |
