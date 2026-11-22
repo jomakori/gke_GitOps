@@ -352,7 +352,14 @@ spec:
                  absent means off. */}}
           {{- $svcEnv := $svc.secretEnv | default list }}
           {{- $plainEnv := $env.env | default dict }}
-          {{- if or $svcEnv (gt (len $plainEnv) 0) }}
+          {{- /* Which data source the app renders: a preview and any non-production
+                 environment serve the app's seeded fixtures, because neither holds a
+                 credential for a real cluster; production reads the cluster it runs in.
+                 `service.dataMode` names the variable that selects between them, and a
+                 value set there by hand wins over the default. */}}
+          {{- $dataMode := ternary "fixtures" "live" (or $isPreview (ne $envName "production")) }}
+          {{- $dataModeVar := $svc.dataMode | default "" }}
+          {{- if or $svcEnv (gt (len $plainEnv) 0) $dataModeVar }}
           env:
           {{- range $svcEnv }}
           - name: {{ . }}
@@ -361,6 +368,10 @@ spec:
                 name: {{ $namespace }}-vars
                 key: {{ . }}
                 optional: true
+          {{- end }}
+          {{- if and $dataModeVar (not (hasKey $plainEnv $dataModeVar)) }}
+          - name: {{ $dataModeVar }}
+            value: {{ $dataMode | quote }}
           {{- end }}
           {{- range $k, $v := $plainEnv }}
           - name: {{ $k }}
