@@ -59,6 +59,9 @@ openkite:
   service:
     # Container port: the Service is 80 and routes here.
     port: 8080
+    # Fixture data source: staging and every preview serve the console's seeded cluster,
+    # production reads the cluster it runs in. The chart picks the value per environment.
+    dataMode: OPENKITE_DATA_MODE
     resourceRequests:
       cpu: 100m
       memory: 320Mi
