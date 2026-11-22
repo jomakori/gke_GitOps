@@ -231,7 +231,7 @@ strands:
       # Released image. metadata-action strips the leading `v` from a semver
       # tag, so release v0.1.0 publishes as `0.1.0` — pinned by tag, never
       # `latest`, so a sync cannot move this Deployment on its own.
-      tag: "0.1.0"
+      tag: "0.3.0"
       subdomain: strands
   service:
     port: 8080
