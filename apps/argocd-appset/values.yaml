@@ -82,13 +82,6 @@ apps:
       # every push renders a different tag and ArgoCD rolls the pod; with a
       # constant pr-<N> the manifest never changed and staging kept the old image.
       tagTemplate: "pr-{{ .number }}-{{ .head_short_sha_7 }}"
-      # Placeholder splash for idle staging host disabled (staging-state branch resolution failing).
-      placeholder:
-        enable: false
-        helmPath: services/helm/splash/
-        namespace: istio-system
-        stateBranch: staging-state
-        statePath: idle
     parameters:
       - name: appName
         value: "openkite"

@@ -27,6 +27,10 @@ Values override layer for dexidp/dex — the cluster OIDC identity provider that
 | dex.config.staticClients[0].name | string | `"Hermes"` |  |
 | dex.config.staticClients[0].public | bool | `true` |  |
 | dex.config.staticClients[0].redirectURIs[0] | string | `"https://openagent.maklab.net/auth/callback"` |  |
+| dex.config.staticClients[1].id | string | `"strands"` |  |
+| dex.config.staticClients[1].name | string | `"Strands"` |  |
+| dex.config.staticClients[1].public | bool | `true` |  |
+| dex.config.staticClients[1].redirectURIs[0] | string | `"https://strands.maklab.net/auth/google/callback"` |  |
 | dex.config.storage.type | string | `"memory"` |  |
 | dex.config.web.http | string | `"0.0.0.0:5556"` |  |
 | dex.envFrom[0].secretRef.name | string | `"dex-secrets"` |  |
