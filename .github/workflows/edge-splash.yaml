@@ -1,0 +1,59 @@
+name: Serve the staging splash from the edge
+
+# Every staging host falls back to this page when no environment is up. Deployed
+# on change only: the Worker runs at the edge, not in the cluster.
+on:
+  push:
+    branches: [main]
+    paths:
+      - edge/splash/**
+      - .github/workflows/edge-splash.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edge-splash
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Splash
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check the worker parses
+        run: node --check edge/splash/worker.js
+
+      - name: Install the Doppler cli
+        uses: dopplerhq/cli-action@v3
+
+      - name: Fetch the Cloudflare credentials
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          set -euo pipefail
+          token="$(doppler secrets get TF_VAR_CLOUDFLARE_API_TOKEN --project devops --config ci --plain)"
+          account="$(doppler secrets get TF_VAR_CLOUDFLARE_ACCOUNT_ID --project devops --config ci --plain)"
+          if [ -z "$token" ] || [ -z "$account" ]; then
+            echo "Cloudflare credentials are missing from Doppler devops/ci" >&2
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          echo "::add-mask::$account"
+          {
+            echo "CLOUDFLARE_API_TOKEN=$token"
+            echo "CLOUDFLARE_ACCOUNT_ID=$account"
+          } >> "$GITHUB_ENV"
+
+      - name: Deploy Splash
+        run: npx --yes wrangler@4 deploy --config edge/splash/wrangler.toml
