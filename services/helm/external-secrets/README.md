@@ -75,6 +75,10 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 |-----|------|---------|-------------|
 | clusterSecretStores.ci.config | string | `"ci"` |  |
 | clusterSecretStores.ci.project | string | `"devops"` |  |
+| clusterSecretStores.strands-prd.config | string | `"strands_prd"` |  |
+| clusterSecretStores.strands-prd.project | string | `"apps"` |  |
+| clusterSecretStores.strands-stg.config | string | `"strands_stg"` |  |
+| clusterSecretStores.strands-stg.project | string | `"apps"` |  |
 | clusterSecretStores.svc_argocd.config | string | `"svc_argocd"` |  |
 | clusterSecretStores.svc_argocd.project | string | `"devops"` |  |
 | clusterSecretStores.svc_cloudflare.config | string | `"svc_cloudflare"` |  |
