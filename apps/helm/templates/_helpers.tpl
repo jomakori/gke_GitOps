@@ -367,13 +367,18 @@ spec:
             value: {{ $v | quote }}
           {{- end }}
           {{- end }}
-          {{- if and $svc.storage $svc.storage.size }}
+          {{- if or (and $svc.storage $svc.storage.size) $svc.extraVolumeMounts }}
           volumeMounts:
+          {{- if and $svc.storage $svc.storage.size }}
           - name: data
             mountPath: /data
             {{- if $svc.storage.readOnly }}
             readOnly: true
             {{- end }}
+          {{- end }}
+          {{- with $svc.extraVolumeMounts }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
           {{- end }}
           {{- range $svc.extraContainers }}
         - name: {{ .name }}
@@ -444,11 +449,16 @@ spec:
             mountPath: /data
           {{- end }}
           {{- end }}
-      {{- if and $svc.storage $svc.storage.size }}
+      {{- if or (and $svc.storage $svc.storage.size) $svc.extraVolumes }}
       volumes:
+      {{- if and $svc.storage $svc.storage.size }}
       - name: data
         persistentVolumeClaim:
           claimName: {{ $namespace }}-pvc
+      {{- end }}
+      {{- with $svc.extraVolumes }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
       {{- end }}
 
 {{- /* ═════════════════════════════════════════════════════════════ */}}
