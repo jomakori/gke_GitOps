@@ -113,7 +113,7 @@ tickerlight:
           - TRADING_ALERT_WEBHOOK_SECRET
     production:
       subdomain: trade
-      tag: v0.4.2
+      tag: v0.4.3
       # The console may open an arming window and trip or close it only here: it
       # needs the engine's admin URL, and an environment without this key renders
       # no forms and no routes. Who may use them is the Cloudflare Access policy
