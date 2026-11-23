@@ -111,10 +111,10 @@ tickerlight:
     production:
       subdomain: trade
       tag: v0.4.2
-      # The console may open an arming window only here: it needs the engine's
-      # admin URL, and an environment without this key renders no form and no
-      # route. Who may use it is the Cloudflare Access policy on the host, not
-      # anything in this file.
+      # The console may open an arming window and trip or close it only here: it
+      # needs the engine's admin URL, and an environment without this key renders
+      # no forms and no routes. Who may use them is the Cloudflare Access policy
+      # on the host, not anything in this file.
       env:
         TICKERLIGHT_ENGINE_ADMIN_URL: "http://127.0.0.1:8090"
   service:
