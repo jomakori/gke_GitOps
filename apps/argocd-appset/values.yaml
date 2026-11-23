@@ -38,7 +38,7 @@ strands:
       # Passed to the umbrella as `strands.enable_staging`. Leave false unless
       # apps/helm `environments.staging.tag` is a real staging image: with it
       # false the umbrella renders neither the staging Deployment nor its host.
-      enable: true
+      enable: false
     production:
       dopplerConfig: strands_prd
 
