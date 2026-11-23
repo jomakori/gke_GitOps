@@ -12,8 +12,24 @@ app-template:
           env:
             # KasmVNC kiosk target: Discord web app in a Chromium single-app desktop.
             LAUNCH_URL: https://discord.com/app
-            VNC_RESOLUTION: 1920x1080
+            # Replaces kasm_startup.sh's default args (--start-maximized) so the
+            # browser comes up fullscreen with no tab strip, toolbar or infobars.
+            APP_ARGS: >-
+              --kiosk --no-first-run --no-default-browser-check --disable-infobars
+              --disable-session-crashed-bubble --disable-features=Translate,MediaRouter
+              --password-store=basic --autoplay-policy=no-user-gesture-required
+            VNC_RESOLUTION: 1280x800
             MAX_FRAME_RATE: "30"
+            # Voice needs both audio streams; everything else is dead weight for a
+            # single-tab kiosk and just burns CPU next to the encoder.
+            KASM_SVC_AUDIO: "1"
+            KASM_SVC_AUDIO_INPUT: "1"
+            KASM_SVC_GAMEPAD: "0"
+            KASM_SVC_PRINTER: "0"
+            KASM_SVC_UPLOADS: "0"
+            KASM_SVC_SMARTCARD: "0"
+            KASM_SVC_RECORDER: "0"
+            KASM_SVC_WEBCAM: "0"
           probes:
             startup:
               enabled: true
@@ -36,7 +52,7 @@ app-template:
           resources:
             requests:
               cpu: 200m
-              memory: 1Gi
+              memory: 512Mi
             limits:
               memory: 2Gi
       pod:
