@@ -184,7 +184,7 @@ const STRANDS_SPLASH = `<!doctype html>
     <span class="tag">staging</span>
   </div>
   <h1>Staging environment is not up.</h1>
-  <p>Add the <a href="https://github.com/jomakori/strands/pulls?q=is%3Apr+is%3Aopen+label%3Apreview">preview label</a> to deploy this env.</p>
+  <p>Add the <a href="https://github.com/jomakori/strands/pulls?q=is%3Apr+is%3Aopen+label%3Astaging">staging label</a> to deploy this env.</p>
   <p class="hint">Closing the pull request takes it down again.</p>
   <footer>edge splash · served by Cloudflare Workers</footer>
 </main>
