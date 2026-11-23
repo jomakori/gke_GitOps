@@ -1,0 +1,61 @@
+# Overrides for bjw-s app-template (vendored tarball in charts/). This chart
+# owns no Kubernetes manifests: deployment, service, probes and volumes are
+# all expressed here.
+app-template:
+  controllers:
+    main:
+      containers:
+        main:
+          image:
+            repository: kasmweb/chromium
+            tag: 1.19.0
+          env:
+            # KasmVNC kiosk target: Discord web app in a Chromium single-app desktop.
+            LAUNCH_URL: https://discord.com/app
+            VNC_RESOLUTION: 1920x1080
+            MAX_FRAME_RATE: "30"
+          probes:
+            startup:
+              enabled: true
+              type: TCP
+              port: 6901
+              spec:
+                failureThreshold: 40
+                periodSeconds: 5
+            readiness:
+              enabled: true
+              type: TCP
+              port: 6901
+            liveness:
+              enabled: true
+              type: TCP
+              port: 6901
+              spec:
+                failureThreshold: 6
+                periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 1Gi
+            limits:
+              memory: 2Gi
+      pod:
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 0
+          fsGroup: 0
+  service:
+    main:
+      controller: main
+      ports:
+        http:
+          port: 6901
+          protocol: HTTP
+  persistence:
+    # KasmVNC + Chromium crash on the 64Mi default /dev/shm.
+    shm:
+      type: emptyDir
+      medium: Memory
+      sizeLimit: 512Mi
+      globalMounts:
+        - path: /dev/shm

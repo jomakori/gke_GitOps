@@ -570,6 +570,26 @@ services:
           - .metadata.annotations
           - .metadata.labels."reconcile.external-secrets.io/managed"
 
+  discord:
+    enable: true
+    syncWave: '6'
+    argocdNamespace: argocd
+    argoProject: default
+    destNamespace: discord
+    helmPath: services/helm/discord
+    gateways:
+      # Public on purpose: Cloudflare's wildcard *.maklab.net record already
+      # points at the tunnel, so the VirtualService host alone makes it live.
+      # The Kasm desktop keeps its own VNC password login.
+      enable_public: true
+      subdomain: chat
+      destination:
+        servicePort: 6901
+        # KasmVNC serves HTTPS only on 6901 with a self-signed cert.
+        tls: true
+    syncOptions:
+      - CreateNamespace=true
+
   opendesign:
     enable: true
     # Stateful and already running outside ArgoCD: removal must orphan the
