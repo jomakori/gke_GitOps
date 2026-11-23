@@ -727,6 +727,9 @@ hermes-agent:
             jev_base_url: "https://api.typesafe.ai"
             jev_model: "jev-latest"
             jev_routing_enabled: false
+            # Unnamed dispatches stop being "pick something" and go here first;
+            # this agent's own unnamed dispatch is then placed by Jev (OMR-21).
+            coordinator_agent: sisyphus
             # Per-agent/category chains, walked on retry_on_errors (401 while a
             # Copilot OAuth token is unseeded, 429/5xx under throttling, 402 when
             # a subscription provider is quota-exhausted).
