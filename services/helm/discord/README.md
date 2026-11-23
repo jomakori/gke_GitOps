@@ -14,9 +14,18 @@ Discord in a KasmVNC web desktop (Chromium kiosk) — values layer over bjw-s ap
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| app-template.controllers.main.containers.main.env.APP_ARGS | string | `"--kiosk --no-first-run --no-default-browser-check --disable-infobars --disable-session-crashed-bubble --disable-features=Translate,MediaRouter --password-store=basic --autoplay-policy=no-user-gesture-required"` |  |
+| app-template.controllers.main.containers.main.env.KASM_SVC_AUDIO | string | `"1"` |  |
+| app-template.controllers.main.containers.main.env.KASM_SVC_AUDIO_INPUT | string | `"1"` |  |
+| app-template.controllers.main.containers.main.env.KASM_SVC_GAMEPAD | string | `"0"` |  |
+| app-template.controllers.main.containers.main.env.KASM_SVC_PRINTER | string | `"0"` |  |
+| app-template.controllers.main.containers.main.env.KASM_SVC_RECORDER | string | `"0"` |  |
+| app-template.controllers.main.containers.main.env.KASM_SVC_SMARTCARD | string | `"0"` |  |
+| app-template.controllers.main.containers.main.env.KASM_SVC_UPLOADS | string | `"0"` |  |
+| app-template.controllers.main.containers.main.env.KASM_SVC_WEBCAM | string | `"0"` |  |
 | app-template.controllers.main.containers.main.env.LAUNCH_URL | string | `"https://discord.com/app"` |  |
 | app-template.controllers.main.containers.main.env.MAX_FRAME_RATE | string | `"30"` |  |
-| app-template.controllers.main.containers.main.env.VNC_RESOLUTION | string | `"1920x1080"` |  |
+| app-template.controllers.main.containers.main.env.VNC_RESOLUTION | string | `"1280x800"` |  |
 | app-template.controllers.main.containers.main.image.repository | string | `"kasmweb/chromium"` |  |
 | app-template.controllers.main.containers.main.image.tag | string | `"1.19.0"` |  |
 | app-template.controllers.main.containers.main.probes.liveness.enabled | bool | `true` |  |
@@ -34,7 +43,7 @@ Discord in a KasmVNC web desktop (Chromium kiosk) — values layer over bjw-s ap
 | app-template.controllers.main.containers.main.probes.startup.type | string | `"TCP"` |  |
 | app-template.controllers.main.containers.main.resources.limits.memory | string | `"2Gi"` |  |
 | app-template.controllers.main.containers.main.resources.requests.cpu | string | `"200m"` |  |
-| app-template.controllers.main.containers.main.resources.requests.memory | string | `"1Gi"` |  |
+| app-template.controllers.main.containers.main.resources.requests.memory | string | `"512Mi"` |  |
 | app-template.controllers.main.pod.securityContext.fsGroup | int | `0` |  |
 | app-template.controllers.main.pod.securityContext.runAsGroup | int | `0` |  |
 | app-template.controllers.main.pod.securityContext.runAsUser | int | `1000` |  |
