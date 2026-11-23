@@ -24,10 +24,6 @@ clusterSecretStores:
   svc_cloudflare:
     project: devops
     config: svc_cloudflare
-  # strands reads its own config from here; apps/helm binds <app>-vars to it.
-  svc_strands:
-    project: devops
-    config: svc_strands
   svc_openagent:
     project: devops
     config: svc_openagent
@@ -57,6 +53,17 @@ clusterSecretStores:
   tickerlight-prd:
     project: apps
     config: tickerlight_prd
+  # Strands migrated out of `devops/svc_strands` to the standing per-app layout
+  # (project `apps`). The two configs do not inherit from one another, so the
+  # staging host cannot read a production credential. apps/argocd-appset names
+  # these configs per environment; the store names are doppler-strands-stg and
+  # doppler-strands-prd.
+  strands-stg:
+    project: apps
+    config: strands_stg
+  strands-prd:
+    project: apps
+    config: strands_prd
 
 # PodDisruptionBudget for the secrets controller. 2 replicas; every workload's secrets
 # depend on it, and without a PDB a drain can remove both.

@@ -108,7 +108,11 @@ virtualServices:
     host: argocd.maklab.net
     destination:
       host: argo-cd-argocd-server.argocd.svc.cluster.local
-      port: 80
+      port: 443
+      tls:
+        enabled: true
+        # argo-cd serves a self-signed cert in-cluster by default.
+        insecureSkipVerify: true
 
   opencost:
     enabled: false
@@ -139,6 +143,9 @@ privateHosts:
   - "*.openkite.maklab.net"
   - "trade.maklab.net"
   - "staging-trade.maklab.net"
+  # strands production is public (the app runs its own Google sign-in); its
+  # staging host has no accounts, so it is gated like the other staging hosts.
+  - "staging-strands.maklab.net"
 
 # PodDisruptionBudget for the ingress gateway. It runs 2 replicas and fronts every
 # request into the cluster, but had no PDB — a node drain could take both.

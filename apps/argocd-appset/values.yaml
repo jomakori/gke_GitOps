@@ -25,12 +25,22 @@ tickerlight:
     production:
       dopplerConfig: tickerlight_prd
 
-# Strands — production only, so its namespace is created from this block alone
-# (templates/namespaces.yaml) and no staging/preview namespace exists.
+# Strands — one standing staging host plus production. Both environments read
+# their own config in the `apps` Doppler project (`strands_stg`, `strands_prd`),
+# rendered as the doppler-strands-stg / doppler-strands-prd ClusterSecretStores.
+# The staging environment's namespace is created from this block
+# (templates/namespaces.yaml) and the staging render stays off until `enable`
+# flips with a pinned image tag.
 strands:
   environment:
+    staging:
+      dopplerConfig: strands_stg
+      # Passed to the umbrella as `strands.enable_staging`. Leave false unless
+      # apps/helm `environments.staging.tag` is a real staging image: with it
+      # false the umbrella renders neither the staging Deployment nor its host.
+      enable: false
     production:
-      dopplerConfig: svc_strands
+      dopplerConfig: strands_prd
 
 # App Configurations — key = app name (used for Application metadata.name + chart lookup)
 apps:
@@ -82,13 +92,6 @@ apps:
       # every push renders a different tag and ArgoCD rolls the pod; with a
       # constant pr-<N> the manifest never changed and staging kept the old image.
       tagTemplate: "pr-{{ .number }}-{{ .head_short_sha_7 }}"
-      # Placeholder splash for idle staging host disabled (staging-state branch resolution failing).
-      placeholder:
-        enable: false
-        helmPath: services/helm/splash/
-        namespace: istio-system
-        stateBranch: staging-state
-        statePath: idle
     parameters:
       - name: appName
         value: "openkite"
@@ -136,8 +139,9 @@ apps:
       - name: tickerlight.enable_staging
         value: "true"
 
-  # Strands: public host, own Postgres. No preview appset and no standing
-  # staging environment — one production Application, one namespace.
+  # Strands: public production host that runs its own Google sign-in, plus one
+  # standing staging host (gated, no accounts). No preview appset: staging is a
+  # single pinned tag, not a namespace per PR.
   strands:
     enable: true
     syncWave: "6"
@@ -164,7 +168,11 @@ apps:
     parameters:
       - name: appName
         value: "strands"
+      - name: strands.environments.staging.dopplerConfig
+        value: "{{ .Values.strands.environment.staging.dopplerConfig }}"
       - name: strands.environments.production.dopplerConfig
         value: "{{ .Values.strands.environment.production.dopplerConfig }}"
+      # One source of truth for the render gate: the staging tag and this flag
+      # are written together, so a tag can never render against a stale flag.
       - name: strands.enable_staging
-        value: "false"
+        value: "{{ .Values.strands.environment.staging.enable }}"
