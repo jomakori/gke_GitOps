@@ -241,7 +241,7 @@ strands:
       # Placeholder, not a release: the staging pin rewrites this to `pr-<N>` from
       # the app repo's staging image job. It is never a semver tag, so a released
       # image cannot be mistaken for staging content if the flag is flipped early.
-      tag: "0.0.0"
+      tag: "pr-56"
     production:
       # Released image. metadata-action strips the leading `v` from a semver
       # tag, so release v0.1.0 publishes as `0.1.0` — pinned by tag, never
