@@ -12,6 +12,8 @@ app-template:
           env:
             # KasmVNC kiosk target: Discord web app in a Chromium single-app desktop.
             LAUNCH_URL: https://discord.com/app
+            # Cloudflare Access is the only gate; KasmVNC basic auth prompt removed.
+            VNCOPTIONS: "-PreferBandwidth -DynamicQualityMin=4 -DynamicQualityMax=7 -DLP_ClipDelay=0 -DisableBasicAuth"
             # Replaces kasm_startup.sh's default args (--start-maximized) so the
             # browser comes up fullscreen with no tab strip, toolbar or infobars.
             APP_ARGS: >-
