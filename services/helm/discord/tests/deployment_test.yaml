@@ -60,3 +60,14 @@ tests:
           path: spec.template.spec.containers[0].volumeMounts
           content:
             mountPath: /home/kasm-user
+
+  - it: turns off KasmVNC basic auth so Cloudflare Access is the only gate
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: VNCOPTIONS
+            value: "-PreferBandwidth -DynamicQualityMin=4 -DynamicQualityMax=7 -DLP_ClipDelay=0 -DisableBasicAuth"
