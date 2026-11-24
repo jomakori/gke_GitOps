@@ -25,6 +25,8 @@ Discord in a KasmVNC web desktop (Chromium kiosk) — values layer over bjw-s ap
 | app-template.controllers.main.containers.main.env.KASM_SVC_WEBCAM | string | `"0"` |  |
 | app-template.controllers.main.containers.main.env.LAUNCH_URL | string | `"https://discord.com/app"` |  |
 | app-template.controllers.main.containers.main.env.MAX_FRAME_RATE | string | `"30"` |  |
+| app-template.controllers.main.containers.main.env.VNC_PW.valueFrom.secretKeyRef.key | string | `"VNC_PW"` |  |
+| app-template.controllers.main.containers.main.env.VNC_PW.valueFrom.secretKeyRef.name | string | `"discord-vnc"` |  |
 | app-template.controllers.main.containers.main.env.VNC_RESOLUTION | string | `"1280x800"` |  |
 | app-template.controllers.main.containers.main.image.repository | string | `"kasmweb/chromium"` |  |
 | app-template.controllers.main.containers.main.image.tag | string | `"1.19.0"` |  |
@@ -44,9 +46,24 @@ Discord in a KasmVNC web desktop (Chromium kiosk) — values layer over bjw-s ap
 | app-template.controllers.main.containers.main.resources.limits.memory | string | `"2Gi"` |  |
 | app-template.controllers.main.containers.main.resources.requests.cpu | string | `"200m"` |  |
 | app-template.controllers.main.containers.main.resources.requests.memory | string | `"512Mi"` |  |
+| app-template.controllers.main.initContainers.chown-profile.command[0] | string | `"sh"` |  |
+| app-template.controllers.main.initContainers.chown-profile.command[1] | string | `"-c"` |  |
+| app-template.controllers.main.initContainers.chown-profile.command[2] | string | `"chown -R 1000:0 /profile"` |  |
+| app-template.controllers.main.initContainers.chown-profile.image.repository | string | `"busybox"` |  |
+| app-template.controllers.main.initContainers.chown-profile.image.tag | string | `"1.36"` |  |
+| app-template.controllers.main.initContainers.chown-profile.resources.limits.memory | string | `"64Mi"` |  |
+| app-template.controllers.main.initContainers.chown-profile.resources.requests.cpu | string | `"50m"` |  |
+| app-template.controllers.main.initContainers.chown-profile.resources.requests.memory | string | `"64Mi"` |  |
 | app-template.controllers.main.pod.securityContext.fsGroup | int | `0` |  |
 | app-template.controllers.main.pod.securityContext.runAsGroup | int | `0` |  |
 | app-template.controllers.main.pod.securityContext.runAsUser | int | `1000` |  |
+| app-template.persistence.chromium-profile.accessMode | string | `"ReadWriteOnce"` |  |
+| app-template.persistence.chromium-profile.advancedMounts.main.chown-profile[0].path | string | `"/profile"` |  |
+| app-template.persistence.chromium-profile.advancedMounts.main.main[0].path | string | `"/home/kasm-user/.config/chromium"` |  |
+| app-template.persistence.chromium-profile.forceRename | string | `"discord-chromium-profile"` |  |
+| app-template.persistence.chromium-profile.size | string | `"2Gi"` |  |
+| app-template.persistence.chromium-profile.storageClass | string | `"local-path"` |  |
+| app-template.persistence.chromium-profile.type | string | `"persistentVolumeClaim"` |  |
 | app-template.persistence.shm.globalMounts[0].path | string | `"/dev/shm"` |  |
 | app-template.persistence.shm.medium | string | `"Memory"` |  |
 | app-template.persistence.shm.sizeLimit | string | `"512Mi"` |  |
