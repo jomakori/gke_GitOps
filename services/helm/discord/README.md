@@ -54,6 +54,7 @@ Discord in a KasmVNC web desktop (Chromium kiosk) — values layer over bjw-s ap
 | app-template.controllers.main.initContainers.chown-profile.resources.limits.memory | string | `"64Mi"` |  |
 | app-template.controllers.main.initContainers.chown-profile.resources.requests.cpu | string | `"50m"` |  |
 | app-template.controllers.main.initContainers.chown-profile.resources.requests.memory | string | `"64Mi"` |  |
+| app-template.controllers.main.initContainers.chown-profile.securityContext.runAsUser | int | `0` |  |
 | app-template.controllers.main.pod.securityContext.fsGroup | int | `0` |  |
 | app-template.controllers.main.pod.securityContext.runAsGroup | int | `0` |  |
 | app-template.controllers.main.pod.securityContext.runAsUser | int | `1000` |  |
@@ -64,6 +65,8 @@ Discord in a KasmVNC web desktop (Chromium kiosk) — values layer over bjw-s ap
 | app-template.persistence.chromium-profile.size | string | `"2Gi"` |  |
 | app-template.persistence.chromium-profile.storageClass | string | `"local-path"` |  |
 | app-template.persistence.chromium-profile.type | string | `"persistentVolumeClaim"` |  |
+| app-template.persistence.kasm-config.globalMounts[0].path | string | `"/home/kasm-user/.config"` |  |
+| app-template.persistence.kasm-config.type | string | `"emptyDir"` |  |
 | app-template.persistence.shm.globalMounts[0].path | string | `"/dev/shm"` |  |
 | app-template.persistence.shm.medium | string | `"Memory"` |  |
 | app-template.persistence.shm.sizeLimit | string | `"512Mi"` |  |
