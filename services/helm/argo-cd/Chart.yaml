@@ -13,5 +13,5 @@ dependencies:
   # first sync is also an upgrade — review the diff before enabling). Renovate
   # tracks this pin.
   - name: argo-cd
-    version: 10.18.0
+    version: 10.18.3
     repository: https://argoproj.github.io/argo-helm
