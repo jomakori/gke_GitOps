@@ -96,6 +96,11 @@ app-template:
           protocol: HTTP
   persistence:
     # KasmVNC + Chromium crash on the 64Mi default /dev/shm.
+    # Image entrypoint seeds ~/.config; a PVC mountpoint leaves .config root-owned.
+    kasm-config:
+      type: emptyDir
+      globalMounts:
+        - path: /home/kasm-user/.config
     shm:
       type: emptyDir
       medium: Memory
