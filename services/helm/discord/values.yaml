@@ -74,6 +74,8 @@ app-template:
             - sh
             - -c
             - chown -R 1000:0 /profile
+          securityContext:
+            runAsUser: 0
           resources:
             requests:
               cpu: 50m
