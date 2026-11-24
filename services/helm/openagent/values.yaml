@@ -333,7 +333,7 @@ hermes-agent:
   # with the hermes-agent chart dependency's appVersion (1.26.0 -> v0.23.2).
   image:
     repository: nousresearch/hermes-agent
-    tag: "v0.23.2"
+    tag: "v0.23.3"
     pullPolicy: IfNotPresent
   # The agent runs kubectl inside the pod and needs admin access to the
   # cluster. The chart default (automount=false) left it with no identity, so
@@ -727,6 +727,12 @@ hermes-agent:
             jev_base_url: "https://api.typesafe.ai"
             jev_model: "jev-latest"
             jev_routing_enabled: false
+            # Confidence bar for the second hop: a pick that does not clear it is
+            # refused and the static target stands.
+            jev_routing_threshold: 0.6
+            # Unnamed dispatches stop being "pick something" and go here first;
+            # this agent's own unnamed dispatch is then placed by Jev (OMR-21).
+            coordinator_agent: sisyphus
             # Per-agent/category chains, walked on retry_on_errors (401 while a
             # Copilot OAuth token is unseeded, 429/5xx under throttling, 402 when
             # a subscription provider is quota-exhausted).

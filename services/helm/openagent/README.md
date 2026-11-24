@@ -778,9 +778,11 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[0] | string | `"litellm/deepseek-v4-flash-go"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[1] | string | `"litellm/claude-haiku-4-5"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.chains.sisyphus[2] | string | `"litellm/deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.plugins.entries.omo.settings.coordinator_agent | string | `"sisyphus"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_base_url | string | `"https://api.typesafe.ai"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_model | string | `"jev-latest"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_routing_enabled | bool | `false` |  |
+| hermes-agent.config.plugins.entries.omo.settings.jev_routing_threshold | float | `0.6` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_shadow_enabled | bool | `true` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_shadow_packs[0] | string | `"pick_agent"` |  |
 | hermes-agent.config.plugins.entries.omo.settings.jev_shadow_path | string | `"/opt/data/.omo/jev-shadow.jsonl"` |  |

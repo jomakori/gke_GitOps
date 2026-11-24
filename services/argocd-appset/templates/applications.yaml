@@ -51,6 +51,9 @@
 {{-       $gatewayParams = append $gatewayParams (dict "name" (printf "virtualServices.%s.timeout" $vsKey) "value" $sv.gateways.timeout) }}
 {{-     end }}
 {{-   end }}
+{{-   if $destCfg.tls }}
+{{-     $gatewayParams = append $gatewayParams (dict "name" (printf "virtualServices.%s.destination.tls.enabled" $vsKey) "value" "true") }}
+{{-   end }}
 {{- end }}
 {{- end }}
 {{- if $.Values.accessTeamDomain }}
