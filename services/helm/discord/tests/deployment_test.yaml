@@ -42,6 +42,15 @@ tests:
             name: kasm-config
             mountPath: /home/kasm-user/.config
 
+  - it: chowns both the profile and .config so the entrypoint can preserve times
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: spec.template.spec.initContainers[0].command[2]
+          value: chown -R 1000:0 /profile /home/kasm-user/.config
+
   - it: never mounts over bare /home/kasm-user (would shadow image defaults)
     asserts:
       - documentSelector:

@@ -48,7 +48,7 @@ Discord in a KasmVNC web desktop (Chromium kiosk) — values layer over bjw-s ap
 | app-template.controllers.main.containers.main.resources.requests.memory | string | `"512Mi"` |  |
 | app-template.controllers.main.initContainers.chown-profile.command[0] | string | `"sh"` |  |
 | app-template.controllers.main.initContainers.chown-profile.command[1] | string | `"-c"` |  |
-| app-template.controllers.main.initContainers.chown-profile.command[2] | string | `"chown -R 1000:0 /profile"` |  |
+| app-template.controllers.main.initContainers.chown-profile.command[2] | string | `"chown -R 1000:0 /profile /home/kasm-user/.config"` |  |
 | app-template.controllers.main.initContainers.chown-profile.image.repository | string | `"busybox"` |  |
 | app-template.controllers.main.initContainers.chown-profile.image.tag | string | `"1.36"` |  |
 | app-template.controllers.main.initContainers.chown-profile.resources.limits.memory | string | `"64Mi"` |  |

@@ -73,7 +73,7 @@ app-template:
           command:
             - sh
             - -c
-            - chown -R 1000:0 /profile
+            - chown -R 1000:0 /profile /home/kasm-user/.config
           securityContext:
             runAsUser: 0
           resources:
