@@ -30,6 +30,13 @@ app-template:
             KASM_SVC_SMARTCARD: "0"
             KASM_SVC_RECORDER: "0"
             KASM_SVC_WEBCAM: "0"
+            # kasmvncpasswd reads this at container start (vnc_startup.sh) and
+            # replaces the image's publicly-documented default password.
+            VNC_PW:
+              valueFrom:
+                secretKeyRef:
+                  name: discord-vnc
+                  key: VNC_PW
           probes:
             startup:
               enabled: true
@@ -55,6 +62,24 @@ app-template:
               memory: 512Mi
             limits:
               memory: 2Gi
+      initContainers:
+        # Chromium profile PVC starts root-owned (default provisioner behaviour);
+        # kasm-user (uid 1000, gid 0 per the live pod) needs write access before
+        # the main container starts, or Chromium falls back to an ephemeral profile.
+        chown-profile:
+          image:
+            repository: busybox
+            tag: "1.36"
+          command:
+            - sh
+            - -c
+            - chown -R 1000:0 /profile
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 64Mi
       pod:
         securityContext:
           runAsUser: 1000
@@ -75,3 +100,21 @@ app-template:
       sizeLimit: 512Mi
       globalMounts:
         - path: /dev/shm
+    # Chromium profile (143MB after a Discord login) survives restarts here.
+    # NOT mounted at /home/kasm-user: the image seeds /home-kasm-default-profile
+    # into an empty home at startup, and a volume over home would shadow that.
+    chromium-profile:
+      type: persistentVolumeClaim
+      accessMode: ReadWriteOnce
+      size: 2Gi
+      storageClass: local-path
+      # itemCount is 1 (this is the only persistentVolumeClaim-type item; `shm`
+      # is emptyDir and doesn't count), so the default naming rule would not
+      # append the identifier suffix. forceRename pins the PVC name explicitly.
+      forceRename: discord-chromium-profile
+      advancedMounts:
+        main:
+          main:
+            - path: /home/kasm-user/.config/chromium
+          chown-profile:
+            - path: /profile

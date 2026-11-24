@@ -64,6 +64,12 @@ clusterSecretStores:
   strands-prd:
     project: apps
     config: strands_prd
+  # Discord kiosk (services/helm/discord). Map key is `discord` (not
+  # `discord-prd`) so the generated ClusterSecretStore is `doppler-discord`,
+  # matching the single prd-only Doppler config for this app.
+  discord:
+    project: apps
+    config: discord_prd
 
 # PodDisruptionBudget for the secrets controller. 2 replicas; every workload's secrets
 # depend on it, and without a PDB a drain can remove both.

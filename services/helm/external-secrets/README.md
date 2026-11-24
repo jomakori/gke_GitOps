@@ -75,6 +75,8 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 |-----|------|---------|-------------|
 | clusterSecretStores.ci.config | string | `"ci"` |  |
 | clusterSecretStores.ci.project | string | `"devops"` |  |
+| clusterSecretStores.discord.config | string | `"discord_prd"` |  |
+| clusterSecretStores.discord.project | string | `"apps"` |  |
 | clusterSecretStores.strands-prd.config | string | `"strands_prd"` |  |
 | clusterSecretStores.strands-prd.project | string | `"apps"` |  |
 | clusterSecretStores.strands-stg.config | string | `"strands_stg"` |  |
@@ -91,8 +93,6 @@ Any chart that needs secrets must be in wave ≥ 2 (after ClusterSecretStores ex
 | clusterSecretStores.svc_openagent.project | string | `"devops"` |  |
 | clusterSecretStores.svc_postgres_operator.config | string | `"svc_postgres_operator"` |  |
 | clusterSecretStores.svc_postgres_operator.project | string | `"devops"` |  |
-| clusterSecretStores.svc_strands.config | string | `"svc_strands"` |  |
-| clusterSecretStores.svc_strands.project | string | `"devops"` |  |
 | clusterSecretStores.svc_tailscale.config | string | `"svc_tailscale"` |  |
 | clusterSecretStores.svc_tailscale.project | string | `"devops"` |  |
 | clusterSecretStores.tickerlight-prd.config | string | `"tickerlight_prd"` |  |
