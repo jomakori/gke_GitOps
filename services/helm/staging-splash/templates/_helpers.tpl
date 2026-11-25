@@ -21,19 +21,36 @@ app.kubernetes.io/component: splash
 {{- toYaml $apps -}}
 {{- end -}}
 
-{{- /* staging-splash.customPages — page files for apps with splash.page: custom,
-       as a YAML list of {key, file, content}. Fails the render when the file is
-       missing, so a themed app never silently falls back to the generic page. */}}
+{{- /* staging-splash.customPages — page files for apps with splash.page: custom
+       or splash.page: pr-gated, as a YAML list of {key, file, content}.
+       "custom" reads the app's own pages/<key>.html verbatim. "pr-gated" reads
+       the one shared pages/pr-gated.html template and renders it with the
+       app's splash.prsUrl, so every pr-gated app shares identical text and
+       layout and differs only in the link each page carries. Fails the render
+       when the backing file is missing, so a themed app never silently falls
+       back to the generic page. */}}
 {{- define "staging-splash.customPages" -}}
 {{- $root := . -}}
 {{- $pages := list -}}
 {{- range $key, $app := (include "staging-splash.apps" . | fromYaml) -}}
-{{- if and $app.splash (eq ($app.splash.page | default "") "custom") -}}
+{{- $pageKind := "" -}}
+{{- if $app.splash -}}
+{{- $pageKind = ($app.splash.page | default "") -}}
+{{- end -}}
+{{- if eq $pageKind "custom" -}}
 {{- $file := printf "pages/%s.html" $key -}}
 {{- $content := $root.Files.Get $file -}}
 {{- if eq $content "" -}}
 {{- fail (printf "staging-splash: %s is required because %s.splash.page is 'custom'" $file $key) -}}
 {{- end -}}
+{{- $pages = append $pages (dict "key" $key "file" (printf "%s.html" $key) "content" $content) -}}
+{{- else if eq $pageKind "pr-gated" -}}
+{{- $file := "pages/pr-gated.html" -}}
+{{- $raw := $root.Files.Get $file -}}
+{{- if eq $raw "" -}}
+{{- fail (printf "staging-splash: %s is required because %s.splash.page is 'pr-gated'" $file $key) -}}
+{{- end -}}
+{{- $content := tpl $raw (dict "PrsUrl" ($app.splash.prsUrl | default "")) -}}
 {{- $pages = append $pages (dict "key" $key "file" (printf "%s.html" $key) "content" $content) -}}
 {{- end -}}
 {{- end -}}
@@ -55,7 +72,11 @@ app.kubernetes.io/component: splash
 {{- end -}}
 {{- if and $enabled (ne $subdomain "") -}}
 {{- $page := "generic.html" -}}
-{{- if and $app.splash (eq ($app.splash.page | default "") "custom") -}}
+{{- $pageKind := "" -}}
+{{- if $app.splash -}}
+{{- $pageKind = ($app.splash.page | default "") -}}
+{{- end -}}
+{{- if or (eq $pageKind "custom") (eq $pageKind "pr-gated") -}}
 {{- $page = printf "%s.html" $key -}}
 {{- end -}}
 {{- $hosts = append $hosts (dict "key" $key "host" (printf "%s.%s" $subdomain $domain) "page" $page) -}}

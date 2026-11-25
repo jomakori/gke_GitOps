@@ -48,6 +48,11 @@ openkite:
     requestTimeout: 30s
     retryAttempts: 3
     retryTimeout: 5s
+  # Shared staging-splash copy (services/helm/staging-splash/pages/pr-gated.html),
+  # same text/layout as every other pr-gated app; only prsUrl differs.
+  splash:
+    page: pr-gated
+    prsUrl: https://github.com/jomakori/openkite/pulls?q=is%3Apr+is%3Aopen+label%3Astaging
   environments:
     staging:
       # Single-label host: a third DNS label has no certificate under the wildcard.
@@ -77,6 +82,11 @@ tickerlight:
   # services/helm/istio/values.yaml `privateHosts`.
   image:
     repository: ghcr.io/jomakori/tickerlight
+  # Shared staging-splash copy (services/helm/staging-splash/pages/pr-gated.html),
+  # same text/layout as every other pr-gated app; only prsUrl differs.
+  splash:
+    page: pr-gated
+    prsUrl: https://github.com/jomakori/Tickerlight/pulls?q=is%3Apr+is%3Aopen+label%3Astaging
   environments:
     staging:
       subdomain: staging-trade
