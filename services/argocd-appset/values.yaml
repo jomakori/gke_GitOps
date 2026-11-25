@@ -185,7 +185,7 @@ services:
     helmPath: services/helm/staging-splash
     valueFiles:
       - values.yaml
-      - ../../apps/helm/values.yaml
+      - ../../../apps/helm/values.yaml
     syncOptions:
       - CreateNamespace=true
 
