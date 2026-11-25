@@ -131,3 +131,51 @@ tests:
           path: data["nginx.conf"]
           pattern: "try_files /strands\\.html =404;"
         template: templates/configmap.yaml
+
+  - it: gives two pr-gated apps identical copy and each its own PR link
+    set:
+      openkite:
+        enable_staging: true
+        environments:
+          staging:
+            subdomain: staging-openkite
+        splash:
+          page: pr-gated
+          prsUrl: https://github.com/jomakori/openkite/pulls?q=is%3Apr+is%3Aopen+label%3Astaging
+      tickerlight:
+        enable_staging: true
+        environments:
+          staging:
+            subdomain: staging-trade
+        splash:
+          page: pr-gated
+          prsUrl: https://github.com/jomakori/Tickerlight/pulls?q=is%3Apr+is%3Aopen+label%3Astaging
+    asserts:
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "try_files /openkite\\.html =404;"
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "try_files /tickerlight\\.html =404;"
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["openkite.html"]
+          pattern: "Staging environment is not up\\."
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["openkite.html"]
+          pattern: "github\\.com/jomakori/openkite/pulls"
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["tickerlight.html"]
+          pattern: "Staging environment is not up\\."
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["tickerlight.html"]
+          pattern: "github\\.com/jomakori/Tickerlight/pulls"
+        template: templates/configmap.yaml
+      - notMatchRegex:
+          path: data["tickerlight.html"]
+          pattern: "github\\.com/jomakori/openkite/pulls"
+        template: templates/configmap.yaml
