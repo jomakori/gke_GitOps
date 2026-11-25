@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "staging-splash.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "staging-splash.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+{{ include "staging-splash.nginxConf" . | indent 4 }}
+  generic.html: |
+{{ .Files.Get "pages/generic.html" | indent 4 }}
+{{- range $page := (include "staging-splash.customPages" . | fromYamlArray) }}
+  {{ $page.file }}: |
+{{ $page.content | indent 4 }}
+{{- end }}

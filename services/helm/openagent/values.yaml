@@ -43,7 +43,7 @@ litellm:
   image:
     repository: ghcr.io/berriai/litellm
     # Immutable: upstream republishes `main-stable`, and IfNotPresent keeps one cached build per node.
-    tag: "v1.109.1@sha256:11175975a3093e05e92faee2fe2fe3412a3ae2fcaa849eb0fe25d5f0d8bcb2e9"
+    tag: "1.110.3@sha256:1050d2c9ca58399de9cd51df6eb503812af697717f54d2f08c1c30589c75e1f7"
     pullPolicy: IfNotPresent
   service:
     port: 4000
@@ -333,7 +333,7 @@ hermes-agent:
   # with the hermes-agent chart dependency's appVersion (1.26.0 -> v0.23.2).
   image:
     repository: nousresearch/hermes-agent
-    tag: "v0.23.3"
+    tag: "v0.23.4"
     pullPolicy: IfNotPresent
   # The agent runs kubectl inside the pod and needs admin access to the
   # cluster. The chart default (automount=false) left it with no identity, so

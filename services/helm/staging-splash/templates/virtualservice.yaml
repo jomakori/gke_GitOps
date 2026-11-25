@@ -1,0 +1,21 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: {{ include "staging-splash.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "staging-splash.labels" . | nindent 4 }}
+spec:
+  # Wildcard host: Istio ranks an exact host above this, so any app that has its
+  # own VirtualService keeps serving its own traffic and only unowned hosts land here.
+  hosts:
+    - {{ printf "*.%s" (.Values.clusterDomain | default "maklab.net") | quote }}
+  gateways:
+    - {{ printf "%s/%s" .Values.gateway.namespace .Values.gateway.name | quote }}
+  http:
+    - name: splash
+      route:
+        - destination:
+            host: {{ printf "%s.%s.svc.cluster.local" (include "staging-splash.fullname" .) .Release.Namespace }}
+            port:
+              number: {{ .Values.service.port }}

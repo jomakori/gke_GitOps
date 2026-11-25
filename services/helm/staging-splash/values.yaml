@@ -1,0 +1,50 @@
+# This chart's own config only. The app/host list is driven by apps/helm/values.yaml
+# (clusterDomain + every app with enable_staging != false and
+# environments.staging.subdomain set), overlaid at render time:
+#   - ArgoCD: services/argocd-appset registers this chart with a second valueFiles
+#     entry pointing at ../../apps/helm/values.yaml.
+#   - Local: helm template services/helm/staging-splash -f apps/helm/values.yaml
+
+# -- Wildcard domain the catch-all VirtualService and the staging hosts use.
+clusterDomain: maklab.net
+
+gateway:
+  # -- Istio gateway the catch-all VirtualService binds to.
+  name: maklab-gateway
+  # -- Namespace of that gateway.
+  namespace: istio-system
+
+image:
+  # -- Unprivileged nginx image; runs as uid 101 on port 8080.
+  repository: nginxinc/nginx-unprivileged
+  # -- Image tag.
+  tag: 1.25-alpine-slim
+
+# -- Splash replicas; the page is static, so one is normally enough.
+replicas: 1
+
+service:
+  # -- Service port the gateway routes to.
+  port: 80
+
+resources:
+  requests:
+    # -- CPU request.
+    cpu: 10m
+    # -- Memory request (repo rule: workloads declare both request and limit).
+    memory: 32Mi
+  limits:
+    # -- Memory limit.
+    memory: 64Mi
+
+containerSecurityContext:
+  # -- No privilege escalation; nginx-unprivileged never needs any.
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      # -- Drop every capability.
+      - ALL
+
+podSecurityContext:
+  # -- Run as the image's non-root user.
+  runAsNonRoot: true

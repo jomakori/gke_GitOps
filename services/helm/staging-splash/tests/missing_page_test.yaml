@@ -1,0 +1,19 @@
+suite: staging splash — a custom page must exist
+release:
+  name: staging-splash
+  namespace: istio-system
+templates:
+  - templates/configmap.yaml
+tests:
+  - it: fails the render when a custom page file is missing
+    set:
+      ghost:
+        enable_staging: true
+        environments:
+          staging:
+            subdomain: staging-ghost
+        splash:
+          page: custom
+    asserts:
+      - failedTemplate:
+          errorPattern: "pages/ghost.html is required"

@@ -1,0 +1,73 @@
+suite: chromium profile wiring
+templates:
+  - charts/app-template/templates/common.yaml
+tests:
+  - it: runs the chown-profile initContainer as root so it can chown the PVC
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsUser
+          value: 0
+
+  - it: keeps the main container on uid 1000
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 1000
+
+  - it: mounts the profile PVC at the chromium config dir
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: chromium-profile
+            mountPath: /home/kasm-user/.config/chromium
+
+  - it: gives .config its own writable emptyDir so the image entrypoint can seed it
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: kasm-config
+            mountPath: /home/kasm-user/.config
+
+  - it: chowns both the profile and .config so the entrypoint can preserve times
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: spec.template.spec.initContainers[0].command[2]
+          value: chown -R 1000:0 /profile /home/kasm-user/.config
+
+  - it: never mounts over bare /home/kasm-user (would shadow image defaults)
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            mountPath: /home/kasm-user
+
+  - it: turns off KasmVNC basic auth so Cloudflare Access is the only gate
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: VNCOPTIONS
+            value: "-PreferBandwidth -DynamicQualityMin=4 -DynamicQualityMax=7 -DLP_ClipDelay=0 -DisableBasicAuth"

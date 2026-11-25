@@ -1,0 +1,6 @@
+apiVersion: v2
+name: staging-splash
+description: Istio catch-all splash page served to any *.maklab.net staging host with no app deployed
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

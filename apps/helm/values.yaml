@@ -234,6 +234,10 @@ strands:
     requestTimeout: 30s
     retryAttempts: 3
     retryTimeout: 5s
+  # Themed splash page (services/helm/staging-splash/pages/strands.html). Served
+  # as soon as enable_staging flips on; the render fails if that file is missing.
+  splash:
+    page: custom
   environments:
     staging:
       # Single-label host: a third DNS label has no certificate under the wildcard.
@@ -241,12 +245,12 @@ strands:
       # Placeholder, not a release: the staging pin rewrites this to `pr-<N>` from
       # the app repo's staging image job. It is never a semver tag, so a released
       # image cannot be mistaken for staging content if the flag is flipped early.
-      tag: "pr-57"
+      tag: "0.0.0"
     production:
       # Released image. metadata-action strips the leading `v` from a semver
       # tag, so release v0.1.0 publishes as `0.1.0` — pinned by tag, never
       # `latest`, so a sync cannot move this Deployment on its own.
-      tag: "0.7.0"
+      tag: "0.7.1"
       subdomain: strands
   service:
     port: 8080
