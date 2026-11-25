@@ -80,7 +80,7 @@ tickerlight:
   environments:
     staging:
       subdomain: staging-trade
-      tag: v0.4.2
+      tag: v0.4.4
       # ── Engine MCP listener: published inside the cluster ──────────────
       # The engine container below binds 127.0.0.1:8090, so only the console
       # in the same pod can reach it. Staging binds the pod address instead,
@@ -113,7 +113,7 @@ tickerlight:
           - TRADING_ALERT_WEBHOOK_SECRET
     production:
       subdomain: trade
-      tag: v0.4.3
+      tag: v0.4.4
       # The console may open an arming window and trip or close it only here: it
       # needs the engine's admin URL, and an environment without this key renders
       # no forms and no routes. Who may use them is the Cloudflare Access policy
@@ -165,7 +165,7 @@ tickerlight:
       # Journal producer. Paths are code constants; -data-dir only points at the
       # mount, and the two containers share the one volume.
       - name: engine
-        image: ghcr.io/jomakori/trading-mcp:v0.3.9
+        image: ghcr.io/jomakori/trading-mcp:v0.4.0
         args:
           - "-data-dir"
           - "/data"
