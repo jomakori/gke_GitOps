@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "staging-splash.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "staging-splash.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "staging-splash.labels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http

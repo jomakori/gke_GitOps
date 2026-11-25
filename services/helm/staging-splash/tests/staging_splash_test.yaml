@@ -1,0 +1,133 @@
+suite: staging splash — istio catch-all and per-host pages
+release:
+  name: staging-splash
+  namespace: istio-system
+templates:
+  - templates/configmap.yaml
+  - templates/virtualservice.yaml
+  - templates/deployment.yaml
+  - templates/service.yaml
+tests:
+  - it: renders the catch-all VirtualService on the wildcard host
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: templates/virtualservice.yaml
+      - equal:
+          path: spec.hosts
+          value:
+            - "*.maklab.net"
+        template: templates/virtualservice.yaml
+      - equal:
+          path: spec.gateways
+          value:
+            - istio-system/maklab-gateway
+        template: templates/virtualservice.yaml
+      - equal:
+          path: spec.http[0].route[0].destination.port.number
+          value: 80
+        template: templates/virtualservice.yaml
+
+  - it: renders one workload and one Service, both named staging-splash
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: templates/deployment.yaml
+      - hasDocuments:
+          count: 1
+        template: templates/service.yaml
+      - equal:
+          path: metadata.name
+          value: staging-splash
+        template: templates/deployment.yaml
+      - equal:
+          path: metadata.name
+          value: staging-splash
+        template: templates/service.yaml
+
+  - it: sizes the container with both a memory request and a memory limit
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 32Mi
+        template: templates/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 64Mi
+        template: templates/deployment.yaml
+
+  - it: gives every enabled staging host its own server_name block
+    set:
+      openkite:
+        enable_staging: true
+        environments:
+          staging:
+            subdomain: staging-openkite
+      tickerlight:
+        enable_staging: true
+        environments:
+          staging:
+            subdomain: staging-trade
+    asserts:
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "server_name staging-openkite\\.maklab\\.net;"
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "server_name staging-trade\\.maklab\\.net;"
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "try_files /generic.html;|try_files /generic.html =404;"
+        template: templates/configmap.yaml
+
+  - it: leaves an app out when enable_staging is false
+    set:
+      strands:
+        enable_staging: false
+        environments:
+          staging:
+            subdomain: staging-strands
+    asserts:
+      - notMatchRegex:
+          path: data["nginx.conf"]
+          pattern: "staging-strands"
+        template: templates/configmap.yaml
+
+  - it: serves an app-declared custom page and skips it while staging is off
+    set:
+      strands:
+        enable_staging: false
+        environments:
+          staging:
+            subdomain: staging-strands
+        splash:
+          page: custom
+    asserts:
+      - exists:
+          path: data["strands.html"]
+        template: templates/configmap.yaml
+      - notMatchRegex:
+          path: data["nginx.conf"]
+          pattern: "staging-strands"
+        template: templates/configmap.yaml
+
+  - it: switches a custom-page app to its own page once staging is on
+    set:
+      strands:
+        enable_staging: true
+        environments:
+          staging:
+            subdomain: staging-strands
+        splash:
+          page: custom
+    asserts:
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "server_name staging-strands\\.maklab\\.net;"
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "try_files /strands\\.html =404;"
+        template: templates/configmap.yaml

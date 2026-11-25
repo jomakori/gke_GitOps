@@ -50,7 +50,12 @@ spec:
     targetRevision: {{ $cfg.targetRevision | default $root.Values.targetRevision | quote }}
     helm:
       valueFiles:
-        - values.yaml
+        {{- /* valueFiles adds repo-relative overlays after the chart's own
+              values.yaml; staging-splash reads the app specs this way so a new
+              staging host needs no change in its Application. */}}
+        {{- range ($cfg.valueFiles | default (list "values.yaml")) }}
+        - {{ . }}
+        {{- end }}
       {{- if $cfg.skipCrds }}
       skipCrds: true
       {{- end }}
@@ -138,7 +143,9 @@ spec:
     targetRevision: {{ $cfg.targetRevision | default $root.Values.targetRevision | quote }}
     helm:
       valueFiles:
-        - values.yaml
+        {{- range ($cfg.valueFiles | default (list "values.yaml")) }}
+        - {{ . }}
+        {{- end }}
       {{- $allParams := $cfg.parameters | default list }}
       {{- if $dopplerConfig }}
       {{-   $allParams = append $allParams (dict "name" "dopplerConfig" "value" $dopplerConfig) }}

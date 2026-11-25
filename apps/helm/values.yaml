@@ -234,6 +234,10 @@ strands:
     requestTimeout: 30s
     retryAttempts: 3
     retryTimeout: 5s
+  # Themed splash page (services/helm/staging-splash/pages/strands.html). Served
+  # as soon as enable_staging flips on; the render fails if that file is missing.
+  splash:
+    page: custom
   environments:
     staging:
       # Single-label host: a third DNS label has no certificate under the wildcard.
