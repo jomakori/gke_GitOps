@@ -1,9 +1,0 @@
-# One Worker for every app's staging host. The page names the app from the
-# hostname, so nothing here is per-app: the workflow resolves the hosts from the
-# app specs and appends them as routes at deploy time. They are generated rather
-# than wildcarded because Cloudflare route patterns reject infix wildcards --
-# `staging-*.maklab.net` is not expressible.
-name = "staging-splash"
-main = "worker.js"
-compatibility_date = "2026-10-01"
-compatibility_flags = ["global_fetch_strictly_public"]
