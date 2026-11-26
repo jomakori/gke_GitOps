@@ -244,8 +244,9 @@ strands:
     requestTimeout: 30s
     retryAttempts: 3
     retryTimeout: 5s
-  # Themed splash page (services/helm/staging-splash/pages/strands.html). Served
-  # as soon as enable_staging flips on; the render fails if that file is missing.
+  # Themed splash page (services/helm/staging-splash/pages/strands.html). Served on
+  # staging-strands.maklab.net while nothing is pinned; the pin adds an exact-host
+  # VirtualService that outranks the splash. Render fails if the file is missing.
   splash:
     page: custom
   environments:
