@@ -95,7 +95,7 @@ tests:
           pattern: "staging-strands"
         template: templates/configmap.yaml
 
-  - it: serves an app-declared custom page and skips it while staging is off
+  - it: renders the strands host with its custom page while staging is off
     set:
       strands:
         enable_staging: false
@@ -108,9 +108,33 @@ tests:
       - exists:
           path: data["strands.html"]
         template: templates/configmap.yaml
-      - notMatchRegex:
+      - matchRegex:
           path: data["nginx.conf"]
-          pattern: "staging-strands"
+          pattern: "server_name staging-strands\\.maklab\\.net;"
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "try_files /strands\\.html =404;"
+        template: templates/configmap.yaml
+
+  - it: keeps a pr-gated app's host and page while staging is off
+    set:
+      openkite:
+        enable_staging: false
+        environments:
+          staging:
+            subdomain: staging-openkite
+        splash:
+          page: pr-gated
+          prsUrl: https://github.com/jomakori/openkite/pulls?q=is%3Apr+is%3Aopen+label%3Astaging
+    asserts:
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "server_name staging-openkite\\.maklab\\.net;"
+        template: templates/configmap.yaml
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "try_files /openkite\\.html =404;"
         template: templates/configmap.yaml
 
   - it: switches a custom-page app to its own page once staging is on

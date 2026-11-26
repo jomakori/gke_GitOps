@@ -58,25 +58,29 @@ app.kubernetes.io/component: splash
 {{- end -}}
 
 {{- /* staging-splash.hosts — one entry per app that owns a staging host, as a YAML
-       list of {key, host, page}. Rule: enable_staging != false (absent counts as
-       on) AND environments.staging.subdomain set. No subdomain means the app is
-       not served on a staging host at all, so it gets no server block. */}}
+       list of {key, host, page}. Rule: environments.staging.subdomain set AND
+       (enable_staging != false, absent counts as on, OR the app declares a themed
+       splash page). A themed page is exactly what the host shows while nothing is
+       pinned, so it keeps the host while staging is off; a pin adds an exact-host
+       VirtualService that outranks this wildcard and shadows the block. An app with
+       no subdomain is not served on a staging host at all, so it gets no block. */}}
 {{- define "staging-splash.hosts" -}}
 {{- $domain := .Values.clusterDomain | default "maklab.net" -}}
 {{- $hosts := list -}}
 {{- range $key, $app := (include "staging-splash.apps" . | fromYaml) -}}
 {{- $enabled := ne (printf "%v" $app.enable_staging) "false" -}}
-{{- $subdomain := "" -}}
-{{- if and $app.environments $app.environments.staging -}}
-{{- $subdomain = $app.environments.staging.subdomain | default "" -}}
-{{- end -}}
-{{- if and $enabled (ne $subdomain "") -}}
 {{- $page := "generic.html" -}}
 {{- $pageKind := "" -}}
 {{- if $app.splash -}}
 {{- $pageKind = ($app.splash.page | default "") -}}
 {{- end -}}
-{{- if or (eq $pageKind "custom") (eq $pageKind "pr-gated") -}}
+{{- $themed := or (eq $pageKind "custom") (eq $pageKind "pr-gated") -}}
+{{- $subdomain := "" -}}
+{{- if and $app.environments $app.environments.staging -}}
+{{- $subdomain = $app.environments.staging.subdomain | default "" -}}
+{{- end -}}
+{{- if and (ne $subdomain "") (or $enabled $themed) -}}
+{{- if $themed -}}
 {{- $page = printf "%s.html" $key -}}
 {{- end -}}
 {{- $hosts = append $hosts (dict "key" $key "host" (printf "%s.%s" $subdomain $domain) "page" $page) -}}

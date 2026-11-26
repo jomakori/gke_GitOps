@@ -1,6 +1,6 @@
 # This chart's own config only. The app/host list is driven by apps/helm/values.yaml
-# (clusterDomain + every app with enable_staging != false and
-# environments.staging.subdomain set), overlaid at render time:
+# (clusterDomain + every app with environments.staging.subdomain set and either
+# enable_staging != false or a splash.page declared), overlaid at render time:
 #   - ArgoCD: services/argocd-appset registers this chart with a second valueFiles
 #     entry pointing at ../../apps/helm/values.yaml.
 #   - Local: helm template services/helm/staging-splash -f apps/helm/values.yaml

@@ -110,10 +110,10 @@ The app list arrives through the overlay: the registry entry
 (`services/argocd-appset/values.yaml` → `stagingSplash`) loads the chart's `values.yaml` and then
 `../../../apps/helm/values.yaml`, so `templates/_helpers.tpl` → `staging-splash.apps` reads the
 same specs the umbrella does. The host rule (`staging-splash.hosts`) is: a non-empty
-`environments.staging.subdomain` **and** `enable_staging` not `false`. Each such host gets its own
-`server_name` block in the generated `nginx.conf`; everything else lands on the `default_server`
-block. `__APP__` in a page is replaced from the request host, so `staging-openkite.maklab.net`
-renders `openkite`.
+`environments.staging.subdomain` **and** either `enable_staging` not `false` or a `splash.page`
+declaration of `custom` or `pr-gated`. Each such host gets its own `server_name` block in the
+generated `nginx.conf`; everything else lands on the `default_server` block. `__APP__` in a page is
+replaced from the request host, so `staging-openkite.maklab.net` renders `openkite`.
 
 Pages live in `pages/`: `pr-gated.html` is one shared copy whose only per-app difference is the
 link from `splash.prsUrl`; `splash.page: custom` selects `pages/<key>.html`; everything else gets
@@ -132,14 +132,17 @@ badge, `Staging environment is not up.`, `Add the staging label to deploy this e
 "staging label" link to `https://github.com/jomakori/strands/pulls?q=is%3Apr+is%3Aopen+label%3Astaging`),
 and `Closing the pull request takes it down again.`
 
-### Known gap
+### The unpinned host
 
-The host rule skips apps whose spec sets `enable_staging: false`, and strands' spec is `false`
-exactly while nothing is pinned — so the render emits **no** `staging-strands` server block and
-the host falls through to the catch-all `generic.html`. `pages/strands.html` is mounted in the
-ConfigMap but never served. Serving it needs a chart change (treat a `splash.page` declaration as
-participation, or add an explicit host key). Verified by the render below: the generated
-`nginx.conf` lists `staging-openkite.maklab.net` and `staging-trade.maklab.net` only.
+The host rule used to skip apps whose spec sets `enable_staging: false`, and strands' spec is
+`false` exactly while nothing is pinned — so the render emitted **no** `staging-strands` server
+block and the host fell through to the catch-all `generic.html`: `pages/strands.html` sat in the
+ConfigMap unserved. Fixed by making a `splash.page` declaration count as participation: a themed
+page is what the host shows while nothing is pinned, and the pin's exact-host VirtualService
+outranks the splash wildcard anyway, so the block is only reachable while staging is off. The
+render now lists `staging-openkite.maklab.net`, `staging-strands.maklab.net` and
+`staging-trade.maklab.net`; `services/helm/staging-splash/tests/staging_splash_test.yaml` asserts
+the strands block with `enable_staging: false`.
 
 ## Verification
 
@@ -191,9 +194,9 @@ kubectl -n strands-staging get vs                         # No resources found �
 curl -sS https://staging-strands.maklab.net/ | grep -o '<h1>[^<]*'
 ```
 
-With the known gap above that last line reads `<h1>No <span>staging-strands</span> environment is
-running` from `generic.html`; with the host routed it reads `<h1>Staging environment is not up.`
-from `strands.html`.
+That last line reads `<h1>Staging environment is not up.` from `strands.html` — `generic.html`
+would answer `No <span>staging-strands</span> environment is running`, which means the host block
+is missing.
 
 The splash itself:
 
