@@ -60,10 +60,11 @@ app-template:
                 periodSeconds: 20
           resources:
             requests:
-              cpu: 200m
-              memory: 512Mi
+              cpu: 300m
+              memory: 1536Mi
             limits:
-              memory: 2Gi
+              cpu: "2"
+              memory: 2560Mi
       initContainers:
         # Chromium profile PVC starts root-owned (default provisioner behaviour);
         # kasm-user (uid 1000, gid 0 per the live pod) needs write access before
