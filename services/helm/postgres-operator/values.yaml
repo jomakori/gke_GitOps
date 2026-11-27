@@ -147,6 +147,9 @@ postgres:
       storage: 15Gi
       version: "18"
       profile: "production"
+      # Required by the SGCluster validating webhook; must name an SGInstanceProfile that exists.
+      sgInstanceProfile: "pg-main-default"
+
       # `development` UNSETS the resource requirements below, so the SGCluster carries
       # `spec.pods.resources` (verified on the live object) while the pods report
       # `resources: {}` and run BestEffort — first victim on a node that is one 15.66 GiB
