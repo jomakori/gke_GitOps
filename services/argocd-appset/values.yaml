@@ -379,6 +379,9 @@ services:
           - /spec/pods/disablePostgresUtil
           - /spec/pods/managementPolicy
           - /spec/pods/updateStrategy
+          # CRD defaults the chart never sets; comparing them flags permanent drift.
+          - /spec/pods/resources/enableClusterLimitsRequirements
+          - /spec/managedSql/continueOnSGScriptError
           - /spec/postgres/flavor
           - /spec/postgres/ssl
           - /spec/postgresServices
