@@ -209,7 +209,7 @@ api:
   # scheduler reserves what the pod actually uses.
   cpuLimit: 1
   cpuRequest: 100m
-  memoryRequest: 50Mi
+  memoryRequest: 256Mi
   image: artifacts.plane.so/makeplane/plane-backend
   pullPolicy: Always
   assign_cluster_ip: false

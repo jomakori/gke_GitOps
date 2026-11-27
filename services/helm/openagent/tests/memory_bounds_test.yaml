@@ -7,7 +7,7 @@ release:
   name: openagent
   namespace: openagent
 tests:
-  - it: hermes-agent requests.memory is 3Gi and limits.memory is 8Gi
+  - it: hermes-agent requests.memory is 4Gi and limits.memory is 12Gi
     asserts:
       - isKind:
           of: Deployment
@@ -16,18 +16,18 @@ tests:
           value: openagent-hermes-agent
       - equal:
           path: spec.template.spec.containers[0].resources.requests.memory
-          value: 3Gi
+          value: 4Gi
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent
       - equal:
           path: spec.template.spec.containers[0].resources.limits.memory
-          value: 8Gi
+          value: 12Gi
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent
 
-  - it: hermes-agent CPU stays requests == limits == "2"
+  - it: hermes-agent CPU request 2 with a 3 ceiling for boot bursts
     asserts:
       - isKind:
           of: Deployment
@@ -42,7 +42,7 @@ tests:
           value: openagent-hermes-agent
       - equal:
           path: spec.template.spec.containers[0].resources.limits.cpu
-          value: "2"
+          value: "3"
         documentSelector:
           path: metadata.name
           value: openagent-hermes-agent

@@ -31,7 +31,7 @@ tests:
           value: 50m
       - equal:
           path: spec.resourcePolicy.containerPolicies[0].maxAllowed.cpu
-          value: "2"
+          value: "3"
       - equal:
           path: spec.resourcePolicy.containerPolicies[0].maxAllowed.memory
           value: 8Gi
