@@ -340,6 +340,12 @@ services:
       - ApplyOutOfSyncOnly=true
       - RespectIgnoreDifferences=true
       - ServerSideApply=true
+    # Server-side diff dry-runs this cluster against a live object whose
+    # `.spec.configurations.backups` is owned by a different field manager, so the
+    # dry-run aborts with `Conflict` and the app sits OutOfSync with zero value diff.
+    # Client-side compare sees the real (empty) diff.
+    annotations:
+      argocd.argoproj.io/compare-options: ServerSideDiff=false
     # selfHeal made explicit (the helper defaulted it true implicitly) so the
     # drift-correction behaviour of the database ApplicationSet is visible here.
     selfHeal: true
