@@ -15,8 +15,14 @@ kube-prometheus-stack:
   defaultRules:
     create: true
     rules:
+      # k3s runs etcd, kube-scheduler and kube-proxy inside the server binary, so the
+      # chart's absence-based rules (`absent(up{job="kube-scheduler"})` etc.) fire
+      # permanently against a cluster with no scheduling problem. Key names follow
+      # kube-prometheus-stack 93.9.0 `defaultRules.rules`.
       etcd: false
-      kubeScheduler: false
+      kubeSchedulerAlerting: false
+      kubeSchedulerRecording: false
+      kubeProxy: false
 
   # ┌──────────────────────────────────────────────────────────────────────────┐
   # │ Set custom ACN approved ports for these services                         │
@@ -39,9 +45,11 @@ kube-prometheus-stack:
     enabled: false
   kubeEtcd:
     enabled: false
-  kubeSchedulerAlerting:
+  # No scheduler/proxy pods exist to scrape, so these ServiceMonitors only ever
+  # produce empty targets.
+  kubeScheduler:
     enabled: false
-  kubeSchedulerRecording:
+  kubeProxy:
     enabled: false
   # ┌─────────────────────────────────────────────────────────────────────────────┐
   # │   Prometheus Configuration                                                  │
