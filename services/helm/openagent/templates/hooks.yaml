@@ -226,11 +226,12 @@ spec:
   schedule: {{ .Values.mcpVerification.cronjob.schedule | quote }}
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: {{ .Values.mcpVerification.cronjob.historyLimit }}
-  failedJobsHistoryLimit: {{ .Values.mcpVerification.cronjob.historyLimit }}
+  failedJobsHistoryLimit: {{ .Values.mcpVerification.cronjob.failedHistoryLimit }}
   jobTemplate:
     spec:
       backoffLimit: {{ .Values.mcpVerification.cronjob.backoffLimit }}
       activeDeadlineSeconds: {{ .Values.mcpVerification.cronjob.activeDeadlineSeconds }}
+      ttlSecondsAfterFinished: {{ .Values.mcpVerification.cronjob.ttlSecondsAfterFinished }}
       template:
         metadata:
           labels:

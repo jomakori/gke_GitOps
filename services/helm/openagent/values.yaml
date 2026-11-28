@@ -1779,6 +1779,11 @@ mcpVerification:
     activeDeadlineSeconds: 900
     backoffLimit: 0
     historyLimit: 3
+    # Keep one failed Job for inspection and let it expire; a retained failure
+    # keeps kube_job_failed>0 alive, so KubeJobFailed would stay firing long
+    # after the next run went green.
+    failedHistoryLimit: 1
+    ttlSecondsAfterFinished: 3600
     # Unbounded container repeatedly OOMKilled the shared VM (3 consecutive
     # runs, re-leaking every 15 minutes). Loads ~13 MCP servers in-process.
     # Requests kept modest — total pod requests across the cluster already
