@@ -56,29 +56,13 @@
 {{-   end }}
 {{- end }}
 {{- end }}
-{{- if $.Values.accessTeamDomain }}
-{{-   $gatewayParams = append $gatewayParams (dict "name" "cloudflare.access.teamDomain" "value" $.Values.accessTeamDomain) }}
-{{- end }}
-{{- /* audienceTag: every AUD the gateway must accept, derived rather than
-       hand-listed. Service-private hosts contribute their own `aud`; hosts
-       routed elsewhere contribute theirs from `accessHosts`. One AUD, one
-       place — a host without an aud simply drops out of the list, which is the
-       failure the istio guard test exists to catch. */}}
-{{- $auds := list }}
-{{- range $sk, $sv := $.Values.services }}
-{{-   if and $sv.enable $sv.gateways $sv.gateways.enable_private $sv.gateways.aud }}
-{{-     $auds = append $auds (toString $sv.gateways.aud) }}
-{{-   end }}
-{{- end }}
-{{- range $hk, $ha := ($.Values.accessHosts | default dict) }}
-{{-   with $ha.aud }}
-{{-     $auds = append $auds (toString .) }}
-{{-   end }}
-{{- end }}
-{{- $auds = uniq $auds }}
-{{- if $auds }}
-{{-   $gatewayParams = append $gatewayParams (dict "name" "cloudflare.access.audienceTag" "value" (join "," $auds)) }}
-{{- end }}
+{{- /* The gateway's shared audience list is no longer derived here. istio's
+       RequestAuthentication/cf-access-jwt is force-applied by
+       services/helm/crossplane from every CloudflareAccessApp XR's `.status.aud`
+       (templates/audience-sync.yaml), so a new private host adds its audience
+       with no git change and no second copy of the value.
+       `virtualServices.<name>.aud` stays: that is the per-host DENY rule, not
+       the shared list the gateway validates against. */}}
 {{- $mergedParams := concat ($cfg.parameters | default list) $gatewayParams }}
 {{- $umbrella := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
 ---
@@ -122,6 +106,17 @@
 {{-   end }}
 {{-   $mergedParams := concat ($cfg.parameters | default list) $edgeParams }}
 {{-   $umbrella := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
+---
+{{ include "argocd.application" (dict "key" $key "config" $umbrella "root" $) }}
+{{- else if eq $key "crossplane" }}
+{{- /* The operation that keeps istio's JWT audience list in step needs the CF
+       Access team domain to build the issuer/jwks URL. Injected from the single
+       `accessTeamDomain` SSOT rather than a second committed copy. */}}
+{{-   $cpParams := $cfg.parameters | default list }}
+{{-   if $.Values.accessTeamDomain }}
+{{-     $cpParams = append $cpParams (dict "name" "audienceSync.teamDomain" "value" $.Values.accessTeamDomain) }}
+{{-   end }}
+{{-   $umbrella := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $cpParams) }}
 ---
 {{ include "argocd.application" (dict "key" $key "config" $umbrella "root" $) }}
 {{- else }}

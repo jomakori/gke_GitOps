@@ -17,3 +17,13 @@ metadata:
 spec:
   package: {{ .Values.functions.autoReady.package }}
   packagePullPolicy: IfNotPresent
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-python
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  package: {{ .Values.functions.python.package }}
+  packagePullPolicy: IfNotPresent

@@ -77,11 +77,10 @@ certEmail: admin@maklab.net
 cloudflare:
   apiTokenSecretName: cloudflare-api-token
   apiTokenSecretKey: CF_API_TOKEN
-  access:
-    teamDomain: ""
-    # Comma-separated AUDs; argocd-appset derives it from each private
-    # service's gateways.aud plus its accessHosts.
-    audienceTag: ""
+  # No `access:` block. The CF Access RequestAuthentication is not rendered from
+  # this chart any more: services/helm/crossplane force-applies
+  # RequestAuthentication/cf-access-jwt with the audience list aggregated from
+  # every CloudflareAccessApp XR (templates/audience-sync.yaml there).
 gateway:
   name: maklab-gateway
   namespace: istio-system

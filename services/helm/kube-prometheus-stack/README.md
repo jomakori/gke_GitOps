@@ -7,7 +7,7 @@ A Helm chart for kube-prometheus-stack
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://prometheus-community.github.io/helm-charts | kube-prometheus-stack | 93.3.1 |
+| https://prometheus-community.github.io/helm-charts | kube-prometheus-stack | 93.9.0 |
 
 ## Under the hood
 
@@ -61,7 +61,9 @@ Prometheus TSDB uses a 30Gi PVC via the `local-path` storage class. Alertmanager
 | kube-prometheus-stack.alertmanager.service.port | int | `15010` |  |
 | kube-prometheus-stack.defaultRules.create | bool | `true` |  |
 | kube-prometheus-stack.defaultRules.rules.etcd | bool | `false` |  |
-| kube-prometheus-stack.defaultRules.rules.kubeScheduler | bool | `false` |  |
+| kube-prometheus-stack.defaultRules.rules.kubeProxy | bool | `false` |  |
+| kube-prometheus-stack.defaultRules.rules.kubeSchedulerAlerting | bool | `false` |  |
+| kube-prometheus-stack.defaultRules.rules.kubeSchedulerRecording | bool | `false` |  |
 | kube-prometheus-stack.grafana.admin.existingSecret | string | `"grafana-admin-credentials"` |  |
 | kube-prometheus-stack.grafana.admin.passwordKey | string | `"ADMIN_PASSWORD"` |  |
 | kube-prometheus-stack.grafana.admin.userKey | string | `"ADMIN_USER"` |  |
@@ -76,8 +78,8 @@ Prometheus TSDB uses a 30Gi PVC via the `local-path` storage class. Alertmanager
 | kube-prometheus-stack.grafana.resources.requests.memory | string | `"256Mi"` |  |
 | kube-prometheus-stack.kubeControllerManager.enabled | bool | `false` |  |
 | kube-prometheus-stack.kubeEtcd.enabled | bool | `false` |  |
-| kube-prometheus-stack.kubeSchedulerAlerting.enabled | bool | `false` |  |
-| kube-prometheus-stack.kubeSchedulerRecording.enabled | bool | `false` |  |
+| kube-prometheus-stack.kubeProxy.enabled | bool | `false` |  |
+| kube-prometheus-stack.kubeScheduler.enabled | bool | `false` |  |
 | kube-prometheus-stack.prometheus.kubelet.serviceMonitor.metricRelabelings[0].action | string | `"replace"` |  |
 | kube-prometheus-stack.prometheus.kubelet.serviceMonitor.metricRelabelings[0].sourceLabels[0] | string | `"node"` |  |
 | kube-prometheus-stack.prometheus.kubelet.serviceMonitor.metricRelabelings[0].targetLabel | string | `"instance"` |  |

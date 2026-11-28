@@ -3,6 +3,8 @@ release:
   name: istio
   namespace: istio-system
 
+# What this chart still owns: the per-host DENY policy. The gateway's shared
+# audience list moved out — see ../no_request_authentication_test.yaml.
 templates:
   - templates/authorization-policy-private.yaml
 

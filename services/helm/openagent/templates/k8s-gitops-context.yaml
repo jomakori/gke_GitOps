@@ -361,23 +361,24 @@ data:
       gateways.enable_private: true
 
     → applications.yaml detects flag, injects VS params + enablePrivate flag
-    → istio chart receives params:
-        - cloudflare.access.teamDomain (from Terraform gitops_config via Doppler TF_VAR)
-        - cloudflare.access.audienceTag (CF Access Application AUD, also via TF_VAR)
-        - virtualServices.<name>.enablePrivate: true
-    → request-authentication.yaml renders at gateway: validates JWT via CF JWKS
+    → istio chart receives only virtualServices.<name>.enablePrivate (no audience data)
     → authorization-policy-private.yaml renders per-private-VS: DENY requests without valid JWT
+    → RequestAuthentication/cf-access-jwt is NOT rendered by Helm: the crossplane audience
+      sync operation (services/helm/crossplane/templates/audience-sync.yaml) force-applies it,
+      with `audiences` aggregated from every CloudflareAccessApp XR's `.status.aud`
+      (watch on labelled XRs + 10-minute cron backstop)
     ```
 
     **Terraform flow** for CF Access configuration:
     ```
-    Doppler TF_VAR_ACCESS_TEAM_DOMAIN + TF_VAR_ACCESS_AUDIENCE_TAG
-      → variables.tf: var.ACCESS_TEAM_DOMAIN + var.ACCESS_AUDIENCE_TAG
-        → 4-gitops.tf locals: accessTeamDomain + accessAudienceTag
-          → services.yml template → ArgoCD --set accessTeamDomain / accessAudienceTag
-            → argocd-appset values.yaml: $.Values.accessTeamDomain / $.Values.accessAudienceTag
-              → applications.yaml injects cloudflare.access.* into istio Helm params
-                → istio chart renders RequestAuthentication with real AUD
+    Doppler TF_VAR_ACCESS_TEAM_DOMAIN (team domain only — no AUD crosses this boundary)
+      → variables.tf: var.ACCESS_TEAM_DOMAIN
+        → 4-gitops.tf locals: accessTeamDomain
+          → services.yml template → ArgoCD --set accessTeamDomain
+            → argocd-appset values.yaml: $.Values.accessTeamDomain
+              → applications.yaml injects audienceSync.teamDomain into the crossplane chart
+                → the audience sync operation composes the issuer from it and takes
+                  `audiences` from live XR status (never from git)
     ```
 
     Most services need only `enable_public: true` — the subdomain and service name match the chart name. Add `enable_private: true` for Zero Trust gating.

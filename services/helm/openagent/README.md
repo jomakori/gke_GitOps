@@ -973,7 +973,6 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.autoscaling.maxReplicas | int | `4` |  |
 | litellm.autoscaling.minReplicas | int | `2` |  |
 | litellm.autoscaling.targetCPUUtilizationPercentage | int | `70` |  |
-| litellm.autoscaling.targetMemoryUtilizationPercentage | int | `85` |  |
 | litellm.db.database | string | `"litellm"` |  |
 | litellm.db.deployStandalone | bool | `false` |  |
 | litellm.db.endpoint | string | `"pg-main-primary.data.svc.cluster.local"` |  |
@@ -1102,12 +1101,14 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | mcpVerification.cronjob.activeDeadlineSeconds | int | `900` |  |
 | mcpVerification.cronjob.backoffLimit | int | `0` |  |
 | mcpVerification.cronjob.enabled | bool | `true` |  |
+| mcpVerification.cronjob.failedHistoryLimit | int | `1` |  |
 | mcpVerification.cronjob.historyLimit | int | `3` |  |
 | mcpVerification.cronjob.resources.limits.cpu | string | `"2"` |  |
 | mcpVerification.cronjob.resources.limits.memory | string | `"1280Mi"` |  |
 | mcpVerification.cronjob.resources.requests.cpu | string | `"500m"` |  |
 | mcpVerification.cronjob.resources.requests.memory | string | `"128Mi"` |  |
 | mcpVerification.cronjob.schedule | string | `"*/15 * * * *"` |  |
+| mcpVerification.cronjob.ttlSecondsAfterFinished | int | `3600` |  |
 | mcpVerification.preflight.activeDeadlineSeconds | int | `900` |  |
 | mcpVerification.preflight.backoffLimit | int | `0` |  |
 | mcpVerification.preflight.enabled | bool | `true` |  |

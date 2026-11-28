@@ -25,6 +25,7 @@ Discord in a KasmVNC web desktop (Chromium kiosk) — values layer over bjw-s ap
 | app-template.controllers.main.containers.main.env.KASM_SVC_WEBCAM | string | `"0"` |  |
 | app-template.controllers.main.containers.main.env.LAUNCH_URL | string | `"https://discord.com/app"` |  |
 | app-template.controllers.main.containers.main.env.MAX_FRAME_RATE | string | `"30"` |  |
+| app-template.controllers.main.containers.main.env.VNCOPTIONS | string | `"-PreferBandwidth -DynamicQualityMin=4 -DynamicQualityMax=7 -DLP_ClipDelay=0 -DisableBasicAuth"` |  |
 | app-template.controllers.main.containers.main.env.VNC_PW.valueFrom.secretKeyRef.key | string | `"VNC_PW"` |  |
 | app-template.controllers.main.containers.main.env.VNC_PW.valueFrom.secretKeyRef.name | string | `"discord-vnc"` |  |
 | app-template.controllers.main.containers.main.env.VNC_RESOLUTION | string | `"1280x800"` |  |
@@ -43,14 +44,15 @@ Discord in a KasmVNC web desktop (Chromium kiosk) — values layer over bjw-s ap
 | app-template.controllers.main.containers.main.probes.startup.spec.failureThreshold | int | `40` |  |
 | app-template.controllers.main.containers.main.probes.startup.spec.periodSeconds | int | `5` |  |
 | app-template.controllers.main.containers.main.probes.startup.type | string | `"TCP"` |  |
-| app-template.controllers.main.containers.main.resources.limits.memory | string | `"2Gi"` |  |
-| app-template.controllers.main.containers.main.resources.requests.cpu | string | `"200m"` |  |
-| app-template.controllers.main.containers.main.resources.requests.memory | string | `"512Mi"` |  |
+| app-template.controllers.main.containers.main.resources.limits.cpu | string | `"2"` |  |
+| app-template.controllers.main.containers.main.resources.limits.memory | string | `"2560Mi"` |  |
+| app-template.controllers.main.containers.main.resources.requests.cpu | string | `"300m"` |  |
+| app-template.controllers.main.containers.main.resources.requests.memory | string | `"1536Mi"` |  |
 | app-template.controllers.main.initContainers.chown-profile.command[0] | string | `"sh"` |  |
 | app-template.controllers.main.initContainers.chown-profile.command[1] | string | `"-c"` |  |
 | app-template.controllers.main.initContainers.chown-profile.command[2] | string | `"chown -R 1000:0 /profile /home/kasm-user/.config"` |  |
 | app-template.controllers.main.initContainers.chown-profile.image.repository | string | `"busybox"` |  |
-| app-template.controllers.main.initContainers.chown-profile.image.tag | string | `"1.36"` |  |
+| app-template.controllers.main.initContainers.chown-profile.image.tag | string | `"1.38"` |  |
 | app-template.controllers.main.initContainers.chown-profile.resources.limits.memory | string | `"64Mi"` |  |
 | app-template.controllers.main.initContainers.chown-profile.resources.requests.cpu | string | `"50m"` |  |
 | app-template.controllers.main.initContainers.chown-profile.resources.requests.memory | string | `"64Mi"` |  |

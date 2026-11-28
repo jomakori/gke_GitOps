@@ -20,6 +20,8 @@ Crossplane managed resource reconciled from this repo.
 | `ExternalSecret` + `ProviderConfig` | `CF_API_TOKEN` from Doppler (`devops/svc_cloudflare`) as the `{"api_token": "..."}` credentials blob the upjet provider expects |
 | `CompositeResourceDefinition` `CloudflareAccessApp` | platform API: `spec.accountId`, `spec.host`, `spec.sessionDuration`, optional `spec.policies` |
 | `Composition` | one `TrustAccessApplication` per XR: name and domain from the XR name/host, `type: self_hosted`, policies passed through |
+| `WatchOperation` `cf-access-audience-watch` + `CronOperation` `cf-access-audience-cron` | the audience aggregator: reads every XR's `.status.aud` and force-applies `RequestAuthentication/cf-access-jwt` in `istio-system` |
+| `ClusterRole` `audience-sync-istio-access` | aggregated into Crossplane's own ClusterRole: list `cloudflareaccessapps`, patch/update `requestauthentications` in `istio-system` |
 
 ## Turning it on
 
@@ -54,15 +56,31 @@ kubectl get trustaccessapplications.zero.upjet-cloudflare.upbound.io -o \
 `status.atProvider.aud` is the audience the Access application was issued. It
 is the value the Istio gateway has to accept.
 
-## Known limitation (follow-up)
+## How the gateway gets its audience list
 
-The Istio `RequestAuthentication` still takes its audience list from the
-Terraform-generated `accessAudienceTag` (`CF_ACCESS_AUDS` in Doppler), because
-Helm cannot render a value that only exists in another resource's status. Until
-an aggregation step exists, a host moved to Crossplane needs its AUD added to
-that list by hand — or the gateway keeps validating the Terraform-issued
-audiences only. Tracked separately; this chart deliberately does not touch the
-Terraform path yet.
+An XR's audience only exists in `.status.aud`, after the provider has reconciled
+the Access application — Helm cannot render that. So the list has exactly one
+owner, and it is not git:
+
+- `cf-access-audience-watch` (WatchOperation) fires as soon as any labelled
+  `CloudflareAccessApp` changes and re-runs the pipeline.
+- `cf-access-audience-cron` re-runs it every 10 minutes as the drift backstop.
+- The Python step (function-python, `audienceSync.teamDomain`) collects every
+  XR's `.status.aud`, drops empty values, dedupes and sorts, then force-applies
+  one object: `RequestAuthentication/cf-access-jwt` in `istio-system`.
+
+Only `audiences` is dynamic. Issuer, `jwksUri`, `selector`, the
+`Cf-Access-Jwt-Assertion` header, `forwardOriginalToken` and
+`outputPayloadToHeader` are literals in the script, so a malformed XR cannot
+weaken the validation. If the collection comes back empty the step refuses to
+apply rather than writing an object that accepts nothing.
+
+The manager needs `--enable-operations` (set in `crossplane.args`); without it
+the CRDs accept the operations and nothing ever reconciles them. Adding a private
+host therefore needs no git edit to any audience list — project the XR and the
+next watch fires.
+
+## Known limitation (follow-up)
 
 Second known gap: `allowedIdps` is left empty on purpose, so the Access
 application uses the account's default identity provider (Google). Terraform

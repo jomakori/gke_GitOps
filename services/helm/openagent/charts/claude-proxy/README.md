@@ -20,10 +20,10 @@ Claude Code CLI exposed as an OpenAI-compatible API gateway (OCP), with caller-s
 | persistence.enabled | bool | `true` |  |
 | persistence.size | string | `"100Mi"` |  |
 | persistence.storageClass | string | `"local-path"` |  |
-| resources.limits.cpu | string | `"1000m"` |  |
-| resources.limits.memory | string | `"1Gi"` |  |
-| resources.requests.cpu | string | `"100m"` |  |
-| resources.requests.memory | string | `"256Mi"` |  |
+| resources.limits.cpu | string | `"2"` |  |
+| resources.limits.memory | string | `"1536Mi"` |  |
+| resources.requests.cpu | string | `"150m"` |  |
+| resources.requests.memory | string | `"512Mi"` |  |
 | service.port | int | `4523` |  |
 
 ----------------------------------------------
