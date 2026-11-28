@@ -8,15 +8,13 @@ repoUrl: ""
 storageClass: "local-path"
 targetRevision: ""
 accessTeamDomain: ""
-# Deprecated: the AUD list is GitOps-owned now (see `accessHosts` below).
-# Terraform no longer creates Access apps, so it cannot know their AUDs.
-accessAudienceTag: ""
 # Hosts whose route is declared outside the appset: the tickerlight console
 # (apps/helm), and the openkite preview wildcard. Nothing walks them for
 # gateways.enable_private, so they cannot supply their own aud or appId.
-# Every service with gateways.enable_private is folded into the same audience
-# list from its own `aud`; the joined list becomes the istio RequestAuthentication
-# audienceTag, so an app's AUD is written once — here or on the service.
+# `aud` is recorded for reference only. The istio RequestAuthentication's shared
+# audience list is aggregated at runtime from every CloudflareAccessApp XR's
+# `.status.aud` (services/helm/crossplane/templates/audience-sync.yaml), so it is
+# never assembled here and a host cannot be forgotten out of it.
 accessHosts:
   openkite:
     host: openkite.maklab.net

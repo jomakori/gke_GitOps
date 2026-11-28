@@ -1,0 +1,196 @@
+suite: Cloudflare Access audience sync — operations, RBAC, function
+release:
+  name: crossplane
+  namespace: crossplane-system
+
+# These assertions exist because every field below can be wrong in a way that
+# renders cleanly and fails silently in the cluster: an operation with no
+# `--enable-operations` is ignored by the manager; a missing `requiredResources`
+# entry makes the script read nothing and skip the apply; a missing RBAC grant
+# turns the force-apply into a Forbidden the operation swallows as a job failure.
+templates:
+  - templates/audience-sync.yaml
+  - templates/rbac.yaml
+  - templates/functions.yaml
+  # Manager deployment: test-level `templates` must be a subset of this list.
+  - ../charts/crossplane/templates/deployment.yaml
+
+set:
+  crossplane:
+    enabled: true
+  audienceSync:
+    teamDomain: jmaklab
+    schedule: "*/10 * * * *"
+
+tests:
+  - it: WatchOperation fires on labelled CloudflareAccessApp changes only
+    documentSelector:
+      path: kind
+      value: WatchOperation
+    asserts:
+      - equal:
+          path: metadata.name
+          value: cf-access-audience-watch
+      - equal:
+          path: spec.watch.apiVersion
+          value: platform.maklab.net/v1alpha1
+      - equal:
+          path: spec.watch.kind
+          value: CloudflareAccessApp
+      # isSubset, not `equal`: the path parser splits on '.', and this key is a
+      # label name that contains dots and a slash.
+      - isSubset:
+          path: spec.watch.matchLabels
+          content:
+            platform.maklab.net/access-managed-by: crossplane
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+      - equal:
+          path: spec.successfulHistoryLimit
+          value: 3
+      - equal:
+          path: spec.failedHistoryLimit
+          value: 3
+
+  - it: CronOperation is the drift backstop, same pipeline
+    documentSelector:
+      path: kind
+      value: CronOperation
+    asserts:
+      - equal:
+          path: metadata.name
+          value: cf-access-audience-cron
+      - equal:
+          path: spec.schedule
+          value: "*/10 * * * *"
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+      - equal:
+          path: spec.operationTemplate.spec.mode
+          value: Pipeline
+
+  - it: pipeline reads the XRs through a label selector, not a name
+    documentSelector:
+      path: kind
+      value: WatchOperation
+    asserts:
+      - equal:
+          path: spec.operationTemplate.spec.pipeline[0].step
+          value: sync-audiences
+      - equal:
+          path: spec.operationTemplate.spec.pipeline[0].functionRef.name
+          value: function-python
+      - equal:
+          path: spec.operationTemplate.spec.pipeline[0].requirements.requiredResources[0].requirementName
+          value: access-apps
+      - equal:
+          path: spec.operationTemplate.spec.pipeline[0].requirements.requiredResources[0].apiVersion
+          value: platform.maklab.net/v1alpha1
+      - equal:
+          path: spec.operationTemplate.spec.pipeline[0].requirements.requiredResources[0].kind
+          value: CloudflareAccessApp
+      - isSubset:
+          path: spec.operationTemplate.spec.pipeline[0].requirements.requiredResources[0].matchLabels
+          content:
+            platform.maklab.net/access-managed-by: crossplane
+      - isNull:
+          path: spec.operationTemplate.spec.pipeline[0].requirements.requiredResources[0].name
+
+  - it: script aggregates, dedupes and sorts, and refuses to apply an empty list
+    documentSelector:
+      path: kind
+      value: WatchOperation
+    asserts:
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: "def operate\\(req, rsp\\):"
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: "sorted\\("
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: "if not auds:"
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: "get_required_resource"
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: 'rsp\.desired\.resources\["cf-access-jwt"\]'
+
+  - it: static JWT fields are literals with the team domain interpolated, audiences the only dynamic field
+    documentSelector:
+      path: kind
+      value: WatchOperation
+    asserts:
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: 'TEAM_DOMAIN = "jmaklab"'
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: 'ISSUER = "https://" \+ TEAM_DOMAIN \+ ".cloudflareaccess.com"'
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: '"Cf-Access-Jwt-Assertion"'
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: '"forwardOriginalToken": True'
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: '"x-cf-access-jwt-payload"'
+      - matchRegex:
+          path: spec.operationTemplate.spec.pipeline[0].input.script
+          pattern: '"jwksUri": ISSUER \+ "/cdn-cgi/access/certs"'
+
+  - it: RBAC grants the force-apply to crossplane's own ClusterRole
+    documentSelector:
+      path: kind
+      value: ClusterRole
+    asserts:
+      - equal:
+          path: metadata.name
+          value: audience-sync-istio-access
+      - isSubset:
+          path: metadata.labels
+          content:
+            rbac.crossplane.io/aggregate-to-crossplane: "true"
+      - contains:
+          path: rules[0].resources
+          content: requestauthentications
+      - contains:
+          path: rules[0].verbs
+          content: patch
+      - contains:
+          path: rules[0].verbs
+          content: update
+
+  - it: function-python is installed at the pinned version the script needs
+    documentSelector:
+      path: metadata.name
+      value: function-python
+    asserts:
+      - isKind:
+          of: Function
+      - equal:
+          path: spec.package
+          value: ghcr.io/crossplane-contrib/function-python:v0.6.0
+      - equal:
+          path: spec.packagePullPolicy
+          value: IfNotPresent
+
+  - it: the manager is started with operations enabled
+    # No other chart gate sees this: without the flag the CRDs accept the
+    # objects and nothing ever reconciles them.
+    templates:
+      - ../charts/crossplane/templates/deployment.yaml
+    documentSelector:
+      path: metadata.name
+      value: crossplane
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --enable-operations
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: core

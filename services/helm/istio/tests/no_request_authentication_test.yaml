@@ -1,0 +1,26 @@
+suite: Cloudflare Access — istio renders no RequestAuthentication
+release:
+  name: istio
+  namespace: istio-system
+
+# The gateway's JWT validation object has exactly one owner: the Crossplane
+# operation in services/helm/crossplane/templates/audience-sync.yaml, which
+# aggregates `audiences` from every CloudflareAccessApp XR's `.status.aud`.
+#
+# A RequestAuthentication rendered here is a second copy of that list, and it
+# goes stale the moment a private host is added — the 401 this change exists to
+# remove. Selecting the template by glob rather than by name means re-adding the
+# file under any name (`request-authentication.yaml`, `-cf.yaml`, …) lands in
+# this suite and fails the count.
+#
+# The suite is empty today on purpose; it is not vacuous, because a chart-wide
+# regression in the opposite direction (nothing rendering at all) is caught by
+# the DENY-policy assertions in access_aud_test.yaml.
+templates:
+  - templates/request-authentication*.yaml
+
+tests:
+  - it: renders zero RequestAuthentication objects
+    asserts:
+      - hasDocuments:
+          count: 0

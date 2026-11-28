@@ -1,0 +1,58 @@
+{{- /*
+  Audience sync: istio's RequestAuthentication/cf-access-jwt `audiences` list is
+  no longer rendered from git. It is the union of every CloudflareAccessApp XR's
+  `.status.aud`, force-applied by a Crossplane operation:
+
+    WatchOperation - fires on any add/update/delete of a labelled
+                     CloudflareAccessApp, so an app created by its own Argo wave
+                     lands in the audience list with no git change.
+    CronOperation  - every `audienceSync.schedule`, repairs drift (a hand edit,
+                     or a pruned object) when nothing changed.
+
+  Both share the pipeline in _helpers.tpl, so the script exists once. Only
+  `audiences` is dynamic; issuer, jwks, selector and headers are literals in the
+  script and never come from argocd-appset.
+
+  Applied via `desired.resources`, which Crossplane force-applies without an
+  owner reference: neither operation owns the object, so deleting an XR or an
+  Operation never deletes the gateway's JWT config.
+*/}}
+apiVersion: ops.crossplane.io/v1alpha1
+kind: WatchOperation
+metadata:
+  name: cf-access-audience-watch
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  watch:
+    apiVersion: platform.maklab.net/v1alpha1
+    kind: CloudflareAccessApp
+    matchLabels:
+      platform.maklab.net/access-managed-by: crossplane
+  operationTemplate:
+    metadata:
+      labels:
+        platform.maklab.net/component: cf-access-audience
+    spec:
+{{ include "crossplane.audienceSyncPipeline" . | indent 6 }}
+  concurrencyPolicy: Forbid
+  successfulHistoryLimit: 3
+  failedHistoryLimit: 3
+---
+apiVersion: ops.crossplane.io/v1alpha1
+kind: CronOperation
+metadata:
+  name: cf-access-audience-cron
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  schedule: {{ .Values.audienceSync.schedule | quote }}
+  operationTemplate:
+    metadata:
+      labels:
+        platform.maklab.net/component: cf-access-audience
+    spec:
+{{ include "crossplane.audienceSyncPipeline" . | indent 6 }}
+  concurrencyPolicy: Forbid
+  successfulHistoryLimit: 3
+  failedHistoryLimit: 3

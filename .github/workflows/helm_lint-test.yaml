@@ -245,6 +245,19 @@ jobs:
         # script. Dependency-free by design (stdlib only, no PyYAML).
         run: python3 scripts/check_omo_chain_layers.py
 
+      - name: Cloudflare Access invariants (gated host ⇄ Access app, one audience owner)
+        # Three defects render byte-perfect and pass every gate above:
+        #   - a service gated in istio with no `gateways.accessAppId`, so no
+        #     CloudflareAccessApp XR exists and the host can never receive a JWT;
+        #   - a host in istio's `privateHosts` with no Access app in its family;
+        #   - a git-side audience list creeping back (an `audienceTag` value or a
+        #     chart-rendered RequestAuthentication), which goes stale on the next
+        #     private host and shows up only as an unattributable 401.
+        # Offline by design: it reads values.yaml and renders the istio chart, so
+        # CI needs no cluster and no live AUDs (the real ones exist only after the
+        # XRs reconcile). Repo-wide static check, unconditional.
+        run: python3 scripts/check_private_hosts_have_access_app.py
+
       - name: Workload policy (resources / probes / PDB) — ADVISORY
         # What no other gate here can see: a container with no requests/limits, no
         # probes, or a multi-pod workload with no PodDisruptionBudget renders

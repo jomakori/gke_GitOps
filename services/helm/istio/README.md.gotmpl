@@ -9,7 +9,7 @@
 
 ## Under the hood
 
-This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), **istiod** (control plane), and **ingress-gateway** — plus 10 local templates for networking, TLS, and auth configuration. It is the single entry point for all cluster ingress.
+This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), **istiod** (control plane), and **ingress-gateway** — plus 9 local templates for networking, TLS, and auth configuration. It is the single entry point for all cluster ingress.
 
 ### Hybrid chart structure
 
@@ -18,7 +18,7 @@ This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), *
 - `istiod` — Control plane in ambient mode, STRICT mTLS
 - `gateway` (aliased `ingress-gateway`) — Ingress gateway deployment with NodePort service
 
-**Local templates (10):**
+**Local templates (9):**
 
 | Template | Purpose |
 |----------|---------|
@@ -27,7 +27,6 @@ This umbrella chart bundles 3 upstream Istio dependencies — **base** (CRDs), *
 | `certificate.yaml` | `wildcard-maklab-net` — wildcard TLS cert for `*.<clusterDomain>` |
 | `virtual-services.yaml` | One `VirtualService` per entry in `virtualServices` with `enabled: true`; plus a `DestinationRule` (TLS origination, `insecureSkipVerify` unless set `false`) when the entry sets `destination.tls.enabled` — for backends that serve TLS themselves, e.g. `argocd-server` with `server.insecure: false` |
 | `peer-authentication.yaml` | STRICT mTLS mesh-wide |
-| `request-authentication.yaml` | CF Access JWT validation (conditional on `cloudflare.access.audienceTag`) |
 | `authorization-policy-private.yaml` | DENY rules per private VS (conditional on `enablePrivate: true`) |
 | `authorization-policy-private-hosts.yaml` | DENY rules per `privateHosts` entry — private hosts this chart does not route (wildcards allowed) |
 | `cloudflare-external-secret.yaml` | ExternalSecret for `CF_API_TOKEN` in `istio-system` |
@@ -46,9 +45,9 @@ The istiod control plane runs in **ambient mode** — no sidecars. Namespaces op
 
 Services that require authenticated access opt in via `enablePrivate: true` in their VirtualService config. The pipeline:
 
-1. The `applications.yaml` template (in argocd-appset) detects `gateways.enable_private` and injects the `enablePrivate` flag into the istio chart parameters, along with the CF Access team domain and AUD tag from Terraform/Doppler.
-2. `request-authentication.yaml` validates the CF Access JWT at the ingress gateway using the `Cf-Access-Jwt-Assertion` header.
-3. `authorization-policy-private.yaml` creates a DENY rule per private host — traffic without a valid JWT is rejected.
+1. The `applications.yaml` template (in argocd-appset) detects `gateways.enable_private` and injects the `enablePrivate` flag plus the host's own `aud` into the istio chart parameters.
+2. `authorization-policy-private.yaml` creates a DENY rule per private host — traffic without a valid JWT, or with a JWT issued for a different Access app, is rejected.
+3. The shared JWT validation itself (`RequestAuthentication/cf-access-jwt`, which tells the gateway where the JWKS lives and which audiences it must accept) is **not** rendered by this chart. A Crossplane operation in `services/helm/crossplane` force-applies it, with `audiences` aggregated from every `CloudflareAccessApp` XR's `.status.aud` — see the "Audience aggregation" section below.
 
 `enable_public` and `enable_private` are mutually exclusive. The argocd-appset template fails if both are set on the same service.
 
@@ -70,10 +69,28 @@ privateHosts:
   - "*.example.com"   # one entry covers every preview + the static host
 ```
 
-The Cloudflare side of the gate is the matching Access application in `devops_Terraform`
-(`6-cloudflare-access.tf`). Both halves are required: the Access application is what makes the browser
-authenticate and issue `Cf-Access-Jwt-Assertion`, and this policy is what rejects a request whose JWT is
-missing or whose audience is absent from `cloudflare.access.audienceTag`.
+The Cloudflare side of the gate is a matching Access application, declared as a `CloudflareAccessApp`
+Crossplane XR (`services/helm/cloudflare-access`). Both halves are required: the Access application is
+what makes the browser authenticate and issue `Cf-Access-Jwt-Assertion`, and this policy is what rejects
+a request whose JWT is missing or was issued for another host's application.
+
+### Audience aggregation
+
+The gateway accepts a JWT only if its `aud` claim is in one list, and that list must contain an entry per
+Access app — including the preview app, whose hosts are created per pull request. Keeping the list in git
+meant every new private host needed a second edit here, and a forgotten one produced a 401 nobody could
+attribute.
+
+It is now derived at runtime. `services/helm/crossplane` renders a `WatchOperation` (fires on any
+CloudflareAccessApp change) and a `CronOperation` (every 10 minutes, repairs drift). Both run one
+`function-python` step that reads every `CloudflareAccessApp`'s `.status.aud` — label-selected by
+`platform.maklab.net/access-managed-by: crossplane` through the operation's `requiredResources` — and
+force-applies `RequestAuthentication/cf-access-jwt` in this namespace. Only `audiences` is dynamic; the
+issuer, JWKS URI, selector and headers are literals in that script.
+
+Consequence for this chart: no `cloudflare.access.*` values, no `RequestAuthentication` template. `helm
+template services/helm/istio | grep RequestAuthentication` must stay empty — `scripts/check_private_hosts_have_access_app.py`
+enforces that, along with the absence of any git-side audience list.
 
 ### VirtualServices
 

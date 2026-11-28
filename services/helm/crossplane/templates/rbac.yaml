@@ -1,0 +1,15 @@
+# Grants the audience-sync Operation pipeline (templates/audience-sync.yaml)
+# permission to force-apply the istio RequestAuthentication. Aggregated into
+# crossplane's own ClusterRole via the standard Crossplane RBAC label.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: audience-sync-istio-access
+  labels:
+    rbac.crossplane.io/aggregate-to-crossplane: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: ["security.istio.io"]
+    resources: ["requestauthentications"]
+    verbs: ["get", "list", "create", "patch", "update"]
