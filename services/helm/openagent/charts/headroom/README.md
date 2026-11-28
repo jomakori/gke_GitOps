@@ -21,7 +21,7 @@ Headroom prompt-compression sidecar, called by LiteLLM's pre_call guardrail. Ena
 | enabled | bool | `true` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/headroomlabs-ai/headroom"` |  |
-| image.tag | string | `"0.44.0@sha256:10ef5f71c4cae3a02ca28107dfcf379aa73314ff26544c1f9988140e71f732f4"` |  |
+| image.tag | string | `"0.45.0@sha256:50a43dfeb9d3d2c310a6ced0ff633617d9f5d9909aacfa373ea9c0de31753472"` |  |
 | networkPolicy.enabled | bool | `true` |  |
 | networkPolicy.litellm.instance | string | `""` |  |
 | networkPolicy.litellm.podLabelName | string | `"litellm"` |  |

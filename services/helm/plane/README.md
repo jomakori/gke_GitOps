@@ -35,7 +35,7 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | api.image | string | `"artifacts.plane.so/makeplane/plane-backend"` |  |
 | api.labels | object | `{}` |  |
 | api.memoryLimit | string | `"1000Mi"` |  |
-| api.memoryRequest | string | `"50Mi"` |  |
+| api.memoryRequest | string | `"256Mi"` |  |
 | api.nodeSelector | object | `{}` |  |
 | api.pullPolicy | string | `"Always"` |  |
 | api.replicas | int | `1` |  |
@@ -129,7 +129,7 @@ Meet Plane. An open-source software development tool to manage issues, sprints, 
 | rabbitmq.default_password | string | `"plane"` |  |
 | rabbitmq.default_user | string | `"plane"` |  |
 | rabbitmq.external_rabbitmq_url | string | `""` |  |
-| rabbitmq.image | string | `"rabbitmq:4.4.0-management-alpine"` |  |
+| rabbitmq.image | string | `"rabbitmq:4.4.1-management-alpine"` |  |
 | rabbitmq.labels | object | `{}` |  |
 | rabbitmq.local_setup | bool | `true` |  |
 | rabbitmq.managementPort | int | `15672` |  |

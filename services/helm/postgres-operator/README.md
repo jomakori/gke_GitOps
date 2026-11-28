@@ -55,6 +55,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.backups.credentialsSecretManagedByOperator | bool | `false` |  |
 | postgres.clusters.pg-main.backups.cronSchedule | string | `"0 2 */2 * *"` |  |
 | postgres.clusters.pg-main.backups.enabled | bool | `true` |  |
+| postgres.clusters.pg-main.backups.r2CredentialsSecret | string | `"pg-main-r2"` |  |
 | postgres.clusters.pg-main.backups.region | string | `"auto"` |  |
 | postgres.clusters.pg-main.backups.retention | int | `4` |  |
 | postgres.clusters.pg-main.configName | string | `"pg-main-config"` |  |
@@ -73,6 +74,7 @@ StackGres also provides `SGPostgresConfig`, `SGPoolingConfig`, and supporting CR
 | postgres.clusters.pg-main.resources.pgbouncer.memory | string | `"64Mi"` |  |
 | postgres.clusters.pg-main.resources.postgres-util.cpu | string | `"100m"` |  |
 | postgres.clusters.pg-main.resources.postgres-util.memory | string | `"64Mi"` |  |
+| postgres.clusters.pg-main.sgInstanceProfile | string | `"pg-main-default"` |  |
 | postgres.clusters.pg-main.storage | string | `"15Gi"` |  |
 | postgres.clusters.pg-main.storageClass | string | `"local-path"` |  |
 | postgres.clusters.pg-main.users[0].databases[0].name | string | `"plane"` |  |

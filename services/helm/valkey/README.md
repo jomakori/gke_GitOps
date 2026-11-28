@@ -51,7 +51,7 @@ Disabled: the Service is `ClusterIP`-only and every consumer is in-cluster (the 
 | valkey.image.pullPolicy | string | `"IfNotPresent"` |  |
 | valkey.image.registry | string | `"docker.io"` |  |
 | valkey.image.repository | string | `"valkey/valkey"` |  |
-| valkey.image.tag | string | `"9.1.3"` |  |
+| valkey.image.tag | string | `"9.2.0"` |  |
 | valkey.nodeSelector.intent | string | `"apps"` |  |
 | valkey.persistence.enabled | bool | `true` |  |
 | valkey.persistence.size | string | `"1Gi"` |  |

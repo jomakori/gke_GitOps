@@ -7,7 +7,7 @@ ArgoCD managing itself — thin wrapper over the official argo-cd Helm chart, ad
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://argoproj.github.io/argo-helm | argo-cd | 10.18.0 |
+| https://argoproj.github.io/argo-helm | argo-cd | 10.19.1 |
 
 ## Under the hood
 
@@ -40,7 +40,7 @@ The Application is named `argo-cd`, which is the Helm release name and therefore
 | argo-cd.controller.pdb.enabled | bool | `true` |  |
 | argo-cd.controller.pdb.minAvailable | int | `1` |  |
 | argo-cd.controller.replicas | int | `2` |  |
-| argo-cd.controller.resources.limits.memory | string | `"2Gi"` |  |
+| argo-cd.controller.resources.limits.memory | string | `"3Gi"` |  |
 | argo-cd.controller.resources.requests.cpu | string | `"500m"` |  |
 | argo-cd.controller.resources.requests.memory | string | `"1Gi"` |  |
 | argo-cd.dex.pdb.enabled | bool | `true` |  |
