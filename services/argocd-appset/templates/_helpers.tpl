@@ -33,6 +33,9 @@ metadata:
   {{- end }}
   annotations:
     argocd.argoproj.io/sync-wave: {{ $cfg.syncWave | default "0" | quote }}
+    {{- with $cfg.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   project: {{ $project }}
   revisionHistoryLimit: {{ $cfg.revisionHistoryLimit | default 3 }}
