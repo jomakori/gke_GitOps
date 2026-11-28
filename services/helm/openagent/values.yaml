@@ -1014,7 +1014,10 @@ hermes-agent:
         max_lifetime_seconds: 21600
         env:
           ARGOCD_API_TOKEN: "${MCP_ARGOCD_TOKEN}"
-          ARGOCD_BASE_URL: "${MCP_ARGOCD_URL}"
+          # argocd-server only serves TLS on 443; the 80 endpoint answers 307 and
+          # node fetch refuses to follow into a self-signed cert.
+          ARGOCD_BASE_URL: "https://argo-cd-argocd-server.argocd.svc.cluster.local"
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
           npm_config_cache: "/opt/data/.npm-mcp/argocd"
         auth_probe: {tool: list_applications, args: {limit: 1}}
         tools:
