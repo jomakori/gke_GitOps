@@ -22,12 +22,11 @@ spec:
               apiVersion: zero.upjet-cloudflare.upbound.io/v1alpha1
               kind: TrustAccessApplication
               spec:
-                # The Access apps predate this chart and are still edited in
-                # Cloudflare, so the managed resource observes them: it reads
-                # status (the issued aud) back and never writes. Flip to ["*"]
-                # once policy/session changes are meant to flow from Git.
+                # Git owns the Access apps: the provider creates an app when the
+                # XR carries no appId, adopts an existing one by id, and
+                # reconciles policy and session changes from here on.
                 managementPolicies:
-                  - Observe
+                  - "*"
                 forProvider:
                   type: self_hosted
                 providerConfigRef:
@@ -51,7 +50,9 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.policies
                 toFieldPath: spec.forProvider.policies
-              # Adopt the existing app by id instead of creating a duplicate.
+              # Adopt an existing app by id; with no appId the patch is skipped
+              # and the provider creates the app itself. Combine drops the patch
+              # when a variable is missing, which is the default Optional policy.
               # The provider imports by "<accounts>/<account_id>/<app_id>", a
               # bare app id fails with "expected urlencoded segments".
               - type: CombineFromComposite
