@@ -93,21 +93,13 @@ litellm:
     # Re-check this comment if the VM is resized down again.
     maxReplicas: 4
     targetCPUUtilizationPercentage: 70
-    # Memory HPA (same pattern as argocd-repo-server in-cluster). Litellm is
-    # memory-bound (Python + prisma + uvicorn), CPU is mostly idle even under
-    # load.
-    #
-    # HPA memory utilisation is measured against the container's REQUEST, never
-    # its limit. This comment previously said "70% of 4Gi limit = ~2.8Gi per
-    # pod", which made the trigger look comfortable when it was really 70% of a
-    # 512Mi request (358Mi) against ~1Gi of real usage — hence a permanent 197%
-    # and maxReplicas forever. The request above is the number that matters.
-    #
-    # 85, not 70: at 70% of the 1.5Gi request the fleet sits right at the
-    # scale-up line during normal load (measured 64-197%), so any blip adds a
-    # replica on a VM that has no headroom. 85% (~1.28Gi per pod) only scales
-    # up when litellm is genuinely saturated.
-    targetMemoryUtilizationPercentage: 85
+    # CPU only. The memory metric was removed 2026-11-28: HPA memory utilisation
+    # is a percentage of the container's REQUEST, so right-sizing the request to
+    # the measured ~840Mi (#586) put the 85% line at ~870Mi — a target the fleet
+    # sits on permanently, which pinned the HPA at maxReplicas with CPU at 21%.
+    # The request now reflects real usage; a percentage-of-request memory target
+    # cannot coexist with that. Memory stays bounded by the 2Gi limit, and bound
+    # pods scale on CPU, which is what actually moves with traffic.
   # Chart-native PDB (upstream `pdb` key). This is the stack's only LLM
   # gateway and it is HPA-scaled; with no PDB a single node drain can evict
   # every replica at once. The subchart renders the selector itself.
