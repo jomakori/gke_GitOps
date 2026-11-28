@@ -650,10 +650,8 @@ hermes-agent:
       # weekly uncached-input line to confirm the reclaim beats the cache loss.
       proactive_prune_tokens: 48000
     delegation:
-      # Highest fan-out tier — 8 children at depth 3 can be hundreds of calls, so
-      # the rpm-uncapped cheap headroom leads. Claude's 60/120 rpm pool would 429
-      # instantly and hand back a wasted round trip.
-      model: deepseek-v4-flash-direct
+      # Delegated children ride the Go Flash lane; the hops below absorb a cap 429.
+      model: deepseek-v4-flash-go
       provider: litellm
       base_url: http://openagent-litellm.openagent.svc.cluster.local:4000/v1
       api_key: ${LITELLM_MASTER_KEY}
@@ -1779,6 +1777,11 @@ mcpVerification:
     activeDeadlineSeconds: 900
     backoffLimit: 0
     historyLimit: 3
+    # Keep one failed Job for inspection and let it expire; a retained failure
+    # keeps kube_job_failed>0 alive, so KubeJobFailed would stay firing long
+    # after the next run went green.
+    failedHistoryLimit: 1
+    ttlSecondsAfterFinished: 3600
     # Unbounded container repeatedly OOMKilled the shared VM (3 consecutive
     # runs, re-leaking every 15 minutes). Loads ~13 MCP servers in-process.
     # Requests kept modest — total pod requests across the cluster already

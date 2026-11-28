@@ -254,7 +254,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.delegation.max_concurrent_children | int | `8` |  |
 | hermes-agent.config.delegation.max_iterations | int | `30` |  |
 | hermes-agent.config.delegation.max_spawn_depth | int | `3` |  |
-| hermes-agent.config.delegation.model | string | `"deepseek-v4-flash-direct"` |  |
+| hermes-agent.config.delegation.model | string | `"deepseek-v4-flash-go"` |  |
 | hermes-agent.config.delegation.provider | string | `"litellm"` |  |
 | hermes-agent.config.delegation.reasoning_effort | string | `"medium"` |  |
 | hermes-agent.config.delegation.subagent_auto_approve | bool | `true` |  |
