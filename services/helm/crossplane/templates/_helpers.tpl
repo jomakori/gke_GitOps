@@ -45,8 +45,12 @@ def operate(req, rsp):
         return
 
     apps = _items(req)
-    auds = sorted({(a.get("status") or {}).get("aud", "") for a in apps} - {"", None})
-    hosts = sorted({(a.get("spec") or {}).get("host", "") for a in apps} - {"", None})
+
+    def aud_of(app):
+        return (app.get("status") or {}).get("aud") or ""
+
+    auds = sorted({aud_of(a) for a in apps} - {""})
+    hosts = sorted({(a.get("spec") or {}).get("host") or "" for a in apps if aud_of(a)} - {""})
     if not auds:
         response.warning(rsp, "no CloudflareAccessApp has .status.aud yet; leaving " + NAMESPACE + "/" + NAME + " unchanged")
         return

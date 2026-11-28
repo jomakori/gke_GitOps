@@ -89,7 +89,8 @@ force-applies `RequestAuthentication/cf-access-jwt` in this namespace. Only `aud
 issuer, JWKS URI, selector and headers are literals in that script.
 
 Consequence for this chart: no `cloudflare.access.*` values, no `RequestAuthentication` template. `helm
-template services/helm/istio | grep RequestAuthentication` must stay empty — `scripts/check_private_hosts_have_access_app.py`
+template services/helm/istio | grep -cE '^kind: RequestAuthentication'` must print `0` — anchor the match,
+because the `base` subchart's CRD declares the same string under `spec.names`. `scripts/check_private_hosts_have_access_app.py`
 enforces that, along with the absence of any git-side audience list.
 
 ### VirtualServices
