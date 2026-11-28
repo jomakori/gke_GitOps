@@ -32,3 +32,9 @@ apps:
   tickerlightStaging:
     host: staging-trade.maklab.net
     appId: "0f0346ef-04c8-4caa-ac9e-d30d753e81a2"
+  # strands staging: gated by services/helm/istio privateHosts since 2026-11-26,
+  # but nothing registered an Access app for it, so the DENY policy had no JWT
+  # to accept and the host answered 403 for everyone.
+  strandsStaging:
+    host: staging-strands.maklab.net
+    appId: "a86712fb-b7ef-4472-9619-4f899dfafd12"
