@@ -8,14 +8,36 @@ repoUrl: ""
 storageClass: "local-path"
 targetRevision: ""
 accessTeamDomain: ""
-# Deprecated: the AUD list is GitOps-owned now (see cloudflare.access.audienceTag
-# below). Terraform no longer creates Access apps, so it cannot know their AUDs.
+# Deprecated: the AUD list is GitOps-owned now (see `accessHosts` below).
+# Terraform no longer creates Access apps, so it cannot know their AUDs.
 accessAudienceTag: ""
-# Cloudflare Access AUDs accepted by the istio RequestAuthentication: one tag per
-# Access app, comma separated. Add a tag here when an Access app is created.
-cloudflare:
-  access:
-    audienceTag: "10abc099b79538db672e6876cbb4f6e8cb4ba173d1a50950bd8df8b9007961ab,214f5d0afc91a4d13f7920f30e6e04bbb37914d99f61ddfa255d2a6ef36c3a3a,9580d06940e13b9817b94b07249a1538f976508e797d8ce46afd15bdebd45184,d18cec8b7b5222492dcbe553094cda0f4272b91182ad2bd47efe663bcaaa0727,dac2e7c83e44235a2e485efd6f7df37496a324dfa38f903068ae2b9f1b3362a2,d51f5728781adc2293dc1bf8e3b2a39e9885d42efe6c71b74dc3020f2a280b22,b56883754bb37f1665b374d487d7e9a4e7917fc1d8787f8ba2a83a4ff4ed6c50,f171877975deb236cd52ddedebc81725cfd5b78fa508d830300e41d1ce4382b7,4a5343620661eec70cb0a2c0a2c3184a2d02da30b8bdc61d6ae648b79b4d6333,d8958706b041b9aa7e0e1ed56a301b7d7b59a8b71092b83414943b658857aa30"
+# Hosts whose route is declared outside the appset: the tickerlight console
+# (apps/helm), and the openkite preview wildcard. Nothing walks them for
+# gateways.enable_private, so they cannot supply their own aud or appId.
+# Every service with gateways.enable_private is folded into the same audience
+# list from its own `aud`; the joined list becomes the istio RequestAuthentication
+# audienceTag, so an app's AUD is written once — here or on the service.
+accessHosts:
+  openkite:
+    host: openkite.maklab.net
+    appId: e47467cc-9be9-4082-807b-6712847f06b3
+    aud: 10abc099b79538db672e6876cbb4f6e8cb4ba173d1a50950bd8df8b9007961ab
+  openkitePreviews:
+    host: "pr*-openkite.maklab.net"
+    appId: d35a0fbb-8373-4497-9cd5-18adb8a0b42d
+    aud: dac2e7c83e44235a2e485efd6f7df37496a324dfa38f903068ae2b9f1b3362a2
+  tickerlight:
+    host: trade.maklab.net
+    appId: 52479931-1173-483a-b370-4a53e5a2c24b
+    aud: d51f5728781adc2293dc1bf8e3b2a39e9885d42efe6c71b74dc3020f2a280b22
+  tickerlightStaging:
+    host: staging-trade.maklab.net
+    appId: 0f0346ef-04c8-4caa-ac9e-d30d753e81a2
+    aud: b56883754bb37f1665b374d487d7e9a4e7917fc1d8787f8ba2a83a4ff4ed6c50
+  strandsStaging:
+    host: staging-strands.maklab.net
+    appId: a86712fb-b7ef-4472-9619-4f899dfafd12
+    aud: d8958706b041b9aa7e0e1ed56a301b7d7b59a8b71092b83414943b658857aa30
 # Cloudflare identifiers, written only here: charts get them as Helm parameters
 # (structural render-time values, so a Secret cannot supply them). Do not rename.
 crossplaneAccess:

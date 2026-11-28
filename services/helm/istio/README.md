@@ -116,7 +116,6 @@ Two layers of VirtualServices exist:
 | certificate.renewBefore | string | `"720h"` |  |
 | certificate.secretName | string | `"wildcard-maklab-net-tls"` |  |
 | cloudflare.access.audienceTag | string | `""` |  |
-| cloudflare.access.crossplaneHosts | object | `{}` |  |
 | cloudflare.access.teamDomain | string | `""` |  |
 | cloudflare.apiTokenSecretKey | string | `"CF_API_TOKEN"` |  |
 | cloudflare.apiTokenSecretName | string | `"cloudflare-api-token"` |  |
