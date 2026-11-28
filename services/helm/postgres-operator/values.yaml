@@ -145,7 +145,7 @@ postgres:
       storageClass: local-path
       instances: 1
       storage: 15Gi
-      version: "18"
+      version: "18.4"
       profile: "production"
       # Required by the SGCluster validating webhook; must name an SGInstanceProfile that exists.
       sgInstanceProfile: "pg-main-default"
