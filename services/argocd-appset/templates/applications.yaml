@@ -59,8 +59,25 @@
 {{- if $.Values.accessTeamDomain }}
 {{-   $gatewayParams = append $gatewayParams (dict "name" "cloudflare.access.teamDomain" "value" $.Values.accessTeamDomain) }}
 {{- end }}
-{{- if $.Values.cloudflare.access.audienceTag }}
-{{-   $gatewayParams = append $gatewayParams (dict "name" "cloudflare.access.audienceTag" "value" $.Values.cloudflare.access.audienceTag) }}
+{{- /* audienceTag: every AUD the gateway must accept, derived rather than
+       hand-listed. Service-private hosts contribute their own `aud`; hosts
+       routed elsewhere contribute theirs from `accessHosts`. One AUD, one
+       place — a host without an aud simply drops out of the list, which is the
+       failure the istio guard test exists to catch. */}}
+{{- $auds := list }}
+{{- range $sk, $sv := $.Values.services }}
+{{-   if and $sv.enable $sv.gateways $sv.gateways.enable_private $sv.gateways.aud }}
+{{-     $auds = append $auds (toString $sv.gateways.aud) }}
+{{-   end }}
+{{- end }}
+{{- range $hk, $ha := ($.Values.accessHosts | default dict) }}
+{{-   with $ha.aud }}
+{{-     $auds = append $auds (toString .) }}
+{{-   end }}
+{{- end }}
+{{- $auds = uniq $auds }}
+{{- if $auds }}
+{{-   $gatewayParams = append $gatewayParams (dict "name" "cloudflare.access.audienceTag" "value" (join "," $auds)) }}
 {{- end }}
 {{- $mergedParams := concat ($cfg.parameters | default list) $gatewayParams }}
 {{- $umbrella := mustMergeOverwrite (deepCopy $cfg) (dict "parameters" $mergedParams) }}
@@ -77,6 +94,12 @@
 {{-       $host := printf "%s.%s" $subdomain $.Values.clusterDomain }}
 {{-       $accessParams = append $accessParams (dict "name" (printf "apps.%s.host" $sk) "value" $host) }}
 {{-       $accessParams = append $accessParams (dict "name" (printf "apps.%s.appId" $sk) "value" $sv.gateways.accessAppId) }}
+{{-     end }}
+{{-   end }}
+{{-   range $hk, $ha := ($.Values.accessHosts | default dict) }}
+{{-     if and $ha.host $ha.appId }}
+{{-       $accessParams = append $accessParams (dict "name" (printf "apps.%s.host" $hk) "value" $ha.host) }}
+{{-       $accessParams = append $accessParams (dict "name" (printf "apps.%s.appId" $hk) "value" $ha.appId) }}
 {{-     end }}
 {{-   end }}
 {{-   if $.Values.crossplaneAccess.accountId }}

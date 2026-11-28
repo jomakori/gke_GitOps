@@ -79,19 +79,9 @@ cloudflare:
   apiTokenSecretKey: CF_API_TOKEN
   access:
     teamDomain: ""
-    audienceTag: ""  # Comma-separated AUDs from CF Access Applications (e.g. "aud1,aud2"). Set by argocd-appset from Doppler CF_ACCESS_AUDS.
-    # Per-service crossplane-managed CloudflareAccessApp XRs (platform.maklab.net/v1alpha1)
-    # whose status.aud this chart reads via a live Helm `lookup` at render time -
-    # additive to audienceTag above, never replacing it. Keyed by service name;
-    # each entry is {name, namespace} of the XR. Populated by argocd-appset's
-    # applications.yaml for every service with gateways.enable_private true AND
-    # the global crossplaneAccessEnabled toggle on. Empty by default, so with the
-    # toggle off this chart renders exactly as before (audienceTag-only).
-    # UNVERIFIED: `lookup` requires the Helm render to have live cluster access;
-    # ArgoCD's repo-server supports this, but it has not been exercised against
-    # a real cluster for this feature yet.
-    crossplaneHosts: {}
-
+    # Comma-separated AUDs; argocd-appset derives it from each private
+    # service's gateways.aud plus its accessHosts.
+    audienceTag: ""
 gateway:
   name: maklab-gateway
   namespace: istio-system
