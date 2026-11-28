@@ -38,3 +38,9 @@ apps:
   strandsStaging:
     host: staging-strands.maklab.net
     appId: "a86712fb-b7ef-4472-9619-4f899dfafd12"
+  # OpenKite PR previews: a single wildcard app, not one per PR — the appset
+  # generates pr-<N>.openkite.maklab.net per open PR and CF Access wildcards
+  # match exactly one label. Created 2026-11-24 outside git; adopted by id.
+  openkitePreviews:
+    host: pr*-openkite.maklab.net
+    appId: "d35a0fbb-8373-4497-9cd5-18adb8a0b42d"
