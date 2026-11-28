@@ -255,10 +255,9 @@ jobs:
         #     private host and shows up only as an unattributable 401.
         # Offline by design: it reads values.yaml and renders the istio chart, so
         # CI needs no cluster and no live AUDs (the real ones exist only after the
-        # XRs reconcile). Repo-wide static check, unconditional.
-        run: |
-          python3 -m pip install --quiet pyyaml==6.0.2
-          python3 scripts/check_private_hosts_have_access_app.py
+        # XRs reconcile). Repo-wide static check, unconditional. PyYAML comes from
+        # the job's "Ensure PyYAML" step, so this needs no install of its own.
+        run: python3 scripts/check_private_hosts_have_access_app.py
 
       - name: Workload policy (resources / probes / PDB) — ADVISORY
         # What no other gate here can see: a container with no requests/limits, no
