@@ -287,7 +287,8 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.config.mcp_servers.argocd.command | string | `"npx"` |  |
 | hermes-agent.config.mcp_servers.argocd.connect_timeout | int | `180` |  |
 | hermes-agent.config.mcp_servers.argocd.env.ARGOCD_API_TOKEN | string | `"${MCP_ARGOCD_TOKEN}"` |  |
-| hermes-agent.config.mcp_servers.argocd.env.ARGOCD_BASE_URL | string | `"${MCP_ARGOCD_URL}"` |  |
+| hermes-agent.config.mcp_servers.argocd.env.ARGOCD_BASE_URL | string | `"https://argo-cd-argocd-server.argocd.svc.cluster.local"` |  |
+| hermes-agent.config.mcp_servers.argocd.env.NODE_TLS_REJECT_UNAUTHORIZED | string | `"0"` |  |
 | hermes-agent.config.mcp_servers.argocd.env.npm_config_cache | string | `"/opt/data/.npm-mcp/argocd"` |  |
 | hermes-agent.config.mcp_servers.argocd.idle_timeout_seconds | int | `1800` |  |
 | hermes-agent.config.mcp_servers.argocd.lazy | bool | `true` |  |
@@ -935,7 +936,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.extraVolumes[9].name | string | `"trading-guard-plugin"` |  |
 | hermes-agent.image.pullPolicy | string | `"IfNotPresent"` |  |
 | hermes-agent.image.repository | string | `"nousresearch/hermes-agent"` |  |
-| hermes-agent.image.tag | string | `"v0.23.2"` |  |
+| hermes-agent.image.tag | string | `"v0.23.4"` |  |
 | hermes-agent.probes.liveness.failureThreshold | int | `6` |  |
 | hermes-agent.probes.liveness.httpGet.path | string | `"/health"` |  |
 | hermes-agent.probes.liveness.httpGet.port | int | `8642` |  |
@@ -951,10 +952,10 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | hermes-agent.probes.startup.httpGet.port | int | `8642` |  |
 | hermes-agent.probes.startup.periodSeconds | int | `10` |  |
 | hermes-agent.probes.startup.timeoutSeconds | int | `3` |  |
-| hermes-agent.resources.limits.cpu | string | `"2"` |  |
-| hermes-agent.resources.limits.memory | string | `"8Gi"` |  |
+| hermes-agent.resources.limits.cpu | string | `"3"` |  |
+| hermes-agent.resources.limits.memory | string | `"12Gi"` |  |
 | hermes-agent.resources.requests.cpu | string | `"2"` |  |
-| hermes-agent.resources.requests.memory | string | `"3Gi"` |  |
+| hermes-agent.resources.requests.memory | string | `"4Gi"` |  |
 | hermes-agent.service.enabled | bool | `true` |  |
 | hermes-agent.service.ports[0].name | string | `"webapp"` |  |
 | hermes-agent.service.ports[0].port | int | `9120` |  |
@@ -989,7 +990,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.fullnameOverride | string | `"openagent-litellm"` |  |
 | litellm.image.pullPolicy | string | `"IfNotPresent"` |  |
 | litellm.image.repository | string | `"ghcr.io/berriai/litellm"` |  |
-| litellm.image.tag | string | `"v1.109.1@sha256:11175975a3093e05e92faee2fe2fe3412a3ae2fcaa849eb0fe25d5f0d8bcb2e9"` |  |
+| litellm.image.tag | string | `"1.110.3@sha256:1050d2c9ca58399de9cd51df6eb503812af697717f54d2f08c1c30589c75e1f7"` |  |
 | litellm.masterkeySecretKey | string | `"masterkey"` |  |
 | litellm.masterkeySecretName | string | `"openagent-litellm-masterkey"` |  |
 | litellm.migrationJob.enabled | bool | `false` |  |
@@ -1093,7 +1094,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | litellm.resources.limits.cpu | string | `"2000m"` |  |
 | litellm.resources.limits.memory | string | `"2Gi"` |  |
 | litellm.resources.requests.cpu | string | `"100m"` |  |
-| litellm.resources.requests.memory | string | `"1.5Gi"` |  |
+| litellm.resources.requests.memory | string | `"1Gi"` |  |
 | litellm.service.port | int | `4000` |  |
 | litellmVirtualService.destination.host | string | `"openagent-litellm.openagent.svc.cluster.local"` |  |
 | litellmVirtualService.destination.port | int | `4000` |  |
@@ -1129,7 +1130,7 @@ go run ./.useful-scripts/gitopsctl/cmd/gitopsctl mcp verify \
 | tools.image.tag | string | `"299d909569fe18ff877e366da3b059c52392fc7b"` |  |
 | vpa.enabled | bool | `true` |  |
 | vpa.targets[0].containers[0].controlledValues | string | `"RequestsOnly"` |  |
-| vpa.targets[0].containers[0].maxCpu | string | `"2"` |  |
+| vpa.targets[0].containers[0].maxCpu | string | `"3"` |  |
 | vpa.targets[0].containers[0].maxMemory | string | `"8Gi"` |  |
 | vpa.targets[0].containers[0].minCpu | string | `"50m"` |  |
 | vpa.targets[0].containers[0].minMemory | string | `"512Mi"` |  |
