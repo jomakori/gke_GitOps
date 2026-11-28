@@ -8,7 +8,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
 spec:
-  postgresVersion: {{ $c.version | quote }}
+  postgresVersion: {{ (splitList "." $c.version | first) | quote }}
   postgresql.conf:
     timezone: "America/Chicago"
 ---
