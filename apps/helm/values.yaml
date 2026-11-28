@@ -4,7 +4,6 @@
 clusterDomain: maklab.net
 registry: 123456.dkr.ecr.us-east-2.amazonaws.com
 storageClass: "local-path"
-
 # ┌──────────────────────────────────────────────────────────────────┐
 # │ App Specs — each app is a top-level key                          │
 # │ Select which app renders via: --set appName=<key>                │
@@ -16,7 +15,6 @@ storageClass: "local-path"
 # │   enable_db     : {...}        (spec-driven DB — enable_db.type:    │
 # │                    postgres → SGCluster; see templates/_helpers.tpl)│
 # └──────────────────────────────────────────────────────────────────┘
-
 openkite:
   enable_staging: true
   enable_istio: true
@@ -59,7 +57,7 @@ openkite:
       subdomain: staging-openkite
       tag: v0.1.0
     production:
-      # Released image; the pin-bump workflow rewrites this on every release.
+      # Released image; the openkite Release workflow rewrites this on every release.
       tag: v1.1.0
   service:
     # Container port: the Service is 80 and routes here.
@@ -72,7 +70,6 @@ openkite:
       memory: 320Mi
     resourceLimits:
       memory: 640Mi
-
 # Tickerlight console plus the trading-mcp engine it reads from, one pod so the
 # journal at /data is a plain shared volume and the console reads it locally.
 tickerlight:
@@ -222,7 +219,6 @@ tickerlight:
             memory: 128Mi
           limits:
             memory: 256Mi
-
 # Strands — note/link judge web app, public production host. The app runs its own
 # Google sign-in, so strands.maklab.net is deliberately NOT in services/helm/istio
 # `privateHosts`: a Cloudflare Access app in front of it would be a second,
