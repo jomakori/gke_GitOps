@@ -100,8 +100,46 @@ def access_apps(values: dict) -> tuple[list[tuple[str, str]], list[str]]:
     return apps, problems
 
 
+def ensure_chart_deps() -> list[str]:
+    """Vendor the istio chart's subcharts when a fresh checkout has none.
+
+    The subchart tarballs are build artefacts, not tracked files, so CI checks out
+    a chart that cannot render. The sibling render steps in the workflow do the
+    same `helm dependency build`; doing it here keeps one command for local and CI
+    runs instead of a prefix line that can drift out of sync.
+    """
+    chart_yaml = ISTIO_CHART / "Chart.yaml"
+    try:
+        declared = [
+            dep["name"]
+            for dep in (load_yaml(chart_yaml).get("dependencies") or [])
+            if isinstance(dep, dict) and dep.get("name")
+        ]
+    except OSError as exc:
+        return [f"cannot read {chart_yaml}: {exc}"]
+    missing = [n for n in declared if not list((ISTIO_CHART / "charts").glob(f"{n}-*"))]
+    if not missing:
+        return []
+    try:
+        subprocess.run(
+            ["helm", "dependency", "build", str(ISTIO_CHART)],
+            capture_output=True, text=True, check=True,
+        )
+    except FileNotFoundError:
+        return ["helm not found: the RequestAuthentication absence check needs helm"]
+    except subprocess.CalledProcessError as exc:
+        return [
+            "helm dependency build services/helm/istio failed "
+            f"({', '.join(missing)} missing from charts/): {exc.stderr.strip()[:300]}"
+        ]
+    return []
+
+
 def rendered_request_authentications() -> tuple[list[str], list[str]]:
     """Names of RequestAuthentication objects the istio chart renders, plus errors."""
+    defects = ensure_chart_deps()
+    if defects:
+        return [], defects
     try:
         rendered = subprocess.run(
             ["helm", "template", "audit", str(ISTIO_CHART)],
