@@ -59,7 +59,7 @@ openkite:
       subdomain: staging-openkite
       tag: v0.1.0
     production:
-      # Released image; the pin-bump workflow rewrites this on every release.
+      # Released image; the openkite Release workflow rewrites this on every release.
       tag: v1.1.0
   service:
     # Container port: the Service is 80 and routes here.
