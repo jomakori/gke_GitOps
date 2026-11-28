@@ -223,6 +223,10 @@ postgres:
         # the bucket means losing the pg-main backups, so nothing may prune it.
         region: auto
         credentialsSecret: pg-secrets          # in ns data, rendered by this chart (dataFrom find-all)
+        # R2 keys come from Doppler devops/svc_cloudflare directly (the config that
+        # owns the token and its rotation); the copy that used to live in
+        # svc_postgres_operator went stale and broke backups silently for five days.
+        r2CredentialsSecret: pg-main-r2
         credentialsSecretManagedByOperator: false
         createStorageAccountSecret: false
     # `openagent-pg` (ns openagent) is DELETED. There is one cluster: `pg-main`.

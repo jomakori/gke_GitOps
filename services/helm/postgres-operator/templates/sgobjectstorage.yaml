@@ -18,10 +18,10 @@ spec:
     awsCredentials:
       secretKeySelectors:
         accessKeyId:
-          name: {{ $c.backups.credentialsSecret }}
+          name: {{ $c.backups.r2CredentialsSecret }}
           key: R2_ACCESS_KEY_ID
         secretAccessKey:
-          name: {{ $c.backups.credentialsSecret }}
+          name: {{ $c.backups.r2CredentialsSecret }}
           key: R2_SECRET_ACCESS_KEY
 ---
 {{- end }}
